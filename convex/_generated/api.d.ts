@@ -12,6 +12,7 @@ import type * as adminUsers from "../adminUsers.js";
 import type * as auth from "../auth.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
+import type * as lib_authRoles from "../lib/authRoles.js";
 import type * as lib_products from "../lib/products.js";
 import type * as lib_requireAdmin from "../lib/requireAdmin.js";
 import type * as migrations from "../migrations.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   email: typeof email;
   http: typeof http;
+  "lib/authRoles": typeof lib_authRoles;
   "lib/products": typeof lib_products;
   "lib/requireAdmin": typeof lib_requireAdmin;
   migrations: typeof migrations;

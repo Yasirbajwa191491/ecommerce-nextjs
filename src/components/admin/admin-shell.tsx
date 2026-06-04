@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 
 const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
@@ -64,7 +65,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-7xl p-6 md:p-8">{children}</div>
+        <div className="mx-auto max-w-7xl p-6 md:p-8">
+          <AdminAccessGate>{children}</AdminAccessGate>
+        </div>
       </main>
     </div>
   );

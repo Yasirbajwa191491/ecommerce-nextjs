@@ -34,6 +34,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { toastError, toastSuccess } from "@/lib/app-toast";
 
 type Step = "credentials" | "otp";
 
@@ -89,7 +90,10 @@ export function AdminLoginForm() {
           toast.info("Check your email for a verification code.");
           return;
         }
-        toast.error(message);
+        toastError(message, {
+          title: "Sign in failed",
+          fallback: "Invalid email or password.",
+        });
         return;
       }
       router.push(redirect);
@@ -102,7 +106,10 @@ export function AdminLoginForm() {
         startOtpStep();
         toast.info("Check your email for a verification code.");
       } catch {
-        toast.error("Invalid email or password");
+        toastError(null, {
+          title: "Sign in failed",
+          fallback: "Invalid email or password.",
+        });
       }
     } finally {
       setLoading(false);
@@ -112,25 +119,37 @@ export function AdminLoginForm() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length < 6) {
-      toast.error("Enter the 6-digit code");
+      toastError("Enter the 6-digit code", {
+        title: "Verification code",
+        fallback: "Enter the 6-digit code from your email.",
+      });
       return;
     }
     setLoading(true);
     try {
       const verify = await authClient.emailOtp.verifyEmail({ email, otp });
       if (verify.error) {
-        toast.error(verify.error.message ?? "Invalid code");
+        toastError(verify.error.message ?? "Invalid code", {
+          title: "Invalid code",
+          fallback: "That code is incorrect or expired. Try again or resend.",
+        });
         return;
       }
       const signIn = await authClient.signIn.email({ email, password });
       if (signIn.error) {
-        toast.error(signIn.error.message ?? "Sign in failed after verification");
+        toastError(signIn.error.message, {
+          title: "Sign in failed",
+          fallback: "Sign in failed after verification. Please try again.",
+        });
         return;
       }
-      toast.success("Email verified. Welcome!");
+      toastSuccess("Email verified. Welcome!");
       router.push(redirect);
     } catch {
-      toast.error("Verification failed");
+      toastError(null, {
+        title: "Verification failed",
+        fallback: "Could not verify your email. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -145,9 +164,14 @@ export function AdminLoginForm() {
       });
       setOtpSentAt(Date.now());
       setNow(Date.now());
-      toast.success("Code resent");
+      toastSuccess("Code resent", {
+        description: `A new code was sent to ${email}.`,
+      });
     } catch {
-      toast.error("Could not resend code");
+      toastError(null, {
+        title: "Couldn't resend code",
+        fallback: "Could not resend the verification code. Try again shortly.",
+      });
     } finally {
       setLoading(false);
     }

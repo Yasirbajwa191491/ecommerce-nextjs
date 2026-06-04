@@ -2,8 +2,7 @@ import { ConvexError } from "convex/values";
 import type { GenericCtx } from "@convex-dev/better-auth";
 import type { DataModel } from "../_generated/dataModel";
 import { authComponent } from "../betterAuth/auth";
-
-const ADMIN_ROLES = new Set(["admin", "superAdmin"]);
+import { isAdminRole, normalizeRole } from "./authRoles";
 
 export type AuthUser = {
   _id: string;
@@ -30,9 +29,11 @@ export async function requireAdmin(ctx: GenericCtx<DataModel>): Promise<AuthUser
   if (user.banned) {
     throw new ConvexError("Account is banned");
   }
-  const role = user.role ?? "user";
-  if (!ADMIN_ROLES.has(role)) {
-    throw new ConvexError("Admin access required");
+  const role = normalizeRole(user.role);
+  if (!isAdminRole(role)) {
+    throw new ConvexError(
+      `Admin access required. Your account role is "${role}". Ask a super admin to assign the admin role.`
+    );
   }
   return user;
 }

@@ -82,7 +82,10 @@ export const banUser = mutation({
     banReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx);
+    const current = await requireSuperAdmin(ctx);
+    if (current._id === args.userId) {
+      throw new ConvexError("You cannot ban yourself");
+    }
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
     await auth.api.banUser({
       body: { userId: args.userId, banReason: args.banReason },
@@ -106,7 +109,10 @@ export const unbanUser = mutation({
 export const removeUser = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx);
+    const current = await requireSuperAdmin(ctx);
+    if (current._id === args.userId) {
+      throw new ConvexError("You cannot delete yourself");
+    }
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
     await auth.api.removeUser({
       body: { userId: args.userId },

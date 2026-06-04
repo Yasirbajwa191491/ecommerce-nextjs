@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -36,7 +37,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { useFormValidation } from "@/hooks/use-form-validation";
+import { toastError, toastSuccess } from "@/lib/app-toast";
+import { validateProductForm } from "@/lib/validation/admin-forms";
+import { cn } from "@/lib/utils";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import type { Product, ProductCategory } from "@/types/product";
 
@@ -87,11 +91,23 @@ export default function AdminProductsPage() {
   const [deleteId, setDeleteId] = useState<Id<"products"> | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const validate = useCallback(
+    (values: ProductForm) => validateProductForm(values),
+    []
+  );
+  const validation = useFormValidation(form, validate);
+  const resetValidation = validation.reset;
+
+  useEffect(() => {
+    if (!dialogOpen) resetValidation();
+  }, [dialogOpen, resetValidation]);
+
   const openCreate = () => {
     setEditing(null);
     const f = emptyForm();
     if (categories[0]) f.categoryId = categories[0]._id;
     setForm(f);
+    resetValidation();
     setDialogOpen(true);
   };
 
@@ -111,6 +127,7 @@ export default function AdminProductsPage() {
       stars: p.stars,
       description: p.description,
     });
+    resetValidation();
     setDialogOpen(true);
   };
 
@@ -136,23 +153,23 @@ export default function AdminProductsPage() {
   });
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.categoryId) {
-      toast.error("Name and category are required");
-      return;
-    }
+    if (!validation.validateAll()) return;
     setSaving(true);
     try {
       const payload = toPayload(form);
       if (editing) {
         await update({ id: editing._id, ...payload });
-        toast.success("Product updated");
+        toastSuccess("Product updated");
       } else {
         await create(payload);
-        toast.success("Product created");
+        toastSuccess("Product created");
       }
       setDialogOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toastError(e, {
+        title: "Couldn't save product",
+        fallback: "Failed to save product. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -163,10 +180,13 @@ export default function AdminProductsPage() {
     setSaving(true);
     try {
       await remove({ id: deleteId });
-      toast.success("Product deleted");
+      toastSuccess("Product deleted");
       setDeleteId(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+      toastError(e, {
+        title: "Couldn't delete product",
+        fallback: "Failed to delete product. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -266,27 +286,56 @@ export default function AdminProductsPage() {
             <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label>Name</Label>
+            <AdminFormField
+              label="Product name"
+              htmlFor="product-name"
+              error={validation.fieldError("name")}
+              required
+            >
               <Input
+                id="product-name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onBlur={() => validation.touch("name")}
+                aria-invalid={!!validation.fieldError("name")}
+                className={invalidInputClass(validation.fieldError("name"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Company</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Company / brand"
+              htmlFor="product-company"
+              error={validation.fieldError("company")}
+              required
+            >
               <Input
+                id="product-company"
                 value={form.company}
-                onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, company: e.target.value }))
+                }
+                onBlur={() => validation.touch("company")}
+                aria-invalid={!!validation.fieldError("company")}
+                className={invalidInputClass(validation.fieldError("company"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Category</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Category"
+              error={validation.fieldError("categoryId")}
+              required
+            >
               <Select
                 value={form.categoryId}
-                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v ?? "" }))}
+                onValueChange={(v) => {
+                  setForm((f) => ({ ...f, categoryId: v ?? "" }));
+                  validation.touch("categoryId");
+                }}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={cn(
+                    invalidInputClass(validation.fieldError("categoryId"))
+                  )}
+                  aria-invalid={!!validation.fieldError("categoryId")}
+                >
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -297,38 +346,75 @@ export default function AdminProductsPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </AdminFormField>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Price</Label>
+              <AdminFormField
+                label="Price"
+                htmlFor="product-price"
+                error={validation.fieldError("price")}
+                required
+              >
                 <Input
+                  id="product-price"
                   type="number"
+                  min={0}
+                  step="0.01"
                   value={form.price}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, price: Number(e.target.value) }))
                   }
+                  onBlur={() => validation.touch("price")}
+                  aria-invalid={!!validation.fieldError("price")}
+                  className={invalidInputClass(validation.fieldError("price"))}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>Stock</Label>
+              </AdminFormField>
+              <AdminFormField
+                label="Stock"
+                htmlFor="product-stock"
+                error={validation.fieldError("stock")}
+                required
+              >
                 <Input
+                  id="product-stock"
                   type="number"
+                  min={0}
                   value={form.stock}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, stock: Number(e.target.value) }))
                   }
+                  onBlur={() => validation.touch("stock")}
+                  aria-invalid={!!validation.fieldError("stock")}
+                  className={invalidInputClass(validation.fieldError("stock"))}
                 />
-              </div>
+              </AdminFormField>
             </div>
-            <div className="grid gap-2">
-              <Label>Colors (comma-separated)</Label>
+            <AdminFormField
+              label="Colors"
+              htmlFor="product-colors"
+              error={validation.fieldError("colors")}
+              description="Comma-separated, e.g. black, grey, white"
+              required
+            >
               <Input
+                id="product-colors"
                 value={form.colors}
                 onChange={(e) => setForm((f) => ({ ...f, colors: e.target.value }))}
+                onBlur={() => validation.touch("colors")}
+                aria-invalid={!!validation.fieldError("colors")}
+                className={invalidInputClass(validation.fieldError("colors"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Image URLs</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Image URLs"
+              error={
+                validation.fieldError("imageUrls") ??
+                form.imageUrls
+                  .map((_, i) => validation.fieldError(`imageUrls.${i}`))
+                  .find(Boolean)
+              }
+              description="At least one https:// image link"
+              required
+            >
               {form.imageUrls.map((url, i) => (
                 <div key={i} className="flex gap-2">
                   <Input
@@ -339,6 +425,11 @@ export default function AdminProductsPage() {
                       next[i] = e.target.value;
                       setForm((f) => ({ ...f, imageUrls: next }));
                     }}
+                    onBlur={() => validation.touch(`imageUrls.${i}`)}
+                    aria-invalid={!!validation.fieldError(`imageUrls.${i}`)}
+                    className={invalidInputClass(
+                      validation.fieldError(`imageUrls.${i}`)
+                    )}
                   />
                   {form.imageUrls.length > 1 ? (
                     <Button
@@ -361,6 +452,7 @@ export default function AdminProductsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
+                className="mt-2"
                 onClick={() =>
                   setForm((f) => ({ ...f, imageUrls: [...f.imageUrls, ""] }))
                 }
@@ -368,39 +460,64 @@ export default function AdminProductsPage() {
                 <Plus className="mr-1 size-4" />
                 Add image URL
               </Button>
-            </div>
-            <div className="grid gap-2">
-              <Label>Description</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Description"
+              htmlFor="product-description"
+              error={validation.fieldError("description")}
+              required
+            >
               <Textarea
+                id="product-description"
                 rows={3}
                 value={form.description}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
                 }
+                onBlur={() => validation.touch("description")}
+                aria-invalid={!!validation.fieldError("description")}
+                className={invalidInputClass(validation.fieldError("description"))}
               />
-            </div>
+            </AdminFormField>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Reviews</Label>
+              <AdminFormField
+                label="Reviews"
+                htmlFor="product-reviews"
+                error={validation.fieldError("reviews")}
+              >
                 <Input
+                  id="product-reviews"
                   type="number"
+                  min={0}
                   value={form.reviews}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, reviews: Number(e.target.value) }))
                   }
+                  onBlur={() => validation.touch("reviews")}
+                  aria-invalid={!!validation.fieldError("reviews")}
+                  className={invalidInputClass(validation.fieldError("reviews"))}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label>Stars</Label>
+              </AdminFormField>
+              <AdminFormField
+                label="Rating (0–5)"
+                htmlFor="product-stars"
+                error={validation.fieldError("stars")}
+              >
                 <Input
+                  id="product-stars"
                   type="number"
+                  min={0}
+                  max={5}
                   step="0.1"
                   value={form.stars}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, stars: Number(e.target.value) }))
                   }
+                  onBlur={() => validation.touch("stars")}
+                  aria-invalid={!!validation.fieldError("stars")}
+                  className={invalidInputClass(validation.fieldError("stars"))}
                 />
-              </div>
+              </AdminFormField>
             </div>
             <div className="flex items-center justify-between">
               <Label>Featured</Label>

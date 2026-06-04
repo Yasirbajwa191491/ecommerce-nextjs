@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useState } from "react";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useCallback, useEffect, useState } from "react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
@@ -14,7 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
+import { PasswordField } from "@/components/admin/password-field";
 import {
   Select,
   SelectContent,
@@ -32,7 +33,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { toastError, toastSuccess } from "@/lib/app-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useFormValidation } from "@/hooks/use-form-validation";
+import { validateCreateUserForm } from "@/lib/validation/admin-forms";
+import { cn } from "@/lib/utils";
 import { Ban, Trash2, UserPlus } from "lucide-react";
 
 type AuthUserRow = {
@@ -55,6 +64,8 @@ export default function AdminUsersPage() {
   const banUser = useMutation(api.adminUsers.banUser);
   const unbanUser = useMutation(api.adminUsers.unbanUser);
   const removeUser = useMutation(api.adminUsers.removeUser);
+  const currentUser = useQuery(api.auth.getCurrentUser);
+  const currentUserId = currentUser?._id ?? null;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
@@ -66,21 +77,32 @@ export default function AdminUsersPage() {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const validateUser = useCallback(
+    (values: typeof form) => validateCreateUserForm(values),
+    []
+  );
+  const validation = useFormValidation(form, validateUser);
+
+  const resetValidation = validation.reset;
+  useEffect(() => {
+    if (!dialogOpen) resetValidation();
+  }, [dialogOpen, resetValidation]);
+
   const users = results as AuthUserRow[];
 
   const handleCreate = async () => {
-    if (!form.email || !form.password || !form.name) {
-      toast.error("All fields are required");
-      return;
-    }
+    if (!validation.validateAll()) return;
     setSaving(true);
     try {
       await createUser(form);
-      toast.success("User created");
+      toastSuccess("User created");
       setDialogOpen(false);
       setForm({ email: "", password: "", name: "", role: "admin" });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Create failed");
+      toastError(e, {
+        title: "Couldn't create user",
+        fallback: "Failed to create user. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -88,30 +110,48 @@ export default function AdminUsersPage() {
 
   const handleDelete = async () => {
     if (!deleteUserId) return;
+    if (isCurrentUser(deleteUserId)) {
+      toastError(null, {
+        title: "Action not allowed",
+        fallback: "You can't delete your own account.",
+      });
+      setDeleteUserId(null);
+      return;
+    }
     setSaving(true);
     try {
       await removeUser({ userId: deleteUserId });
-      toast.success("User removed");
+      toastSuccess("User removed");
       setDeleteUserId(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+      toastError(e, {
+        title: "Couldn't remove user",
+        fallback: "Failed to remove user. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  const isCurrentUser = (userId: string) =>
+    currentUserId !== null && currentUserId === userId;
+
   const toggleBan = async (user: AuthUserRow) => {
+    if (isCurrentUser(user._id)) return;
     setSaving(true);
     try {
       if (user.banned) {
         await unbanUser({ userId: user._id });
-        toast.success("User unbanned");
+        toastSuccess("User unbanned");
       } else {
         await banUser({ userId: user._id });
-        toast.success("User banned");
+        toastSuccess("User banned");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Action failed");
+      toastError(e, {
+        title: "Couldn't update ban",
+        fallback: "Failed to update ban status. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -121,9 +161,12 @@ export default function AdminUsersPage() {
     setSaving(true);
     try {
       await setRole({ userId, role });
-      toast.success("Role updated");
+      toastSuccess("Role updated");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed");
+      toastError(e, {
+        title: "Couldn't update role",
+        fallback: "Failed to update role. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -165,7 +208,9 @@ export default function AdminUsersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((user) => (
+              users.map((user) => {
+                const isSelf = isCurrentUser(user._id);
+                return (
                 <TableRow key={user._id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -201,25 +246,65 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => toggleBan(user)}
-                        disabled={saving}
-                      >
-                        <Ban className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteUserId(user._id)}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <span className="inline-flex">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => toggleBan(user)}
+                                disabled={saving || isSelf}
+                              aria-label={
+                                isSelf ? "Cannot ban your own account" : "Ban user"
+                              }
+                              >
+                                <Ban className="size-4" />
+                              </Button>
+                            </span>
+                          }
+                        />
+                        {isSelf ? (
+                          <TooltipContent>You can&apos;t ban your own account</TooltipContent>
+                        ) : null}
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <span className="inline-flex">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteUserId(user._id)}
+                                disabled={isSelf}
+                              aria-label={
+                                isSelf
+                                  ? "Cannot delete your own account"
+                                  : "Delete user"
+                              }
+                            >
+                              <Trash2
+                                className={
+                                  isSelf
+                                    ? "size-4 text-muted-foreground/40"
+                                    : "size-4 text-destructive"
+                                }
+                              />
+                              </Button>
+                            </span>
+                          }
+                        />
+                        {isSelf ? (
+                          <TooltipContent>
+                            You can&apos;t delete your own account
+                          </TooltipContent>
+                        ) : null}
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             )}
           </TableBody>
         </Table>
@@ -233,7 +318,15 @@ export default function AdminUsersPage() {
         </div>
       ) : null}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setForm({ email: "", password: "", name: "", role: "admin" });
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -242,41 +335,71 @@ export default function AdminUsersPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label>Name</Label>
+            <AdminFormField
+              label="Full name"
+              htmlFor="user-name"
+              error={validation.fieldError("name")}
+              required
+            >
               <Input
+                id="user-name"
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+                onBlur={() => validation.touch("name")}
+                aria-invalid={!!validation.fieldError("name")}
+                className={invalidInputClass(validation.fieldError("name"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Email</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Email"
+              htmlFor="user-email"
+              error={validation.fieldError("email")}
+              description="Work email for sign-in and notifications"
+              required
+            >
               <Input
+                id="user-email"
                 type="email"
+                autoComplete="email"
                 value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
+                onBlur={() => validation.touch("email")}
+                aria-invalid={!!validation.fieldError("email")}
+                className={invalidInputClass(validation.fieldError("email"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Role</Label>
+            </AdminFormField>
+            <PasswordField
+              id="user-password"
+              value={form.password}
+              onChange={(password) => setForm((f) => ({ ...f, password }))}
+              onBlur={() => validation.touch("password")}
+              error={validation.fieldError("password")}
+            />
+            <AdminFormField
+              label="Role"
+              error={validation.fieldError("role")}
+              required
+            >
               <Select
                 value={form.role}
-                onValueChange={(v) =>
+                onValueChange={(v) => {
                   setForm((f) => ({
                     ...f,
                     role: (v ?? "admin") as typeof f.role,
-                  }))
-                }
+                  }));
+                  validation.touch("role");
+                }}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={cn(
+                    invalidInputClass(validation.fieldError("role"))
+                  )}
+                  aria-invalid={!!validation.fieldError("role")}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,7 +408,7 @@ export default function AdminUsersPage() {
                   <SelectItem value="superAdmin">Super admin</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </AdminFormField>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>

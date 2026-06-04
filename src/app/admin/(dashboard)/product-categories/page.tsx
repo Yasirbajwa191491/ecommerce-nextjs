@@ -1,11 +1,12 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -28,8 +28,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useFormValidation } from "@/hooks/use-form-validation";
+import { validateCategoryForm } from "@/lib/validation/admin-forms";
 import { slugify } from "@/lib/slugify";
-import { toast } from "sonner";
+import { toastError, toastSuccess } from "@/lib/app-toast";
 import { Pencil, Trash2 } from "lucide-react";
 import type { ProductCategory } from "@/types/product";
 
@@ -57,9 +59,21 @@ export default function ProductCategoriesPage() {
   const [deleteId, setDeleteId] = useState<Id<"productCategories"> | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const validate = useCallback(
+    (values: typeof form) => validateCategoryForm(values),
+    []
+  );
+  const validation = useFormValidation(form, validate);
+  const resetValidation = validation.reset;
+
+  useEffect(() => {
+    if (!dialogOpen) resetValidation();
+  }, [dialogOpen, resetValidation]);
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    resetValidation();
     setDialogOpen(true);
   };
 
@@ -72,6 +86,7 @@ export default function ProductCategoriesPage() {
       active: cat.active,
       sortOrder: cat.sortOrder,
     });
+    resetValidation();
     setDialogOpen(true);
   };
 
@@ -84,10 +99,7 @@ export default function ProductCategoriesPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast.error("Name is required");
-      return;
-    }
+    if (!validation.validateAll()) return;
     setSaving(true);
     try {
       const payload = {
@@ -99,14 +111,17 @@ export default function ProductCategoriesPage() {
       };
       if (editing) {
         await update({ id: editing._id, ...payload });
-        toast.success("Category updated");
+        toastSuccess("Category updated");
       } else {
         await create(payload);
-        toast.success("Category created");
+        toastSuccess("Category created");
       }
       setDialogOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toastError(e, {
+        title: "Couldn't save category",
+        fallback: "Failed to save category. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -117,10 +132,13 @@ export default function ProductCategoriesPage() {
     setSaving(true);
     try {
       await remove({ id: deleteId });
-      toast.success("Category deleted");
+      toastSuccess("Category deleted");
       setDeleteId(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+      toastError(e, {
+        title: "Couldn't delete category",
+        fallback: "Failed to delete category. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -213,38 +231,68 @@ export default function ProductCategoriesPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+            <AdminFormField
+              label="Name"
+              htmlFor="cat-name"
+              error={validation.fieldError("name")}
+              required
+            >
               <Input
-                id="name"
+                id="cat-name"
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}
+                onBlur={() => validation.touch("name")}
+                aria-invalid={!!validation.fieldError("name")}
+                className={invalidInputClass(validation.fieldError("name"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="slug">Slug</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Slug"
+              htmlFor="cat-slug"
+              error={validation.fieldError("slug")}
+              description="URL-friendly identifier (auto-generated from name)"
+              required
+            >
               <Input
-                id="slug"
+                id="cat-slug"
                 value={form.slug}
-                onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, slug: e.target.value.toLowerCase() }))
+                }
+                onBlur={() => validation.touch("slug")}
+                aria-invalid={!!validation.fieldError("slug")}
+                className={invalidInputClass(validation.fieldError("slug"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Description"
+              htmlFor="cat-description"
+              error={validation.fieldError("description")}
+              description="Optional, max 500 characters"
+            >
               <Textarea
-                id="description"
+                id="cat-description"
                 rows={3}
                 value={form.description}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
                 }
+                onBlur={() => validation.touch("description")}
+                aria-invalid={!!validation.fieldError("description")}
+                className={invalidInputClass(validation.fieldError("description"))}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sortOrder">Sort order</Label>
+            </AdminFormField>
+            <AdminFormField
+              label="Sort order"
+              htmlFor="cat-sort"
+              error={validation.fieldError("sortOrder")}
+              description="Lower numbers appear first (0–9999)"
+            >
               <Input
-                id="sortOrder"
+                id="cat-sort"
                 type="number"
+                min={0}
+                max={9999}
                 value={form.sortOrder}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -252,10 +300,13 @@ export default function ProductCategoriesPage() {
                     sortOrder: Number.parseInt(e.target.value, 10) || 0,
                   }))
                 }
+                onBlur={() => validation.touch("sortOrder")}
+                aria-invalid={!!validation.fieldError("sortOrder")}
+                className={invalidInputClass(validation.fieldError("sortOrder"))}
               />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="active">Active</Label>
+            </AdminFormField>
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <span className="text-sm font-medium">Active</span>
               <Switch
                 id="active"
                 checked={form.active}
@@ -268,7 +319,7 @@ export default function ProductCategoriesPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "SavingΓÇª" : "Save"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
