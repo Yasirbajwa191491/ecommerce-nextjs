@@ -15,7 +15,7 @@ export default function AddToCart({ product }: { product: Product }) {
   const [color, setColor] = useState(product.colors[0] ?? "#000");
 
   const handleAdd = () => {
-    addToCart(product.externalId, color, amount, product);
+    addToCart(product._id, color, amount, product);
     toast.success("Added to cart", {
       description: `${amount}× ${product.name}`,
     });

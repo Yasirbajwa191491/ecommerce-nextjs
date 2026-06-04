@@ -4,14 +4,23 @@ import { v } from "convex/values";
 export const productImageValidator = v.object({ url: v.string() });
 
 export default defineSchema({
+  productCategories: defineTable({
+    name: v.string(),
+    description: v.string(),
+    slug: v.string(),
+    active: v.boolean(),
+    sortOrder: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_active_sort", ["active", "sortOrder"]),
+
   products: defineTable({
-    externalId: v.string(),
     name: v.string(),
     company: v.string(),
     price: v.number(),
     colors: v.array(v.string()),
     image: v.array(productImageValidator),
-    category: v.string(),
+    categoryId: v.id("productCategories"),
     featured: v.boolean(),
     shipping: v.boolean(),
     stock: v.number(),
@@ -19,7 +28,6 @@ export default defineSchema({
     stars: v.number(),
     description: v.string(),
   })
-    .index("by_external_id", ["externalId"])
-    .index("by_category", ["category"])
+    .index("by_category_id", ["categoryId"])
     .index("by_featured", ["featured"]),
 });

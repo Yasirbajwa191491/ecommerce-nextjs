@@ -4,12 +4,13 @@ import Image from "next/image";
 import { use } from "react";
 import styled from "styled-components";
 import FormatPrice from "@/helpers/FormatPrice";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useSingleProduct } from "@/hooks/useProducts";
 import AddToCart from "@/components/products/AddToCart";
 
 export default function SingleProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { singleProduct, isSingleLoading } = useSingleProduct(id);
+  const { singleProduct, isSingleLoading } = useSingleProduct(id as Id<"products">);
 
   if (isSingleLoading) return <div className="page_loading">Loading...</div>;
   if (!singleProduct) return <div className="page_loading">Not found</div>;

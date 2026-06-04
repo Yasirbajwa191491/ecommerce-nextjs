@@ -17,11 +17,23 @@ Rebuild of `../client` (React) with **Next.js 16** and **Convex** realtime backe
 cd ecommerce-nextjs
 npm install
 npx convex dev          # link to doting-bat-377 (once)
-npm run seed            # demo products
+npx convex env set SITE_URL http://localhost:3000
+npx convex env set BETTER_AUTH_SECRET "<random-32+-char-secret>"
+# Optional — OTP emails via Resend (logs OTP to console if unset)
+npx convex env set RESEND_API_KEY "re_..."
+npx convex env set RESEND_FROM_EMAIL "onboarding@resend.dev"
+npm run seed            # categories, products, super admin
 npm run dev             # Next.js + Convex
 ```
 
 Open http://localhost:3000/home
+
+### Admin (Better Auth)
+
+- Login: http://localhost:3000/admin/login
+- After seed: `yasir.sohail@savari.io` / `12345678` (dev only)
+- Routes: `/admin/products`, `/admin/product-categories`, `/admin/users`
+- Unverified emails receive an OTP via Resend (or console fallback without `RESEND_API_KEY`)
 
 ## Realtime
 
@@ -31,7 +43,7 @@ Open http://localhost:3000/home
 
 - `/home` — featured products
 - `/products` — filter, sort, grid/list
-- `/singleproduct/[id]` — product detail (`externalId`)
+- `/singleproduct/[id]` — product detail (Convex document `_id`)
 - `/cart` — localStorage cart (same as original)
 
 ## shadcn/ui

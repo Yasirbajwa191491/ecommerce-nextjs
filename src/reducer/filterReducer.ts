@@ -53,7 +53,7 @@ function filterByCriteria(
     );
   }
   if (category !== "all") {
-    temp = temp.filter((p) => p.category === category);
+    temp = temp.filter((p) => p.category?.slug === category);
   }
   if (company !== "all") {
     temp = temp.filter((p) => p.company === company);
