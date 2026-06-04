@@ -122,7 +122,7 @@ export function AdminLoginForm() {
   };
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <div className="grid items-start lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-stretch">
       {/* Brand panel — desktop & tablet landscape */}
       <aside
         className={cn(
@@ -177,9 +177,9 @@ export function AdminLoginForm() {
       </aside>
 
       {/* Form column */}
-      <main className="flex min-h-dvh flex-col bg-background">
+      <main className="flex w-full flex-col bg-background max-lg:h-auto lg:min-h-dvh">
         {/* Mobile / tablet brand strip */}
-        <div className="border-b bg-[#6254f3] px-4 py-5 text-white sm:px-6 lg:hidden">
+        <div className="shrink-0 border-b bg-[#6254f3] px-4 py-4 text-white sm:px-6 lg:hidden">
           <div className="mx-auto flex max-w-lg items-center gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20">
               <LayoutDashboard className="size-5" />
@@ -191,18 +191,18 @@ export function AdminLoginForm() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-center px-4 py-8 sm:px-8 sm:py-10 md:px-12 lg:px-16 xl:px-20">
+        <div className="flex w-full shrink-0 flex-col justify-start px-4 pt-4 pb-8 sm:px-8 sm:pt-5 md:px-10 md:pt-6 lg:flex-1 lg:justify-center lg:px-16 lg:py-10 xl:px-20">
           <div className="mx-auto w-full max-w-[420px]">
             <Link
               href="/home"
-              className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:mb-8"
+              className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:mb-6 lg:mb-8"
             >
               <ArrowLeft className="size-4" />
               Back to store
             </Link>
 
             {/* Step indicator */}
-            <div className="mb-6 flex gap-2 sm:mb-8">
+            <div className="mb-5 flex gap-2 sm:mb-6 lg:mb-8">
               <span
                 className={cn(
                   "h-1 flex-1 rounded-full transition-colors",
@@ -217,7 +217,7 @@ export function AdminLoginForm() {
               />
             </div>
 
-            <div className="mb-6 space-y-2 sm:mb-8">
+            <div className="mb-5 space-y-2 sm:mb-6 lg:mb-8">
               <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 {step === "credentials" ? "Welcome back" : "Verify your email"}
               </h2>
@@ -357,8 +357,8 @@ export function AdminLoginForm() {
               )}
             </div>
 
-            <p className="mt-6 text-center text-xs text-muted-foreground sm:mt-8">
-              Protected area · Session secured with Better Auth
+            <p className="mt-5 text-center text-xs text-muted-foreground sm:mt-6 lg:mt-8">
+              Protected area · Session secured
             </p>
           </div>
         </div>
