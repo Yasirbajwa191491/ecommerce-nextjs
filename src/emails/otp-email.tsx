@@ -12,9 +12,10 @@ import {
 type OtpEmailProps = {
   otp: string;
   type: string;
+  expiresMinutes?: number;
 };
 
-export function OtpEmail({ otp, type }: OtpEmailProps) {
+export function OtpEmail({ otp, type, expiresMinutes = 30 }: OtpEmailProps) {
   const title =
     type === "email-verification"
       ? "Verify your email"
@@ -30,7 +31,8 @@ export function OtpEmail({ otp, type }: OtpEmailProps) {
         <Container style={container}>
           <Heading style={h1}>{title}</Heading>
           <Text style={text}>
-            Use the code below to continue. It expires shortly.
+            Use the code below to continue. It expires in {expiresMinutes}{" "}
+            minutes.
           </Text>
           <Section style={codeBox}>
             <Text style={code}>{otp}</Text>

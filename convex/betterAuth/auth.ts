@@ -6,6 +6,7 @@ import type { BetterAuthOptions } from "better-auth";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import authConfig from "../auth.config";
+import { OTP_EXPIRES_SECONDS } from "../../src/lib/otp-config";
 import schema from "./schema";
 
 const ac = createAccessControl({
@@ -68,6 +69,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       emailOTP({
         overrideDefaultEmailVerification: true,
         resendStrategy: "reuse",
+        expiresIn: OTP_EXPIRES_SECONDS,
         async sendVerificationOTP({ email, otp, type }) {
           if ("runAction" in ctx && typeof ctx.runAction === "function") {
             await ctx.runAction(internal.email.sendOtpEmail, {

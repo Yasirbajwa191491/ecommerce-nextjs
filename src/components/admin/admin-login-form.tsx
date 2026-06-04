@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  Clock,
+  Eye,
+  EyeOff,
   KeyRound,
   LayoutDashboard,
   Lock,
@@ -13,6 +16,12 @@ import {
   Store,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import {
+  formatOtpExpiryTime,
+  formatOtpRemaining,
+  getOtpExpiresAt,
+  OTP_EXPIRES_MINUTES,
+} from "@/lib/otp-config";
 import { STORE_NAME } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +45,29 @@ export function AdminLoginForm() {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
+  const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (step !== "otp" || otpSentAt === null) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [step, otpSentAt]);
+
+  const otpExpiresAt =
+    otpSentAt !== null ? getOtpExpiresAt(otpSentAt) : null;
+  const otpRemainingMs =
+    otpExpiresAt !== null ? Math.max(0, otpExpiresAt - now) : null;
+  const otpExpired = otpRemainingMs === 0;
+
+  const startOtpStep = () => {
+    setOtpSentAt(Date.now());
+    setNow(Date.now());
+    setStep("otp");
+  };
 
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +85,7 @@ export function AdminLoginForm() {
             email,
             type: "email-verification",
           });
-          setStep("otp");
+          startOtpStep();
           toast.info("Check your email for a verification code.");
           return;
         }
@@ -69,7 +99,7 @@ export function AdminLoginForm() {
           email,
           type: "email-verification",
         });
-        setStep("otp");
+        startOtpStep();
         toast.info("Check your email for a verification code.");
       } catch {
         toast.error("Invalid email or password");
@@ -113,6 +143,8 @@ export function AdminLoginForm() {
         email,
         type: "email-verification",
       });
+      setOtpSentAt(Date.now());
+      setNow(Date.now());
       toast.success("Code resent");
     } catch {
       toast.error("Could not resend code");
@@ -227,7 +259,8 @@ export function AdminLoginForm() {
                 ) : (
                   <>
                     We sent a 6-digit code to{" "}
-                    <span className="font-medium text-foreground">{email}</span>
+                    <span className="font-medium text-foreground">{email}</span>.
+                    It is valid for {OTP_EXPIRES_MINUTES} minutes.
                   </>
                 )}
               </p>
@@ -259,17 +292,30 @@ export function AdminLoginForm() {
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Lock className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="h-11 pl-10 text-base sm:h-12 sm:text-sm"
+                        className="h-11 pr-11 pl-10 text-base sm:h-12 sm:text-sm"
                       />
+                      <button
+                        type="button"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-pressed={showPassword}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute top-1/2 right-2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" aria-hidden />
+                        ) : (
+                          <Eye className="size-4" aria-hidden />
+                        )}
+                      </button>
                     </div>
                   </div>
                   <Button
@@ -292,6 +338,49 @@ export function AdminLoginForm() {
                   <div className="flex justify-center rounded-xl bg-muted/50 py-6">
                     <KeyRound className="size-8 text-[#6254f3]" strokeWidth={1.5} />
                   </div>
+                  {otpSentAt !== null && (
+                    <div
+                      className={cn(
+                        "flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm",
+                        otpExpired
+                          ? "border-destructive/30 bg-destructive/5 text-destructive"
+                          : "border-[#6254f3]/20 bg-[#6254f3]/5 text-foreground"
+                      )}
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <Clock
+                        className={cn(
+                          "mt-0.5 size-4 shrink-0",
+                          otpExpired ? "text-destructive" : "text-[#6254f3]"
+                        )}
+                        aria-hidden
+                      />
+                      <div className="min-w-0 space-y-0.5">
+                        {otpExpired ? (
+                          <p className="font-medium">This code has expired</p>
+                        ) : (
+                          <>
+                            <p>
+                              Expires at{" "}
+                              <span className="font-medium tabular-nums">
+                                {formatOtpExpiryTime(otpSentAt)}
+                              </span>
+                            </p>
+                            <p className="text-muted-foreground">
+                              <span className="font-medium tabular-nums text-foreground">
+                                {formatOtpRemaining(otpRemainingMs ?? 0)}
+                              </span>{" "}
+                              remaining
+                            </p>
+                          </>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Codes are valid for {OTP_EXPIRES_MINUTES} minutes
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-3">
                     <Label className="block text-center text-sm font-medium">
                       Enter verification code
@@ -348,6 +437,7 @@ export function AdminLoginForm() {
                       onClick={() => {
                         setStep("credentials");
                         setOtp("");
+                        setOtpSentAt(null);
                       }}
                     >
                       Use different account

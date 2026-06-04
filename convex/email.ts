@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/components";
 import { OtpEmail } from "../src/emails/otp-email";
+import { OTP_EXPIRES_MINUTES } from "../src/lib/otp-config";
 
 export const sendOtpEmail = internalAction({
   args: {
@@ -32,7 +33,11 @@ export const sendOtpEmail = internalAction({
           : "Your verification code — Ecommerce Admin";
 
     const html = await render(
-      OtpEmail({ otp: args.otp, type: args.type })
+      OtpEmail({
+        otp: args.otp,
+        type: args.type,
+        expiresMinutes: OTP_EXPIRES_MINUTES,
+      })
     );
 
     await resend.emails.send({
