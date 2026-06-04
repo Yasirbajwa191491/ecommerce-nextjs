@@ -1,0 +1,38 @@
+---
+description: Convex backend best practices (queries, mutations, schema, auth)
+globs: convex/**
+alwaysApply: false
+---
+
+# Convex backend
+
+## Development
+
+- Use `npx convex dev` locally — **never** `npx convex deploy` for day-to-day dev
+- Validate all public `args` and return types with `v.*` from `convex/values`
+- **Await** every promise in handlers; no floating async work
+
+## Data access
+
+- Use **indexes** + `.withIndex()` — avoid `.filter()` on large tables for primary lookups
+- Never `Date.now()` inside **queries** (breaks caching/reactivity); use mutations/actions for timestamps
+- Schedule only **internal** functions from crons/scheduler, not `api.*` exports
+
+## Structure
+
+- Thin `query`/`mutation`/`action` wrappers; shared logic in `convex/lib/*.ts`
+- Auth: check `ctx.auth.getUserIdentity()` in public functions; use custom functions / helpers for row-level access
+- Errors: `throw new Error("clear message")` for exceptional cases; return `null` for expected misses
+
+## Types
+
+- Import `Doc`, `Id` from `./_generated/dataModel`
+- Run `npx convex dev` after schema changes so `convex/_generated` stays in sync
+
+```typescript
+// ✅ Indexed lookup
+await ctx.db
+  .query("products")
+  .withIndex("by_external_id", (q) => q.eq("externalId", args.externalId))
+  .unique();
+```

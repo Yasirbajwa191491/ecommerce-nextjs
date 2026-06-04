@@ -1,0 +1,33 @@
+---
+description: Use shared shadcn/ui components for all UI primitives
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# shadcn/ui (shared components)
+
+Use primitives from `@/components/ui` — **not** raw `<button>`, `<input>`, or one-off styled HTML for standard UI.
+
+```tsx
+// ✅ GOOD
+import { Button, Input, Alert, Card, Label } from "@/components/ui";
+import { toast } from "sonner";
+
+// ✅ Also fine (tree-shaking)
+import { Button } from "@/components/ui/button";
+
+// ❌ BAD — ad-hoc UI for standard controls
+<button className="px-4 py-2 bg-blue-500">Submit</button>
+```
+
+## Rules
+
+- **Buttons:** `Button` with `variant` / `size` (`default`, `outline`, `destructive`, `ghost`, `link`)
+- **Forms:** `Input`, `Textarea`, `Label`, `Field`, `Select`, `Checkbox` — pair with `Label` + `htmlFor`
+- **Feedback:** `Alert`, `AlertDialog`, `toast` from `sonner` (Toaster already in layout)
+- **Layout:** `Card`, `Separator`, `Sheet`, `Dialog`, `Tabs`, `Skeleton` for loading
+- **New components:** `npx shadcn@latest add <name>` — do not copy-paste from old `client/` Bootstrap/raw HTML
+- **Styling:** Tailwind + `cn()` from `@/lib/utils`; theme tokens in `src/app/globals.css`
+- **Icons:** `lucide-react` (shadcn default), not mixed icon sets for new UI unless existing page already uses `react-icons`
+
+Legacy `styled-components` in `src/components/products/` may remain temporarily; **new or refactored UI** should use shadcn.

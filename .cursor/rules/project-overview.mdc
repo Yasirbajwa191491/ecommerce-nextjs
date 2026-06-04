@@ -1,0 +1,21 @@
+---
+description: Stack and folder conventions for ecommerce-nextjs
+alwaysApply: true
+---
+
+# Project overview
+
+- **Path:** `ecommerce-nextjs/` (lowercase folder at repo root)
+- **Stack:** Next.js 16 App Router, Convex (realtime), shadcn/ui + Tailwind v4, TypeScript strict
+- **Legacy reference:** React app in `../client/` — port behavior, do not break Convex patterns
+
+## Commands
+
+- Dev: `npm run dev` (Next.js + `convex dev`)
+- Seed: `npm run seed`
+- Add UI: `npm run ui:add <component>` or `npx shadcn@latest add <name>`
+
+## Providers
+
+- `ShadcnProviders` — theme, tooltips, Sonner toasts (root layout)
+- `AppProviders` — Convex, cart/filter context (shop layout)

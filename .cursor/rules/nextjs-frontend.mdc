@@ -1,0 +1,30 @@
+---
+description: Next.js App Router and Convex client patterns
+globs: src/**
+alwaysApply: false
+---
+
+# Next.js frontend
+
+## App Router
+
+- **Server Components** by default; `"use client"` only when using hooks, Convex, or browser APIs
+- Convex hooks (`useQuery`, `useMutation`) only in **client** components
+- Route groups: shop pages under `src/app/(shop)/`; shared layout uses `AppProviders`
+- Use `next/link` and `next/image` (configure `remotePatterns` in `next.config.ts`)
+
+## Convex client
+
+- Single `ConvexReactClient` in `ConvexClientProvider`; env: `NEXT_PUBLIC_CONVEX_URL`
+- Prefer `useQuery(api.module.fn)` for realtime data — avoid duplicating with REST/axios
+- Handle loading: `data === undefined` → skeleton/spinner (`Skeleton` from shadcn)
+
+## Data fetching
+
+- Do not fetch large lists in one query from the client; use paginated Convex queries
+- Product detail: `useQuery(api.products.getByExternalId, { externalId })`
+
+## Performance
+
+- Dynamic import heavy client-only modules when needed
+- `export const dynamic = "force-dynamic"` only where required (shop layout already sets when needed)

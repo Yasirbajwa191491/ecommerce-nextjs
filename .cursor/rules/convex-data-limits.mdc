@@ -1,0 +1,42 @@
+---
+description: Avoid Convex 16MB limits — pagination and bounded reads
+globs: convex/**
+alwaysApply: false
+---
+
+# Large data & size limits
+
+Convex enforces **~16MB max per function return** and **~1MB per document**. Unbounded `.collect()` causes failures and slow queries.
+
+## Required patterns
+
+- **Never** return unbounded full-table arrays for product lists, orders, or logs
+- Use **cursor pagination** (`.paginate()`) for lists that can grow
+- Cap page size (e.g. `limit` arg with `v.number()`, max 50–100)
+- Store images/files in **Convex file storage**, not huge strings in documents
+- For aggregates, compute in the DB with indexes or pre-aggregated fields — do not load all rows to sum in JS
+
+```typescript
+// ❌ BAD — can exceed 16MB and timeout
+export const listAll = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("products").collect();
+  },
+});
+
+// ✅ GOOD — paginated
+export const listPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .order("desc")
+      .paginate(args.paginationOpts);
+  },
+});
+```
+
+## Frontend
+
+- Use `usePaginatedQuery` for long lists; infinite scroll with cursors
+- Filter/search on the server with indexes when possible, not client-side on full datasets
