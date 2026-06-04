@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
@@ -292,7 +292,7 @@ export default function AdminUsersPage() {
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={saving}>
-              {saving ? "Creating…" : "Create user"}
+              {saving ? "CreatingΓÇª" : "Create user"}
             </Button>
           </DialogFooter>
         </DialogContent>

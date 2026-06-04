@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
@@ -268,7 +268,7 @@ export default function ProductCategoriesPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              {saving ? "SavingΓÇª" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

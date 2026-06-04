@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -228,8 +228,8 @@ export default function AdminProductsPage() {
                       </Badge>
                     ) : null}
                   </TableCell>
-                  <TableCell>{p.category?.name ?? "—"}</TableCell>
-                  <TableCell className="text-right">₹{p.price}</TableCell>
+                  <TableCell>{p.category?.name ?? "ΓÇö"}</TableCell>
+                  <TableCell className="text-right">Γé╣{p.price}</TableCell>
                   <TableCell className="text-right">{p.stock}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
@@ -422,7 +422,7 @@ export default function AdminProductsPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              {saving ? "SavingΓÇª" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
