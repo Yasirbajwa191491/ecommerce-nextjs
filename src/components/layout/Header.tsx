@@ -52,8 +52,8 @@ export default function Header() {
           {STORE_NAME}
         </Link>
 
-        <div className="hidden min-w-0 flex-1 lg:block">
-          <HeaderSearch className="mx-auto w-full max-w-xl" />
+        <div className="hidden min-w-0 flex-1 justify-center lg:flex">
+          <HeaderSearch />
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-6 sm:gap-8 md:gap-10">

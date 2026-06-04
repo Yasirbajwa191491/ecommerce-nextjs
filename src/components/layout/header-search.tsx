@@ -25,18 +25,16 @@ export function HeaderSearch({ className }: { className?: string }) {
     <form
       onSubmit={handleSubmit}
       role="search"
-      className={cn("w-full", className)}
-      style={{ marginLeft: "1.5rem" }}
+      className={cn("w-full max-w-xl", className)}
     >
       <div className="flex h-10 items-stretch overflow-hidden rounded-full border border-border bg-background shadow-sm sm:h-11">
         <Input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search products..."
+          placeholder="Search products"
           aria-label="Search products"
-          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
-          style={{ paddingLeft: "1.25rem", paddingRight: "0.75rem" }}
+          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent pl-5 pr-3 text-sm shadow-none focus-visible:ring-0 sm:pl-6"
         />
         <Button
           type="submit"
