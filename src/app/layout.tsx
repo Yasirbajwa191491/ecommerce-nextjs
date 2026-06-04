@@ -20,7 +20,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={cn(inter.variable, "font-sans")}>
+    <html
+      lang="en"
+      className={cn(inter.variable, "font-sans", "light")}
+      suppressHydrationWarning
+    >
       <body className={`${inter.className} antialiased`}>
         <ShadcnProviders>{children}</ShadcnProviders>
       </body>

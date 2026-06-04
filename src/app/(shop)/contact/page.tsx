@@ -35,7 +35,7 @@ export default function ContactPage() {
             onSubmit={(e) => {
               e.preventDefault();
               toast.success("Message sent!", {
-                description: "Thanks for reaching out to Yasir Ecommerce.",
+                description: "Thanks for reaching out to Ecommerce Store.",
               });
             }}
           >

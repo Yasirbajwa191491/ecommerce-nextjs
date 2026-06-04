@@ -31,8 +31,8 @@ export function HeaderNav({
       aria-label="Main navigation"
       className={cn(
         vertical
-          ? "flex flex-col gap-0.5"
-          : "flex items-center justify-center gap-0.5 sm:gap-1"
+          ? "flex flex-col gap-1"
+          : "flex items-center gap-6 lg:gap-10"
       )}
     >
       {NAV_LINKS.map(({ href, label }) => {
@@ -43,22 +43,15 @@ export function HeaderNav({
             href={href}
             onClick={onNavigate}
             className={cn(
-              "group relative rounded-lg px-3.5 py-2 text-sm font-medium tracking-tight transition-all duration-200",
-              vertical ? "text-base" : "text-[0.8125rem] sm:text-sm",
+              "text-[0.9375rem] font-medium tracking-tight transition-colors duration-200 sm:text-base",
+              vertical ? "py-2.5 text-lg" : "",
               active
-                ? "text-foreground"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                ? "text-[#6254f3]"
+                : "text-foreground/85 hover:text-[#6254f3]",
               linkClassName
             )}
           >
-            <span className="relative z-10">{label}</span>
-            <span
-              aria-hidden
-              className={cn(
-                "pointer-events-none absolute inset-x-2 bottom-1.5 h-px origin-center rounded-full bg-foreground transition-transform duration-300 ease-out",
-                active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-75"
-              )}
-            />
+            {label}
           </Link>
         );
       })}
