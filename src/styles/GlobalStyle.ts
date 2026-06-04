@@ -3,9 +3,13 @@
 import { createGlobalStyle } from "styled-components";
 
 export const GlobalStyle = createGlobalStyle`
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif; }
+/* Do not zero padding/margin on * — it overrides Tailwind utilities (unlayered beats @layer). */
+*, *::before, *::after {
+  box-sizing: border-box;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
 html { font-size: 62.5%; overflow-x: hidden; }
-body { overflow-x: hidden; }
+body { margin: 0; overflow-x: hidden; }
 a { text-decoration: none; }
 li { list-style: none; }
 .container { max-width: 120rem; margin: 0 auto; }

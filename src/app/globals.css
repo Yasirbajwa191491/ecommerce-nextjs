@@ -156,3 +156,29 @@ a {
     @apply font-sans;
   }
 }
+
+/* Drawer menu: explicit spacing (survives any global * resets in styled-components). */
+[data-slot="sheet-content"] [data-drawer-header] {
+  padding: 1.5rem;
+}
+
+[data-slot="sheet-content"] [data-drawer-header] [data-drawer-header-row] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-inline: 0.75rem;
+}
+
+[data-slot="sheet-content"] [data-drawer-body],
+[data-slot="sheet-content"] [data-drawer-footer] {
+  padding-inline: 1.5rem;
+}
+
+[data-slot="sheet-content"] [data-drawer-body] {
+  padding-block: 1.5rem 1.5rem;
+}
+
+[data-slot="sheet-content"] [data-drawer-footer] {
+  padding-block: 1.5rem;
+}

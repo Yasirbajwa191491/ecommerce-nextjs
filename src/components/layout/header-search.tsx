@@ -7,7 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function HeaderSearch({ className }: { className?: string }) {
+type HeaderSearchProps = {
+  className?: string;
+  /** Extra left padding inside the input (drawer / mobile) */
+  inputPadding?: "default" | "comfortable";
+};
+
+export function HeaderSearch({
+  className,
+  inputPadding = "default",
+}: HeaderSearchProps) {
   const [query, setQuery] = useState("");
   const router = useRouter();
 
@@ -20,6 +29,11 @@ export function HeaderSearch({ className }: { className?: string }) {
     }
     router.push("/products");
   };
+
+  const inputStyle =
+    inputPadding === "comfortable"
+      ? { paddingLeft: "1.75rem", paddingRight: "1rem" }
+      : { paddingLeft: "1.5rem", paddingRight: "1rem" };
 
   return (
     <form
@@ -35,7 +49,7 @@ export function HeaderSearch({ className }: { className?: string }) {
           placeholder="Search products"
           aria-label="Search products"
           className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent py-0 text-sm shadow-none focus-visible:ring-0"
-          style={{ paddingLeft: "1.5rem", paddingRight: "1rem" }}
+          style={inputStyle}
         />
         <Button
           type="submit"
