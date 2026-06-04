@@ -34,7 +34,8 @@ export function HeaderSearch({ className }: { className?: string }) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search products"
           aria-label="Search products"
-          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent pl-5 pr-3 text-sm shadow-none focus-visible:ring-0 sm:pl-6"
+          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent py-0 text-sm shadow-none focus-visible:ring-0"
+          style={{ paddingLeft: "1.5rem", paddingRight: "1rem" }}
         />
         <Button
           type="submit"
