@@ -52,4 +52,12 @@ export default defineSchema({
     read: v.boolean(),
     source: v.optional(v.string()),
   }).index("by_submitted_at", ["submittedAt"]),
+
+  settings: defineTable({
+    key: v.string(),
+    name: v.string(),
+    value: v.string(),
+    isSystem: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

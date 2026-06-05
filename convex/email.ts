@@ -1,5 +1,6 @@
 "use node";
 
+import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Resend } from "resend";
@@ -28,9 +29,9 @@ export const sendOtpEmail = internalAction({
     otp: v.string(),
     type: v.string(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const apiKey = process.env.RESEND_API_KEY;
-    const from = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+    const from = await ctx.runQuery(internal.settings.getEmailFrom, {});
 
     if (!apiKey) {
       console.warn(

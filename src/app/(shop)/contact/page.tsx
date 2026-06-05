@@ -5,7 +5,8 @@ import { Clock, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
 import { ContactForm } from "@/components/contact/contact-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CONTACT_INFO, STORE_NAME } from "@/lib/site";
+import { useSiteSettings } from "@/hooks/use-site-settings";
+import { STORE_NAME } from "@/lib/site";
 
 type ContactCard = {
   icon: typeof MapPin;
@@ -14,32 +15,34 @@ type ContactCard = {
   href?: string;
 };
 
-const CONTACT_CARDS: ContactCard[] = [
-  {
-    icon: MapPin,
-    title: "Visit us",
-    lines: [CONTACT_INFO.address],
-  },
-  {
-    icon: Phone,
-    title: "Call us",
-    lines: [CONTACT_INFO.phone],
-    href: CONTACT_INFO.phoneHref,
-  },
-  {
-    icon: Mail,
-    title: "Email us",
-    lines: [CONTACT_INFO.email],
-    href: `mailto:${CONTACT_INFO.email}`,
-  },
-  {
-    icon: Clock,
-    title: "Business hours",
-    lines: [CONTACT_INFO.hours],
-  },
-];
-
 export default function ContactPage() {
+  const { address, phone, phoneHref, email, businessHours } = useSiteSettings();
+
+  const contactCards: ContactCard[] = [
+    {
+      icon: MapPin,
+      title: "Visit us",
+      lines: [address],
+    },
+    {
+      icon: Phone,
+      title: "Call us",
+      lines: [phone],
+      href: phoneHref,
+    },
+    {
+      icon: Mail,
+      title: "Email us",
+      lines: [email],
+      href: `mailto:${email}`,
+    },
+    {
+      icon: Clock,
+      title: "Business hours",
+      lines: [businessHours],
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-muted/20">
       <section className="border-b border-border/60 bg-background">
@@ -77,7 +80,7 @@ export default function ContactPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start lg:gap-8 xl:gap-10">
           <div className="flex flex-col gap-4 sm:gap-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              {CONTACT_CARDS.map(({ icon: Icon, title, lines, href }) => (
+              {contactCards.map(({ icon: Icon, title, lines, href }) => (
                 <Card
                   key={title}
                   className="border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md"

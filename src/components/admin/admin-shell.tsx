@@ -10,6 +10,7 @@ import {
   Menu,
   MessageSquare,
   Package,
+  Settings,
   UserCircle2,
   Users,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
   { href: "/admin/contact-messages", label: "Contact", icon: MessageSquare },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/profile", label: "Profile", icon: UserCircle2 },
 ];

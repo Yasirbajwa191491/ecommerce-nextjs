@@ -22,6 +22,8 @@ npx convex env set BETTER_AUTH_SECRET "<random-32+-char-secret>"
 # Optional — OTP emails via Resend (logs OTP to console if unset)
 npx convex env set RESEND_API_KEY "re_..."
 npx convex env set RESEND_FROM_EMAIL "onboarding@resend.dev"
+# Lets admin Settings → Email From sync RESEND_FROM_EMAIL automatically
+npx convex deployment token create local-dev --save-env
 npm run seed            # categories, products, super admin
 npm run dev             # Next.js + Convex
 ```

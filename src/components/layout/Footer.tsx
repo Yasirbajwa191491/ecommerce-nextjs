@@ -9,7 +9,8 @@ import {
   FaYoutube,
 } from "react-icons/fa6";
 import { FooterNewsletter } from "@/components/layout/footer-newsletter";
-import { CONTACT_INFO, NAV_LINKS, STORE_NAME } from "@/lib/site";
+import { useSiteSettings } from "@/hooks/use-site-settings";
+import { NAV_LINKS, STORE_NAME } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const FOOTER_GUTTER = {
@@ -80,6 +81,7 @@ function FooterColumn({
 }
 
 export default function Footer() {
+  const { address, phone, phoneHref, email } = useSiteSettings();
   const year = new Date().getFullYear();
 
   return (
@@ -104,24 +106,24 @@ export default function Footer() {
             <div className="mt-5 space-y-2.5 text-sm text-white/70 sm:mt-6 sm:space-y-3">
               <p className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-[#a89cff]" />
-                <span className="min-w-0 break-words">{CONTACT_INFO.address}</span>
+                <span className="min-w-0 break-words">{address}</span>
               </p>
               <p className="flex items-start gap-2.5">
                 <Phone className="mt-0.5 size-4 shrink-0 text-[#a89cff]" />
                 <a
-                  href={CONTACT_INFO.phoneHref}
+                  href={phoneHref}
                   className="min-w-0 break-words transition-colors hover:text-[#a89cff]"
                 >
-                  {CONTACT_INFO.phone}
+                  {phone}
                 </a>
               </p>
               <p className="flex items-start gap-2.5">
                 <Mail className="mt-0.5 size-4 shrink-0 text-[#a89cff]" />
                 <a
-                  href={`mailto:${CONTACT_INFO.email}`}
+                  href={`mailto:${email}`}
                   className="min-w-0 break-all transition-colors hover:text-[#a89cff] sm:break-words"
                 >
-                  {CONTACT_INFO.email}
+                  {email}
                 </a>
               </p>
             </div>
