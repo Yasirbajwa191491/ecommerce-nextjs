@@ -1,5 +1,36 @@
+import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+
+export function normalizeProductName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+export async function findProductWithName(
+  ctx: QueryCtx | MutationCtx,
+  name: string,
+  excludeId?: Id<"products">
+) {
+  const key = normalizeProductName(name);
+  if (!key) return null;
+  const products = await ctx.db.query("products").collect();
+  return (
+    products.find(
+      (p) => normalizeProductName(p.name) === key && p._id !== excludeId
+    ) ?? null
+  );
+}
+
+export async function assertUniqueProductName(
+  ctx: MutationCtx,
+  name: string,
+  excludeId?: Id<"products">
+) {
+  const existing = await findProductWithName(ctx, name, excludeId);
+  if (existing) {
+    throw new ConvexError("A product with this name already exists");
+  }
+}
 
 export type ProductWithCategory = Doc<"products"> & {
   category: {

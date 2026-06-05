@@ -1,3 +1,4 @@
+import { isValidCurrencyCode } from "@/lib/currencies";
 import {
   validateEmail,
   validatePersonName,
@@ -37,13 +38,19 @@ export type CategoryFormValues = {
 };
 
 export function validateCategoryForm(
-  values: CategoryFormValues
+  values: CategoryFormValues,
+  options?: { takenNames?: string[] }
 ): Partial<Record<keyof CategoryFormValues, string>> {
   const errors: Partial<Record<keyof CategoryFormValues, string>> = {};
   const nameRequired = validateRequired(values.name, "Category name");
   if (nameRequired) errors.name = nameRequired;
   else if (values.name.trim().length < 2) {
     errors.name = "Category name must be at least 2 characters";
+  } else if (options?.takenNames?.length) {
+    const normalized = values.name.trim().toLowerCase();
+    if (options.takenNames.includes(normalized)) {
+      errors.name = "A category with this name already exists";
+    }
   }
   const slug = validateSlug(values.slug);
   if (slug) errors.slug = slug;
@@ -57,7 +64,8 @@ export type ProductFormValues = {
   name: string;
   company: string;
   price: number;
-  colors: string;
+  currency: string;
+  colors: string[];
   imageUrls: string[];
   categoryId: string;
   stock: number;
@@ -67,7 +75,8 @@ export type ProductFormValues = {
 };
 
 export function validateProductForm(
-  values: ProductFormValues
+  values: ProductFormValues,
+  options?: { takenNames?: string[] }
 ): Partial<Record<keyof ProductFormValues | `imageUrls.${number}`, string>> {
   const errors: Partial<
     Record<keyof ProductFormValues | `imageUrls.${number}`, string>
@@ -75,6 +84,12 @@ export function validateProductForm(
 
   const name = validateRequired(values.name, "Product name");
   if (name) errors.name = name;
+  else if (options?.takenNames?.length) {
+    const normalized = values.name.trim().toLowerCase();
+    if (options.takenNames.includes(normalized)) {
+      errors.name = "A product with this name already exists";
+    }
+  }
 
   const company = validateRequired(values.company, "Company / brand");
   if (company) errors.company = company;
@@ -85,6 +100,12 @@ export function validateProductForm(
 
   const price = validatePositiveNumber(values.price, "Price", { min: 0.01 });
   if (price) errors.price = price;
+
+  if (!values.currency?.trim()) {
+    errors.currency = "Select a currency";
+  } else if (!isValidCurrencyCode(values.currency.trim())) {
+    errors.currency = "Select a valid currency";
+  }
 
   const stock = validatePositiveNumber(values.stock, "Stock", {
     min: 0,
@@ -101,17 +122,14 @@ export function validateProductForm(
   const stars = validateRating(values.stars);
   if (stars) errors.stars = stars;
 
-  const colors = values.colors
-    .split(",")
-    .map((c) => c.trim())
-    .filter(Boolean);
+  const colors = values.colors.map((c) => c.trim()).filter(Boolean);
   if (colors.length === 0) {
-    errors.colors = "Add at least one color (comma-separated)";
+    errors.colors = "Select at least one color";
   }
 
   const urls = values.imageUrls.map((u) => u.trim()).filter(Boolean);
   if (urls.length === 0) {
-    errors.imageUrls = "Add at least one product image URL";
+    errors.imageUrls = "Add at least one product image";
   } else {
     values.imageUrls.forEach((url, i) => {
       const trimmed = url.trim();

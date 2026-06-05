@@ -13,7 +13,7 @@ export default function ProductCard(p: Product) {
         <Image src={p.image[0]?.url ?? "/next.svg"} alt={p.name} width={250} height={200} style={{ objectFit: "cover" }} />
         <figcaption className="caption">{p.category?.name ?? ""}</figcaption>
         <h3>{p.name}</h3>
-        <FormatPrice price={p.price} />
+        <FormatPrice price={p.price} currency={p.currency} />
       </Card>
     </Link>
   );

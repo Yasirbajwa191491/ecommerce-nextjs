@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -16,6 +15,11 @@ import {
   toProductFilterArgs,
   type ProductListFilters,
 } from "@/components/admin/admin-product-filters";
+import { ColumnVisibilityPanel } from "@/components/admin/column-visibility-panel";
+import {
+  ProductColorSwatches,
+  ProductImageThumbnails,
+} from "@/components/admin/product-table-preview";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +32,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
+import { ColorInput } from "@/components/admin/color-input";
+import { CurrencySelect } from "@/components/admin/currency-select";
+import { ProductImageField } from "@/components/admin/product-image-field";
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@/lib/currencies";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -47,18 +55,24 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { useFormValidation } from "@/hooks/use-form-validation";
+import {
+  PRODUCT_COLUMNS_STORAGE_KEY,
+  PRODUCT_TABLE_COLUMNS,
+} from "@/lib/admin/product-table-columns";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import { validateProductForm } from "@/lib/validation/admin-forms";
 import { cn } from "@/lib/utils";
-import { GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { Product, ProductCategory } from "@/types/product";
 
 type ProductForm = {
   name: string;
   company: string;
   price: number;
-  colors: string;
+  currency: string;
+  colors: string[];
   imageUrls: string[];
   categoryId: string;
   featured: boolean;
@@ -74,7 +88,8 @@ const emptyForm = (): ProductForm => ({
   name: "",
   company: "",
   price: 0,
-  colors: "",
+  currency: DEFAULT_CURRENCY,
+  colors: [],
   imageUrls: [""],
   categoryId: "",
   featured: false,
@@ -115,17 +130,46 @@ export default function AdminProductsPage() {
   const create = useMutation(api.products.create);
   const update = useMutation(api.products.update);
   const remove = useMutation(api.products.remove);
+  const restore = useMutation(api.products.restore);
   const reorder = useMutation(api.products.reorder);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<Id<"products"> | null>(null);
+  const [restoreId, setRestoreId] = useState<Id<"products"> | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const takenNames = useQuery(
+    api.products.listTakenNames,
+    editing ? { excludeId: editing._id } : {}
+  );
+
+  const categoryOptions = useMemo(() => {
+    const map = new Map(categories.map((c) => [c._id, c]));
+    if (
+      editing?.category &&
+      editing.categoryId &&
+      !map.has(editing.categoryId)
+    ) {
+      map.set(editing.categoryId, {
+        _id: editing.categoryId,
+        name: editing.category.name,
+        slug: editing.category.slug,
+        description: "",
+        active: true,
+        sortOrder: 0,
+      } as ProductCategory);
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories, editing]);
+
+  const selectedCategory = categoryOptions.find((c) => c._id === form.categoryId);
+
   const validate = useCallback(
-    (values: ProductForm) => validateProductForm(values),
-    []
+    (values: ProductForm) =>
+      validateProductForm(values, { takenNames: takenNames ?? [] }),
+    [takenNames]
   );
   const validation = useFormValidation(form, validate);
   const resetValidation = validation.reset;
@@ -158,7 +202,8 @@ export default function AdminProductsPage() {
       name: p.name,
       company: p.company,
       price: p.price,
-      colors: p.colors.join(", "),
+      currency: p.currency ?? DEFAULT_CURRENCY,
+      colors: [...p.colors],
       imageUrls: p.image.length ? p.image.map((i) => i.url) : [""],
       categoryId: p.categoryId,
       featured: p.featured,
@@ -177,10 +222,8 @@ export default function AdminProductsPage() {
     name: f.name.trim(),
     company: f.company.trim(),
     price: Number(f.price),
-    colors: f.colors
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean),
+    currency: f.currency.trim() || DEFAULT_CURRENCY,
+    colors: f.colors.map((c) => c.trim()).filter(Boolean),
     image: f.imageUrls
       .map((url) => url.trim())
       .filter(Boolean)
@@ -223,12 +266,29 @@ export default function AdminProductsPage() {
     setSaving(true);
     try {
       await remove({ id: deleteId });
-      toastSuccess("Product deleted");
+      toastSuccess("Product moved to inactive");
       setDeleteId(null);
     } catch (e) {
       toastError(e, {
-        title: "Couldn't delete product",
-        fallback: "Failed to delete product. Please try again.",
+        title: "Couldn't deactivate product",
+        fallback: "Failed to move product to inactive. Please try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreId) return;
+    setSaving(true);
+    try {
+      await restore({ id: restoreId });
+      toastSuccess("Product restored to active");
+      setRestoreId(null);
+    } catch (e) {
+      toastError(e, {
+        title: "Couldn't restore product",
+        fallback: "Failed to restore product. Please try again.",
       });
     } finally {
       setSaving(false);
@@ -258,7 +318,147 @@ export default function AdminProductsPage() {
     }
   };
 
-  const colSpan = reorderMode ? 9 : 8;
+  const {
+    columns: tableColumns,
+    visibility: columnVisibility,
+    toggleColumn,
+    isVisible: isColumnVisible,
+  } = useColumnVisibility(PRODUCT_COLUMNS_STORAGE_KEY, PRODUCT_TABLE_COLUMNS);
+
+  const tableColSpan = useMemo(() => {
+    let count = tableColumns.filter((col) => isColumnVisible(col.id)).length;
+    if (reorderMode) count += 1;
+    return count;
+  }, [tableColumns, isColumnVisible, reorderMode]);
+
+  const renderProductCell = (columnId: string, p: Product) => {
+    switch (columnId) {
+      case "image":
+        return (
+          <TableCell key={columnId}>
+            <ProductImageThumbnails images={p.image} alt={p.name} />
+          </TableCell>
+        );
+      case "name":
+        return (
+          <TableCell key={columnId}>
+            <div className="font-medium">{p.name}</div>
+          </TableCell>
+        );
+      case "brand":
+        return (
+          <TableCell key={columnId} className="text-muted-foreground">
+            {p.company}
+          </TableCell>
+        );
+      case "category":
+        return (
+          <TableCell key={columnId}>{p.category?.name ?? "-"}</TableCell>
+        );
+      case "price":
+        return (
+          <TableCell key={columnId} className="text-right">
+            {formatCurrencyAmount(p.price, p.currency ?? DEFAULT_CURRENCY)}
+          </TableCell>
+        );
+      case "currency":
+        return (
+          <TableCell key={columnId} className="text-muted-foreground">
+            {p.currency ?? DEFAULT_CURRENCY}
+          </TableCell>
+        );
+      case "colors":
+        return (
+          <TableCell key={columnId}>
+            <ProductColorSwatches colors={p.colors} />
+          </TableCell>
+        );
+      case "stock":
+        return (
+          <TableCell key={columnId} className="text-right">
+            {p.stock}
+          </TableCell>
+        );
+      case "rating":
+        return (
+          <TableCell key={columnId} className="text-right">
+            {p.stars.toFixed(1)}
+          </TableCell>
+        );
+      case "reviews":
+        return (
+          <TableCell key={columnId} className="text-right">
+            {p.reviews}
+          </TableCell>
+        );
+      case "featured":
+        return (
+          <TableCell key={columnId}>
+            {p.featured ? (
+              <Badge variant="secondary">Yes</Badge>
+            ) : (
+              <span className="text-muted-foreground">No</span>
+            )}
+          </TableCell>
+        );
+      case "shipping":
+        return (
+          <TableCell key={columnId}>
+            {p.shipping ? (
+              <Badge variant="outline">Yes</Badge>
+            ) : (
+              <span className="text-muted-foreground">No</span>
+            )}
+          </TableCell>
+        );
+      case "description":
+        return (
+          <TableCell key={columnId} className="max-w-[200px]">
+            <p className="line-clamp-2 text-sm text-muted-foreground">
+              {p.description || "—"}
+            </p>
+          </TableCell>
+        );
+      case "actions":
+        return (
+          <TableCell key={columnId}>
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => openEdit(p)}
+                disabled={reorderMode}
+              >
+                <Pencil className="size-4" />
+              </Button>
+              {activeTab === "active" ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDeleteId(p._id)}
+                  disabled={reorderMode}
+                  aria-label="Move to inactive"
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setRestoreId(p._id)}
+                  disabled={reorderMode}
+                  aria-label="Restore to active"
+                >
+                  <RotateCcw className="size-4 text-emerald-600" />
+                </Button>
+              )}
+            </div>
+          </TableCell>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -288,26 +488,49 @@ export default function AdminProductsPage() {
         onAction={openCreate}
       />
 
+      <div className="mb-2 flex justify-end">
+        <ColumnVisibilityPanel
+          columns={tableColumns}
+          visibility={columnVisibility}
+          onToggle={toggleColumn}
+        />
+      </div>
+
       <div className="rounded-lg border bg-background">
         <Table>
           <TableHeader>
             <TableRow>
               {reorderMode ? <TableHead className="w-[40px]" /> : null}
-              <TableHead className="w-[72px]">Image</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Brand</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Stock</TableHead>
-              <TableHead className="text-right">Rating</TableHead>
-              <TableHead className="w-[100px]" />
+              {tableColumns.map((col) => {
+                if (!isColumnVisible(col.id)) return null;
+                const align =
+                  col.id === "price" ||
+                  col.id === "stock" ||
+                  col.id === "rating" ||
+                  col.id === "reviews"
+                    ? "text-right"
+                    : undefined;
+                const width =
+                  col.id === "image" || col.id === "colors"
+                    ? "min-w-[100px]"
+                    : col.id === "description"
+                      ? "min-w-[160px]"
+                      : col.id === "actions"
+                        ? "w-[100px]"
+                        : undefined;
+                return (
+                  <TableHead key={col.id} className={cn(align, width)}>
+                    {col.id === "actions" ? "" : col.label}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
             {status === "LoadingFirstPage" ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={colSpan}>
+                  <TableCell colSpan={tableColSpan}>
                     <Skeleton className="h-10 w-full" />
                   </TableCell>
                 </TableRow>
@@ -315,7 +538,7 @@ export default function AdminProductsPage() {
             ) : results.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={colSpan}
+                  colSpan={tableColSpan}
                   className="text-center text-muted-foreground"
                 >
                   {search || Object.values(filterArgs).some((v) => v !== undefined)
@@ -343,48 +566,9 @@ export default function AdminProductsPage() {
                       <GripVertical className="size-4" />
                     </TableCell>
                   ) : null}
-                  <TableCell>
-                    <Image
-                      src={p.image[0]?.url ?? "/next.svg"}
-                      alt={p.name}
-                      width={48}
-                      height={48}
-                      className="rounded-md object-cover"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{p.name}</div>
-                    {p.featured ? (
-                      <Badge variant="secondary" className="mt-1">
-                        Featured
-                      </Badge>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{p.company}</TableCell>
-                  <TableCell>{p.category?.name ?? "-"}</TableCell>
-                  <TableCell className="text-right">Rs {p.price}</TableCell>
-                  <TableCell className="text-right">{p.stock}</TableCell>
-                  <TableCell className="text-right">{p.stars.toFixed(1)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(p)}
-                        disabled={reorderMode}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteId(p._id)}
-                        disabled={reorderMode}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {tableColumns.map((col) =>
+                    isColumnVisible(col.id) ? renderProductCell(col.id, p) : null
+                  )}
                 </TableRow>
               ))
             )}
@@ -401,11 +585,11 @@ export default function AdminProductsPage() {
       ) : null}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-5 py-2">
             <AdminFormField
               label="Product name"
               htmlFor="product-name"
@@ -421,53 +605,74 @@ export default function AdminProductsPage() {
                 className={invalidInputClass(validation.fieldError("name"))}
               />
             </AdminFormField>
-            <AdminFormField
-              label="Company / brand"
-              htmlFor="product-company"
-              error={validation.fieldError("company")}
-              required
-            >
-              <Input
-                id="product-company"
-                value={form.company}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, company: e.target.value }))
-                }
-                onBlur={() => validation.touch("company")}
-                aria-invalid={!!validation.fieldError("company")}
-                className={invalidInputClass(validation.fieldError("company"))}
-              />
-            </AdminFormField>
-            <AdminFormField
-              label="Category"
-              error={validation.fieldError("categoryId")}
-              required
-            >
-              <Select
-                value={form.categoryId}
-                onValueChange={(v) => {
-                  setForm((f) => ({ ...f, categoryId: v ?? "" }));
-                  validation.touch("categoryId");
-                }}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <AdminFormField
+                label="Company / brand"
+                htmlFor="product-company"
+                error={validation.fieldError("company")}
+                required
               >
-                <SelectTrigger
-                  className={cn(
-                    invalidInputClass(validation.fieldError("categoryId"))
-                  )}
-                  aria-invalid={!!validation.fieldError("categoryId")}
+                <Input
+                  id="product-company"
+                  value={form.company}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, company: e.target.value }))
+                  }
+                  onBlur={() => validation.touch("company")}
+                  aria-invalid={!!validation.fieldError("company")}
+                  className={invalidInputClass(validation.fieldError("company"))}
+                />
+              </AdminFormField>
+
+              <AdminFormField
+                label="Category"
+                error={validation.fieldError("categoryId")}
+                required
+              >
+                <Select
+                  value={form.categoryId}
+                  onValueChange={(v) => {
+                    setForm((f) => ({ ...f, categoryId: v ?? "" }));
+                    validation.touch("categoryId");
+                  }}
                 >
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c: ProductCategory) => (
-                    <SelectItem key={c._id} value={c._id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </AdminFormField>
-            <div className="grid grid-cols-2 gap-4">
+                  <SelectTrigger
+                    className={cn(
+                      "w-full",
+                      invalidInputClass(validation.fieldError("categoryId"))
+                    )}
+                    aria-invalid={!!validation.fieldError("categoryId")}
+                  >
+                    {selectedCategory ? (
+                      <span className="flex min-w-0 items-center gap-2 truncate">
+                        <span className="truncate font-medium">
+                          {selectedCategory.name}
+                        </span>
+                        <span className="shrink-0 text-muted-foreground">
+                          ({selectedCategory.slug})
+                        </span>
+                      </span>
+                    ) : (
+                      <SelectValue placeholder="Select category" />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryOptions.map((c: ProductCategory) => (
+                      <SelectItem key={c._id} value={c._id}>
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          ({c.slug})
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </AdminFormField>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
               <AdminFormField
                 label="Price"
                 htmlFor="product-price"
@@ -486,6 +691,21 @@ export default function AdminProductsPage() {
                   onBlur={() => validation.touch("price")}
                   aria-invalid={!!validation.fieldError("price")}
                   className={invalidInputClass(validation.fieldError("price"))}
+                />
+              </AdminFormField>
+              <AdminFormField
+                label="Currency"
+                error={validation.fieldError("currency")}
+                required
+              >
+                <CurrencySelect
+                  value={form.currency}
+                  onChange={(currency) => {
+                    setForm((f) => ({ ...f, currency }));
+                    validation.touch("currency");
+                  }}
+                  aria-invalid={!!validation.fieldError("currency")}
+                  className={invalidInputClass(validation.fieldError("currency"))}
                 />
               </AdminFormField>
               <AdminFormField
@@ -508,79 +728,49 @@ export default function AdminProductsPage() {
                 />
               </AdminFormField>
             </div>
+
             <AdminFormField
               label="Colors"
-              htmlFor="product-colors"
               error={validation.fieldError("colors")}
-              description="Comma-separated, e.g. black, grey, white"
+              description="Pick preset swatches or enter a custom hex code"
               required
             >
-              <Input
-                id="product-colors"
+              <ColorInput
                 value={form.colors}
-                onChange={(e) => setForm((f) => ({ ...f, colors: e.target.value }))}
-                onBlur={() => validation.touch("colors")}
-                aria-invalid={!!validation.fieldError("colors")}
-                className={invalidInputClass(validation.fieldError("colors"))}
+                onChange={(colors) => {
+                  setForm((f) => ({ ...f, colors }));
+                  validation.touch("colors");
+                }}
               />
             </AdminFormField>
+
             <AdminFormField
-              label="Image URLs"
+              label="Product images"
               error={
                 validation.fieldError("imageUrls") ??
                 form.imageUrls
                   .map((_, i) => validation.fieldError(`imageUrls.${i}`))
                   .find(Boolean)
               }
-              description="At least one https:// image link"
+              description="Upload images or paste URLs — at least one required"
               required
             >
-              {form.imageUrls.map((url, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input
-                    value={url}
-                    placeholder="https://..."
-                    onChange={(e) => {
-                      const next = [...form.imageUrls];
-                      next[i] = e.target.value;
-                      setForm((f) => ({ ...f, imageUrls: next }));
-                    }}
-                    onBlur={() => validation.touch(`imageUrls.${i}`)}
-                    aria-invalid={!!validation.fieldError(`imageUrls.${i}`)}
-                    className={invalidInputClass(
-                      validation.fieldError(`imageUrls.${i}`)
-                    )}
-                  />
-                  {form.imageUrls.length > 1 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          imageUrls: f.imageUrls.filter((_, j) => j !== i),
-                        }))
-                      }
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={() =>
-                  setForm((f) => ({ ...f, imageUrls: [...f.imageUrls, ""] }))
+              <ProductImageField
+                imageUrls={form.imageUrls}
+                onChange={(imageUrls) =>
+                  setForm((f) => ({ ...f, imageUrls }))
                 }
-              >
-                <Plus className="mr-1 size-4" />
-                Add image URL
-              </Button>
+                onBlur={(i) => validation.touch(`imageUrls.${i}`)}
+                fieldErrors={Object.fromEntries(
+                  form.imageUrls.map((_, i) => [
+                    i,
+                    validation.fieldError(`imageUrls.${i}`),
+                  ])
+                )}
+                error={validation.fieldError("imageUrls")}
+              />
             </AdminFormField>
+
             <AdminFormField
               label="Description"
               htmlFor="product-description"
@@ -589,7 +779,7 @@ export default function AdminProductsPage() {
             >
               <Textarea
                 id="product-description"
-                rows={3}
+                rows={4}
                 value={form.description}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
@@ -599,7 +789,8 @@ export default function AdminProductsPage() {
                 className={invalidInputClass(validation.fieldError("description"))}
               />
             </AdminFormField>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <AdminFormField
                 label="Reviews"
                 htmlFor="product-reviews"
@@ -639,26 +830,33 @@ export default function AdminProductsPage() {
                 />
               </AdminFormField>
             </div>
-            <div className="flex items-center justify-between">
-              <Label>Active</Label>
-              <Switch
-                checked={form.active}
-                onCheckedChange={(active) => setForm((f) => ({ ...f, active }))}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Featured</Label>
-              <Switch
-                checked={form.featured}
-                onCheckedChange={(featured) => setForm((f) => ({ ...f, featured }))}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Free shipping</Label>
-              <Switch
-                checked={form.shipping}
-                onCheckedChange={(shipping) => setForm((f) => ({ ...f, shipping }))}
-              />
+
+            <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label>Active</Label>
+                <Switch
+                  checked={form.active}
+                  onCheckedChange={(active) => setForm((f) => ({ ...f, active }))}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label>Featured</Label>
+                <Switch
+                  checked={form.featured}
+                  onCheckedChange={(featured) =>
+                    setForm((f) => ({ ...f, featured }))
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label>Free shipping</Label>
+                <Switch
+                  checked={form.shipping}
+                  onCheckedChange={(shipping) =>
+                    setForm((f) => ({ ...f, shipping }))
+                  }
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -677,6 +875,22 @@ export default function AdminProductsPage() {
         onOpenChange={(o) => !o && setDeleteId(null)}
         onConfirm={handleDelete}
         loading={saving}
+        title="Move product to inactive?"
+        description="The product will be hidden from the store and listed under the Inactive tab. You can restore it later from the Inactive tab."
+        confirmLabel="Move to inactive"
+        loadingLabel="Moving…"
+      />
+
+      <DeleteConfirmDialog
+        open={!!restoreId}
+        onOpenChange={(o) => !o && setRestoreId(null)}
+        onConfirm={handleRestore}
+        loading={saving}
+        title="Restore product?"
+        description="This product will be moved back to the Active tab and shown in the store again."
+        confirmLabel="Restore"
+        loadingLabel="Restoring…"
+        confirmVariant="default"
       />
     </>
   );

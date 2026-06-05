@@ -4,7 +4,12 @@ import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { getAuthUserOrNull, requireAdmin } from "./lib/requireAdmin";
 import { isAdminRole, normalizeRole } from "./lib/authRoles";
-import { enrichProduct, enrichProducts } from "./lib/products";
+import {
+  assertUniqueProductName,
+  enrichProduct,
+  enrichProducts,
+  normalizeProductName,
+} from "./lib/products";
 import { isProductActive } from "./lib/productActive";
 import { paginateArray } from "./lib/pagination";
 import { productImageValidator } from "./schema";
@@ -13,6 +18,7 @@ const productFields = {
   name: v.string(),
   company: v.string(),
   price: v.number(),
+  currency: v.string(),
   colors: v.array(v.string()),
   image: v.array(productImageValidator),
   categoryId: v.id("productCategories"),
@@ -159,6 +165,17 @@ export const getById = query({
   },
 });
 
+export const listTakenNames = query({
+  args: { excludeId: v.optional(v.id("products")) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const products = await ctx.db.query("products").collect();
+    return products
+      .filter((p) => p._id !== args.excludeId)
+      .map((p) => normalizeProductName(p.name));
+  },
+});
+
 export const featured = query({
   args: {},
   handler: async (ctx) => {
@@ -179,6 +196,7 @@ export const create = mutation({
     if (!category) {
       throw new Error("Category not found");
     }
+    await assertUniqueProductName(ctx, args.name);
     const activeProducts = await ctx.db.query("products").collect();
     const maxSortOrder = activeProducts
       .filter(isProductActive)
@@ -204,8 +222,29 @@ export const update = mutation({
     if (!category) {
       throw new Error("Category not found");
     }
+    await assertUniqueProductName(ctx, data.name, id);
     await ctx.db.patch(id, { ...data, active: data.active ?? true });
     return id;
+  },
+});
+
+export const generateImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const resolveImageUrlFromStorage = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) {
+      throw new ConvexError("Uploaded image could not be processed");
+    }
+    return { url };
   },
 });
 
@@ -213,7 +252,30 @@ export const remove = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    await ctx.db.delete(args.id);
+    const product = await ctx.db.get(args.id);
+    if (!product) {
+      throw new ConvexError("Product not found");
+    }
+    await ctx.db.patch(args.id, { active: false });
+  },
+});
+
+export const restore = mutation({
+  args: { id: v.id("products") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const product = await ctx.db.get(args.id);
+    if (!product) {
+      throw new ConvexError("Product not found");
+    }
+    const activeProducts = await ctx.db.query("products").collect();
+    const maxSortOrder = activeProducts
+      .filter(isProductActive)
+      .reduce((max, p) => Math.max(max, p.sortOrder ?? -1), -1);
+    await ctx.db.patch(args.id, {
+      active: true,
+      sortOrder: maxSortOrder + 1,
+    });
   },
 });
 

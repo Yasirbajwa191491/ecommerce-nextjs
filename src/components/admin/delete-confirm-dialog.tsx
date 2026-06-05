@@ -18,6 +18,9 @@ type DeleteConfirmDialogProps = {
   description?: string;
   onConfirm: () => void;
   loading?: boolean;
+  confirmLabel?: string;
+  loadingLabel?: string;
+  confirmVariant?: "default" | "destructive";
 };
 
 export function DeleteConfirmDialog({
@@ -27,6 +30,9 @@ export function DeleteConfirmDialog({
   description = "This action cannot be undone.",
   onConfirm,
   loading,
+  confirmLabel = "Delete",
+  loadingLabel = "Deleting…",
+  confirmVariant = "destructive",
 }: DeleteConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -38,14 +44,14 @@ export function DeleteConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant={confirmVariant}
             disabled={loading}
             onClick={(e) => {
               e.preventDefault();
               onConfirm();
             }}
           >
-            {loading ? "Deleting…" : "Delete"}
+            {loading ? loadingLabel : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

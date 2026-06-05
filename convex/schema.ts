@@ -19,6 +19,7 @@ export default defineSchema({
     name: v.string(),
     company: v.string(),
     price: v.number(),
+    currency: v.optional(v.string()),
     colors: v.array(v.string()),
     image: v.array(productImageValidator),
     categoryId: v.id("productCategories"),

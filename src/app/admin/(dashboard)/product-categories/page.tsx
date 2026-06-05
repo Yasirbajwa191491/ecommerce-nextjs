@@ -72,9 +72,15 @@ export default function ProductCategoriesPage() {
   const [deleteId, setDeleteId] = useState<Id<"productCategories"> | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const takenNames = useQuery(
+    api.productCategories.listTakenNames,
+    editing ? { excludeId: editing._id } : {}
+  );
+
   const validate = useCallback(
-    (values: typeof form) => validateCategoryForm(values),
-    []
+    (values: typeof form) =>
+      validateCategoryForm(values, { takenNames: takenNames ?? [] }),
+    [takenNames]
   );
   const validation = useFormValidation(form, validate);
   const resetValidation = validation.reset;

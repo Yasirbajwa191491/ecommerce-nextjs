@@ -20,7 +20,7 @@ export default function SingleProductPage({ params }: { params: Promise<{ id: st
       <Image src={singleProduct.image[0]?.url ?? "/next.svg"} alt={singleProduct.name} width={500} height={400} style={{ objectFit: "cover" }} />
       <div>
         <h2>{singleProduct.name}</h2>
-        <FormatPrice price={singleProduct.price} />
+        <FormatPrice price={singleProduct.price} currency={singleProduct.currency} />
         <p>{singleProduct.description}</p>
         <p>Stock: {singleProduct.stock}</p>
         {singleProduct.stock > 0 && <AddToCart product={singleProduct} />}

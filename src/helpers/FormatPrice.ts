@@ -1,8 +1,11 @@
-const FormatPrice = ({ price }: { price: number }) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(price / 100);
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@/lib/currencies";
+
+const FormatPrice = ({
+  price,
+  currency = DEFAULT_CURRENCY,
+}: {
+  price: number;
+  currency?: string;
+}) => formatCurrencyAmount(price, currency);
 
 export default FormatPrice;

@@ -2,9 +2,41 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 import { slugify } from "./lib/products";
+
+function normalizeCategoryName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+async function findCategoryWithName(
+  ctx: QueryCtx | MutationCtx,
+  name: string,
+  excludeId?: Id<"productCategories">
+) {
+  const key = normalizeCategoryName(name);
+  if (!key) return null;
+  const categories = await ctx.db.query("productCategories").collect();
+  return (
+    categories.find(
+      (c) => normalizeCategoryName(c.name) === key && c._id !== excludeId
+    ) ?? null
+  );
+}
+
+async function assertUniqueCategoryName(
+  ctx: MutationCtx,
+  name: string,
+  excludeId?: Id<"productCategories">
+) {
+  const existing = await findCategoryWithName(ctx, name, excludeId);
+  if (existing) {
+    throw new ConvexError("A category with this name already exists");
+  }
+}
 
 const categoryFields = {
   name: v.string(),
@@ -69,6 +101,17 @@ export const listPaginated = query({
   },
 });
 
+export const listTakenNames = query({
+  args: { excludeId: v.optional(v.id("productCategories")) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const categories = await ctx.db.query("productCategories").collect();
+    return categories
+      .filter((c) => c._id !== args.excludeId)
+      .map((c) => normalizeCategoryName(c.name));
+  },
+});
+
 export const getById = query({
   args: { id: v.id("productCategories") },
   handler: async (ctx, args) => {
@@ -89,6 +132,7 @@ export const create = mutation({
     if (existing) {
       throw new ConvexError("A category with this slug already exists");
     }
+    await assertUniqueCategoryName(ctx, args.name);
     const activeCategories = await ctx.db
       .query("productCategories")
       .withIndex("by_active_sort", (q) => q.eq("active", true))
@@ -123,6 +167,7 @@ export const update = mutation({
     if (existing && existing._id !== id) {
       throw new ConvexError("A category with this slug already exists");
     }
+    await assertUniqueCategoryName(ctx, data.name, id);
     await ctx.db.patch(id, { ...data, slug });
     return id;
   },
