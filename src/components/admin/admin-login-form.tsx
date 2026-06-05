@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
-  Clock,
   Eye,
   EyeOff,
   KeyRound,
@@ -16,22 +15,14 @@ import {
   Store,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import {
-  formatOtpExpiryTime,
-  formatOtpRemaining,
-  getOtpExpiresAt,
-  OTP_EXPIRES_MINUTES,
-} from "@/lib/otp-config";
+import { formatOtpExpiryDuration } from "@/lib/otp-config";
+import { AdminOtpCountdown } from "@/components/admin/admin-otp-countdown";
+import { AdminOtpInput } from "@/components/admin/admin-otp-input";
 import { STORE_NAME } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -65,24 +56,10 @@ export function AdminLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (step !== "otp" || otpSentAt === null) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [step, otpSentAt]);
-
-  const otpExpiresAt =
-    otpSentAt !== null ? getOtpExpiresAt(otpSentAt) : null;
-  const otpRemainingMs =
-    otpExpiresAt !== null ? Math.max(0, otpExpiresAt - now) : null;
-  const otpExpired = otpRemainingMs === 0;
 
   const startOtpStep = () => {
     setOtpSentAt(Date.now());
-    setNow(Date.now());
     setStep("otp");
   };
 
@@ -193,7 +170,6 @@ export function AdminLoginForm() {
         type: "email-verification",
       });
       setOtpSentAt(Date.now());
-      setNow(Date.now());
       toastSuccess("Code resent", {
         description: `A new code was sent to ${email}.`,
       });
@@ -314,7 +290,7 @@ export function AdminLoginForm() {
                   <>
                     We sent a 6-digit code to{" "}
                     <span className="font-medium text-foreground">{email}</span>.
-                    It is valid for {OTP_EXPIRES_MINUTES} minutes.
+                    It is valid for {formatOtpExpiryDuration()}.
                   </>
                 )}
               </p>
@@ -342,9 +318,17 @@ export function AdminLoginForm() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium">
-                      Password
-                    </Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="password" className="text-sm font-medium">
+                        Password
+                      </Label>
+                      <Link
+                        href="/admin/login/forgot-password"
+                        className="text-xs font-medium text-[#6254f3] hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
                     <div className="relative">
                       <Lock className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -408,72 +392,10 @@ export function AdminLoginForm() {
                   <div className="flex justify-center rounded-xl bg-muted/50 py-6">
                     <KeyRound className="size-8 text-[#6254f3]" strokeWidth={1.5} />
                   </div>
-                  {otpSentAt !== null && (
-                    <div
-                      className={cn(
-                        "flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm",
-                        otpExpired
-                          ? "border-destructive/30 bg-destructive/5 text-destructive"
-                          : "border-[#6254f3]/20 bg-[#6254f3]/5 text-foreground"
-                      )}
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <Clock
-                        className={cn(
-                          "mt-0.5 size-4 shrink-0",
-                          otpExpired ? "text-destructive" : "text-[#6254f3]"
-                        )}
-                        aria-hidden
-                      />
-                      <div className="min-w-0 space-y-0.5">
-                        {otpExpired ? (
-                          <p className="font-medium">This code has expired</p>
-                        ) : (
-                          <>
-                            <p>
-                              Expires at{" "}
-                              <span className="font-medium tabular-nums">
-                                {formatOtpExpiryTime(otpSentAt)}
-                              </span>
-                            </p>
-                            <p className="text-muted-foreground">
-                              <span className="font-medium tabular-nums text-foreground">
-                                {formatOtpRemaining(otpRemainingMs ?? 0)}
-                              </span>{" "}
-                              remaining
-                            </p>
-                          </>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Codes are valid for {OTP_EXPIRES_MINUTES} minutes
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="space-y-3">
-                    <Label className="block text-center text-sm font-medium">
-                      Enter verification code
-                    </Label>
-                    <div className="flex justify-center overflow-x-auto pb-1">
-                      <InputOTP
-                        maxLength={6}
-                        value={otp}
-                        onChange={setOtp}
-                        containerClassName="gap-1.5 sm:gap-2"
-                      >
-                        <InputOTPGroup className="gap-1.5 sm:gap-2">
-                          {[0, 1, 2, 3, 4, 5].map((i) => (
-                            <InputOTPSlot
-                              key={i}
-                              index={i}
-                              className="size-10 rounded-lg border-2 text-lg sm:size-12 sm:text-xl"
-                            />
-                          ))}
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </div>
-                  </div>
+                  {otpSentAt !== null ? (
+                    <AdminOtpCountdown sentAtMs={otpSentAt} />
+                  ) : null}
+                  <AdminOtpInput value={otp} onChange={setOtp} />
                   <Button
                     type="submit"
                     disabled={loading}

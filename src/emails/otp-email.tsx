@@ -15,13 +15,29 @@ type OtpEmailProps = {
   expiresMinutes?: number;
 };
 
+function formatExpiryLabel(expiresMinutes: number) {
+  if (expiresMinutes >= 60) {
+    const hours = Math.round(expiresMinutes / 60);
+    return hours === 1 ? "1 hour" : `${hours} hours`;
+  }
+  return `${expiresMinutes} minutes`;
+}
+
 export function OtpEmail({ otp, type, expiresMinutes = 30 }: OtpEmailProps) {
   const title =
     type === "email-verification"
       ? "Verify your email"
       : type === "sign-in"
         ? "Sign in to Admin"
-        : "Your verification code";
+        : type === "forget-password"
+          ? "Reset your password"
+          : "Your verification code";
+
+  const expiryLabel = formatExpiryLabel(expiresMinutes);
+  const bodyText =
+    type === "forget-password"
+      ? `Use the code below to reset your admin password. It expires in ${expiryLabel}.`
+      : `Use the code below to continue. It expires in ${expiryLabel}.`;
 
   return (
     <Html>
@@ -30,10 +46,7 @@ export function OtpEmail({ otp, type, expiresMinutes = 30 }: OtpEmailProps) {
       <Body style={main}>
         <Container style={container}>
           <Heading style={h1}>{title}</Heading>
-          <Text style={text}>
-            Use the code below to continue. It expires in {expiresMinutes}{" "}
-            minutes.
-          </Text>
+          <Text style={text}>{bodyText}</Text>
           <Section style={codeBox}>
             <Text style={code}>{otp}</Text>
           </Section>

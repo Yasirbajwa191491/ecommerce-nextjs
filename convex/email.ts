@@ -47,7 +47,9 @@ export const sendOtpEmail = internalAction({
         ? "Verify your email — Ecommerce Admin"
         : args.type === "sign-in"
           ? "Your sign-in code — Ecommerce Admin"
-          : "Your verification code — Ecommerce Admin";
+          : args.type === "forget-password"
+            ? "Reset your password — Ecommerce Admin"
+            : "Your verification code — Ecommerce Admin";
 
     const html = await render(
       OtpEmail({
