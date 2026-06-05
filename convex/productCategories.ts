@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
+import { paginateArray } from "./lib/pagination";
 import { slugify } from "./lib/products";
 
 const categoryFields = {
@@ -11,6 +12,17 @@ const categoryFields = {
   slug: v.string(),
   active: v.boolean(),
 };
+
+function filterCategoriesBySearch<
+  T extends { name: string; slug: string },
+>(items: T[], search?: string) {
+  if (!search?.trim()) return items;
+  const term = search.trim().toLowerCase();
+  return items.filter(
+    (c) =>
+      c.name.toLowerCase().includes(term) || c.slug.toLowerCase().includes(term)
+  );
+}
 
 export const listActive = query({
   args: {},
@@ -23,31 +35,37 @@ export const listActive = query({
   },
 });
 
+export const countByStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const categories = await ctx.db.query("productCategories").collect();
+    return {
+      active: categories.filter((c) => c.active).length,
+      inactive: categories.filter((c) => !c.active).length,
+    };
+  },
+});
+
 export const listPaginated = query({
   args: {
     paginationOpts: paginationOptsValidator,
+    active: v.boolean(),
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const result = await ctx.db
+    const categories = await ctx.db
       .query("productCategories")
-      .withIndex("by_sort_order")
-      .paginate(args.paginationOpts);
-
-    if (!args.search?.trim()) {
-      return result;
-    }
-
-    const term = args.search.trim().toLowerCase();
-    return {
-      ...result,
-      page: result.page.filter(
-        (c) =>
-          c.name.toLowerCase().includes(term) ||
-          c.slug.toLowerCase().includes(term)
-      ),
-    };
+      .withIndex("by_active_sort", (q) => q.eq("active", args.active))
+      .collect();
+    const sorted = categories.sort((a, b) => a.sortOrder - b.sortOrder);
+    const filtered = filterCategoriesBySearch(sorted, args.search);
+    const { page, isDone, continueCursor } = paginateArray(
+      filtered,
+      args.paginationOpts
+    );
+    return { page, isDone, continueCursor };
   },
 });
 
@@ -71,12 +89,15 @@ export const create = mutation({
     if (existing) {
       throw new ConvexError("A category with this slug already exists");
     }
-    const last = await ctx.db
+    const activeCategories = await ctx.db
       .query("productCategories")
-      .withIndex("by_sort_order")
-      .order("desc")
-      .first();
-    const nextSortOrder = (last?.sortOrder ?? -1) + 1;
+      .withIndex("by_active_sort", (q) => q.eq("active", true))
+      .collect();
+    const nextSortOrder =
+      activeCategories.reduce(
+        (max, category) => Math.max(max, category.sortOrder),
+        -1
+      ) + 1;
     return await ctx.db.insert("productCategories", {
       ...args,
       slug,
@@ -114,6 +135,15 @@ export const reorder = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const unique = Array.from(new Set(args.orderedIds));
+    for (const id of unique) {
+      const category = await ctx.db.get(id);
+      if (!category) {
+        throw new ConvexError("Category not found");
+      }
+      if (!category.active) {
+        throw new ConvexError("Only active categories can be reordered");
+      }
+    }
     for (let i = 0; i < unique.length; i += 1) {
       await ctx.db.patch(unique[i], { sortOrder: i });
     }

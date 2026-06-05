@@ -45,6 +45,7 @@ export const getMyProfile = query({
       id: user._id,
       name: user.name,
       email: user.email,
+      emailVerified: user.emailVerified,
       image: user.image ?? null,
       role: normalizeRole(user.role),
     };

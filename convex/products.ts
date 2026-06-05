@@ -1,8 +1,12 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireAdmin } from "./lib/requireAdmin";
+import { ConvexError } from "convex/values";
+import { getAuthUserOrNull, requireAdmin } from "./lib/requireAdmin";
+import { isAdminRole, normalizeRole } from "./lib/authRoles";
 import { enrichProduct, enrichProducts } from "./lib/products";
+import { isProductActive } from "./lib/productActive";
+import { paginateArray } from "./lib/pagination";
 import { productImageValidator } from "./schema";
 
 const productFields = {
@@ -18,46 +22,129 @@ const productFields = {
   reviews: v.number(),
   stars: v.number(),
   description: v.string(),
+  active: v.optional(v.boolean()),
 };
 
-const bySortOrder = (a: { sortOrder?: number | null }, b: { sortOrder?: number | null }) =>
-  (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER);
+const bySortOrder = (
+  a: { sortOrder?: number | null },
+  b: { sortOrder?: number | null }
+) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER);
+
+function matchesActiveFilter(product: { active?: boolean | null }, active: boolean) {
+  return isProductActive(product) === active;
+}
+
+function filterProducts<
+  T extends {
+    name: string;
+    company: string;
+    price: number;
+    stock: number;
+    stars: number;
+    categoryId: string;
+    active?: boolean | null;
+    sortOrder?: number | null;
+  },
+>(
+  products: T[],
+  args: {
+    active: boolean;
+    search?: string;
+    categoryId?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minStock?: number;
+    maxStock?: number;
+    minStars?: number;
+  }
+) {
+  let filtered = products.filter((p) => matchesActiveFilter(p, args.active));
+
+  if (args.categoryId) {
+    filtered = filtered.filter((p) => p.categoryId === args.categoryId);
+  }
+
+  if (args.search?.trim()) {
+    const term = args.search.trim().toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.company.toLowerCase().includes(term)
+    );
+  }
+
+  if (args.minPrice !== undefined) {
+    filtered = filtered.filter((p) => p.price >= args.minPrice!);
+  }
+  if (args.maxPrice !== undefined) {
+    filtered = filtered.filter((p) => p.price <= args.maxPrice!);
+  }
+  if (args.minStock !== undefined) {
+    filtered = filtered.filter((p) => p.stock >= args.minStock!);
+  }
+  if (args.maxStock !== undefined) {
+    filtered = filtered.filter((p) => p.stock <= args.maxStock!);
+  }
+  if (args.minStars !== undefined) {
+    filtered = filtered.filter((p) => p.stars >= args.minStars!);
+  }
+
+  return [...filtered].sort(bySortOrder);
+}
+
+async function isRequestAdmin(ctx: Parameters<typeof getAuthUserOrNull>[0]) {
+  const user = await getAuthUserOrNull(ctx);
+  if (!user || user.banned) return false;
+  return isAdminRole(normalizeRole(user.role));
+}
 
 /** Public catalog — capped list with category join (max 100). */
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const products = await ctx.db.query("products").collect();
-    const sorted = [...products].sort(bySortOrder).slice(0, 100);
+    const sorted = products
+      .filter(isProductActive)
+      .sort(bySortOrder)
+      .slice(0, 100);
     return await enrichProducts(ctx, sorted);
+  },
+});
+
+export const countByStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const products = await ctx.db.query("products").collect();
+    return {
+      active: products.filter((p) => isProductActive(p)).length,
+      inactive: products.filter((p) => !isProductActive(p)).length,
+    };
   },
 });
 
 export const listPaginated = query({
   args: {
     paginationOpts: paginationOptsValidator,
+    active: v.boolean(),
     search: v.optional(v.string()),
     categoryId: v.optional(v.id("productCategories")),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    minStock: v.optional(v.number()),
+    maxStock: v.optional(v.number()),
+    minStars: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const result = await ctx.db.query("products").order("desc").paginate(args.paginationOpts);
-    let page = result.page;
-    if (args.categoryId) {
-      page = page.filter((p) => p.categoryId === args.categoryId);
-    }
-    page = [...page].sort(bySortOrder);
-    let enriched = await enrichProducts(ctx, page);
-    if (args.search?.trim()) {
-      const term = args.search.trim().toLowerCase();
-      enriched = enriched.filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.company.toLowerCase().includes(term) ||
-          p.category?.name.toLowerCase().includes(term)
-      );
-    }
-    return { ...result, page: enriched };
+    const products = await ctx.db.query("products").collect();
+    const filtered = filterProducts(products, args);
+    const { page, isDone, continueCursor } = paginateArray(
+      filtered,
+      args.paginationOpts
+    );
+    const enriched = await enrichProducts(ctx, page);
+    return { page: enriched, isDone, continueCursor };
   },
 });
 
@@ -66,6 +153,8 @@ export const getById = query({
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.id);
     if (!product) return null;
+    const admin = await isRequestAdmin(ctx);
+    if (!admin && !isProductActive(product)) return null;
     return await enrichProduct(ctx, product);
   },
 });
@@ -76,8 +165,9 @@ export const featured = query({
     const products = await ctx.db
       .query("products")
       .withIndex("by_featured", (q) => q.eq("featured", true))
-      .take(6);
-    return await enrichProducts(ctx, products);
+      .collect();
+    const activeFeatured = products.filter(isProductActive).sort(bySortOrder).slice(0, 6);
+    return await enrichProducts(ctx, activeFeatured);
   },
 });
 
@@ -89,13 +179,16 @@ export const create = mutation({
     if (!category) {
       throw new Error("Category not found");
     }
-    const all = await ctx.db.query("products").collect();
-    const maxSortOrder = all.reduce(
-      (max, product) => Math.max(max, product.sortOrder ?? -1),
-      -1
-    );
+    const activeProducts = await ctx.db.query("products").collect();
+    const maxSortOrder = activeProducts
+      .filter(isProductActive)
+      .reduce((max, product) => Math.max(max, product.sortOrder ?? -1), -1);
     const nextSortOrder = maxSortOrder + 1;
-    return await ctx.db.insert("products", { ...args, sortOrder: nextSortOrder });
+    return await ctx.db.insert("products", {
+      ...args,
+      active: args.active ?? true,
+      sortOrder: nextSortOrder,
+    });
   },
 });
 
@@ -111,7 +204,7 @@ export const update = mutation({
     if (!category) {
       throw new Error("Category not found");
     }
-    await ctx.db.patch(id, data);
+    await ctx.db.patch(id, { ...data, active: data.active ?? true });
     return id;
   },
 });
@@ -131,6 +224,15 @@ export const reorder = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const unique = Array.from(new Set(args.orderedIds));
+    for (const id of unique) {
+      const product = await ctx.db.get(id);
+      if (!product) {
+        throw new ConvexError("Product not found");
+      }
+      if (!isProductActive(product)) {
+        throw new ConvexError("Only active products can be reordered");
+      }
+    }
     for (let i = 0; i < unique.length; i += 1) {
       await ctx.db.patch(unique[i], { sortOrder: i });
     }

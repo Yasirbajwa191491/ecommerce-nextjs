@@ -1,11 +1,21 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import {
+  AdminListToolbar,
+  type StatusTab,
+} from "@/components/admin/admin-list-toolbar";
+import {
+  AdminProductFilters,
+  emptyProductFilters,
+  toProductFilterArgs,
+  type ProductListFilters,
+} from "@/components/admin/admin-product-filters";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +67,7 @@ type ProductForm = {
   reviews: number;
   stars: number;
   description: string;
+  active: boolean;
 };
 
 const emptyForm = (): ProductForm => ({
@@ -72,13 +83,33 @@ const emptyForm = (): ProductForm => ({
   reviews: 0,
   stars: 0,
   description: "",
+  active: true,
 });
+
+function isProductActive(product: Product) {
+  return product.active !== false;
+}
 
 export default function AdminProductsPage() {
   const categories = useQuery(api.productCategories.listActive) ?? [];
+  const counts = useQuery(api.products.countByStatus);
+
+  const [activeTab, setActiveTab] = useState<StatusTab>("active");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<ProductListFilters>(emptyProductFilters);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draggedId, setDraggedId] = useState<Id<"products"> | null>(null);
+
+  const filterArgs = useMemo(() => toProductFilterArgs(filters), [filters]);
+
   const { results, status, loadMore } = usePaginatedQuery(
     api.products.listPaginated,
-    {},
+    {
+      active: activeTab === "active",
+      search: search || undefined,
+      ...filterArgs,
+    },
     { initialNumItems: 20 }
   );
   const create = useMutation(api.products.create);
@@ -91,8 +122,6 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<Id<"products"> | null>(null);
   const [saving, setSaving] = useState(false);
-  const [reorderMode, setReorderMode] = useState(false);
-  const [draggedId, setDraggedId] = useState<Id<"products"> | null>(null);
 
   const validate = useCallback(
     (values: ProductForm) => validateProductForm(values),
@@ -100,6 +129,15 @@ export default function AdminProductsPage() {
   );
   const validation = useFormValidation(form, validate);
   const resetValidation = validation.reset;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (activeTab === "inactive") setReorderMode(false);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!dialogOpen) resetValidation();
@@ -129,6 +167,7 @@ export default function AdminProductsPage() {
       reviews: p.reviews,
       stars: p.stars,
       description: p.description,
+      active: isProductActive(p),
     });
     resetValidation();
     setDialogOpen(true);
@@ -153,6 +192,7 @@ export default function AdminProductsPage() {
     reviews: Number(f.reviews),
     stars: Number(f.stars),
     description: f.description.trim(),
+    active: f.active,
   });
 
   const handleSave = async () => {
@@ -218,23 +258,35 @@ export default function AdminProductsPage() {
     }
   };
 
+  const colSpan = reorderMode ? 9 : 8;
+
   return (
     <>
       <AdminPageHeader
         title="Products"
         description="Manage your store catalog."
+      />
+
+      <AdminListToolbar
+        activeTab={activeTab}
+        onActiveTabChange={setActiveTab}
+        counts={counts ?? undefined}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="Search name or brand"
+        reorderMode={reorderMode}
+        onReorderModeChange={setReorderMode}
+        canReorder={activeTab === "active"}
+        filters={
+          <AdminProductFilters
+            filters={filters}
+            onChange={setFilters}
+            onClear={() => setFilters(emptyProductFilters())}
+          />
+        }
         actionLabel="Add product"
         onAction={openCreate}
       />
-      <div className="mb-3 flex justify-end">
-        <Button
-          variant={reorderMode ? "default" : "outline"}
-          onClick={() => setReorderMode((v) => !v)}
-          className={reorderMode ? "bg-[#6254f3] hover:bg-[#5548e0]" : ""}
-        >
-          {reorderMode ? "Done reordering" : "Order list"}
-        </Button>
-      </div>
 
       <div className="rounded-lg border bg-background">
         <Table>
@@ -243,9 +295,11 @@ export default function AdminProductsPage() {
               {reorderMode ? <TableHead className="w-[40px]" /> : null}
               <TableHead className="w-[72px]">Image</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Brand</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Price</TableHead>
               <TableHead className="text-right">Stock</TableHead>
+              <TableHead className="text-right">Rating</TableHead>
               <TableHead className="w-[100px]" />
             </TableRow>
           </TableHeader>
@@ -253,15 +307,20 @@ export default function AdminProductsPage() {
             {status === "LoadingFirstPage" ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={reorderMode ? 7 : 6}>
+                  <TableCell colSpan={colSpan}>
                     <Skeleton className="h-10 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : results.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={reorderMode ? 7 : 6} className="text-center text-muted-foreground">
-                  No products yet
+                <TableCell
+                  colSpan={colSpan}
+                  className="text-center text-muted-foreground"
+                >
+                  {search || Object.values(filterArgs).some((v) => v !== undefined)
+                    ? "No products match your search or filters"
+                    : `No ${activeTab} products yet`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -280,7 +339,7 @@ export default function AdminProductsPage() {
                   }}
                 >
                   {reorderMode ? (
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="cursor-grab text-muted-foreground active:cursor-grabbing">
                       <GripVertical className="size-4" />
                     </TableCell>
                   ) : null}
@@ -301,18 +360,26 @@ export default function AdminProductsPage() {
                       </Badge>
                     ) : null}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">{p.company}</TableCell>
                   <TableCell>{p.category?.name ?? "-"}</TableCell>
                   <TableCell className="text-right">Rs {p.price}</TableCell>
                   <TableCell className="text-right">{p.stock}</TableCell>
+                  <TableCell className="text-right">{p.stars.toFixed(1)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(p)}
+                        disabled={reorderMode}
+                      >
                         <Pencil className="size-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => setDeleteId(p._id)}
+                        disabled={reorderMode}
                       >
                         <Trash2 className="size-4 text-destructive" />
                       </Button>
@@ -325,7 +392,7 @@ export default function AdminProductsPage() {
         </Table>
       </div>
 
-      {status === "CanLoadMore" ? (
+      {status === "CanLoadMore" && !reorderMode ? (
         <div className="mt-4 flex justify-center">
           <Button variant="outline" onClick={() => loadMore(20)}>
             Load more
@@ -571,6 +638,13 @@ export default function AdminProductsPage() {
                   className={invalidInputClass(validation.fieldError("stars"))}
                 />
               </AdminFormField>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Active</Label>
+              <Switch
+                checked={form.active}
+                onCheckedChange={(active) => setForm((f) => ({ ...f, active }))}
+              />
             </div>
             <div className="flex items-center justify-between">
               <Label>Featured</Label>

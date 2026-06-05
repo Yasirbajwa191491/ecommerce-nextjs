@@ -28,9 +28,11 @@ export default defineSchema({
     reviews: v.number(),
     stars: v.number(),
     description: v.string(),
+    active: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
   })
     .index("by_sort_order", ["sortOrder"])
     .index("by_category_id", ["categoryId"])
-    .index("by_featured", ["featured"]),
+    .index("by_featured", ["featured"])
+    .index("by_active_sort", ["active", "sortOrder"]),
 });

@@ -252,6 +252,27 @@ export default function AdminProfilePage() {
               <Input id="profile-email" value={profile.email} disabled />
             </AdminFormField>
 
+            <AdminFormField
+              label="Email status"
+              htmlFor="profile-email-status"
+              description={
+                profile.emailVerified
+                  ? "Your email address has been verified."
+                  : "Verify your email on next sign-in to complete account setup."
+              }
+            >
+              <Input
+                id="profile-email-status"
+                value={profile.emailVerified ? "Verified" : "Unverified"}
+                disabled
+                className={cn(
+                  profile.emailVerified
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-amber-700 dark:text-amber-400"
+                )}
+              />
+            </AdminFormField>
+
             <Button
               onClick={onSaveProfile}
               disabled={savingProfile || uploadingImage}

@@ -27,7 +27,16 @@ const ac = createAccessControl({
 const adminRoles = {
   user: ac.newRole({ user: [], session: [] }),
   admin: ac.newRole({
-    user: ["create", "list", "ban", "delete", "get", "update", "set-password"],
+    user: [
+      "create",
+      "list",
+      "set-role",
+      "ban",
+      "delete",
+      "get",
+      "update",
+      "set-password",
+    ],
     session: ["list", "revoke", "delete"],
   }),
   superAdmin: ac.newRole({
@@ -71,13 +80,16 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         resendStrategy: "reuse",
         expiresIn: OTP_EXPIRES_SECONDS,
         async sendVerificationOTP({ email, otp, type }) {
-          if ("runAction" in ctx && typeof ctx.runAction === "function") {
-            await ctx.runAction(internal.email.sendOtpEmail, {
-              email,
-              otp,
-              type,
-            });
+          if (!("runAction" in ctx) || typeof ctx.runAction !== "function") {
+            throw new Error(
+              "Cannot send verification email: Convex action runner unavailable."
+            );
           }
+          await ctx.runAction(internal.email.sendOtpEmail, {
+            email,
+            otp,
+            type,
+          });
         },
       }),
       admin({

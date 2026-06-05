@@ -13,6 +13,8 @@ import type * as auth from "../auth.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as lib_authRoles from "../lib/authRoles.js";
+import type * as lib_pagination from "../lib/pagination.js";
+import type * as lib_productActive from "../lib/productActive.js";
 import type * as lib_products from "../lib/products.js";
 import type * as lib_requireAdmin from "../lib/requireAdmin.js";
 import type * as migrations from "../migrations.js";
@@ -32,6 +34,8 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   http: typeof http;
   "lib/authRoles": typeof lib_authRoles;
+  "lib/pagination": typeof lib_pagination;
+  "lib/productActive": typeof lib_productActive;
   "lib/products": typeof lib_products;
   "lib/requireAdmin": typeof lib_requireAdmin;
   migrations: typeof migrations;

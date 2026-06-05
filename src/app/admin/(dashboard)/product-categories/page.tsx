@@ -1,10 +1,14 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import {
+  AdminListToolbar,
+  type StatusTab,
+} from "@/components/admin/admin-list-toolbar";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
 import { Button } from "@/components/ui/button";
@@ -26,7 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import { validateCategoryForm } from "@/lib/validation/admin-forms";
@@ -43,9 +46,19 @@ const emptyForm = {
 };
 
 export default function ProductCategoriesPage() {
+  const [activeTab, setActiveTab] = useState<StatusTab>("active");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draggedId, setDraggedId] = useState<Id<"productCategories"> | null>(null);
+
+  const counts = useQuery(api.productCategories.countByStatus);
   const { results, status, loadMore } = usePaginatedQuery(
     api.productCategories.listPaginated,
-    {},
+    {
+      active: activeTab === "active",
+      search: search || undefined,
+    },
     { initialNumItems: 20 }
   );
   const create = useMutation(api.productCategories.create);
@@ -58,8 +71,6 @@ export default function ProductCategoriesPage() {
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<Id<"productCategories"> | null>(null);
   const [saving, setSaving] = useState(false);
-  const [reorderMode, setReorderMode] = useState(false);
-  const [draggedId, setDraggedId] = useState<Id<"productCategories"> | null>(null);
 
   const validate = useCallback(
     (values: typeof form) => validateCategoryForm(values),
@@ -67,6 +78,15 @@ export default function ProductCategoriesPage() {
   );
   const validation = useFormValidation(form, validate);
   const resetValidation = validation.reset;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (activeTab === "inactive") setReorderMode(false);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!dialogOpen) resetValidation();
@@ -167,23 +187,28 @@ export default function ProductCategoriesPage() {
     }
   };
 
+  const colSpan = reorderMode ? 4 : 3;
+
   return (
     <>
       <AdminPageHeader
         title="Product categories"
         description="Manage catalog categories shown in the store."
+      />
+
+      <AdminListToolbar
+        activeTab={activeTab}
+        onActiveTabChange={setActiveTab}
+        counts={counts ?? undefined}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="Search name or slug"
+        reorderMode={reorderMode}
+        onReorderModeChange={setReorderMode}
+        canReorder={activeTab === "active"}
         actionLabel="Add category"
         onAction={openCreate}
       />
-      <div className="mb-3 flex justify-end">
-        <Button
-          variant={reorderMode ? "default" : "outline"}
-          onClick={() => setReorderMode((v) => !v)}
-          className={reorderMode ? "bg-[#6254f3] hover:bg-[#5548e0]" : ""}
-        >
-          {reorderMode ? "Done reordering" : "Order list"}
-        </Button>
-      </div>
 
       <div className="rounded-lg border bg-background">
         <Table>
@@ -192,7 +217,6 @@ export default function ProductCategoriesPage() {
               {reorderMode ? <TableHead className="w-[40px]" /> : null}
               <TableHead>Name</TableHead>
               <TableHead>Slug</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead className="w-[100px]" />
             </TableRow>
           </TableHeader>
@@ -200,15 +224,20 @@ export default function ProductCategoriesPage() {
             {status === "LoadingFirstPage" ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={reorderMode ? 5 : 4}>
+                  <TableCell colSpan={colSpan}>
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : results.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={reorderMode ? 5 : 4} className="text-center text-muted-foreground">
-                  No categories yet
+                <TableCell
+                  colSpan={colSpan}
+                  className="text-center text-muted-foreground"
+                >
+                  {search
+                    ? "No categories match your search"
+                    : `No ${activeTab} categories yet`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -227,23 +256,19 @@ export default function ProductCategoriesPage() {
                   }}
                 >
                   {reorderMode ? (
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="cursor-grab text-muted-foreground active:cursor-grabbing">
                       <GripVertical className="size-4" />
                     </TableCell>
                   ) : null}
                   <TableCell className="font-medium">{cat.name}</TableCell>
                   <TableCell className="text-muted-foreground">{cat.slug}</TableCell>
                   <TableCell>
-                    <Badge variant={cat.active ? "default" : "secondary"}>
-                      {cat.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(cat)}
+                        disabled={reorderMode}
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -251,6 +276,7 @@ export default function ProductCategoriesPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setDeleteId(cat._id)}
+                        disabled={reorderMode}
                       >
                         <Trash2 className="size-4 text-destructive" />
                       </Button>
@@ -263,7 +289,7 @@ export default function ProductCategoriesPage() {
         </Table>
       </div>
 
-      {status === "CanLoadMore" ? (
+      {status === "CanLoadMore" && !reorderMode ? (
         <div className="mt-4 flex justify-center">
           <Button variant="outline" onClick={() => loadMore(20)}>
             Load more
