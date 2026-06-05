@@ -243,7 +243,7 @@ export default function ProductCatalog() {
           paddingRight: "clamp(1rem, 3vw, 3rem)",
         }}
       >
-        <div className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-2 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] sm:gap-3 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+        <div className="grid grid-cols-[minmax(0,5.75rem)_minmax(0,1fr)] gap-1.5 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] sm:gap-3 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
           <ProductCatalogFilters
             categories={categories ?? []}
             categoryId={categoryId}
@@ -270,7 +270,7 @@ export default function ProductCatalog() {
                 className={cn(
                   "grid",
                   view === "grid"
-                    ? "grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
+                    ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
                     : "flex flex-col gap-3 sm:gap-4"
                 )}
               >
@@ -279,7 +279,7 @@ export default function ProductCatalog() {
                     key={i}
                     className={cn(
                       "rounded-2xl",
-                      view === "list" ? "h-32" : "h-[22rem]"
+                      view === "list" ? "h-32" : "h-[18rem]"
                     )}
                   />
                 ))}
@@ -305,7 +305,7 @@ export default function ProductCatalog() {
                   className={cn(
                     "grid",
                     view === "grid"
-                      ? "grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
+                      ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
                       : "flex flex-col gap-3 sm:gap-4"
                   )}
                 >

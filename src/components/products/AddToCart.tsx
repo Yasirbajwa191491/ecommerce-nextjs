@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useCartContext } from "@/context/cart_context";
 import { Product } from "@/types/product";
@@ -9,10 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export default function AddToCart({ product }: { product: Product }) {
+type AddToCartProps = {
+  product: Product;
+  variant?: "default" | "detail";
+};
+
+export default function AddToCart({
+  product,
+  variant = "default",
+}: AddToCartProps) {
   const { addToCart } = useCartContext();
   const [amount, setAmount] = useState(1);
   const [color, setColor] = useState(product.colors[0] ?? "#000");
+  const isDetail = variant === "detail";
+  const hasColors = product.colors.length > 0;
 
   const handleAdd = () => {
     addToCart(product._id, color, amount, product);
@@ -21,53 +31,120 @@ export default function AddToCart({ product }: { product: Product }) {
     });
   };
 
-  return (
-    <div className="mt-6 flex flex-col gap-4">
-      <div>
-        <Label className="mb-2 block">Color</Label>
-        <div className="flex flex-wrap gap-2">
-          {product.colors.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Color ${c}`}
-              className={cn(
-                "size-8 rounded-full border-2 transition-shadow",
-                color === c ? "border-primary ring-2 ring-primary/30" : "border-border"
-              )}
-              style={{ backgroundColor: c }}
-              onClick={() => setColor(c)}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Label>Quantity</Label>
+  const quantityControl = (
+    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+      <Label
+        className={cn(
+          "font-medium",
+          isDetail ? "text-xs sm:text-sm" : "text-sm"
+        )}
+      >
+        Quantity
+      </Label>
+      <div className="inline-flex items-center rounded-full border border-border/80 bg-background">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={() => setAmount((a) => Math.max(1, a - 1))}
           aria-label="Decrease quantity"
+          className={cn("rounded-full", isDetail && "size-8 sm:size-9")}
         >
           <Minus className="size-4" />
         </Button>
-        <span className="min-w-8 text-center text-lg font-medium">{amount}</span>
+        <span
+          className={cn(
+            "min-w-8 text-center font-semibold tabular-nums sm:min-w-10",
+            isDetail ? "text-base sm:text-lg" : "text-base"
+          )}
+        >
+          {amount}
+        </span>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={() => setAmount((a) => Math.min(product.stock, a + 1))}
           aria-label="Increase quantity"
+          className={cn("rounded-full", isDetail && "size-8 sm:size-9")}
         >
           <Plus className="size-4" />
         </Button>
       </div>
+      <span className="text-[11px] text-muted-foreground sm:text-xs">
+        {product.stock} available
+      </span>
+    </div>
+  );
 
-      <Button type="button" size="lg" onClick={handleAdd}>
-        Add to cart
-      </Button>
+  const addToCartButton = (
+    <Button
+      type="button"
+      size={isDetail ? "default" : "lg"}
+      onClick={handleAdd}
+      className={cn(
+        "gap-2 rounded-full font-semibold",
+        isDetail
+          ? "h-10 self-start bg-[#6254f3] px-5 text-sm hover:bg-[#5548e0] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
+          : undefined
+      )}
+    >
+      <ShoppingBag className="size-4" />
+      Add to cart
+    </Button>
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 sm:gap-4",
+        isDetail
+          ? "rounded-2xl border border-border/60 bg-card p-3 sm:p-4 lg:p-5"
+          : "mt-6"
+      )}
+    >
+      {hasColors ? (
+        <div>
+          <Label
+            className={cn(
+              "mb-2 block font-medium",
+              isDetail ? "text-xs sm:text-sm" : "text-sm"
+            )}
+          >
+            Color
+          </Label>
+          <div className="flex flex-wrap gap-2 sm:gap-2.5">
+            {product.colors.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Color ${c}`}
+                className={cn(
+                  "rounded-full border-2 transition-shadow",
+                  isDetail ? "size-8 sm:size-9" : "size-8",
+                  color === c
+                    ? "border-[#6254f3] ring-2 ring-[#6254f3]/30"
+                    : "border-border"
+                )}
+                style={{ backgroundColor: c }}
+                onClick={() => setColor(c)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {isDetail ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:items-center">
+          {quantityControl}
+          {addToCartButton}
+        </div>
+      ) : (
+        <>
+          {quantityControl}
+          {addToCartButton}
+        </>
+      )}
     </div>
   );
 }

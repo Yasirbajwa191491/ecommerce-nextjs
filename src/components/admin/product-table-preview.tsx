@@ -26,7 +26,7 @@ export function ProductImageThumbnails({
           alt={`${alt} ${index + 1}`}
           width={32}
           height={32}
-          className="size-8 shrink-0 rounded border object-cover"
+          className="size-8 shrink-0 rounded border bg-muted/30 object-contain object-center p-0.5"
         />
       ))}
     </div>

@@ -192,7 +192,7 @@ export function ProductImageField({
                 src={url}
                 alt={`Product image ${i + 1}`}
                 fill
-                className="object-cover"
+                className="object-contain object-center p-1"
                 unoptimized
               />
               <Button

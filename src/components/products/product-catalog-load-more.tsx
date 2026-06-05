@@ -26,7 +26,7 @@ export function ProductCatalogLoadMore({
           className={cn(
             "grid",
             view === "grid"
-              ? "grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
+              ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
               : "flex flex-col gap-3 sm:gap-4"
           )}
         >
@@ -35,7 +35,7 @@ export function ProductCatalogLoadMore({
               key={i}
               className={cn(
                 "rounded-2xl",
-                view === "list" ? "h-32" : "h-[22rem]"
+                view === "list" ? "h-32" : "h-[18rem]"
               )}
             />
           ))}

@@ -45,7 +45,7 @@ Open http://localhost:3000/home
 
 - `/home` — featured products
 - `/products` — filter, sort, grid/list
-- `/singleproduct/[id]` — product detail (Convex document `_id`)
+- `/product/[id]` — product detail (Convex document `_id`; `/singleproduct/[id]` redirects here)
 - `/cart` — localStorage cart (same as original)
 
 ## shadcn/ui

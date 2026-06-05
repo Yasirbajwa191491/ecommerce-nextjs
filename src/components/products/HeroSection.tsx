@@ -46,7 +46,7 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
       ? featured.slice(0, 3).map((product) => ({
           src: product.image[0]?.url ?? HERO_FALLBACK_IMAGES[0].src,
           alt: product.name,
-          href: `/singleproduct/${product._id}`,
+          href: `/product/${product._id}`,
         }))
       : HERO_FALLBACK_IMAGES.map((image) => ({
           src: image.src,
@@ -140,7 +140,7 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
                 fill
                 priority
                 sizes="(max-width: 768px) 55vw, (max-width: 1024px) 40vw, 380px"
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                className="bg-[#0a1435]/30 object-contain object-center transition-transform duration-700 group-hover:scale-[1.02]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a1435]/50 via-transparent to-transparent" />
             </Link>
@@ -154,7 +154,7 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
                 alt={showcaseImages[1]?.alt ?? "Featured product"}
                 fill
                 sizes="(max-width: 768px) 38vw, 260px"
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                className="bg-[#0a1435]/30 object-contain object-center transition-transform duration-700 group-hover:scale-[1.02]"
               />
             </Link>
 
@@ -167,7 +167,7 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
                 alt={showcaseImages[2]?.alt ?? "Featured product"}
                 fill
                 sizes="(max-width: 768px) 42vw, 280px"
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                className="bg-[#0a1435]/30 object-contain object-center transition-transform duration-700 group-hover:scale-[1.02]"
               />
             </Link>
 

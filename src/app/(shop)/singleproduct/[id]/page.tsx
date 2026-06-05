@@ -1,32 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
+import { productPath } from "@/lib/product-url";
 
-import Image from "next/image";
-import { use } from "react";
-import styled from "styled-components";
-import FormatPrice from "@/helpers/FormatPrice";
-import type { Id } from "../../../../../convex/_generated/dataModel";
-import { useSingleProduct } from "@/hooks/useProducts";
-import AddToCart from "@/components/products/AddToCart";
-
-export default function SingleProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const { singleProduct, isSingleLoading } = useSingleProduct(id as Id<"products">);
-
-  if (isSingleLoading) return <div className="page_loading">Loading...</div>;
-  if (!singleProduct) return <div className="page_loading">Not found</div>;
-
-  return (
-    <Wrap className="container grid grid-two-column">
-      <Image src={singleProduct.image[0]?.url ?? "/next.svg"} alt={singleProduct.name} width={500} height={400} style={{ objectFit: "cover" }} />
-      <div>
-        <h2>{singleProduct.name}</h2>
-        <FormatPrice price={singleProduct.price} currency={singleProduct.currency} />
-        <p>{singleProduct.description}</p>
-        <p>Stock: {singleProduct.stock}</p>
-        {singleProduct.stock > 0 && <AddToCart product={singleProduct} />}
-      </div>
-    </Wrap>
-  );
+export default async function LegacySingleProductPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  redirect(productPath(id));
 }
-
-const Wrap = styled.section`padding: 9rem 0; gap: 4rem;`;

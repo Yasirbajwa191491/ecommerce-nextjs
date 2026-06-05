@@ -44,7 +44,7 @@ function HeaderSearchForm({
   }, [pathname, urlSearchTerm]);
 
   useEffect(() => {
-    if (!hasEdited) return;
+    if (!hasEdited || pathname !== "/products") return;
 
     const term = debouncedQuery.trim();
     const targetPath = buildProductsSearchPath(term);

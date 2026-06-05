@@ -30,11 +30,11 @@ export default function FeatureProduct() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-8">
+          <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-8">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton
                 key={index}
-                className="h-[22rem] w-full rounded-2xl sm:h-[24rem]"
+                className="h-[18rem] w-full rounded-2xl sm:h-[19rem]"
               />
             ))}
           </div>
@@ -48,7 +48,7 @@ export default function FeatureProduct() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-8">
+          <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-8">
             {featureProducts.map((product) => (
               <ProductCard key={product._id} {...product} />
             ))}
