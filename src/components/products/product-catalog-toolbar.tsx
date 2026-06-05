@@ -87,7 +87,7 @@ export function ProductCatalogToolbar({
         <Select
           value={sort}
           onValueChange={(value) =>
-            onSortChange((value ?? "lowest") as ProductSort)
+            onSortChange((value ?? "default") as ProductSort)
           }
         >
           <SelectTrigger className="h-9 w-[min(100%,12rem)] rounded-xl border-border/80 bg-background">

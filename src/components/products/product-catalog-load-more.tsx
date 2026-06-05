@@ -9,7 +9,6 @@ type ProductCatalogLoadMoreProps = {
   isLoadingMore: boolean;
   hasMore: boolean;
   loadedCount: number;
-  totalCount: number;
   view: "grid" | "list";
 };
 
@@ -18,7 +17,6 @@ export function ProductCatalogLoadMore({
   isLoadingMore,
   hasMore,
   loadedCount,
-  totalCount,
   view,
 }: ProductCatalogLoadMoreProps) {
   return (
@@ -44,16 +42,17 @@ export function ProductCatalogLoadMore({
         </div>
       ) : null}
 
-      {!hasMore && loadedCount > 0 && totalCount > 0 ? (
+      {!hasMore && loadedCount > 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
-          Showing all {totalCount} {totalCount === 1 ? "product" : "products"}
+          Showing all {loadedCount}{" "}
+          {loadedCount === 1 ? "product" : "products"}
         </p>
       ) : null}
 
-      {hasMore && !isLoadingMore ? (
+      {hasMore && isLoadingMore ? (
         <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin text-[#6254f3]" />
-          <span>Scroll for more products</span>
+          <span>Loading more products…</span>
         </div>
       ) : null}
     </div>

@@ -43,6 +43,7 @@ function matchesActiveFilter(product: { active?: boolean | null }, active: boole
 
 const sortValidator = v.optional(
   v.union(
+    v.literal("default"),
     v.literal("lowest"),
     v.literal("highest"),
     v.literal("a-z"),
@@ -50,11 +51,11 @@ const sortValidator = v.optional(
   )
 );
 
-export type ProductSort = "lowest" | "highest" | "a-z" | "z-a";
+export type ProductSort = "default" | "lowest" | "highest" | "a-z" | "z-a";
 
 function sortProducts<
   T extends { name: string; price: number; sortOrder?: number | null },
->(products: T[], sort: ProductSort = "lowest") {
+>(products: T[], sort: ProductSort = "default") {
   const sorted = [...products];
   switch (sort) {
     case "highest":
@@ -67,8 +68,11 @@ function sortProducts<
       sorted.sort((a, b) => b.name.localeCompare(a.name));
       break;
     case "lowest":
-    default:
       sorted.sort((a, b) => a.price - b.price);
+      break;
+    case "default":
+    default:
+      sorted.sort(bySortOrder);
       break;
   }
   return sorted;
@@ -173,7 +177,7 @@ function applyPublicFilters<
     minPrice: args.minPrice,
     maxPrice: args.maxPrice,
   });
-  return sortProducts(filtered, args.sort ?? "lowest");
+  return sortProducts(filtered, args.sort ?? "default");
 }
 
 async function isRequestAdmin(ctx: Parameters<typeof getAuthUserOrNull>[0]) {

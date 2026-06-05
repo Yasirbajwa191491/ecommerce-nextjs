@@ -16,6 +16,7 @@ import {
   type ProductListFilters,
 } from "@/components/admin/admin-product-filters";
 import { AdminTableCard } from "@/components/admin/admin-table-card";
+import { AdminTableInfiniteScroll } from "@/components/admin/admin-table-infinite-scroll";
 import { ColumnVisibilityPanel } from "@/components/admin/column-visibility-panel";
 import {
   ProductColorSwatches,
@@ -106,6 +107,8 @@ function isProductActive(product: Product) {
   return product.active !== false;
 }
 
+const ADMIN_LIST_PAGE_SIZE = 10;
+
 export default function AdminProductsPage() {
   const categories = useQuery(api.productCategories.listActive) ?? [];
   const counts = useQuery(api.products.countByStatus);
@@ -126,7 +129,7 @@ export default function AdminProductsPage() {
       search: search || undefined,
       ...filterArgs,
     },
-    { initialNumItems: 20 }
+    { initialNumItems: ADMIN_LIST_PAGE_SIZE }
   );
   const create = useMutation(api.products.create);
   const update = useMutation(api.products.update);
@@ -162,7 +165,7 @@ export default function AdminProductsPage() {
         sortOrder: 0,
       } as ProductCategory);
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) => a.sortOrder - b.sortOrder);
   }, [categories, editing]);
 
   const selectedCategory = categoryOptions.find((c) => c._id === form.categoryId);
@@ -297,6 +300,13 @@ export default function AdminProductsPage() {
   };
 
   const products = results as Product[];
+  const canLoadMore = status === "CanLoadMore" && !reorderMode;
+  const isLoadingMore = status === "LoadingMore";
+
+  const handleLoadMore = useCallback(() => {
+    if (!canLoadMore) return;
+    loadMore(ADMIN_LIST_PAGE_SIZE);
+  }, [canLoadMore, loadMore]);
 
   const handleReorderDrop = async (targetId: Id<"products">) => {
     if (!draggedId || draggedId === targetId) return;
@@ -580,13 +590,11 @@ export default function AdminProductsPage() {
         </Table>
       </AdminTableCard>
 
-      {status === "CanLoadMore" && !reorderMode ? (
-        <div className="mt-4 flex justify-center">
-          <Button variant="outline" onClick={() => loadMore(20)}>
-            Load more
-          </Button>
-        </div>
-      ) : null}
+      <AdminTableInfiniteScroll
+        enabled={canLoadMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={handleLoadMore}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto sm:max-w-3xl">

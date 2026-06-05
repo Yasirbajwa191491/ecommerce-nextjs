@@ -10,6 +10,7 @@ import {
   type StatusTab,
 } from "@/components/admin/admin-list-toolbar";
 import { AdminTableCard } from "@/components/admin/admin-table-card";
+import { AdminTableInfiniteScroll } from "@/components/admin/admin-table-infinite-scroll";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,8 @@ const emptyForm = {
   active: true,
 };
 
+const ADMIN_LIST_PAGE_SIZE = 10;
+
 export default function ProductCategoriesPage() {
   const [activeTab, setActiveTab] = useState<StatusTab>("active");
   const [searchInput, setSearchInput] = useState("");
@@ -60,7 +63,7 @@ export default function ProductCategoriesPage() {
       active: activeTab === "active",
       search: search || undefined,
     },
-    { initialNumItems: 20 }
+    { initialNumItems: ADMIN_LIST_PAGE_SIZE }
   );
   const create = useMutation(api.productCategories.create);
   const update = useMutation(api.productCategories.update);
@@ -155,6 +158,13 @@ export default function ProductCategoriesPage() {
   };
 
   const categories = results as ProductCategory[];
+  const canLoadMore = status === "CanLoadMore" && !reorderMode;
+  const isLoadingMore = status === "LoadingMore";
+
+  const handleLoadMore = useCallback(() => {
+    if (!canLoadMore) return;
+    loadMore(ADMIN_LIST_PAGE_SIZE);
+  }, [canLoadMore, loadMore]);
 
   const handleReorderDrop = async (targetId: Id<"productCategories">) => {
     if (!draggedId || draggedId === targetId) return;
@@ -296,13 +306,11 @@ export default function ProductCategoriesPage() {
         </Table>
       </AdminTableCard>
 
-      {status === "CanLoadMore" && !reorderMode ? (
-        <div className="mt-4 flex justify-center">
-          <Button variant="outline" onClick={() => loadMore(20)}>
-            Load more
-          </Button>
-        </div>
-      ) : null}
+      <AdminTableInfiniteScroll
+        enabled={canLoadMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={handleLoadMore}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-md">

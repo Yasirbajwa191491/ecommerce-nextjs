@@ -40,6 +40,11 @@ export function ProductCatalogFilters({
     [priceBounds.minPrice, priceBounds.maxPrice]
   );
 
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.sortOrder - b.sortOrder),
+    [categories]
+  );
+
   const sliderDisabled = priceBounds.maxPrice <= priceBounds.minPrice;
 
   return (
@@ -68,7 +73,7 @@ export function ProductCatalogFilters({
             checked={categoryId === "all"}
             onSelect={() => onCategoryChange("all")}
           />
-          {categories.map((category) => (
+          {sortedCategories.map((category) => (
             <CategoryOption
               key={category._id}
               label={category.name}

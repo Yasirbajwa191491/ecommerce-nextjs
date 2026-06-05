@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
 
+function productIds(products: Product[]) {
+  return products.map((product) => product._id).join(",");
+}
+
 export default function ProductCatalog() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,11 +30,13 @@ export default function ProductCatalog() {
   const [categoryId, setCategoryId] = useState<
     Id<"productCategories"> | "all"
   >("all");
-  const [sort, setSort] = useState<ProductSort>("lowest");
+  const [sort, setSort] = useState<ProductSort>("default");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(0);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const loadingMoreRef = useRef(false);
+  const catalogSignatureRef = useRef("");
+  const applyPriceImmediatelyRef = useRef(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const debouncedPriceRange = useDebouncedValue(priceRange, 400);
   const [priceInitialized, setPriceInitialized] = useState(false);
@@ -39,74 +45,149 @@ export default function ProductCatalog() {
   const priceBounds = useQuery(api.products.getPublicPriceBounds);
 
   useEffect(() => {
-    if (!priceBounds || priceInitialized) return;
-    setPriceRange([priceBounds.minPrice, priceBounds.maxPrice]);
-    setPriceInitialized(true);
+    if (!priceBounds) return;
+
+    if (!priceInitialized) {
+      setPriceRange([priceBounds.minPrice, priceBounds.maxPrice]);
+      setPriceInitialized(true);
+      return;
+    }
+
+    setPriceRange((current) => [
+      Math.min(current[0], priceBounds.minPrice),
+      Math.max(current[1], priceBounds.maxPrice),
+    ]);
   }, [priceBounds, priceInitialized]);
+
+  useEffect(() => {
+    if (
+      applyPriceImmediatelyRef.current &&
+      debouncedPriceRange[0] === priceRange[0] &&
+      debouncedPriceRange[1] === priceRange[1]
+    ) {
+      applyPriceImmediatelyRef.current = false;
+    }
+  }, [debouncedPriceRange, priceRange]);
+
+  const activePriceRange = applyPriceImmediatelyRef.current
+    ? priceRange
+    : debouncedPriceRange;
+
+  const priceFilterReady =
+    priceInitialized &&
+    activePriceRange[1] > activePriceRange[0] &&
+    activePriceRange[1] > 0;
 
   const filterArgs = useMemo(
     () => ({
       search: urlSearch.trim() || undefined,
       categoryId: categoryId === "all" ? undefined : categoryId,
-      minPrice: priceInitialized ? debouncedPriceRange[0] : undefined,
-      maxPrice: priceInitialized ? debouncedPriceRange[1] : undefined,
+      minPrice: priceFilterReady ? activePriceRange[0] : undefined,
+      maxPrice: priceFilterReady ? activePriceRange[1] : undefined,
       sort,
     }),
-    [urlSearch, categoryId, debouncedPriceRange, priceInitialized, sort]
+    [urlSearch, categoryId, activePriceRange, priceFilterReady, sort]
   );
 
   const filterKey = useMemo(() => JSON.stringify(filterArgs), [filterArgs]);
 
   useEffect(() => {
     setPage(0);
-    setAllProducts([]);
     loadingMoreRef.current = false;
+    catalogSignatureRef.current = "";
   }, [filterKey]);
 
   const totalCount = useQuery(api.products.countPublicFiltered, filterArgs);
 
-  const catalogPage = useQuery(api.products.listPublicPaginated, {
-    paginationOpts: {
-      numItems: PAGE_SIZE,
-      cursor: page === 0 ? null : String(page * PAGE_SIZE),
-    },
+  const firstPage = useQuery(api.products.listPublicPaginated, {
+    paginationOpts: { numItems: PAGE_SIZE, cursor: null },
     ...filterArgs,
   });
 
+  const morePage = useQuery(
+    api.products.listPublicPaginated,
+    page > 0
+      ? {
+          paginationOpts: {
+            numItems: PAGE_SIZE,
+            cursor: String(page * PAGE_SIZE),
+          },
+          ...filterArgs,
+        }
+      : "skip"
+  );
+
+  const remoteCatalogSignature = useMemo(() => {
+    if (!firstPage || totalCount === undefined) return "";
+    return `${totalCount}:${productIds(firstPage.page as Product[])}`;
+  }, [firstPage, totalCount]);
+
   useEffect(() => {
-    if (!catalogPage) return;
+    if (!firstPage || !remoteCatalogSignature) return;
+
+    if (catalogSignatureRef.current !== remoteCatalogSignature) {
+      catalogSignatureRef.current = remoteCatalogSignature;
+      setPage(0);
+      setAllProducts(firstPage.page as Product[]);
+      loadingMoreRef.current = false;
+      return;
+    }
+
+    if (page === 0) {
+      setAllProducts(firstPage.page as Product[]);
+      loadingMoreRef.current = false;
+    }
+  }, [firstPage, remoteCatalogSignature, page]);
+
+  useEffect(() => {
+    if (page === 0 || !morePage || !firstPage) return;
+
     loadingMoreRef.current = false;
-
     setAllProducts((previous) => {
-      if (page === 0) {
-        return catalogPage.page as Product[];
-      }
-
-      const existingIds = new Set(previous.map((product) => product._id));
-      const nextItems = (catalogPage.page as Product[]).filter(
+      const firstBatch = firstPage.page as Product[];
+      const base =
+        previous.length >= firstBatch.length ? previous : firstBatch;
+      const existingIds = new Set(base.map((product) => product._id));
+      const nextItems = (morePage.page as Product[]).filter(
         (product) => !existingIds.has(product._id)
       );
-      return [...previous, ...nextItems];
+      if (nextItems.length === 0) return base;
+      return [...base, ...nextItems];
     });
-  }, [catalogPage, page]);
+  }, [morePage, page, firstPage]);
 
   const isInitialLoading =
     (categories === undefined ||
       priceBounds === undefined ||
       totalCount === undefined ||
-      catalogPage === undefined) &&
+      firstPage === undefined) &&
     allProducts.length === 0;
 
-  const isLoadingMore =
-    page > 0 && catalogPage === undefined && allProducts.length > 0;
+  const isRefetching =
+    firstPage === undefined && allProducts.length > 0 && !isInitialLoading;
 
-  const hasMore = (totalCount ?? 0) > allProducts.length;
+  const isLoadingMore =
+    page > 0 && morePage === undefined && allProducts.length > 0;
+
+  const hasMore = useMemo(() => {
+    if (!firstPage || isInitialLoading) return false;
+    if (page === 0) return !firstPage.isDone;
+    if (morePage === undefined) return true;
+    return !morePage.isDone;
+  }, [firstPage, morePage, page, isInitialLoading]);
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
     setPage((current) => current + 1);
   }, [hasMore, isLoadingMore]);
+
+  useEffect(() => {
+    if (isInitialLoading || isLoadingMore || loadingMoreRef.current || !hasMore) {
+      return;
+    }
+    handleLoadMore();
+  }, [hasMore, isInitialLoading, isLoadingMore, handleLoadMore, filterKey]);
 
   const sentinelRef = useInfiniteScroll({
     enabled: hasMore && !isLoadingMore && !isInitialLoading,
@@ -115,16 +196,26 @@ export default function ProductCatalog() {
 
   const handleClear = () => {
     setCategoryId("all");
-    setSort("lowest");
+    setSort("default");
+    setPage(0);
+    loadingMoreRef.current = false;
+
     if (priceBounds) {
+      applyPriceImmediatelyRef.current = true;
       setPriceRange([priceBounds.minPrice, priceBounds.maxPrice]);
     }
-    setPage(0);
-    setAllProducts([]);
-    router.replace("/products");
+
+    if (urlSearch.trim()) {
+      router.replace("/products");
+    }
   };
 
   const bounds = priceBounds ?? { minPrice: 0, maxPrice: 0 };
+  const showNoResults =
+    !isInitialLoading &&
+    !isRefetching &&
+    firstPage !== undefined &&
+    (totalCount ?? 0) === 0;
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -193,7 +284,7 @@ export default function ProductCatalog() {
                   />
                 ))}
               </div>
-            ) : allProducts.length === 0 ? (
+            ) : showNoResults ? (
               <div className="rounded-2xl border border-dashed border-border/80 bg-card px-6 py-20 text-center">
                 <p className="text-xl font-semibold text-foreground">
                   No products found
@@ -205,7 +296,11 @@ export default function ProductCatalog() {
                 </p>
               </div>
             ) : (
-              <>
+              <div
+                className={cn(
+                  isRefetching && "pointer-events-none opacity-60"
+                )}
+              >
                 <div
                   className={cn(
                     "grid",
@@ -221,13 +316,12 @@ export default function ProductCatalog() {
 
                 <ProductCatalogLoadMore
                   sentinelRef={sentinelRef}
-                  isLoadingMore={isLoadingMore}
+                  isLoadingMore={isLoadingMore || isRefetching}
                   hasMore={hasMore}
                   loadedCount={allProducts.length}
-                  totalCount={totalCount ?? 0}
                   view={view}
                 />
-              </>
+              </div>
             )}
           </section>
         </div>
