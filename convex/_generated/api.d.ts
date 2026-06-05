@@ -21,6 +21,7 @@ import type * as migrations from "../migrations.js";
 import type * as productCategories from "../productCategories.js";
 import type * as products from "../products.js";
 import type * as seed from "../seed.js";
+import type * as subscribers from "../subscribers.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   productCategories: typeof productCategories;
   products: typeof products;
   seed: typeof seed;
+  subscribers: typeof subscribers;
 }>;
 
 /**

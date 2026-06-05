@@ -36,4 +36,11 @@ export default defineSchema({
     .index("by_category_id", ["categoryId"])
     .index("by_featured", ["featured"])
     .index("by_active_sort", ["active", "sortOrder"]),
+
+  subscribers: defineTable({
+    email: v.string(),
+    active: v.boolean(),
+    subscribedAt: v.number(),
+    source: v.optional(v.string()),
+  }).index("by_email", ["email"]),
 });
