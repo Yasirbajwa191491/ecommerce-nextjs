@@ -107,6 +107,10 @@ function isProductActive(product: Product) {
   return product.active !== false;
 }
 
+function productFlag(value: boolean | undefined | null) {
+  return value === true;
+}
+
 const ADMIN_LIST_PAGE_SIZE = 10;
 
 export default function AdminProductsPage() {
@@ -187,9 +191,20 @@ export default function AdminProductsPage() {
     if (activeTab === "inactive") setReorderMode(false);
   }, [activeTab]);
 
-  useEffect(() => {
-    if (!dialogOpen) resetValidation();
-  }, [dialogOpen, resetValidation]);
+  const closeProductDialog = useCallback(() => {
+    setDialogOpen(false);
+    setEditing(null);
+    setForm(emptyForm());
+    resetValidation();
+  }, [resetValidation]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    closeProductDialog();
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -210,8 +225,8 @@ export default function AdminProductsPage() {
       colors: [...p.colors],
       imageUrls: p.image.length ? p.image.map((i) => i.url) : [""],
       categoryId: p.categoryId,
-      featured: p.featured,
-      shipping: p.shipping,
+      featured: productFlag(p.featured),
+      shipping: productFlag(p.shipping),
       stock: p.stock,
       reviews: p.reviews,
       stars: p.stars,
@@ -254,7 +269,7 @@ export default function AdminProductsPage() {
         await create(payload);
         toastSuccess("Product created");
       }
-      setDialogOpen(false);
+      closeProductDialog();
     } catch (e) {
       toastError(e, {
         title: "Couldn't save product",
@@ -405,7 +420,7 @@ export default function AdminProductsPage() {
       case "featured":
         return (
           <TableCell key={columnId}>
-            {p.featured ? (
+            {productFlag(p.featured) ? (
               <Badge variant="secondary">Yes</Badge>
             ) : (
               <span className="text-muted-foreground">No</span>
@@ -415,7 +430,7 @@ export default function AdminProductsPage() {
       case "shipping":
         return (
           <TableCell key={columnId}>
-            {p.shipping ? (
+            {productFlag(p.shipping) ? (
               <Badge variant="outline">Yes</Badge>
             ) : (
               <span className="text-muted-foreground">No</span>
@@ -596,7 +611,7 @@ export default function AdminProductsPage() {
         onLoadMore={handleLoadMore}
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
@@ -843,36 +858,41 @@ export default function AdminProductsPage() {
               </AdminFormField>
             </div>
 
-            <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-3">
-              <div className="flex items-center justify-between gap-3">
-                <Label>Active</Label>
+            <div className="grid gap-3 rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="product-active">Active</Label>
                 <Switch
-                  checked={form.active}
-                  onCheckedChange={(active) => setForm((f) => ({ ...f, active }))}
-                />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <Label>Featured</Label>
-                <Switch
-                  checked={form.featured}
-                  onCheckedChange={(featured) =>
-                    setForm((f) => ({ ...f, featured }))
+                  id="product-active"
+                  checked={form.active === true}
+                  onCheckedChange={(active) =>
+                    setForm((f) => ({ ...f, active: active === true }))
                   }
                 />
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <Label>Free shipping</Label>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="product-featured">Featured</Label>
                 <Switch
-                  checked={form.shipping}
+                  id="product-featured"
+                  checked={form.featured === true}
+                  onCheckedChange={(featured) =>
+                    setForm((f) => ({ ...f, featured: featured === true }))
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="product-shipping">Free shipping</Label>
+                <Switch
+                  id="product-shipping"
+                  checked={form.shipping === true}
                   onCheckedChange={(shipping) =>
-                    setForm((f) => ({ ...f, shipping }))
+                    setForm((f) => ({ ...f, shipping: shipping === true }))
                   }
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={closeProductDialog}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
