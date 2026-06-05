@@ -10,7 +10,6 @@ const categoryFields = {
   description: v.string(),
   slug: v.string(),
   active: v.boolean(),
-  sortOrder: v.number(),
 };
 
 export const listActive = query({
@@ -33,7 +32,7 @@ export const listPaginated = query({
     await requireAdmin(ctx);
     const result = await ctx.db
       .query("productCategories")
-      .order("asc")
+      .withIndex("by_sort_order")
       .paginate(args.paginationOpts);
 
     if (!args.search?.trim()) {
@@ -72,10 +71,17 @@ export const create = mutation({
     if (existing) {
       throw new ConvexError("A category with this slug already exists");
     }
+    const last = await ctx.db
+      .query("productCategories")
+      .withIndex("by_sort_order")
+      .order("desc")
+      .first();
+    const nextSortOrder = (last?.sortOrder ?? -1) + 1;
     return await ctx.db.insert("productCategories", {
       ...args,
       slug,
       active: args.active ?? true,
+      sortOrder: nextSortOrder,
     });
   },
 });
@@ -98,6 +104,19 @@ export const update = mutation({
     }
     await ctx.db.patch(id, { ...data, slug });
     return id;
+  },
+});
+
+export const reorder = mutation({
+  args: {
+    orderedIds: v.array(v.id("productCategories")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const unique = Array.from(new Set(args.orderedIds));
+    for (let i = 0; i < unique.length; i += 1) {
+      await ctx.db.patch(unique[i], { sortOrder: i });
+    }
   },
 });
 

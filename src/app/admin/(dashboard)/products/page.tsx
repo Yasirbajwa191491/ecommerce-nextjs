@@ -41,7 +41,7 @@ import { useFormValidation } from "@/hooks/use-form-validation";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import { validateProductForm } from "@/lib/validation/admin-forms";
 import { cn } from "@/lib/utils";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { Product, ProductCategory } from "@/types/product";
 
 type ProductForm = {
@@ -84,12 +84,15 @@ export default function AdminProductsPage() {
   const create = useMutation(api.products.create);
   const update = useMutation(api.products.update);
   const remove = useMutation(api.products.remove);
+  const reorder = useMutation(api.products.reorder);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<Id<"products"> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draggedId, setDraggedId] = useState<Id<"products"> | null>(null);
 
   const validate = useCallback(
     (values: ProductForm) => validateProductForm(values),
@@ -192,6 +195,29 @@ export default function AdminProductsPage() {
     }
   };
 
+  const products = results as Product[];
+
+  const handleReorderDrop = async (targetId: Id<"products">) => {
+    if (!draggedId || draggedId === targetId) return;
+    const sourceIndex = products.findIndex((p) => p._id === draggedId);
+    const targetIndex = products.findIndex((p) => p._id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const reordered = [...products];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    try {
+      await reorder({ orderedIds: reordered.map((p) => p._id) });
+      toastSuccess("Product order updated");
+    } catch (e) {
+      toastError(e, {
+        title: "Couldn't reorder products",
+        fallback: "Failed to save product order. Please try again.",
+      });
+    } finally {
+      setDraggedId(null);
+    }
+  };
+
   return (
     <>
       <AdminPageHeader
@@ -200,11 +226,21 @@ export default function AdminProductsPage() {
         actionLabel="Add product"
         onAction={openCreate}
       />
+      <div className="mb-3 flex justify-end">
+        <Button
+          variant={reorderMode ? "default" : "outline"}
+          onClick={() => setReorderMode((v) => !v)}
+          className={reorderMode ? "bg-[#6254f3] hover:bg-[#5548e0]" : ""}
+        >
+          {reorderMode ? "Done reordering" : "Order list"}
+        </Button>
+      </div>
 
       <div className="rounded-lg border bg-background">
         <Table>
           <TableHeader>
             <TableRow>
+              {reorderMode ? <TableHead className="w-[40px]" /> : null}
               <TableHead className="w-[72px]">Image</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
@@ -217,20 +253,37 @@ export default function AdminProductsPage() {
             {status === "LoadingFirstPage" ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={reorderMode ? 7 : 6}>
                     <Skeleton className="h-10 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : results.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={reorderMode ? 7 : 6} className="text-center text-muted-foreground">
                   No products yet
                 </TableCell>
               </TableRow>
             ) : (
-              results.map((p) => (
-                <TableRow key={p._id}>
+              products.map((p) => (
+                <TableRow
+                  key={p._id}
+                  draggable={reorderMode}
+                  onDragStart={() => setDraggedId(p._id)}
+                  onDragOver={(e) => {
+                    if (!reorderMode) return;
+                    e.preventDefault();
+                  }}
+                  onDrop={() => {
+                    if (!reorderMode) return;
+                    void handleReorderDrop(p._id);
+                  }}
+                >
+                  {reorderMode ? (
+                    <TableCell className="text-muted-foreground">
+                      <GripVertical className="size-4" />
+                    </TableCell>
+                  ) : null}
                   <TableCell>
                     <Image
                       src={p.image[0]?.url ?? "/next.svg"}
@@ -248,8 +301,8 @@ export default function AdminProductsPage() {
                       </Badge>
                     ) : null}
                   </TableCell>
-                  <TableCell>{p.category?.name ?? "ΓÇö"}</TableCell>
-                  <TableCell className="text-right">Γé╣{p.price}</TableCell>
+                  <TableCell>{p.category?.name ?? "-"}</TableCell>
+                  <TableCell className="text-right">Rs {p.price}</TableCell>
                   <TableCell className="text-right">{p.stock}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
@@ -539,7 +592,7 @@ export default function AdminProductsPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "SavingΓÇª" : "Save"}
+              {saving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

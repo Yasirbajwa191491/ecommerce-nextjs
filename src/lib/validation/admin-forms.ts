@@ -34,7 +34,6 @@ export type CategoryFormValues = {
   name: string;
   slug: string;
   description: string;
-  sortOrder: number;
 };
 
 export function validateCategoryForm(
@@ -51,12 +50,6 @@ export function validateCategoryForm(
   if (values.description.trim().length > 500) {
     errors.description = "Description must be 500 characters or fewer";
   }
-  const sort = validatePositiveNumber(values.sortOrder, "Sort order", {
-    min: 0,
-    max: 9999,
-    allowZero: true,
-  });
-  if (sort) errors.sortOrder = sort;
   return errors;
 }
 

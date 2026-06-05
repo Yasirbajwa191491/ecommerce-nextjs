@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -12,11 +12,13 @@ import { toastError, toastSuccess } from "@/lib/app-toast";
 
 export function AdminAccessGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const session = useQuery(api.auth.getSessionInfo);
   const hasSuperAdmin = useQuery(api.auth.hasSuperAdmin);
   const bootstrap = useMutation(api.auth.bootstrapSuperAdmin);
   const [bootstrapping, setBootstrapping] = useState(false);
   const autoBootstrapAttempted = useRef(false);
+  const redirectAttempted = useRef(false);
 
   const runBootstrap = async () => {
     setBootstrapping(true);
@@ -56,6 +58,18 @@ export function AdminAccessGate({ children }: { children: React.ReactNode }) {
     }
   }, [session, hasSuperAdmin]);
 
+  useEffect(() => {
+    if (session === undefined) return;
+    if (session.authenticated) {
+      redirectAttempted.current = false;
+      return;
+    }
+    if (redirectAttempted.current) return;
+    redirectAttempted.current = true;
+    const redirectPath = pathname?.startsWith("/admin") ? pathname : "/admin/products";
+    router.replace(`/admin/login?redirect=${encodeURIComponent(redirectPath)}`);
+  }, [pathname, router, session]);
+
   if (session === undefined || hasSuperAdmin === undefined) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -65,7 +79,6 @@ export function AdminAccessGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!session.authenticated) {
-    router.replace("/admin/login?redirect=" + encodeURIComponent("/admin/products"));
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <Spinner className="size-8 text-[#6254f3]" />

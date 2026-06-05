@@ -415,7 +415,7 @@ export default function AdminUsersPage() {
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={saving}>
-              {saving ? "CreatingΓÇª" : "Create user"}
+              {saving ? "Creating..." : "Create user"}
             </Button>
           </DialogFooter>
         </DialogContent>

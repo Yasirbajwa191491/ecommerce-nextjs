@@ -20,12 +20,16 @@ const productFields = {
   description: v.string(),
 };
 
+const bySortOrder = (a: { sortOrder?: number | null }, b: { sortOrder?: number | null }) =>
+  (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER);
+
 /** Public catalog — capped list with category join (max 100). */
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const products = await ctx.db.query("products").order("desc").take(100);
-    return await enrichProducts(ctx, products);
+    const products = await ctx.db.query("products").collect();
+    const sorted = [...products].sort(bySortOrder).slice(0, 100);
+    return await enrichProducts(ctx, sorted);
   },
 });
 
@@ -37,25 +41,23 @@ export const listPaginated = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const baseQuery = args.categoryId
-      ? ctx.db
-          .query("products")
-          .withIndex("by_category_id", (iq) =>
-            iq.eq("categoryId", args.categoryId!)
-          )
-      : ctx.db.query("products");
-    const result = await baseQuery.order("desc").paginate(args.paginationOpts);
-    let page = await enrichProducts(ctx, result.page);
+    const result = await ctx.db.query("products").order("desc").paginate(args.paginationOpts);
+    let page = result.page;
+    if (args.categoryId) {
+      page = page.filter((p) => p.categoryId === args.categoryId);
+    }
+    page = [...page].sort(bySortOrder);
+    let enriched = await enrichProducts(ctx, page);
     if (args.search?.trim()) {
       const term = args.search.trim().toLowerCase();
-      page = page.filter(
+      enriched = enriched.filter(
         (p) =>
           p.name.toLowerCase().includes(term) ||
           p.company.toLowerCase().includes(term) ||
           p.category?.name.toLowerCase().includes(term)
       );
     }
-    return { ...result, page };
+    return { ...result, page: enriched };
   },
 });
 
@@ -87,7 +89,13 @@ export const create = mutation({
     if (!category) {
       throw new Error("Category not found");
     }
-    return await ctx.db.insert("products", args);
+    const all = await ctx.db.query("products").collect();
+    const maxSortOrder = all.reduce(
+      (max, product) => Math.max(max, product.sortOrder ?? -1),
+      -1
+    );
+    const nextSortOrder = maxSortOrder + 1;
+    return await ctx.db.insert("products", { ...args, sortOrder: nextSortOrder });
   },
 });
 
@@ -113,5 +121,18 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     await ctx.db.delete(args.id);
+  },
+});
+
+export const reorder = mutation({
+  args: {
+    orderedIds: v.array(v.id("products")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const unique = Array.from(new Set(args.orderedIds));
+    for (let i = 0; i < unique.length; i += 1) {
+      await ctx.db.patch(unique[i], { sortOrder: i });
+    }
   },
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Clock,
@@ -24,6 +24,7 @@ import {
 } from "@/lib/otp-config";
 import { STORE_NAME } from "@/lib/site";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,14 +39,29 @@ import { toastError, toastSuccess } from "@/lib/app-toast";
 
 type Step = "credentials" | "otp";
 
+const REMEMBER_ME_KEY = "admin_login_remember_me";
+const REMEMBERED_EMAIL_KEY = "admin_login_email";
+
 export function AdminLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/admin/products";
+  const initialRememberMe =
+    typeof window !== "undefined" &&
+    window.localStorage.getItem(REMEMBER_ME_KEY) === "true";
+  const initialRememberedEmail =
+    typeof window !== "undefined" && initialRememberMe
+      ? window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? ""
+      : "";
+
+  const navigateAfterLogin = () => {
+    // Force a full navigation so middleware sees the freshly set auth cookie.
+    window.location.assign(redirect);
+  };
 
   const [step, setStep] = useState<Step>("credentials");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialRememberedEmail);
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(initialRememberMe);
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
@@ -96,7 +112,14 @@ export function AdminLoginForm() {
         });
         return;
       }
-      router.push(redirect);
+      if (rememberMe) {
+        window.localStorage.setItem(REMEMBER_ME_KEY, "true");
+        window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim());
+      } else {
+        window.localStorage.removeItem(REMEMBER_ME_KEY);
+        window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
+      navigateAfterLogin();
     } catch {
       try {
         await authClient.emailOtp.sendVerificationOtp({
@@ -143,8 +166,15 @@ export function AdminLoginForm() {
         });
         return;
       }
+      if (rememberMe) {
+        window.localStorage.setItem(REMEMBER_ME_KEY, "true");
+        window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim());
+      } else {
+        window.localStorage.removeItem(REMEMBER_ME_KEY);
+        window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
       toastSuccess("Email verified. Welcome!");
-      router.push(redirect);
+      navigateAfterLogin();
     } catch {
       toastError(null, {
         title: "Verification failed",
@@ -356,6 +386,22 @@ export function AdminLoginForm() {
                       "Sign in"
                     )}
                   </Button>
+                  <div className="flex items-center justify-between pt-1">
+                    <label
+                      htmlFor="remember-me"
+                      className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+                    >
+                      <Checkbox
+                        id="remember-me"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
+                      />
+                      Remember me
+                    </label>
+                    <span className="text-xs text-muted-foreground/80">
+                      Saves email on this device
+                    </span>
+                  </div>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-6">

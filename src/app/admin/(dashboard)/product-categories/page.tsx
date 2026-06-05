@@ -32,7 +32,7 @@ import { useFormValidation } from "@/hooks/use-form-validation";
 import { validateCategoryForm } from "@/lib/validation/admin-forms";
 import { slugify } from "@/lib/slugify";
 import { toastError, toastSuccess } from "@/lib/app-toast";
-import { Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import type { ProductCategory } from "@/types/product";
 
 const emptyForm = {
@@ -40,7 +40,6 @@ const emptyForm = {
   description: "",
   slug: "",
   active: true,
-  sortOrder: 0,
 };
 
 export default function ProductCategoriesPage() {
@@ -52,12 +51,15 @@ export default function ProductCategoriesPage() {
   const create = useMutation(api.productCategories.create);
   const update = useMutation(api.productCategories.update);
   const remove = useMutation(api.productCategories.remove);
+  const reorder = useMutation(api.productCategories.reorder);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ProductCategory | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<Id<"productCategories"> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draggedId, setDraggedId] = useState<Id<"productCategories"> | null>(null);
 
   const validate = useCallback(
     (values: typeof form) => validateCategoryForm(values),
@@ -84,7 +86,6 @@ export default function ProductCategoriesPage() {
       description: cat.description,
       slug: cat.slug,
       active: cat.active,
-      sortOrder: cat.sortOrder,
     });
     resetValidation();
     setDialogOpen(true);
@@ -107,7 +108,6 @@ export default function ProductCategoriesPage() {
         description: form.description.trim(),
         slug: form.slug.trim() || slugify(form.name),
         active: form.active,
-        sortOrder: Number(form.sortOrder) || 0,
       };
       if (editing) {
         await update({ id: editing._id, ...payload });
@@ -124,6 +124,29 @@ export default function ProductCategoriesPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const categories = results as ProductCategory[];
+
+  const handleReorderDrop = async (targetId: Id<"productCategories">) => {
+    if (!draggedId || draggedId === targetId) return;
+    const sourceIndex = categories.findIndex((c) => c._id === draggedId);
+    const targetIndex = categories.findIndex((c) => c._id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const reordered = [...categories];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    try {
+      await reorder({ orderedIds: reordered.map((c) => c._id) });
+      toastSuccess("Category order updated");
+    } catch (e) {
+      toastError(e, {
+        title: "Couldn't reorder categories",
+        fallback: "Failed to save category order. Please try again.",
+      });
+    } finally {
+      setDraggedId(null);
     }
   };
 
@@ -152,15 +175,24 @@ export default function ProductCategoriesPage() {
         actionLabel="Add category"
         onAction={openCreate}
       />
+      <div className="mb-3 flex justify-end">
+        <Button
+          variant={reorderMode ? "default" : "outline"}
+          onClick={() => setReorderMode((v) => !v)}
+          className={reorderMode ? "bg-[#6254f3] hover:bg-[#5548e0]" : ""}
+        >
+          {reorderMode ? "Done reordering" : "Order list"}
+        </Button>
+      </div>
 
       <div className="rounded-lg border bg-background">
         <Table>
           <TableHeader>
             <TableRow>
+              {reorderMode ? <TableHead className="w-[40px]" /> : null}
               <TableHead>Name</TableHead>
               <TableHead>Slug</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Sort</TableHead>
               <TableHead className="w-[100px]" />
             </TableRow>
           </TableHeader>
@@ -168,20 +200,37 @@ export default function ProductCategoriesPage() {
             {status === "LoadingFirstPage" ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={reorderMode ? 5 : 4}>
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : results.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={reorderMode ? 5 : 4} className="text-center text-muted-foreground">
                   No categories yet
                 </TableCell>
               </TableRow>
             ) : (
-              results.map((cat) => (
-                <TableRow key={cat._id}>
+              categories.map((cat) => (
+                <TableRow
+                  key={cat._id}
+                  draggable={reorderMode}
+                  onDragStart={() => setDraggedId(cat._id)}
+                  onDragOver={(e) => {
+                    if (!reorderMode) return;
+                    e.preventDefault();
+                  }}
+                  onDrop={() => {
+                    if (!reorderMode) return;
+                    void handleReorderDrop(cat._id);
+                  }}
+                >
+                  {reorderMode ? (
+                    <TableCell className="text-muted-foreground">
+                      <GripVertical className="size-4" />
+                    </TableCell>
+                  ) : null}
                   <TableCell className="font-medium">{cat.name}</TableCell>
                   <TableCell className="text-muted-foreground">{cat.slug}</TableCell>
                   <TableCell>
@@ -189,7 +238,6 @@ export default function ProductCategoriesPage() {
                       {cat.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">{cat.sortOrder}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button
@@ -280,29 +328,6 @@ export default function ProductCategoriesPage() {
                 onBlur={() => validation.touch("description")}
                 aria-invalid={!!validation.fieldError("description")}
                 className={invalidInputClass(validation.fieldError("description"))}
-              />
-            </AdminFormField>
-            <AdminFormField
-              label="Sort order"
-              htmlFor="cat-sort"
-              error={validation.fieldError("sortOrder")}
-              description="Lower numbers appear first (0–9999)"
-            >
-              <Input
-                id="cat-sort"
-                type="number"
-                min={0}
-                max={9999}
-                value={form.sortOrder}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    sortOrder: Number.parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-                onBlur={() => validation.touch("sortOrder")}
-                aria-invalid={!!validation.fieldError("sortOrder")}
-                className={invalidInputClass(validation.fieldError("sortOrder"))}
               />
             </AdminFormField>
             <div className="flex items-center justify-between rounded-lg border px-3 py-2">

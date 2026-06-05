@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Package,
+  UserCircle2,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/profile", label: "Profile", icon: UserCircle2 },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

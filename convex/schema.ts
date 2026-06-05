@@ -12,6 +12,7 @@ export default defineSchema({
     sortOrder: v.number(),
   })
     .index("by_slug", ["slug"])
+    .index("by_sort_order", ["sortOrder"])
     .index("by_active_sort", ["active", "sortOrder"]),
 
   products: defineTable({
@@ -27,7 +28,9 @@ export default defineSchema({
     reviews: v.number(),
     stars: v.number(),
     description: v.string(),
+    sortOrder: v.optional(v.number()),
   })
+    .index("by_sort_order", ["sortOrder"])
     .index("by_category_id", ["categoryId"])
     .index("by_featured", ["featured"]),
 });

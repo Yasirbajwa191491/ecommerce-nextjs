@@ -8,6 +8,7 @@ export type AuthUser = {
   _id: string;
   email: string;
   name: string;
+  image?: string | null;
   emailVerified: boolean;
   role?: string | null;
   banned?: boolean | null;
