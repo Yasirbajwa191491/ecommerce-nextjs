@@ -42,7 +42,11 @@ export function ColumnVisibilityPanel({
           </Button>
         }
       />
-      <PopoverContent align="end" side="bottom" className="w-72 p-0">
+      <PopoverContent
+        align="end"
+        side="bottom"
+        className="w-[min(18rem,calc(100vw-2rem))] p-0"
+      >
         <PopoverHeader className="border-b px-3 py-2.5">
           <PopoverTitle className="text-sm font-medium">
             Table columns

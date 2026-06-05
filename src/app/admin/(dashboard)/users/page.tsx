@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -181,8 +182,8 @@ export default function AdminUsersPage() {
         onAction={() => setDialogOpen(true)}
       />
 
-      <div className="rounded-lg border bg-background">
-        <Table>
+      <AdminTableCard>
+        <Table className="min-w-[40rem]">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -224,7 +225,7 @@ export default function AdminUsersPage() {
                         )
                       }
                     >
-                      <SelectTrigger className="h-8 w-[130px]">
+                      <SelectTrigger className="h-8 w-full max-w-[8.5rem] sm:max-w-[9rem]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -308,7 +309,7 @@ export default function AdminUsersPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </AdminTableCard>
 
       {status === "CanLoadMore" ? (
         <div className="mt-4 flex justify-center">
@@ -327,7 +328,7 @@ export default function AdminUsersPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="size-5" />

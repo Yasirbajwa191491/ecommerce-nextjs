@@ -49,7 +49,7 @@ export function AdminProductFilters({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" className="shrink-0">
+          <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto">
             <SlidersHorizontal className="size-4" />
             Filters
             {active ? (
@@ -60,7 +60,10 @@ export function AdminProductFilters({
           </Button>
         }
       />
-      <PopoverContent align="end" className="w-72">
+      <PopoverContent
+        align="end"
+        className="w-[min(18rem,calc(100vw-2rem))]"
+      >
         <PopoverHeader>
           <PopoverTitle>Filter products</PopoverTitle>
         </PopoverHeader>

@@ -9,6 +9,7 @@ import {
   AdminListToolbar,
   type StatusTab,
 } from "@/components/admin/admin-list-toolbar";
+import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
 import { Button } from "@/components/ui/button";
@@ -216,8 +217,8 @@ export default function ProductCategoriesPage() {
         onAction={openCreate}
       />
 
-      <div className="rounded-lg border bg-background">
-        <Table>
+      <AdminTableCard>
+        <Table className="min-w-[28rem]">
           <TableHeader>
             <TableRow>
               {reorderMode ? <TableHead className="w-[40px]" /> : null}
@@ -293,7 +294,7 @@ export default function ProductCategoriesPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </AdminTableCard>
 
       {status === "CanLoadMore" && !reorderMode ? (
         <div className="mt-4 flex justify-center">
@@ -304,7 +305,7 @@ export default function ProductCategoriesPage() {
       ) : null}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editing ? "Edit category" : "New category"}

@@ -15,6 +15,7 @@ import {
   toProductFilterArgs,
   type ProductListFilters,
 } from "@/components/admin/admin-product-filters";
+import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { ColumnVisibilityPanel } from "@/components/admin/column-visibility-panel";
 import {
   ProductColorSwatches,
@@ -413,7 +414,10 @@ export default function AdminProductsPage() {
         );
       case "description":
         return (
-          <TableCell key={columnId} className="max-w-[200px]">
+          <TableCell
+            key={columnId}
+            className="max-w-[12rem] whitespace-normal sm:max-w-[14rem]"
+          >
             <p className="line-clamp-2 text-sm text-muted-foreground">
               {p.description || "—"}
             </p>
@@ -488,7 +492,7 @@ export default function AdminProductsPage() {
         onAction={openCreate}
       />
 
-      <div className="mb-2 flex justify-end">
+      <div className="mb-2 flex justify-end sm:mb-3">
         <ColumnVisibilityPanel
           columns={tableColumns}
           visibility={columnVisibility}
@@ -496,8 +500,8 @@ export default function AdminProductsPage() {
         />
       </div>
 
-      <div className="rounded-lg border bg-background">
-        <Table>
+      <AdminTableCard>
+        <Table className="min-w-[56rem]">
           <TableHeader>
             <TableRow>
               {reorderMode ? <TableHead className="w-[40px]" /> : null}
@@ -574,7 +578,7 @@ export default function AdminProductsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </AdminTableCard>
 
       {status === "CanLoadMore" && !reorderMode ? (
         <div className="mt-4 flex justify-center">
@@ -585,7 +589,7 @@ export default function AdminProductsPage() {
       ) : null}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
           </DialogHeader>

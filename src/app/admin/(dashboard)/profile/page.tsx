@@ -196,8 +196,8 @@ export default function AdminProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="flex items-center gap-4">
-              <Avatar className="!size-32 shrink-0">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              <Avatar className="!size-24 shrink-0 sm:!size-32">
                 <AvatarImage src={imageUrl ?? undefined} alt={name || profile.name} />
                 <AvatarFallback>{getInitials(name || profile.name)}</AvatarFallback>
               </Avatar>
@@ -325,7 +325,7 @@ export default function AdminProfilePage() {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
               {newPassword.length > 0 ? (
-                <ul className="mt-2 grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                <ul className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
                   <PasswordHint ok={passwordChecks.minLength} label="8+ characters" />
                   <PasswordHint ok={passwordChecks.uppercase} label="Uppercase" />
                   <PasswordHint ok={passwordChecks.lowercase} label="Lowercase" />
@@ -347,8 +347,8 @@ export default function AdminProfilePage() {
 
             <Separator />
 
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
+            <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-sm font-medium">Sign out other devices</p>
                 <p className="text-xs text-muted-foreground">
                   Revoke all other sessions after changing password.

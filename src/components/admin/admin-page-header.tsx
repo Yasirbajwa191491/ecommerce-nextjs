@@ -14,20 +14,24 @@ export function AdminPageHeader({
   onAction,
 }: AdminPageHeaderProps) {
   return (
-    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    <div className="mb-6 sm:mb-8">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="hidden text-xl font-semibold tracking-tight text-foreground lg:block sm:text-2xl">
+            {title}
+          </h1>
+          {description ? (
+            <p className="text-sm text-muted-foreground lg:mt-1">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {actionLabel && onAction ? (
+          <Button size="sm" onClick={onAction} className="shrink-0">
+            {actionLabel}
+          </Button>
         ) : null}
       </div>
-      {actionLabel && onAction ? (
-        <Button onClick={onAction} className="shrink-0">
-          {actionLabel}
-        </Button>
-      ) : null}
     </div>
   );
 }
