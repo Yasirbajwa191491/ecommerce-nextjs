@@ -1,5 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { getAuthUserOrNull, requireAdmin } from "./lib/requireAdmin";
@@ -38,6 +39,39 @@ const bySortOrder = (
 
 function matchesActiveFilter(product: { active?: boolean | null }, active: boolean) {
   return isProductActive(product) === active;
+}
+
+const sortValidator = v.optional(
+  v.union(
+    v.literal("lowest"),
+    v.literal("highest"),
+    v.literal("a-z"),
+    v.literal("z-a")
+  )
+);
+
+export type ProductSort = "lowest" | "highest" | "a-z" | "z-a";
+
+function sortProducts<
+  T extends { name: string; price: number; sortOrder?: number | null },
+>(products: T[], sort: ProductSort = "lowest") {
+  const sorted = [...products];
+  switch (sort) {
+    case "highest":
+      sorted.sort((a, b) => b.price - a.price);
+      break;
+    case "a-z":
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "z-a":
+      sorted.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    case "lowest":
+    default:
+      sorted.sort((a, b) => a.price - b.price);
+      break;
+  }
+  return sorted;
 }
 
 function filterProducts<
@@ -95,7 +129,51 @@ function filterProducts<
     filtered = filtered.filter((p) => p.stars >= args.minStars!);
   }
 
-  return [...filtered].sort(bySortOrder);
+  return filtered;
+}
+
+const publicFilterArgs = {
+  search: v.optional(v.string()),
+  categoryId: v.optional(v.id("productCategories")),
+  minPrice: v.optional(v.number()),
+  maxPrice: v.optional(v.number()),
+  sort: sortValidator,
+};
+
+async function loadActiveProducts(ctx: QueryCtx) {
+  const products = await ctx.db.query("products").collect();
+  return products.filter(isProductActive);
+}
+
+function applyPublicFilters<
+  T extends {
+    name: string;
+    company: string;
+    price: number;
+    stock: number;
+    stars: number;
+    categoryId: string;
+    active?: boolean | null;
+    sortOrder?: number | null;
+  },
+>(
+  products: T[],
+  args: {
+    search?: string;
+    categoryId?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sort?: ProductSort;
+  }
+) {
+  const filtered = filterProducts(products, {
+    active: true,
+    search: args.search,
+    categoryId: args.categoryId,
+    minPrice: args.minPrice,
+    maxPrice: args.maxPrice,
+  });
+  return sortProducts(filtered, args.sort ?? "lowest");
 }
 
 async function isRequestAdmin(ctx: Parameters<typeof getAuthUserOrNull>[0]) {
@@ -108,12 +186,52 @@ async function isRequestAdmin(ctx: Parameters<typeof getAuthUserOrNull>[0]) {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const products = await ctx.db.query("products").collect();
-    const sorted = products
-      .filter(isProductActive)
-      .sort(bySortOrder)
-      .slice(0, 100);
+    const products = await loadActiveProducts(ctx);
+    const sorted = products.sort(bySortOrder).slice(0, 100);
     return await enrichProducts(ctx, sorted);
+  },
+});
+
+/** Min/max price of active catalog (small payload for filter UI). */
+export const getPublicPriceBounds = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await loadActiveProducts(ctx);
+    if (products.length === 0) {
+      return { minPrice: 0, maxPrice: 0 };
+    }
+    const prices = products.map((p) => p.price);
+    return {
+      minPrice: Math.min(...prices),
+      maxPrice: Math.max(...prices),
+    };
+  },
+});
+
+/** Total count for current public filters (pagination UI). */
+export const countPublicFiltered = query({
+  args: publicFilterArgs,
+  handler: async (ctx, args) => {
+    const products = await loadActiveProducts(ctx);
+    return applyPublicFilters(products, args).length;
+  },
+});
+
+/** Paginated public catalog — filters/sorts server-side, returns one page only. */
+export const listPublicPaginated = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    ...publicFilterArgs,
+  },
+  handler: async (ctx, args) => {
+    const products = await loadActiveProducts(ctx);
+    const filtered = applyPublicFilters(products, args);
+    const { page, isDone, continueCursor } = paginateArray(
+      filtered,
+      args.paginationOpts
+    );
+    const enriched = await enrichProducts(ctx, page);
+    return { page: enriched, isDone, continueCursor };
   },
 });
 
@@ -144,7 +262,7 @@ export const listPaginated = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const products = await ctx.db.query("products").collect();
-    const filtered = filterProducts(products, args);
+    const filtered = filterProducts(products, args).sort(bySortOrder);
     const { page, isDone, continueCursor } = paginateArray(
       filtered,
       args.paginationOpts
