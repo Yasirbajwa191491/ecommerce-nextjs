@@ -1,12 +1,18 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import {
+  buildProductsSearchPath,
+  markSearchUrlSynced,
+  resetSearchUrlSync,
+  syncSearchUrl,
+} from "@/lib/shop/sync-search-url";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -27,52 +33,40 @@ function HeaderSearchForm({
   const debouncedQuery = useDebouncedValue(inputValue, SEARCH_DEBOUNCE_MS);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const urlSearchTerm = searchParams.get("search") ?? "";
-  const lastSyncedTermRef = useRef<string | null>(null);
+  const urlSearchTerm = useSearchParams().get("search") ?? "";
+
+  useEffect(() => {
+    if (pathname !== "/products") {
+      resetSearchUrlSync();
+      return;
+    }
+    markSearchUrlSynced(buildProductsSearchPath(urlSearchTerm));
+  }, [pathname, urlSearchTerm]);
 
   useEffect(() => {
     if (!hasEdited) return;
 
     const term = debouncedQuery.trim();
-    if (term === urlSearchTerm && lastSyncedTermRef.current === term) return;
-
-    const params = new URLSearchParams(searchParams.toString());
-    if (term) params.set("search", term);
-    else params.delete("search");
-
-    const qs = params.toString();
-    const targetPath = qs ? `/products?${qs}` : "/products";
-    const currentPath =
-      typeof window !== "undefined"
-        ? `${window.location.pathname}${window.location.search}`
-        : "";
-
-    if (currentPath === targetPath) {
-      lastSyncedTermRef.current = term;
+    const targetPath = buildProductsSearchPath(term);
+    if (term === urlSearchTerm) {
+      markSearchUrlSynced(targetPath);
       return;
     }
 
-    lastSyncedTermRef.current = term;
-
-    if (pathname === "/products") {
-      router.replace(targetPath, { scroll: false });
-      return;
-    }
-
-    if (term) {
-      router.push(targetPath);
-    }
-  }, [debouncedQuery, hasEdited, pathname, router, searchParams, urlSearchTerm]);
+    syncSearchUrl(targetPath, pathname, router);
+  }, [debouncedQuery, hasEdited, pathname, router, urlSearchTerm]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setHasEdited(true);
-    const term = inputValue.trim();
-    const params = new URLSearchParams();
-    if (term) params.set("search", term);
-    const qs = params.toString();
-    router.push(qs ? `/products?${qs}` : "/products");
+    const targetPath = buildProductsSearchPath(inputValue);
+
+    if (pathname !== "/products") {
+      router.push(targetPath);
+      return;
+    }
+
+    syncSearchUrl(targetPath, pathname, router);
   };
 
   const inputStyle =
@@ -119,7 +113,7 @@ function HeaderSearchWithParams(props: HeaderSearchProps) {
   return <HeaderSearchForm {...props} initialQuery={initialQuery} />;
 }
 
-function HeaderSearchFallback({ className }: HeaderSearchProps) {
+export function HeaderSearchFallback({ className }: HeaderSearchProps) {
   return (
     <Skeleton
       className={cn("h-10 w-full max-w-xl rounded-full sm:h-11", className)}

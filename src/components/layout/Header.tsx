@@ -6,8 +6,9 @@ import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STORE_NAME } from "@/lib/site";
 import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { HeaderNav } from "./header-nav";
-import { HeaderSearch } from "./header-search";
+import { HeaderSearch, HeaderSearchFallback } from "./header-search";
 import { HeaderCart } from "./header-actions";
 import { HeaderMobileMenu } from "./header-mobile-menu";
 
@@ -16,6 +17,22 @@ const HEADER_GUTTER = "clamp(1.25rem, 4vw, 4.8rem)";
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchReady, setSearchReady] = useState(false);
+  const isLg = useMediaQuery("(min-width: 1024px)");
+
+  useEffect(() => {
+    setSearchReady(true);
+  }, []);
+
+  const mobileSearch = !searchReady ? (
+    <HeaderSearchFallback className="w-full max-w-none" />
+  ) : !isLg ? (
+    <HeaderSearch className="w-full max-w-none" />
+  ) : null;
+
+  const desktopSearch = searchReady && isLg ? (
+    <HeaderSearch className="w-full max-w-xl" />
+  ) : null;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -49,7 +66,7 @@ export default function Header() {
         </Link>
 
         <div className="flex min-w-0 w-full justify-center px-1 sm:px-2 md:max-w-xl">
-          <HeaderSearch className="w-full max-w-none" />
+          {mobileSearch}
         </div>
 
         <div className="flex items-center justify-self-end gap-2.5 sm:gap-4">
@@ -79,7 +96,7 @@ export default function Header() {
         </Link>
 
         <div className="flex min-w-0 flex-1 justify-center px-6">
-          <HeaderSearch className="w-full max-w-xl" />
+          {desktopSearch}
         </div>
 
         <div className="flex shrink-0 items-center gap-10">
