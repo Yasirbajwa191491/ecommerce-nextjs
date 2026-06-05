@@ -118,7 +118,7 @@ export default function ProductCatalog() {
           paddingRight: "clamp(1rem, 3vw, 3rem)",
         }}
       >
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+        <div className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-2 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] sm:gap-3 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
           <ProductCatalogFilters
             categories={categories ?? []}
             categoryId={categoryId}
@@ -127,7 +127,7 @@ export default function ProductCatalog() {
             priceRange={priceRange}
             onPriceRangeChange={setPriceRange}
             onClear={handleClear}
-            className="lg:sticky lg:top-24 lg:self-start"
+            className="sticky top-[4.25rem] z-10 self-start max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain sm:top-[4.5rem] lg:top-24 lg:max-h-[calc(100vh-11rem)]"
           />
 
           <section className="min-w-0">
