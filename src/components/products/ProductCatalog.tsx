@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import type { Product } from "@/types/product";
 import type { ProductSort } from "@/lib/shop/product-sort";
 import { ProductCatalogFilters } from "@/components/products/product-catalog-filters";
 import { ProductCatalogToolbar } from "@/components/products/product-catalog-toolbar";
-import { ProductCatalogPagination } from "@/components/products/product-catalog-pagination";
+import { ProductCatalogLoadMore } from "@/components/products/product-catalog-load-more";
 import ProductCard from "@/components/products/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,8 @@ export default function ProductCatalog() {
   const [sort, setSort] = useState<ProductSort>("lowest");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(0);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const loadingMoreRef = useRef(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const debouncedPriceRange = useDebouncedValue(priceRange, 400);
   const [priceInitialized, setPriceInitialized] = useState(false);
@@ -51,15 +55,13 @@ export default function ProductCatalog() {
     [urlSearch, categoryId, debouncedPriceRange, priceInitialized, sort]
   );
 
+  const filterKey = useMemo(() => JSON.stringify(filterArgs), [filterArgs]);
+
   useEffect(() => {
     setPage(0);
-  }, [
-    urlSearch,
-    categoryId,
-    debouncedPriceRange[0],
-    debouncedPriceRange[1],
-    sort,
-  ]);
+    setAllProducts([]);
+    loadingMoreRef.current = false;
+  }, [filterKey]);
 
   const totalCount = useQuery(api.products.countPublicFiltered, filterArgs);
 
@@ -71,14 +73,45 @@ export default function ProductCatalog() {
     ...filterArgs,
   });
 
-  const products = catalogPage?.page ?? [];
-  const isLoading =
-    categories === undefined ||
-    priceBounds === undefined ||
-    catalogPage === undefined ||
-    totalCount === undefined;
+  useEffect(() => {
+    if (!catalogPage) return;
+    loadingMoreRef.current = false;
 
-  const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE));
+    setAllProducts((previous) => {
+      if (page === 0) {
+        return catalogPage.page as Product[];
+      }
+
+      const existingIds = new Set(previous.map((product) => product._id));
+      const nextItems = (catalogPage.page as Product[]).filter(
+        (product) => !existingIds.has(product._id)
+      );
+      return [...previous, ...nextItems];
+    });
+  }, [catalogPage, page]);
+
+  const isInitialLoading =
+    (categories === undefined ||
+      priceBounds === undefined ||
+      totalCount === undefined ||
+      catalogPage === undefined) &&
+    allProducts.length === 0;
+
+  const isLoadingMore =
+    page > 0 && catalogPage === undefined && allProducts.length > 0;
+
+  const hasMore = (totalCount ?? 0) > allProducts.length;
+
+  const handleLoadMore = useCallback(() => {
+    if (!hasMore || isLoadingMore || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setPage((current) => current + 1);
+  }, [hasMore, isLoadingMore]);
+
+  const sentinelRef = useInfiniteScroll({
+    enabled: hasMore && !isLoadingMore && !isInitialLoading,
+    onLoadMore: handleLoadMore,
+  });
 
   const handleClear = () => {
     setCategoryId("all");
@@ -87,6 +120,7 @@ export default function ProductCatalog() {
       setPriceRange([priceBounds.minPrice, priceBounds.maxPrice]);
     }
     setPage(0);
+    setAllProducts([]);
     router.replace("/products");
   };
 
@@ -140,7 +174,7 @@ export default function ProductCatalog() {
               onSortChange={setSort}
             />
 
-            {isLoading ? (
+            {isInitialLoading ? (
               <div
                 className={cn(
                   "grid",
@@ -159,7 +193,7 @@ export default function ProductCatalog() {
                   />
                 ))}
               </div>
-            ) : products.length === 0 ? (
+            ) : allProducts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border/80 bg-card px-6 py-20 text-center">
                 <p className="text-xl font-semibold text-foreground">
                   No products found
@@ -171,25 +205,30 @@ export default function ProductCatalog() {
                 </p>
               </div>
             ) : (
-              <div
-                className={cn(
-                  "grid",
-                  view === "grid"
-                    ? "grid-cols-1 gap-1 sm:gap-1.5 md:grid-cols-2 2xl:grid-cols-3"
-                    : "flex flex-col gap-3 sm:gap-4"
-                )}
-              >
-                {products.map((product) => (
-                  <ProductCard key={product._id} {...product} view={view} />
-                ))}
-              </div>
-            )}
+              <>
+                <div
+                  className={cn(
+                    "grid",
+                    view === "grid"
+                      ? "grid-cols-1 gap-1 sm:gap-1.5 md:grid-cols-2 2xl:grid-cols-3"
+                      : "flex flex-col gap-3 sm:gap-4"
+                  )}
+                >
+                  {allProducts.map((product) => (
+                    <ProductCard key={product._id} {...product} view={view} />
+                  ))}
+                </div>
 
-            <ProductCatalogPagination
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
+                <ProductCatalogLoadMore
+                  sentinelRef={sentinelRef}
+                  isLoadingMore={isLoadingMore}
+                  hasMore={hasMore}
+                  loadedCount={allProducts.length}
+                  totalCount={totalCount ?? 0}
+                  view={view}
+                />
+              </>
+            )}
           </section>
         </div>
       </div>
