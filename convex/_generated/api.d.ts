@@ -10,6 +10,7 @@
 
 import type * as adminUsers from "../adminUsers.js";
 import type * as auth from "../auth.js";
+import type * as contactMessages from "../contactMessages.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as lib_authRoles from "../lib/authRoles.js";
@@ -32,6 +33,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminUsers: typeof adminUsers;
   auth: typeof auth;
+  contactMessages: typeof contactMessages;
   email: typeof email;
   http: typeof http;
   "lib/authRoles": typeof lib_authRoles;

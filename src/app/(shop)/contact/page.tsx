@@ -1,74 +1,142 @@
 "use client";
 
-import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
+import { Clock, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
+import { ContactForm } from "@/components/contact/contact-form";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { CONTACT_INFO, STORE_NAME } from "@/lib/site";
+
+type ContactCard = {
+  icon: typeof MapPin;
+  title: string;
+  lines: string[];
+  href?: string;
+};
+
+const CONTACT_CARDS: ContactCard[] = [
+  {
+    icon: MapPin,
+    title: "Visit us",
+    lines: [CONTACT_INFO.address],
+  },
+  {
+    icon: Phone,
+    title: "Call us",
+    lines: [CONTACT_INFO.phone],
+    href: CONTACT_INFO.phoneHref,
+  },
+  {
+    icon: Mail,
+    title: "Email us",
+    lines: [CONTACT_INFO.email],
+    href: `mailto:${CONTACT_INFO.email}`,
+  },
+  {
+    icon: Clock,
+    title: "Business hours",
+    lines: [CONTACT_INFO.hours],
+  },
+];
 
 export default function ContactPage() {
   return (
-    <section className="container mx-auto max-w-xl px-4 py-24">
-      <Alert className="mb-8">
-        <AlertTitle>We&apos;re here to help</AlertTitle>
-        <AlertDescription>
-          Send a message and we&apos;ll get back to you within 1–2 business days.
-        </AlertDescription>
-      </Alert>
+    <div className="min-h-screen bg-muted/20">
+      <section className="border-b border-border/60 bg-background">
+        <div
+          className="mx-auto w-full max-w-[1600px] py-8 sm:py-10 md:py-12"
+          style={{
+            paddingLeft: "clamp(1rem, 3vw, 3rem)",
+            paddingRight: "clamp(1rem, 3vw, 3rem)",
+          }}
+        >
+          <div className="mx-auto max-w-3xl text-center md:mx-0 md:max-w-none md:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[#6254f3] uppercase sm:text-xs">
+              <MessageSquare className="size-3.5" />
+              Contact
+            </span>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-[2.5rem]">
+              We&apos;re here to help
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Questions about an order, product, or partnership? Reach out to
+              the {STORE_NAME} team — we typically respond within 1–2 business
+              days.
+            </p>
+          </div>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact us</CardTitle>
-          <CardDescription>Fill in the form below.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              toast.success("Message sent!", {
-                description: "Thanks for reaching out to Ecommerce Store.",
-              });
-            }}
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" placeholder="Your name" required />
+      <section
+        className="mx-auto w-full max-w-[1600px] py-8 sm:py-10 md:py-12 lg:py-14"
+        style={{
+          paddingLeft: "clamp(1rem, 3vw, 3rem)",
+          paddingRight: "clamp(1rem, 3vw, 3rem)",
+        }}
+      >
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start lg:gap-8 xl:gap-10">
+          <div className="flex flex-col gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              {CONTACT_CARDS.map(({ icon: Icon, title, lines, href }) => (
+                <Card
+                  key={title}
+                  className="border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <CardContent className="flex gap-4 p-5">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#6254f3]/10 text-[#6254f3]">
+                      <Icon className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {title}
+                      </p>
+                      {lines.map((line) =>
+                        href ? (
+                          <a
+                            key={line}
+                            href={href}
+                            className="mt-1 block text-sm text-muted-foreground transition-colors hover:text-[#6254f3]"
+                          >
+                            {line}
+                          </a>
+                        ) : (
+                          <p
+                            key={line}
+                            className="mt-1 text-sm leading-relaxed text-muted-foreground"
+                          >
+                            {line}
+                          </p>
+                        )
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="message">Message</Label>
-              <Textarea
-                id="message"
-                name="message"
-                placeholder="How can we help?"
-                rows={5}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full sm:w-auto">
-              Send message
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </section>
+
+            <Card className="border-border/60 bg-gradient-to-br from-[#6254f3]/8 to-transparent shadow-sm">
+              <CardContent className="space-y-3 p-5 sm:p-6">
+                <p className="text-sm font-semibold text-foreground">
+                  Prefer browsing on your own?
+                </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Explore our full catalog of furniture, electronics, and
+                  lifestyle essentials anytime.
+                </p>
+                <Button
+                  render={<Link href="/products" />}
+                  variant="outline"
+                  className="h-10 border-[#6254f3]/30 text-[#6254f3] hover:bg-[#6254f3]/5"
+                >
+                  View all products
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <ContactForm />
+        </div>
+      </section>
+    </div>
   );
 }

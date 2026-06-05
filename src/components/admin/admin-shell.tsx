@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Package,
   UserCircle2,
   Users,
@@ -27,6 +28,7 @@ import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
+  { href: "/admin/contact-messages", label: "Contact", icon: MessageSquare },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/profile", label: "Profile", icon: UserCircle2 },
 ];

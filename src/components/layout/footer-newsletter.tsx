@@ -48,7 +48,7 @@ export function FooterNewsletter() {
 
   return (
     <form
-      className="mt-4 flex flex-col gap-2.5 sm:flex-row"
+      className="mt-4 flex w-full items-stretch gap-2 sm:gap-2.5"
       onSubmit={handleSubmit}
     >
       <Input
@@ -59,12 +59,12 @@ export function FooterNewsletter() {
         placeholder="Your email address"
         aria-label="Email for newsletter"
         disabled={submitting}
-        className="h-11 border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:border-[#6254f3]/50 focus-visible:ring-[#6254f3]/25"
+        className="h-10 min-w-0 flex-1 border-white/15 bg-white/5 text-sm text-white placeholder:text-white/40 focus-visible:border-[#6254f3]/50 focus-visible:ring-[#6254f3]/25 sm:h-11 sm:text-base"
       />
       <Button
         type="submit"
         disabled={submitting}
-        className="h-11 shrink-0 bg-[#6254f3] px-6 text-white hover:bg-[#5548e0] disabled:opacity-70"
+        className="h-10 shrink-0 bg-[#6254f3] px-4 text-sm text-white hover:bg-[#5548e0] disabled:opacity-70 sm:h-11 sm:px-6"
       >
         {submitting ? "Subscribing…" : "Subscribe"}
       </Button>

@@ -43,4 +43,13 @@ export default defineSchema({
     subscribedAt: v.number(),
     source: v.optional(v.string()),
   }).index("by_email", ["email"]),
+
+  contactMessages: defineTable({
+    name: v.string(),
+    email: v.string(),
+    message: v.string(),
+    submittedAt: v.number(),
+    read: v.boolean(),
+    source: v.optional(v.string()),
+  }).index("by_submitted_at", ["submittedAt"]),
 });
