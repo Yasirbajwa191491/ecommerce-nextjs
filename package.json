@@ -6,10 +6,13 @@
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "next dev",
     "dev:backend": "convex dev",
+    "dev:sync-url": "node scripts/sync-convex-site-url.mjs",
     "build": "next build",
+    "build:vercel": "node scripts/vercel-build.mjs",
     "start": "next start",
     "lint": "eslint",
     "seed": "convex run seed:seedAll",
+    "seed:admin": "convex run seed:seedAdminAndSettings",
     "ui:add": "shadcn add",
     "typecheck": "tsc --noEmit"
   },

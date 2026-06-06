@@ -17,7 +17,7 @@ Rebuild of `../client` (React) with **Next.js 16** and **Convex** realtime backe
 cd ecommerce-nextjs
 npm install
 npx convex dev          # link to doting-bat-377 (once)
-npx convex env set SITE_URL http://localhost:3000
+npm run dev:sync-url    # sets Convex SITE_URL to http://localhost:3000
 npx convex env set BETTER_AUTH_SECRET "<random-32+-char-secret>"
 # Optional — OTP emails via Resend (logs OTP to console if unset)
 npx convex env set RESEND_API_KEY "re_..."
@@ -29,6 +29,24 @@ npm run dev             # Next.js + Convex
 ```
 
 Open http://localhost:3000/home
+
+## Deploy to Vercel
+
+1. Import the repo in Vercel and set **Root Directory** to `ecommerce-nextjs`.
+2. In the Convex dashboard, create a **production** deployment and generate a **Production deploy key**.
+3. Generate a **Preview deploy key** for PR preview backends.
+4. In Vercel → **Environment Variables**:
+   - `CONVEX_DEPLOY_KEY` = production key → **Production** only
+   - `CONVEX_DEPLOY_KEY` = preview key → **Preview** only
+   - Optional: `SITE_URL` = `https://your-custom-domain.com` on **Production** (overrides auto-detected Vercel URL)
+5. On Convex production, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, etc.
+6. Deploy. The build runs `npm run build:vercel`, which:
+   - Resolves `SITE_URL` (preview: `https://<branch>.vercel.app`, production: production domain)
+   - Syncs `SITE_URL` to the target Convex deployment
+   - Runs `npx convex deploy` + `next build`
+   - Seeds admin + system settings if missing (`seed:seedAdminAndSettings`)
+
+`vercel.json` sets the build command automatically. For a custom domain, set `SITE_URL` in Vercel Production env vars.
 
 ### Admin (Better Auth)
 

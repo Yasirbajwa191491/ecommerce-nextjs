@@ -131,6 +131,16 @@ export const seedSuperAdmin = internalAction({
   },
 });
 
+/** Idempotent deploy seed: system settings + super admin only. */
+export const seedAdminAndSettings = mutation({
+  args: {},
+  handler: async (ctx): Promise<{ settings: { inserted: number }; adminScheduled: true }> => {
+    const settings = await ctx.runMutation(internal.settings.seedDefaults, {});
+    await ctx.scheduler.runAfter(0, internal.seed.seedSuperAdmin, {});
+    return { settings, adminScheduled: true };
+  },
+});
+
 export const seedAll = mutation({
   args: {},
   handler: async (ctx) => {

@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
+import { resolveSiteUrl } from "@/lib/resolve-site-url";
 import { STORE_NAME } from "@/lib/site";
 
-const DEFAULT_SITE_URL = "http://localhost:3000";
-
 function getMetadataBase() {
-  const siteUrl = process.env.SITE_URL?.trim() || DEFAULT_SITE_URL;
-  return new URL(siteUrl);
+  return new URL(resolveSiteUrl());
 }
 
 type CreatePageMetadataOptions = {
