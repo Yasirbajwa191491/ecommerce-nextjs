@@ -57,7 +57,12 @@ export function OrderProgressTimeline({
   const activeIndex = getActiveStepIndex(status);
 
   return (
-    <ol className={cn("grid grid-cols-5 gap-1.5 sm:gap-2 md:gap-4", className)}>
+    <ol
+      className={cn(
+        "grid w-full grid-cols-5 gap-1.5 sm:gap-2 md:gap-4",
+        className
+      )}
+    >
       {PROGRESS_STEPS.map((step, index) => {
         const isComplete = index < activeIndex;
         const isCurrent = index === activeIndex;

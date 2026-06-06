@@ -135,23 +135,19 @@ export default function AdminOrdersPage() {
     loadMore(ADMIN_LIST_PAGE_SIZE);
   }, [canLoadMore, loadMore]);
 
-  const selectedStatusLabel = useMemo(() => {
-    const value = filters.orderStatus || "all";
-    const option = ORDER_STATUS_FILTER_OPTIONS.find((item) => item.value === value);
-    if (!option) return "All statuses";
-    const countSuffix =
-      option.value !== "all" && counts?.[option.value] !== undefined
-        ? ` (${counts[option.value]})`
-        : "";
-    return `${option.label}${countSuffix}`;
-  }, [filters.orderStatus, counts]);
-
-  const selectedSortLabel = useMemo(
+  const statusFilterItems = useMemo(
     () =>
-      ORDER_SORT_OPTIONS.find((option) => option.value === sort)?.label ??
-      "Newest first",
-    [sort]
+      ORDER_STATUS_FILTER_OPTIONS.map((option) => ({
+        value: option.value,
+        label:
+          option.value !== "all" && counts?.[option.value] !== undefined
+            ? `${option.label} (${counts[option.value]})`
+            : option.label,
+      })),
+    [counts]
   );
+
+  const orderStatusValue = filters.orderStatus || "all";
 
   const orderStatusControl = (
     <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
@@ -159,7 +155,8 @@ export default function AdminOrdersPage() {
         Order status
       </Label>
       <Select
-        value={filters.orderStatus || "all"}
+        value={orderStatusValue}
+        items={statusFilterItems}
         onValueChange={(value) =>
           setFilters({
             ...filters,
@@ -168,15 +165,16 @@ export default function AdminOrdersPage() {
         }
       >
         <SelectTrigger id="orders-status-filter" className="h-9 w-full sm:w-[11rem]">
-          <SelectValue placeholder="All statuses">{selectedStatusLabel}</SelectValue>
+          <SelectValue placeholder="All statuses" />
         </SelectTrigger>
         <SelectContent>
-          {ORDER_STATUS_FILTER_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+          {statusFilterItems.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              label={String(option.label)}
+            >
               {option.label}
-              {option.value !== "all" && counts?.[option.value] !== undefined
-                ? ` (${counts[option.value]})`
-                : ""}
             </SelectItem>
           ))}
         </SelectContent>
@@ -249,13 +247,21 @@ export default function AdminOrdersPage() {
           </>
         }
         sortControl={
-          <Select value={sort} onValueChange={(value) => setSort(value as OrderSort)}>
+          <Select
+            value={sort}
+            items={ORDER_SORT_OPTIONS}
+            onValueChange={(value) => setSort(value as OrderSort)}
+          >
             <SelectTrigger className="h-9 w-full sm:w-[10.5rem]">
-              <SelectValue placeholder="Sort">{selectedSortLabel}</SelectValue>
+              <SelectValue placeholder="Newest first" />
             </SelectTrigger>
             <SelectContent>
               {ORDER_SORT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  label={option.label}
+                >
                   {option.label}
                 </SelectItem>
               ))}
