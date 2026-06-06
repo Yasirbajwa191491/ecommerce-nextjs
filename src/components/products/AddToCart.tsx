@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { Minus, Plus, ShoppingBag, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useCartContext } from "@/context/cart_context";
 import { Product } from "@/types/product";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -18,7 +20,7 @@ export default function AddToCart({
   product,
   variant = "default",
 }: AddToCartProps) {
-  const { addToCart } = useCartContext();
+  const { addToCart, total_item } = useCartContext();
   const [amount, setAmount] = useState(1);
   const [color, setColor] = useState(product.colors[0] ?? "#000");
   const isDetail = variant === "detail";
@@ -85,7 +87,7 @@ export default function AddToCart({
       className={cn(
         "gap-2 rounded-full font-semibold",
         isDetail
-          ? "h-10 self-start bg-[#6254f3] px-5 text-sm hover:bg-[#5548e0] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
+          ? "h-10 bg-[#6254f3] px-5 text-sm hover:bg-[#5548e0] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
           : undefined
       )}
     >
@@ -93,6 +95,22 @@ export default function AddToCart({
       Add to cart
     </Button>
   );
+
+  const viewCartButton = isDetail ? (
+    <Button
+      render={<Link href="/cart" />}
+      variant="outline"
+      className="h-10 gap-2 rounded-full border-border/80 px-5 text-sm font-semibold hover:border-[#6254f3]/40 hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
+    >
+      <ShoppingCart className="size-4" />
+      View cart
+      {total_item > 0 ? (
+        <Badge className="h-5 min-w-5 rounded-full bg-[#6254f3] px-1.5 text-[11px] font-bold text-white hover:bg-[#6254f3]">
+          {total_item}
+        </Badge>
+      ) : null}
+    </Button>
+  ) : null;
 
   return (
     <div
@@ -135,9 +153,12 @@ export default function AddToCart({
       ) : null}
 
       {isDetail ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:items-center">
+        <div className="flex flex-col gap-4">
           {quantityControl}
-          {addToCartButton}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {addToCartButton}
+            {viewCartButton}
+          </div>
         </div>
       ) : (
         <>
