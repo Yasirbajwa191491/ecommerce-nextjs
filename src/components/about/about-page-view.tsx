@@ -1,0 +1,35 @@
+"use client";
+
+import { AboutContactSection } from "@/components/about/about-contact-section";
+import { AboutCtaSection } from "@/components/about/about-cta-section";
+import {
+  AboutHowItWorksSection,
+  AboutPaymentSection,
+  AboutShippingSection,
+  AboutStorySection,
+  AboutSupportSection,
+  AboutTrackingSection,
+  AboutWhyShopSection,
+} from "@/components/about/about-education-sections";
+import { AboutFaqSection } from "@/components/about/about-faq-section";
+import { AboutHero } from "@/components/about/about-hero";
+import { AboutStatsSection } from "@/components/about/about-stats-section";
+
+export function AboutPageView() {
+  return (
+    <div className="min-h-screen bg-muted/20">
+      <AboutHero />
+      <AboutStorySection />
+      <AboutHowItWorksSection />
+      <AboutWhyShopSection />
+      <AboutPaymentSection />
+      <AboutShippingSection />
+      <AboutTrackingSection />
+      <AboutSupportSection />
+      <AboutStatsSection />
+      <AboutFaqSection />
+      <AboutContactSection />
+      <AboutCtaSection />
+    </div>
+  );
+}
