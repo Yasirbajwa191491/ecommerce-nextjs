@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execSync } from "node:child_process";
 
 /** Validate CONVEX_DEPLOY_KEY and exit with actionable errors. Returns the trimmed key. */
 export function requireConvexDeployKey(env = process.env) {
@@ -45,4 +46,39 @@ export function convexBuildEnv(env = process.env) {
   delete buildEnv.NEXT_PUBLIC_CONVEX_URL;
   delete buildEnv.NEXT_PUBLIC_CONVEX_SITE_URL;
   return buildEnv;
+}
+
+/**
+ * Sync SITE_URL to Convex. Best-effort — some deploy keys cannot write env vars (403).
+ * Returns true when synced, false when skipped (build should continue either way).
+ */
+export function trySyncConvexSiteUrl(siteUrl, env = process.env) {
+  const buildEnv = { ...convexBuildEnv(env), SITE_URL: siteUrl };
+
+  console.log("[vercel-build] Syncing SITE_URL to Convex...");
+  try {
+    execSync(`npx convex env set SITE_URL "${siteUrl}"`, {
+      stdio: "pipe",
+      encoding: "utf8",
+      env: buildEnv,
+    });
+    console.log("[vercel-build] Convex SITE_URL updated.");
+    return true;
+  } catch (error) {
+    const output = `${error.stdout ?? ""}${error.stderr ?? ""}`;
+    const lacksPermission =
+      output.includes("WriteEnvironmentVariables") || output.includes("403 Forbidden");
+
+    if (lacksPermission) {
+      console.warn(
+        "[vercel-build] Deploy key cannot write Convex env vars (403). Skipping SITE_URL sync.\n" +
+          "Set SITE_URL manually in Convex dashboard → Production → Settings → Environment Variables.\n" +
+          `Expected value: ${siteUrl}`
+      );
+      return false;
+    }
+
+    console.error(output || error.message);
+    throw error;
+  }
 }

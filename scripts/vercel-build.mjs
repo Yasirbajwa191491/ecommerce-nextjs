@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
-import { convexBuildEnv, requireConvexDeployKey } from "./convex-deploy-env.mjs";
+import {
+  convexBuildEnv,
+  requireConvexDeployKey,
+  trySyncConvexSiteUrl,
+} from "./convex-deploy-env.mjs";
 import { resolveSiteUrl } from "./resolve-site-url.mjs";
 
 requireConvexDeployKey();
@@ -17,11 +21,7 @@ const buildEnv = {
   NEXT_PUBLIC_SITE_URL: siteUrl,
 };
 
-console.log("[vercel-build] Syncing SITE_URL to Convex...");
-execSync(`npx convex env set SITE_URL "${siteUrl}"`, {
-  stdio: "inherit",
-  env: buildEnv,
-});
+trySyncConvexSiteUrl(siteUrl, process.env);
 
 console.log("[vercel-build] Deploying Convex and building Next.js...");
 execSync(

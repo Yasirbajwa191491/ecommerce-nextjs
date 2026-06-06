@@ -41,7 +41,8 @@ Open http://localhost:3000/home
    - **Remove** if present: `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` (dev values from `.env.local` break Vercel builds)
    - Do **not** copy `SITE_URL=http://localhost:3000` from `.env.example` into Vercel
    - Optional: `SITE_URL` = `https://your-custom-domain.com` on **Production** only
-5. On Convex production, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, etc.
+5. On Convex **production**, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, etc.
+   - Set **`SITE_URL`** = `https://your-vercel-domain.vercel.app` here too (deploy keys often cannot auto-sync env vars)
 6. Deploy. The build runs `npm run build:vercel`, which:
    - Resolves `SITE_URL` (preview: `https://<branch>.vercel.app`, production: production domain)
    - Syncs `SITE_URL` to the target Convex deployment
