@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  MoreVertical,
   Package,
   Settings,
   ShoppingCart,
@@ -17,6 +18,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -35,7 +42,6 @@ const NAV = [
   { href: "/admin/contact-messages", label: "Contact", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/profile", label: "Profile", icon: UserCircle2 },
 ];
 
 function AdminNavLinks({
@@ -46,7 +52,7 @@ function AdminNavLinks({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="flex flex-1 flex-col gap-1 p-4">
+    <nav className="flex flex-col gap-1 p-4">
       {NAV.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
@@ -67,6 +73,55 @@ function AdminNavLinks({
   );
 }
 
+function AdminSidebarFooter({
+  onSignOut,
+  onNavigate,
+}: {
+  onSignOut: () => void;
+  onNavigate?: () => void;
+}) {
+  const router = useRouter();
+
+  const goToProfile = () => {
+    onNavigate?.();
+    router.push("/admin/profile");
+  };
+
+  return (
+    <div className="flex shrink-0 items-center gap-1 border-t p-3">
+      <Button
+        variant="ghost"
+        className="min-w-0 flex-1 justify-start gap-2 text-muted-foreground"
+        onClick={onSignOut}
+      >
+        <LogOut className="size-4 shrink-0" />
+        <span className="truncate">Sign out</span>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-muted-foreground"
+              aria-label="Account menu"
+            />
+          }
+        >
+          <MoreVertical className="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top" className="w-40">
+          <DropdownMenuItem onClick={goToProfile}>
+            <UserCircle2 className="size-4" />
+            Profile
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -83,7 +138,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   const currentPage =
-    NAV.find((item) => item.href === pathname)?.label ?? "Admin";
+    NAV.find((item) => item.href === pathname)?.label ??
+    (pathname === "/admin/profile" ? "Profile" : "Admin");
 
   return (
     <div className="flex min-h-dvh flex-col bg-muted/30 lg:flex-row">
@@ -105,7 +161,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             side="left"
             className="flex h-full w-[min(18rem,88vw)] flex-col gap-0 p-0"
           >
-            <SheetHeader className="border-b px-4 py-4 text-left">
+            <SheetHeader className="shrink-0 border-b px-4 py-4 text-left">
               <SheetTitle className="flex items-center gap-2 text-base">
                 <Link
                   href="/admin/home"
@@ -117,20 +173,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </SheetTitle>
             </SheetHeader>
-            <AdminNavLinks
-              pathname={pathname}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <AdminNavLinks
+                pathname={pathname}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
+            </div>
+            <AdminSidebarFooter
+              onSignOut={handleSignOut}
               onNavigate={() => setMobileNavOpen(false)}
             />
-            <div className="mt-auto border-t p-4">
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 text-muted-foreground"
-                onClick={handleSignOut}
-              >
-                <LogOut className="size-4" />
-                Sign out
-              </Button>
-            </div>
           </SheetContent>
         </Sheet>
         <div className="min-w-0 flex-1">
@@ -141,25 +193,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-background lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-background lg:flex">
         <Link
           href="/admin/home"
-          className="flex h-16 items-center gap-2 border-b px-6 transition-colors hover:bg-muted/50"
+          className="flex h-16 shrink-0 items-center gap-2 border-b px-6 transition-colors hover:bg-muted/50"
         >
           <LayoutDashboard className="size-5 text-primary" />
           <span className="font-semibold text-foreground">Admin</span>
         </Link>
-        <AdminNavLinks pathname={pathname} />
-        <div className="border-t p-4">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground"
-            onClick={handleSignOut}
-          >
-            <LogOut className="size-4" />
-            Sign out
-          </Button>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <AdminNavLinks pathname={pathname} />
         </div>
+        <AdminSidebarFooter onSignOut={handleSignOut} />
       </aside>
 
       <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
