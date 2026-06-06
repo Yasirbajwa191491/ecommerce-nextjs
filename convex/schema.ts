@@ -126,7 +126,9 @@ export default defineSchema({
     actorUserId: v.optional(v.string()),
     actorName: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_order_id_created", ["orderId", "createdAt"]),
+  })
+    .index("by_order_id_created", ["orderId", "createdAt"])
+    .index("by_created_at", ["createdAt"]),
 
   paymentLogs: defineTable({
     orderId: v.id("orders"),
@@ -143,7 +145,26 @@ export default defineSchema({
     amount: v.optional(v.number()),
     currency: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_order_id_created", ["orderId", "createdAt"]),
+  })
+    .index("by_order_id_created", ["orderId", "createdAt"])
+    .index("by_created_at", ["createdAt"]),
+
+  adminActivityLogs: defineTable({
+    type: v.string(),
+    title: v.string(),
+    description: v.string(),
+    actorType: v.union(
+      v.literal("system"),
+      v.literal("admin"),
+      v.literal("customer"),
+      v.literal("webhook")
+    ),
+    actorUserId: v.optional(v.string()),
+    actorName: v.optional(v.string()),
+    relatedOrderId: v.optional(v.id("orders")),
+    relatedProductId: v.optional(v.id("products")),
+    createdAt: v.number(),
+  }).index("by_created_at", ["createdAt"]),
 
   trackingRateLimits: defineTable({
     bucketKey: v.string(),

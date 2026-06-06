@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -116,13 +117,24 @@ function productFlag(value: boolean | undefined | null) {
 const ADMIN_LIST_PAGE_SIZE = 10;
 
 export default function AdminProductsPage() {
+  const searchParams = useSearchParams();
+  const editParam = searchParams.get("edit");
+  const maxStockParam = searchParams.get("maxStock");
+  const deepLinkHandled = useRef(false);
+
   const categories = useQuery(api.productCategories.listActive) ?? [];
   const counts = useQuery(api.products.countByStatus);
 
   const [activeTab, setActiveTab] = useState<StatusTab>("active");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<ProductListFilters>(emptyProductFilters);
+  const [filters, setFilters] = useState<ProductListFilters>(() => {
+    const initial = emptyProductFilters();
+    if (maxStockParam && /^\d+$/.test(maxStockParam)) {
+      initial.maxStock = maxStockParam;
+    }
+    return initial;
+  });
   const [reorderMode, setReorderMode] = useState(false);
   const [draggedId, setDraggedId] = useState<Id<"products"> | null>(null);
 
@@ -153,6 +165,11 @@ export default function AdminProductsPage() {
   const takenNames = useQuery(
     api.products.listTakenNames,
     editing ? { excludeId: editing._id } : {}
+  );
+
+  const deepLinkProduct = useQuery(
+    api.products.getById,
+    editParam ? { id: editParam as Id<"products"> } : "skip"
   );
 
   const categoryOptions = useMemo(() => {
@@ -239,6 +256,16 @@ export default function AdminProductsPage() {
     resetValidation();
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (deepLinkHandled.current || !editParam || deepLinkProduct === undefined) {
+      return;
+    }
+    if (deepLinkProduct) {
+      openEdit(deepLinkProduct as Product);
+      deepLinkHandled.current = true;
+    }
+  }, [editParam, deepLinkProduct]);
 
   const toPayload = (f: ProductForm) => ({
     name: f.name.trim(),

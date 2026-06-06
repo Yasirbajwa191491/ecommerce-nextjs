@@ -28,6 +28,7 @@ import { authClient } from "@/lib/auth-client";
 import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 
 const NAV = [
+  { href: "/admin/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
@@ -106,8 +107,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <SheetHeader className="border-b px-4 py-4 text-left">
               <SheetTitle className="flex items-center gap-2 text-base">
-                <LayoutDashboard className="size-5 text-primary" />
-                Admin
+                <Link
+                  href="/admin/home"
+                  className="flex items-center gap-2"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <LayoutDashboard className="size-5 text-primary" />
+                  Admin
+                </Link>
               </SheetTitle>
             </SheetHeader>
             <AdminNavLinks
@@ -135,10 +142,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-background lg:flex">
-        <div className="flex h-16 items-center gap-2 border-b px-6">
+        <Link
+          href="/admin/home"
+          className="flex h-16 items-center gap-2 border-b px-6 transition-colors hover:bg-muted/50"
+        >
           <LayoutDashboard className="size-5 text-primary" />
           <span className="font-semibold text-foreground">Admin</span>
-        </div>
+        </Link>
         <AdminNavLinks pathname={pathname} />
         <div className="border-t p-4">
           <Button

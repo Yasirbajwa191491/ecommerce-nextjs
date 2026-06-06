@@ -8,15 +8,19 @@
  * @module
  */
 
+import type * as adminDashboard from "../adminDashboard.js";
 import type * as adminOrders from "../adminOrders.js";
 import type * as adminUsers from "../adminUsers.js";
 import type * as auth from "../auth.js";
 import type * as contactMessages from "../contactMessages.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
+import type * as lib_adminActivityLogs from "../lib/adminActivityLogs.js";
 import type * as lib_authRoles from "../lib/authRoles.js";
 import type * as lib_backfillOrderLogs from "../lib/backfillOrderLogs.js";
 import type * as lib_checkoutValidation from "../lib/checkoutValidation.js";
+import type * as lib_dashboardAggregates from "../lib/dashboardAggregates.js";
+import type * as lib_dashboardRange from "../lib/dashboardRange.js";
 import type * as lib_emailFrom from "../lib/emailFrom.js";
 import type * as lib_inventory from "../lib/inventory.js";
 import type * as lib_orderLogs from "../lib/orderLogs.js";
@@ -29,6 +33,7 @@ import type * as lib_products from "../lib/products.js";
 import type * as lib_publicOrderDto from "../lib/publicOrderDto.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_requireAdmin from "../lib/requireAdmin.js";
+import type * as lib_settingsHelpers from "../lib/settingsHelpers.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
 import type * as migrations from "../migrations.js";
 import type * as orderTracking from "../orderTracking.js";
@@ -49,15 +54,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminDashboard: typeof adminDashboard;
   adminOrders: typeof adminOrders;
   adminUsers: typeof adminUsers;
   auth: typeof auth;
   contactMessages: typeof contactMessages;
   email: typeof email;
   http: typeof http;
+  "lib/adminActivityLogs": typeof lib_adminActivityLogs;
   "lib/authRoles": typeof lib_authRoles;
   "lib/backfillOrderLogs": typeof lib_backfillOrderLogs;
   "lib/checkoutValidation": typeof lib_checkoutValidation;
+  "lib/dashboardAggregates": typeof lib_dashboardAggregates;
+  "lib/dashboardRange": typeof lib_dashboardRange;
   "lib/emailFrom": typeof lib_emailFrom;
   "lib/inventory": typeof lib_inventory;
   "lib/orderLogs": typeof lib_orderLogs;
@@ -70,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "lib/publicOrderDto": typeof lib_publicOrderDto;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/requireAdmin": typeof lib_requireAdmin;
+  "lib/settingsHelpers": typeof lib_settingsHelpers;
   "lib/siteUrl": typeof lib_siteUrl;
   migrations: typeof migrations;
   orderTracking: typeof orderTracking;

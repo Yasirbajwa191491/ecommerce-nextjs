@@ -40,7 +40,7 @@ export function ErrorPageView({
   const showDigest =
     process.env.NODE_ENV === "development" && error?.digest;
 
-  const primaryHref = isAdmin ? "/admin/products" : "/home";
+  const primaryHref = isAdmin ? "/admin/home" : "/home";
   const PrimaryIcon = isAdmin ? LayoutDashboard : Home;
 
   return (

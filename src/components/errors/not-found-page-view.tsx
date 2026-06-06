@@ -30,7 +30,7 @@ export function NotFoundPageView({
 }: NotFoundPageViewProps) {
   const isAdmin = variant === "admin" || variant === "admin-dashboard";
   const isEmbedded = variant === "admin-dashboard";
-  const primaryHref = isAdmin ? "/admin/products" : "/home";
+  const primaryHref = isAdmin ? "/admin/home" : "/home";
 
   return (
     <div

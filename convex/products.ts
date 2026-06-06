@@ -13,6 +13,7 @@ import {
 } from "./lib/products";
 import { isProductActive } from "./lib/productActive";
 import { paginateArray } from "./lib/pagination";
+import { insertAdminActivityLog } from "./lib/adminActivityLogs";
 import { productImageValidator } from "./schema";
 
 const productFields = {
@@ -314,7 +315,7 @@ export const featured = query({
 export const create = mutation({
   args: productFields,
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const category = await ctx.db.get(args.categoryId);
     if (!category) {
       throw new Error("Category not found");
@@ -325,11 +326,25 @@ export const create = mutation({
       .filter(isProductActive)
       .reduce((max, product) => Math.max(max, product.sortOrder ?? -1), -1);
     const nextSortOrder = maxSortOrder + 1;
-    return await ctx.db.insert("products", {
+    const productId = await ctx.db.insert("products", {
       ...args,
       active: args.active ?? true,
       sortOrder: nextSortOrder,
     });
+
+    const now = Date.now();
+    await insertAdminActivityLog(ctx, {
+      type: "product_created",
+      title: "Product created",
+      description: `${args.name} was added to the catalog`,
+      actorType: "admin",
+      actorUserId: admin._id,
+      actorName: admin.name || admin.email,
+      relatedProductId: productId,
+      createdAt: now,
+    });
+
+    return productId;
   },
 });
 
@@ -339,7 +354,7 @@ export const update = mutation({
     ...productFields,
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const { id, ...data } = args;
     const category = await ctx.db.get(data.categoryId);
     if (!category) {
@@ -347,6 +362,19 @@ export const update = mutation({
     }
     await assertUniqueProductName(ctx, data.name, id);
     await ctx.db.patch(id, { ...data, active: data.active ?? true });
+
+    const now = Date.now();
+    await insertAdminActivityLog(ctx, {
+      type: "product_updated",
+      title: "Product updated",
+      description: `${data.name} was updated`,
+      actorType: "admin",
+      actorUserId: admin._id,
+      actorName: admin.name || admin.email,
+      relatedProductId: id,
+      createdAt: now,
+    });
+
     return id;
   },
 });

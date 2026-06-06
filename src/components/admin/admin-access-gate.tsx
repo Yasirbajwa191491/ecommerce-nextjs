@@ -66,7 +66,7 @@ export function AdminAccessGate({ children }: { children: React.ReactNode }) {
     }
     if (redirectAttempted.current) return;
     redirectAttempted.current = true;
-    const redirectPath = pathname?.startsWith("/admin") ? pathname : "/admin/products";
+    const redirectPath = pathname?.startsWith("/admin") ? pathname : "/admin/home";
     router.replace(`/admin/login?redirect=${encodeURIComponent(redirectPath)}`);
   }, [pathname, router, session]);
 

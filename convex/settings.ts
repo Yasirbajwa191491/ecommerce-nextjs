@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { validateEmailFromValue } from "./lib/emailFrom";
+import { getEmailFromValue, getLowStockThresholdValue } from "./lib/settingsHelpers";
 import { slugify } from "./lib/products";
 
 export const SYSTEM_SETTING_KEYS = [
@@ -12,6 +13,7 @@ export const SYSTEM_SETTING_KEYS = [
   "email",
   "email_from",
   "business_hours",
+  "low_stock_threshold",
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -53,12 +55,23 @@ export const SYSTEM_DEFAULTS: {
     name: "Business Hours",
     value: "Mon – Fri, 9:00 AM – 6:00 PM (PKT)",
   },
+  {
+    key: "low_stock_threshold",
+    name: "Low Stock Threshold",
+    value: "2",
+  },
 ];
 
 function assertValidSettingValue(key: string, value: string) {
   if (key === "email_from") {
     const error = validateEmailFromValue(value);
     if (error) throw new ConvexError(error);
+  }
+  if (key === "low_stock_threshold") {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      throw new ConvexError("Low stock threshold must be a non-negative integer");
+    }
   }
 }
 
@@ -179,14 +192,14 @@ export const list = query({
   },
 });
 
+export const getLowStockThreshold = internalQuery({
+  args: {},
+  handler: async (ctx) => getLowStockThresholdValue(ctx),
+});
+
 export const getEmailFrom = internalQuery({
   args: {},
-  handler: async (ctx) => {
-    const row = await findByKey(ctx, "email_from");
-    if (row?.value.trim()) return row.value.trim();
-    const fallback = SYSTEM_DEFAULTS.find((setting) => setting.key === "email_from");
-    return fallback?.value ?? "onboarding@resend.dev";
-  },
+  handler: async (ctx) => getEmailFromValue(ctx),
 });
 
 export const listTakenNames = query({

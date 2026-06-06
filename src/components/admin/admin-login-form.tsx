@@ -35,7 +35,7 @@ const REMEMBERED_EMAIL_KEY = "admin_login_email";
 
 export function AdminLoginForm() {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/admin/products";
+  const redirect = searchParams.get("redirect") ?? "/admin/home";
   const initialRememberMe =
     typeof window !== "undefined" &&
     window.localStorage.getItem(REMEMBER_ME_KEY) === "true";

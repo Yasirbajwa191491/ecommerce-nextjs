@@ -56,56 +56,69 @@ export function AdminListToolbar({
       { value: "inactive", label: "Inactive", count: counts?.inactive },
     ];
 
-  const controls = (
-    <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-2 lg:min-w-0 lg:flex-1 lg:justify-end">
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 md:min-w-0 md:flex-1 lg:max-w-2xl">
-        {filters}
-        {sortControl}
-        <div className="relative min-w-0 w-full sm:min-w-[10rem] sm:flex-1 md:max-w-xs lg:max-w-none lg:w-52">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="h-9 pl-8"
-          />
-        </div>
-      </div>
+  const hasFiltersOrSort = Boolean(filters || sortControl);
 
-      <div className="flex shrink-0 items-center justify-end gap-2">
-        {onReorderModeChange ? (
-          reorderMode ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onReorderModeChange(false)}
-            >
-              <Check className="size-4" />
-              <span className="hidden sm:inline">Done reordering</span>
-              <span className="sm:hidden">Done</span>
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => onReorderModeChange(true)}
-              disabled={!canReorder}
-              aria-label="Reorder list"
-              title={
-                canReorder
-                  ? "Reorder list"
-                  : "Reorder is only available for active items"
-              }
-            >
-              <ListOrdered className="size-4" />
-            </Button>
-          )
-        ) : null}
-        {actionLabel && onAction ? (
-          <Button size="sm" onClick={onAction}>
-            {actionLabel}
+  const searchInput = (
+    <div className="relative min-w-0 w-full sm:min-w-40 sm:w-52 sm:flex-none">
+      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder={searchPlaceholder}
+        className="h-9 pl-8"
+      />
+    </div>
+  );
+
+  const actionButtons = (
+    <div className="flex shrink-0 items-center justify-end gap-2">
+      {onReorderModeChange ? (
+        reorderMode ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onReorderModeChange(false)}
+          >
+            <Check className="size-4" />
+            <span className="hidden sm:inline">Done reordering</span>
+            <span className="sm:hidden">Done</span>
           </Button>
-        ) : null}
+        ) : (
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => onReorderModeChange(true)}
+            disabled={!canReorder}
+            aria-label="Reorder list"
+            title={
+              canReorder
+                ? "Reorder list"
+                : "Reorder is only available for active items"
+            }
+          >
+            <ListOrdered className="size-4" />
+          </Button>
+        )
+      ) : null}
+      {actionLabel && onAction ? (
+        <Button size="sm" onClick={onAction}>
+          {actionLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const controls = (
+    <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-2 lg:min-w-0 lg:flex-1">
+      {hasFiltersOrSort ? (
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+          {filters}
+          {sortControl}
+        </div>
+      ) : null}
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:ml-auto sm:justify-end">
+        {searchInput}
+        {actionButtons}
       </div>
     </div>
   );
