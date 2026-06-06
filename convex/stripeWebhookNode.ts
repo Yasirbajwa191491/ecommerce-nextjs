@@ -41,10 +41,49 @@ async function resolveOrderId(
   ) {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
     const orderId = paymentIntent.metadata?.orderId as Id<"orders"> | undefined;
-    return orderId ?? null;
+    if (orderId) return orderId;
+
+    if (paymentIntent.id) {
+      const order = await ctx.runQuery(internal.orders.getOrderByPaymentIntent, {
+        stripePaymentIntentId: paymentIntent.id,
+      });
+      return order?._id ?? null;
+    }
+  }
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId =
+      typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : charge.payment_intent?.id;
+    if (paymentIntentId) {
+      const order = await ctx.runQuery(internal.orders.getOrderByPaymentIntent, {
+        stripePaymentIntentId: paymentIntentId,
+      });
+      return order?._id ?? null;
+    }
   }
 
   return null;
+}
+
+function extractTransactionId(
+  paymentIntent: Stripe.PaymentIntent | string | null | undefined,
+  stripe: Stripe
+): Promise<string | undefined> {
+  if (!paymentIntent) return Promise.resolve(undefined);
+  if (typeof paymentIntent === "string") {
+    return stripe.paymentIntents
+      .retrieve(paymentIntent)
+      .then((pi) => {
+        const charge = pi.latest_charge;
+        return typeof charge === "string" ? charge : charge?.id;
+      })
+      .catch(() => undefined);
+  }
+  const charge = paymentIntent.latest_charge;
+  return Promise.resolve(typeof charge === "string" ? charge : charge?.id);
 }
 
 export const processWebhook = internalAction({
@@ -100,13 +139,18 @@ export const processWebhook = internalAction({
           orderId ??
           ((session.metadata?.orderId as Id<"orders"> | undefined) ?? null);
         if (resolvedOrderId && session.payment_status === "paid") {
+          const paymentIntentId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent?.id;
+          const stripeTransactionId = paymentIntentId
+            ? await extractTransactionId(paymentIntentId, stripe)
+            : undefined;
           await ctx.runMutation(internal.orders.markOrderPaid, {
             orderId: resolvedOrderId,
-            stripePaymentIntentId:
-              typeof session.payment_intent === "string"
-                ? session.payment_intent
-                : session.payment_intent?.id,
+            stripePaymentIntentId: paymentIntentId,
             stripeSessionId: session.id,
+            stripeTransactionId,
             paidTotalCents: session.amount_total ?? undefined,
           });
         }
@@ -118,9 +162,14 @@ export const processWebhook = internalAction({
           orderId ??
           ((paymentIntent.metadata?.orderId as Id<"orders"> | undefined) ?? null);
         if (resolvedOrderId) {
+          const stripeTransactionId =
+            typeof paymentIntent.latest_charge === "string"
+              ? paymentIntent.latest_charge
+              : paymentIntent.latest_charge?.id;
           await ctx.runMutation(internal.orders.markOrderPaid, {
             orderId: resolvedOrderId,
             stripePaymentIntentId: paymentIntent.id,
+            stripeTransactionId,
           });
         }
         break;
@@ -149,6 +198,22 @@ export const processWebhook = internalAction({
             orderId: resolvedOrderId,
             status: "expired",
             restoreInventory: true,
+          });
+        }
+        break;
+      }
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id;
+        const resolvedOrderId = orderId;
+        if (resolvedOrderId) {
+          await ctx.runMutation(internal.orders.markOrderRefunded, {
+            orderId: resolvedOrderId,
+            stripeTransactionId: charge.id,
+            stripePaymentIntentId: paymentIntentId,
           });
         }
         break;

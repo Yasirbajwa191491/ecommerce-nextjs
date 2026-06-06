@@ -72,6 +72,7 @@ import type { Product, ProductCategory } from "@/types/product";
 type ProductForm = {
   name: string;
   company: string;
+  sku: string;
   price: number;
   currency: string;
   colors: string[];
@@ -89,6 +90,7 @@ type ProductForm = {
 const emptyForm = (): ProductForm => ({
   name: "",
   company: "",
+  sku: "",
   price: 0,
   currency: DEFAULT_CURRENCY,
   colors: [],
@@ -220,6 +222,7 @@ export default function AdminProductsPage() {
     setForm({
       name: p.name,
       company: p.company,
+      sku: p.sku ?? "",
       price: p.price,
       currency: p.currency ?? DEFAULT_CURRENCY,
       colors: [...p.colors],
@@ -240,6 +243,7 @@ export default function AdminProductsPage() {
   const toPayload = (f: ProductForm) => ({
     name: f.name.trim(),
     company: f.company.trim(),
+    sku: f.sku.trim() || undefined,
     price: Number(f.price),
     currency: f.currency.trim() || DEFAULT_CURRENCY,
     colors: f.colors.map((c) => c.trim()).filter(Boolean),
@@ -498,7 +502,7 @@ export default function AdminProductsPage() {
 
       <AdminListToolbar
         activeTab={activeTab}
-        onActiveTabChange={setActiveTab}
+        onActiveTabChange={(value) => setActiveTab(value as StatusTab)}
         counts={counts ?? undefined}
         search={searchInput}
         onSearchChange={setSearchInput}
@@ -630,6 +634,15 @@ export default function AdminProductsPage() {
                 onBlur={() => validation.touch("name")}
                 aria-invalid={!!validation.fieldError("name")}
                 className={invalidInputClass(validation.fieldError("name"))}
+              />
+            </AdminFormField>
+
+            <AdminFormField label="SKU" htmlFor="product-sku">
+              <Input
+                id="product-sku"
+                value={form.sku}
+                onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
+                placeholder="Optional product SKU"
               />
             </AdminFormField>
 

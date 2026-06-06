@@ -20,6 +20,7 @@ const productFields = {
   company: v.string(),
   price: v.number(),
   currency: v.string(),
+  sku: v.optional(v.string()),
   colors: v.array(v.string()),
   image: v.array(productImageValidator),
   categoryId: v.id("productCategories"),

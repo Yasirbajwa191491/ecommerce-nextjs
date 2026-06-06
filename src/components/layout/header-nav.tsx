@@ -7,6 +7,7 @@ import {
   Package,
   Info,
   Mail,
+  PackageSearch,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -18,6 +19,7 @@ const NAV_ICONS: Record<(typeof NAV_LINKS)[number]["label"], LucideIcon> = {
   Products: Package,
   About: Info,
   Contact: Mail,
+  "Track Order": PackageSearch,
 };
 
 type HeaderNavProps = {

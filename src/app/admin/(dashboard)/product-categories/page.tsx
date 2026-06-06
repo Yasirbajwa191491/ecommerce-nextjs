@@ -215,7 +215,7 @@ export default function ProductCategoriesPage() {
 
       <AdminListToolbar
         activeTab={activeTab}
-        onActiveTabChange={setActiveTab}
+        onActiveTabChange={(value) => setActiveTab(value as StatusTab)}
         counts={counts ?? undefined}
         search={searchInput}
         onSearchChange={setSearchInput}

@@ -22,7 +22,7 @@ export type OrderConfirmationEmailProps = {
   orderNumber: string;
   customerName: string;
   paymentMethod: "cod" | "stripe";
-  paymentStatus: "pending" | "paid" | "failed";
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
   subtotal: number;
   tax: number;
   shipping: number;

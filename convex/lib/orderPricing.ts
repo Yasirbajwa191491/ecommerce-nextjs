@@ -12,6 +12,8 @@ export type PricedLineItem = {
   productId: Id<"products">;
   productName: string;
   color: string;
+  sku?: string;
+  size?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
@@ -71,6 +73,7 @@ export async function priceCartLines(
       productId: line.productId,
       productName: product.name,
       color: line.color,
+      sku: product.sku,
       quantity: line.quantity,
       unitPrice,
       lineTotal,

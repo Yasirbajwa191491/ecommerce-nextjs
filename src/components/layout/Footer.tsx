@@ -22,7 +22,6 @@ const SUPPORT_LINKS = [
   { href: "/contact", label: "Contact us" },
   { href: "/contact", label: "Shipping & delivery" },
   { href: "/contact", label: "Returns & refunds" },
-  { href: "/contact", label: "Order tracking" },
 ] as const;
 
 const LEGAL_LINKS = [

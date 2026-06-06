@@ -63,6 +63,7 @@ export function validateCategoryForm(
 export type ProductFormValues = {
   name: string;
   company: string;
+  sku?: string;
   price: number;
   currency: string;
   colors: string[];

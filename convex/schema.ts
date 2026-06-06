@@ -1,5 +1,12 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  orderStatusLogActorValidator,
+  orderStatusValidator,
+  paymentLogActorValidator,
+  paymentMethodValidator,
+  paymentStatusValidator,
+} from "./lib/orderValidators";
 
 export const productImageValidator = v.object({ url: v.string() });
 
@@ -20,6 +27,7 @@ export default defineSchema({
     company: v.string(),
     price: v.number(),
     currency: v.optional(v.string()),
+    sku: v.optional(v.string()),
     colors: v.array(v.string()),
     image: v.array(productImageValidator),
     categoryId: v.id("productCategories"),
@@ -71,19 +79,9 @@ export default defineSchema({
     termsAccepted: v.boolean(),
     privacyAccepted: v.boolean(),
     userId: v.optional(v.string()),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("cancelled"),
-      v.literal("failed"),
-      v.literal("expired")
-    ),
-    paymentMethod: v.union(v.literal("cod"), v.literal("stripe")),
-    paymentStatus: v.union(
-      v.literal("pending"),
-      v.literal("paid"),
-      v.literal("failed")
-    ),
+    status: orderStatusValidator,
+    paymentMethod: paymentMethodValidator,
+    paymentStatus: paymentStatusValidator,
     subtotal: v.number(),
     tax: v.number(),
     shipping: v.number(),
@@ -91,6 +89,7 @@ export default defineSchema({
     currency: v.string(),
     stripeSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
+    stripeTransactionId: v.optional(v.string()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -100,18 +99,57 @@ export default defineSchema({
     .index("by_stripe_session", ["stripeSessionId"])
     .index("by_idempotency_key", ["idempotencyKey"])
     .index("by_customer_email", ["customerEmail"])
-    .index("by_status", ["status"]),
+    .index("by_customer_phone", ["customerPhone"])
+    .index("by_status", ["status"])
+    .index("by_created_at", ["createdAt"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),
     productId: v.id("products"),
     productName: v.string(),
     color: v.string(),
+    sku: v.optional(v.string()),
+    size: v.optional(v.string()),
     quantity: v.number(),
     unitPrice: v.number(),
     lineTotal: v.number(),
     imageUrl: v.string(),
   }).index("by_order_id", ["orderId"]),
+
+  orderStatusLogs: defineTable({
+    orderId: v.id("orders"),
+    event: v.string(),
+    description: v.string(),
+    previousStatus: v.optional(orderStatusValidator),
+    newStatus: v.optional(orderStatusValidator),
+    actorType: orderStatusLogActorValidator,
+    actorUserId: v.optional(v.string()),
+    actorName: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_order_id_created", ["orderId", "createdAt"]),
+
+  paymentLogs: defineTable({
+    orderId: v.id("orders"),
+    event: v.string(),
+    description: v.string(),
+    previousPaymentStatus: v.optional(paymentStatusValidator),
+    newPaymentStatus: v.optional(paymentStatusValidator),
+    actorType: paymentLogActorValidator,
+    actorUserId: v.optional(v.string()),
+    actorName: v.optional(v.string()),
+    stripeSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeTransactionId: v.optional(v.string()),
+    amount: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_order_id_created", ["orderId", "createdAt"]),
+
+  trackingRateLimits: defineTable({
+    bucketKey: v.string(),
+    attemptCount: v.number(),
+    windowStart: v.number(),
+  }).index("by_bucket_key", ["bucketKey"]),
 
   customerProfiles: defineTable({
     email: v.string(),
@@ -127,5 +165,7 @@ export default defineSchema({
     orderId: v.optional(v.id("orders")),
     payloadSummary: v.optional(v.string()),
     processedAt: v.number(),
-  }).index("by_event_id", ["eventId"]),
+  })
+    .index("by_event_id", ["eventId"])
+    .index("by_order_id", ["orderId"]),
 });

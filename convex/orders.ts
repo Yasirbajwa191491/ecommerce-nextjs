@@ -14,21 +14,19 @@ import {
 } from "./lib/checkoutValidation";
 import { generateOrderNumber } from "./lib/orderNumbers";
 import { priceCartLines } from "./lib/orderPricing";
+import type { PricedLineItem } from "./lib/orderPricing";
 import {
   decrementStock,
   getOrderStockLines,
   restoreStock,
 } from "./lib/inventory";
+import { insertOrderStatusLog, insertPaymentLog, getOrderStatusLogsForPublic } from "./lib/orderLogs";
+import { orderStatusValidator } from "./lib/orderValidators";
+import { checkAndIncrementRateLimit } from "./lib/rateLimit";
+import { normalizeEmail, phonesMatch } from "./lib/publicOrderDto";
 
 import type { MutationCtx } from "./_generated/server";
-
-const orderStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("confirmed"),
-  v.literal("cancelled"),
-  v.literal("failed"),
-  v.literal("expired")
-);
+import type { Id } from "./_generated/dataModel";
 
 async function assertUniqueIdempotencyKey(
   ctx: MutationCtx,
@@ -41,6 +39,54 @@ async function assertUniqueIdempotencyKey(
   if (existing) {
     throw new ConvexError("This checkout was already submitted. Please refresh and try again.");
   }
+}
+
+async function insertOrderLineItems(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  items: PricedLineItem[]
+) {
+  for (const item of items) {
+    await ctx.db.insert("orderItems", {
+      orderId,
+      productId: item.productId,
+      productName: item.productName,
+      color: item.color,
+      sku: item.sku,
+      size: item.size,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
+      imageUrl: item.imageUrl,
+    });
+  }
+}
+
+async function logOrderCreated(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  paymentMethod: "cod" | "stripe",
+  now: number
+) {
+  await insertOrderStatusLog(ctx, {
+    orderId,
+    event: "order_created",
+    description: "Order created",
+    newStatus: "pending",
+    actorType: "system",
+    createdAt: now,
+  });
+  await insertPaymentLog(ctx, {
+    orderId,
+    event: "payment_pending",
+    description:
+      paymentMethod === "cod"
+        ? "Cash on delivery payment pending"
+        : "Stripe payment pending",
+    newPaymentStatus: "pending",
+    actorType: "system",
+    createdAt: now,
+  });
 }
 
 export const getOrderForEmail = internalQuery({
@@ -108,6 +154,18 @@ export const getOrderByStripeSession = internalQuery({
   },
 });
 
+export const getOrderByPaymentIntent = internalQuery({
+  args: { stripePaymentIntentId: v.string() },
+  handler: async (ctx, args) => {
+    const orders = await ctx.db.query("orders").collect();
+    return (
+      orders.find(
+        (order) => order.stripePaymentIntentId === args.stripePaymentIntentId
+      ) ?? null
+    );
+  },
+});
+
 export const createCashOrder = mutation({
   args: {
     lines: v.array(cartLineValidator),
@@ -151,18 +209,8 @@ export const createCashOrder = mutation({
       updatedAt: now,
     });
 
-    for (const item of priced.items) {
-      await ctx.db.insert("orderItems", {
-        orderId,
-        productId: item.productId,
-        productName: item.productName,
-        color: item.color,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.lineTotal,
-        imageUrl: item.imageUrl,
-      });
-    }
+    await insertOrderLineItems(ctx, orderId, priced.items);
+    await logOrderCreated(ctx, orderId, "cod", now);
 
     await ctx.scheduler.runAfter(0, internal.email.sendOrderConfirmation, {
       orderId,
@@ -218,18 +266,8 @@ export const createPendingStripeOrder = internalMutation({
       updatedAt: now,
     });
 
-    for (const item of priced.items) {
-      await ctx.db.insert("orderItems", {
-        orderId,
-        productId: item.productId,
-        productName: item.productName,
-        color: item.color,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.lineTotal,
-        imageUrl: item.imageUrl,
-      });
-    }
+    await insertOrderLineItems(ctx, orderId, priced.items);
+    await logOrderCreated(ctx, orderId, "stripe", now);
 
     const order = await ctx.db.get(orderId);
     return {
@@ -251,9 +289,20 @@ export const attachStripeSession = internalMutation({
     if (order.stripeSessionId) {
       throw new ConvexError("Stripe session already exists for this order");
     }
+    const now = Date.now();
     await ctx.db.patch(args.orderId, {
       stripeSessionId: args.stripeSessionId,
-      updatedAt: Date.now(),
+      updatedAt: now,
+    });
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "checkout_session_created",
+      description: "Stripe checkout session created",
+      previousPaymentStatus: order.paymentStatus,
+      newPaymentStatus: order.paymentStatus,
+      actorType: "system",
+      stripeSessionId: args.stripeSessionId,
+      createdAt: now,
     });
   },
 });
@@ -263,6 +312,7 @@ export const markOrderPaid = internalMutation({
     orderId: v.id("orders"),
     stripePaymentIntentId: v.optional(v.string()),
     stripeSessionId: v.optional(v.string()),
+    stripeTransactionId: v.optional(v.string()),
     paidTotalCents: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -279,6 +329,9 @@ export const markOrderPaid = internalMutation({
         ? Math.round(args.paidTotalCents) / 100
         : order.total;
 
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+
     await ctx.db.patch(args.orderId, {
       paymentStatus: "paid",
       status: "confirmed",
@@ -286,9 +339,39 @@ export const markOrderPaid = internalMutation({
       stripePaymentIntentId:
         args.stripePaymentIntentId ?? order.stripePaymentIntentId,
       stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,
+      stripeTransactionId:
+        args.stripeTransactionId ?? order.stripeTransactionId,
       paidAt: now,
       updatedAt: now,
     });
+
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "payment_completed",
+      description: "Payment completed via Stripe",
+      previousPaymentStatus,
+      newPaymentStatus: "paid",
+      actorType: "webhook",
+      stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,
+      stripePaymentIntentId:
+        args.stripePaymentIntentId ?? order.stripePaymentIntentId,
+      stripeTransactionId: args.stripeTransactionId,
+      amount: paidTotal,
+      currency: order.currency,
+      createdAt: now,
+    });
+
+    if (previousStatus !== "confirmed") {
+      await insertOrderStatusLog(ctx, {
+        orderId: args.orderId,
+        event: "order_status_updated",
+        description: "Order status updated to confirmed after payment",
+        previousStatus,
+        newStatus: "confirmed",
+        actorType: "system",
+        createdAt: now,
+      });
+    }
 
     await ctx.scheduler.runAfter(0, internal.email.sendOrderConfirmation, {
       orderId: args.orderId,
@@ -317,13 +400,93 @@ export const markOrderFailed = internalMutation({
       await restoreStock(ctx, stockLines);
     }
 
+    const now = Date.now();
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+
     await ctx.db.patch(args.orderId, {
       status: args.status,
       paymentStatus: "failed",
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
 
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "payment_failed",
+      description: "Payment failed or checkout expired",
+      previousPaymentStatus,
+      newPaymentStatus: "failed",
+      actorType: "webhook",
+      createdAt: now,
+    });
+
+    if (previousStatus !== args.status) {
+      await insertOrderStatusLog(ctx, {
+        orderId: args.orderId,
+        event: "order_status_updated",
+        description: `Order status updated to ${args.status}`,
+        previousStatus,
+        newStatus: args.status,
+        actorType: "system",
+        createdAt: now,
+      });
+    }
+
     return { skipped: false as const };
+  },
+});
+
+export const markOrderRefunded = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    stripeTransactionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new ConvexError("Order not found");
+
+    const now = Date.now();
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+
+    await ctx.db.patch(args.orderId, {
+      status: "refunded",
+      paymentStatus: "refunded",
+      stripeTransactionId:
+        args.stripeTransactionId ?? order.stripeTransactionId,
+      stripePaymentIntentId:
+        args.stripePaymentIntentId ?? order.stripePaymentIntentId,
+      updatedAt: now,
+    });
+
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "payment_refunded",
+      description: "Payment refunded via Stripe",
+      previousPaymentStatus,
+      newPaymentStatus: "refunded",
+      actorType: "webhook",
+      stripeTransactionId: args.stripeTransactionId,
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      amount: order.total,
+      currency: order.currency,
+      createdAt: now,
+    });
+
+    if (previousStatus !== "refunded") {
+      await insertOrderStatusLog(ctx, {
+        orderId: args.orderId,
+        event: "order_status_updated",
+        description: "Order status updated to refunded",
+        previousStatus,
+        newStatus: "refunded",
+        actorType: "system",
+        createdAt: now,
+      });
+    }
+
+    return { success: true as const };
   },
 });
 
@@ -392,5 +555,81 @@ export const getCustomerProfileByEmail = query({
         q.eq("email", args.email.trim().toLowerCase())
       )
       .unique();
+  },
+});
+
+export const applyTrackingRateLimit = internalMutation({
+  args: { bucketKey: v.string() },
+  handler: async (ctx, args) => {
+    return await checkAndIncrementRateLimit(ctx, args.bucketKey);
+  },
+});
+
+export const lookupOrderForTracking = internalQuery({
+  args: {
+    orderNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber))
+      .unique();
+    if (!order) return null;
+
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
+    const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
+    return { order, items, statusHistory };
+  },
+});
+
+export const lookupOrdersByCustomer = internalQuery({
+  args: {
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let orders;
+
+    if (args.email?.trim()) {
+      orders = await ctx.db
+        .query("orders")
+        .withIndex("by_customer_email", (q) =>
+          q.eq("customerEmail", normalizeEmail(args.email!))
+        )
+        .collect();
+    } else if (args.phone?.trim()) {
+      const allOrders = await ctx.db.query("orders").collect();
+      orders = allOrders.filter((order) =>
+        phonesMatch(order.customerPhone, args.phone!)
+      );
+    } else {
+      return [];
+    }
+
+    orders.sort((a, b) => b.createdAt - a.createdAt);
+    return orders.slice(0, 50);
+  },
+});
+
+export const lookupPublicOrderDetail = internalQuery({
+  args: {
+    orderNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber))
+      .unique();
+    if (!order) return null;
+
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
+    const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
+    return { order, items, statusHistory };
   },
 });
