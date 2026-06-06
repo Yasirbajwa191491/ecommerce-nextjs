@@ -6,9 +6,14 @@ import {
   LayoutDashboard,
   Search,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { STORE_NAME } from "@/lib/site";
+
+const PRIMARY_BUTTON_CLASS =
+  "group inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] [&_svg]:!text-white";
+
+const OUTLINE_BUTTON_CLASS =
+  "inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[#6254f3]/30 bg-background px-6 text-sm font-medium text-[#6254f3] transition-all hover:bg-[#6254f3]/8 hover:text-[#5548e0] [&_svg]:text-[#6254f3]";
 
 export type NotFoundPageVariant = "shop" | "admin" | "admin-dashboard";
 
@@ -61,17 +66,8 @@ export function NotFoundPageView({
           {description}
         </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link
-            href={primaryHref}
-            className={buttonVariants({
-              className: cn(
-                "h-11 gap-2",
-                isAdmin &&
-                  "bg-[#6254f3] text-primary-foreground hover:bg-[#5548e0] focus-visible:ring-[#6254f3]/30"
-              ),
-            })}
-          >
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
+          <Link href={primaryHref} className={PRIMARY_BUTTON_CLASS}>
             {isAdmin ? (
               <LayoutDashboard className="size-4" aria-hidden />
             ) : (
@@ -80,13 +76,7 @@ export function NotFoundPageView({
             {isAdmin ? "Back to dashboard" : "Back to home"}
           </Link>
           {!isAdmin && (
-            <Link
-              href="/products"
-              className={buttonVariants({
-                variant: "outline",
-                className: "h-11 gap-2",
-              })}
-            >
+            <Link href="/products" className={OUTLINE_BUTTON_CLASS}>
               <Search className="size-4" aria-hidden />
               Browse products
             </Link>
