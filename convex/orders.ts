@@ -55,9 +55,16 @@ async function insertOrderLineItems(
       sku: item.sku,
       size: item.size,
       quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      unitPrice: item.finalUnitPrice,
       lineTotal: item.lineTotal,
       imageUrl: item.imageUrl,
+      originalUnitPrice: item.originalUnitPrice,
+      discountPercent: item.discountPercent,
+      discountAmount: item.discountAmount,
+      lineDiscountTotal: item.lineDiscountTotal,
+      finalUnitPrice: item.finalUnitPrice,
+      shippingCharge: item.shippingCharge,
+      lineShippingTotal: item.lineShippingTotal,
     });
   }
 }
@@ -200,6 +207,7 @@ export const createCashOrder = mutation({
       paymentMethod: "cod",
       paymentStatus: "pending",
       subtotal: priced.subtotal,
+      discountTotal: priced.discountTotal,
       tax: priced.tax,
       shipping: priced.shipping,
       total: priced.total,
@@ -257,6 +265,7 @@ export const createPendingStripeOrder = internalMutation({
       paymentMethod: "stripe",
       paymentStatus: "pending",
       subtotal: priced.subtotal,
+      discountTotal: priced.discountTotal,
       tax: priced.tax,
       shipping: priced.shipping,
       total: priced.total,

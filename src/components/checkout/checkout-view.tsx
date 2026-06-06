@@ -8,15 +8,24 @@ import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summary";
 import { Button } from "@/components/ui/button";
 import { useCartContext } from "@/context/cart_context";
+import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
 
 export function CheckoutView() {
   const router = useRouter();
-  const { cart, total_price } = useCartContext();
+  const { cart } = useCartContext();
+  const { priced, isLoading, getPricedItem } = useCartPricing(cart);
   const [customerPrefill, setCustomerPrefill] = useState<
     ReturnType<typeof loadCheckoutCustomer>
   >(null);
   const hasCheckedInitialCart = useRef(false);
+
+  const getPricedLine = useMemo(() => {
+    return (item: (typeof cart)[number]) => {
+      const line = getPricedItem(item);
+      return line ? toCartPricedLine(line) : undefined;
+    };
+  }, [getPricedItem]);
 
   useEffect(() => {
     if (hasCheckedInitialCart.current) return;
@@ -93,9 +102,14 @@ export function CheckoutView() {
           <div className="min-w-0 xl:sticky xl:top-24">
             <CheckoutOrderSummary
               cart={cart}
-              subtotal={total_price}
-              tax={0}
-              shipping={0}
+              subtotal={priced?.subtotal ?? 0}
+              discountTotal={priced?.discountTotal ?? 0}
+              tax={priced?.tax ?? 0}
+              shipping={priced?.shipping ?? 0}
+              total={priced?.total ?? 0}
+              currency={priced?.currency}
+              isLoading={isLoading}
+              getPricedLine={getPricedLine}
             />
           </div>
 

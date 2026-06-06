@@ -1,16 +1,12 @@
 import type { Doc } from "../_generated/dataModel";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "./orderValidators";
+import {
+  normalizeOrderDiscountTotal,
+  normalizeOrderItem,
+  type NormalizedOrderItem,
+} from "./orderItemSnapshot";
 
-export type PublicOrderItem = {
-  productName: string;
-  color: string;
-  sku?: string;
-  size?: string;
-  quantity: number;
-  unitPrice: number;
-  lineTotal: number;
-  imageUrl: string;
-};
+export type PublicOrderItem = NormalizedOrderItem;
 
 export type PublicOrderSummary = {
   orderNumber: string;
@@ -18,6 +14,8 @@ export type PublicOrderSummary = {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   total: number;
+  discountTotal: number;
+  shipping: number;
   currency: string;
   createdAt: number;
   updatedAt: number;
@@ -31,7 +29,6 @@ export type PublicOrderDetail = PublicOrderSummary & {
   customerAddress: string;
   subtotal: number;
   tax: number;
-  shipping: number;
   items: PublicOrderItem[];
   statusHistory: Array<{
     event: string;
@@ -43,25 +40,21 @@ export type PublicOrderDetail = PublicOrderSummary & {
 };
 
 export function toPublicOrderItem(item: Doc<"orderItems">): PublicOrderItem {
-  return {
-    productName: item.productName,
-    color: item.color,
-    sku: item.sku,
-    size: item.size,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    lineTotal: item.lineTotal,
-    imageUrl: item.imageUrl,
-  };
+  return normalizeOrderItem(item);
 }
 
-export function toPublicOrderSummary(order: Doc<"orders">): PublicOrderSummary {
+export function toPublicOrderSummary(
+  order: Doc<"orders">,
+  items: Doc<"orderItems">[] = []
+): PublicOrderSummary {
   return {
     orderNumber: order.orderNumber,
     status: order.status,
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
     total: order.total,
+    discountTotal: normalizeOrderDiscountTotal(order, items),
+    shipping: order.shipping,
     currency: order.currency,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
@@ -75,14 +68,13 @@ export function toPublicOrderDetail(
   statusHistory: PublicOrderDetail["statusHistory"]
 ): PublicOrderDetail {
   return {
-    ...toPublicOrderSummary(order),
+    ...toPublicOrderSummary(order, items),
     customerName: order.customerName,
     customerEmail: order.customerEmail,
     customerPhone: order.customerPhone,
     customerAddress: order.customerAddress,
     subtotal: order.subtotal,
     tax: order.tax,
-    shipping: order.shipping,
     items: items.map(toPublicOrderItem),
     statusHistory,
   };

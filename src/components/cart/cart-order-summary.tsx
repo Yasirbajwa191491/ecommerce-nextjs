@@ -8,7 +8,6 @@ import {
   ShoppingBag,
   Truck,
 } from "lucide-react";
-import FormatPrice from "@/helpers/FormatPrice";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,12 +16,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
 import { cn } from "@/lib/utils";
 
 type CartOrderSummaryProps = {
   totalItem: number;
   subtotal: number;
+  discountTotal?: number;
+  shipping?: number;
   tax?: number;
+  total: number;
+  currency?: string;
+  isLoading?: boolean;
   className?: string;
 };
 
@@ -35,11 +41,14 @@ const trustItems = [
 export function CartOrderSummary({
   totalItem,
   subtotal,
+  discountTotal = 0,
+  shipping = 0,
   tax = 0,
+  total,
+  currency,
+  isLoading = false,
   className,
 }: CartOrderSummaryProps) {
-  const total = subtotal + tax;
-
   return (
     <Card
       className={cn(
@@ -62,33 +71,19 @@ export function CartOrderSummary({
       </CardHeader>
 
       <CardContent className="space-y-4 px-6 py-6 sm:px-7">
-        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-semibold tabular-nums text-foreground">
-              <FormatPrice price={subtotal} />
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Estimated tax</span>
-            <span className="font-semibold tabular-nums text-foreground">
-              <FormatPrice price={tax} />
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Shipping</span>
-            <span className="text-sm font-semibold text-emerald-600">
-              Calculated at checkout
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl bg-[#6254f3]/8 px-4 py-4 ring-1 ring-[#6254f3]/15">
-          <span className="text-base font-semibold text-foreground">Total</span>
-          <span className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
-            <FormatPrice price={total} />
-          </span>
-        </div>
+        {isLoading ? (
+          <Skeleton className="h-40 w-full rounded-xl" />
+        ) : (
+          <OrderSummaryBreakdown
+            subtotal={subtotal}
+            discountTotal={discountTotal}
+            shipping={shipping}
+            tax={tax}
+            total={total}
+            currency={currency}
+            showProductsLabel
+          />
+        )}
 
         <ul className="grid grid-cols-3 gap-2 pt-1">
           {trustItems.map(({ icon: Icon, label }) => (

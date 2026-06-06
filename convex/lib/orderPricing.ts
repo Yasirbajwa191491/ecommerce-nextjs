@@ -1,6 +1,11 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { isProductActive } from "./productActive";
+import {
+  calculateLineTotals,
+  calculateOrderTotals,
+  clampDiscountPercent,
+} from "./pricing";
 
 export type CartLineInput = {
   productId: Id<"products">;
@@ -15,13 +20,23 @@ export type PricedLineItem = {
   sku?: string;
   size?: string;
   quantity: number;
+  /** Legacy field: final unit price after discount */
   unitPrice: number;
   lineTotal: number;
   imageUrl: string;
+  originalUnitPrice: number;
+  discountPercent: number;
+  discountAmount: number;
+  lineDiscountTotal: number;
+  finalUnitPrice: number;
+  originalLineSubtotal: number;
+  shippingCharge: number;
+  lineShippingTotal: number;
 };
 
 export type OrderTotals = {
   subtotal: number;
+  discountTotal: number;
   tax: number;
   shipping: number;
   total: number;
@@ -39,7 +54,7 @@ export async function priceCartLines(
     throw new Error("Your cart is empty");
   }
 
-  const items: PricedLineItem[] = [];
+  const pricedLines: PricedLineItem[] = [];
   let currency: string | null = null;
 
   for (const line of lines) {
@@ -66,34 +81,51 @@ export async function priceCartLines(
       throw new Error("All items must use the same currency");
     }
 
-    const unitPrice = product.price;
-    const lineTotal = Math.round(unitPrice * line.quantity * 100) / 100;
+    const freeShipping = product.shipping === true;
+    const discountPercent = clampDiscountPercent(product.discountPercent ?? 0);
+    const shippingCharges = freeShipping ? 0 : (product.shippingCharges ?? 0);
 
-    items.push({
+    if (!freeShipping && shippingCharges < 0) {
+      throw new Error(`Invalid shipping charges for "${product.name}"`);
+    }
+
+    const linePricing = calculateLineTotals({
+      originalPrice: product.price,
+      discountPercent,
+      shippingCharges,
+      quantity: line.quantity,
+      freeShipping,
+    });
+
+    pricedLines.push({
       productId: line.productId,
       productName: product.name,
       color: line.color,
       sku: product.sku,
       quantity: line.quantity,
-      unitPrice,
-      lineTotal,
+      unitPrice: linePricing.finalUnitPrice,
+      lineTotal: linePricing.lineTotal,
       imageUrl: product.image[0]?.url ?? "",
+      originalUnitPrice: linePricing.originalUnitPrice,
+      discountPercent: linePricing.discountPercent,
+      discountAmount: linePricing.discountAmount,
+      lineDiscountTotal: linePricing.lineDiscountTotal,
+      finalUnitPrice: linePricing.finalUnitPrice,
+      originalLineSubtotal: linePricing.originalLineSubtotal,
+      shippingCharge: linePricing.shippingCharge,
+      lineShippingTotal: linePricing.lineShippingTotal,
     });
   }
 
-  const subtotal =
-    Math.round(items.reduce((sum, item) => sum + item.lineTotal, 0) * 100) /
-    100;
-  const tax = 0;
-  const shipping = 0;
-  const total = Math.round((subtotal + tax + shipping) * 100) / 100;
+  const totals = calculateOrderTotals(pricedLines, 0);
 
   return {
-    subtotal,
-    tax,
-    shipping,
-    total,
+    subtotal: totals.subtotal,
+    discountTotal: totals.discountTotal,
+    tax: totals.tax,
+    shipping: totals.shipping,
+    total: totals.total,
     currency: currency ?? "USD",
-    items,
+    items: pricedLines,
   };
 }

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import FormatPrice from "@/helpers/FormatPrice";
+import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 
 export function CartView() {
   const {
@@ -40,6 +41,11 @@ export function CartView() {
     removeItem,
     clearCart,
   } = useCartContext();
+
+  const { priced, isLoading, getPricedItem } = useCartPricing(cart);
+  const currency = priced?.currency;
+  const displaySubtotal = priced?.subtotal ?? total_price;
+  const displayTotal = priced?.total ?? total_price;
 
   const handleClearCart = () => {
     clearCart();
@@ -99,15 +105,22 @@ export function CartView() {
                 <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-md ring-1 ring-foreground/5">
                   {/* Mobile / tablet */}
                   <div className="space-y-4 p-4 lg:hidden">
-                    {cart.map((item) => (
-                      <CartItemMobile
-                        key={item.id}
-                        item={item}
-                        onIncrement={setIncrement}
-                        onDecrement={setDecrease}
-                        onRemove={removeItem}
-                      />
-                    ))}
+                    {cart.map((item) => {
+                      const pricedLine = getPricedItem(item);
+                      return (
+                        <CartItemMobile
+                          key={item.id}
+                          item={item}
+                          pricedLine={
+                            pricedLine ? toCartPricedLine(pricedLine) : undefined
+                          }
+                          currency={currency}
+                          onIncrement={setIncrement}
+                          onDecrement={setDecrease}
+                          onRemove={removeItem}
+                        />
+                      );
+                    })}
                   </div>
 
                   {/* Desktop table */}
@@ -133,15 +146,24 @@ export function CartView() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {cart.map((item) => (
-                          <CartItemRow
-                            key={item.id}
-                            item={item}
-                            onIncrement={setIncrement}
-                            onDecrement={setDecrease}
-                            onRemove={removeItem}
-                          />
-                        ))}
+                        {cart.map((item) => {
+                          const pricedLine = getPricedItem(item);
+                          return (
+                            <CartItemRow
+                              key={item.id}
+                              item={item}
+                              pricedLine={
+                                pricedLine
+                                  ? toCartPricedLine(pricedLine)
+                                  : undefined
+                              }
+                              currency={currency}
+                              onIncrement={setIncrement}
+                              onDecrement={setDecrease}
+                              onRemove={removeItem}
+                            />
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -153,9 +175,9 @@ export function CartView() {
                       </span>{" "}
                       in cart ·{" "}
                       <span className="font-semibold tabular-nums text-foreground">
-                        <FormatPrice price={total_price} />
+                        <FormatPrice price={displaySubtotal} currency={currency} />
                       </span>{" "}
-                      subtotal
+                      products total
                     </p>
                     <div className="w-fit self-end sm:self-auto">
                       <AlertDialog>
@@ -203,7 +225,13 @@ export function CartView() {
               <aside className="xl:sticky xl:top-24">
                 <CartOrderSummary
                   totalItem={total_item}
-                  subtotal={total_price}
+                  subtotal={displaySubtotal}
+                  discountTotal={priced?.discountTotal ?? 0}
+                  shipping={priced?.shipping ?? 0}
+                  tax={priced?.tax ?? 0}
+                  total={displayTotal}
+                  currency={currency}
+                  isLoading={isLoading}
                 />
               </aside>
             </div>

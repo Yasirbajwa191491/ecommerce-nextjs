@@ -1,6 +1,5 @@
 "use client";
 
-import FormatPrice from "@/helpers/FormatPrice";
 import {
   Card,
   CardContent,
@@ -14,7 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CheckoutItemMobile, CheckoutItemRow } from "@/components/checkout/checkout-item-row";
+import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
+import type { CartPricedLine } from "@/components/cart/cart-line-pricing";
 import { cn } from "@/lib/utils";
 import type { CartItem } from "@/reducer/cartReducer";
 import { Package } from "lucide-react";
@@ -22,19 +24,28 @@ import { Package } from "lucide-react";
 type CheckoutOrderSummaryProps = {
   cart: CartItem[];
   subtotal: number;
+  discountTotal?: number;
   tax?: number;
   shipping?: number;
+  total: number;
+  currency?: string;
+  isLoading?: boolean;
+  getPricedLine?: (item: CartItem) => CartPricedLine | undefined;
   className?: string;
 };
 
 export function CheckoutOrderSummary({
   cart,
   subtotal,
+  discountTotal = 0,
   tax = 0,
   shipping = 0,
+  total,
+  currency,
+  isLoading = false,
+  getPricedLine,
   className,
 }: CheckoutOrderSummaryProps) {
-  const total = subtotal + tax + shipping;
   const totalItems = cart.reduce((sum, item) => sum + item.amount, 0);
 
   return (
@@ -56,7 +67,12 @@ export function CheckoutOrderSummary({
 
         <div className="space-y-4 p-4 lg:hidden">
           {cart.map((item) => (
-            <CheckoutItemMobile key={item.id} item={item} />
+            <CheckoutItemMobile
+              key={item.id}
+              item={item}
+              pricedLine={getPricedLine?.(item)}
+              currency={currency}
+            />
           ))}
         </div>
 
@@ -67,7 +83,7 @@ export function CheckoutOrderSummary({
                 <TableHead className="h-12 py-4 pl-8 text-xs font-bold tracking-wider text-foreground/70 uppercase xl:pl-10">
                   Product
                 </TableHead>
-                <TableHead className="h-12 w-32 py-4 text-right text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                <TableHead className="h-12 w-40 py-4 text-right text-xs font-bold tracking-wider text-foreground/70 uppercase">
                   Unit price
                 </TableHead>
                 <TableHead className="h-12 w-44 py-4 text-center text-xs font-bold tracking-wider text-foreground/70 uppercase">
@@ -80,7 +96,12 @@ export function CheckoutOrderSummary({
             </TableHeader>
             <TableBody>
               {cart.map((item) => (
-                <CheckoutItemRow key={item.id} item={item} />
+                <CheckoutItemRow
+                  key={item.id}
+                  item={item}
+                  pricedLine={getPricedLine?.(item)}
+                  currency={currency}
+                />
               ))}
             </TableBody>
           </Table>
@@ -91,34 +112,20 @@ export function CheckoutOrderSummary({
         <CardHeader className="border-b border-border/60 bg-muted/20 px-6 py-5">
           <CardTitle className="text-base font-bold">Price details</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 px-6 py-6">
-          <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-semibold tabular-nums text-foreground">
-                <FormatPrice price={subtotal} />
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Estimated tax</span>
-              <span className="font-semibold tabular-nums text-foreground">
-                <FormatPrice price={tax} />
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Shipping</span>
-              <span className="font-semibold tabular-nums text-emerald-600">
-                {shipping === 0 ? "Free" : <FormatPrice price={shipping} />}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl bg-[#6254f3]/8 px-4 py-4 ring-1 ring-[#6254f3]/15">
-            <span className="text-base font-semibold text-foreground">Total</span>
-            <span className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
-              <FormatPrice price={total} />
-            </span>
-          </div>
+        <CardContent className="px-6 py-6">
+          {isLoading ? (
+            <Skeleton className="h-40 w-full rounded-xl" />
+          ) : (
+            <OrderSummaryBreakdown
+              subtotal={subtotal}
+              discountTotal={discountTotal}
+              shipping={shipping}
+              tax={tax}
+              total={total}
+              currency={currency}
+              showProductsLabel
+            />
+          )}
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,8 @@ import { productPath } from "@/lib/product-url";
 import { Product } from "@/types/product";
 import { ProductImageFrame } from "@/components/products/product-image-frame";
 import { ProductPrice } from "@/components/products/product-price";
+import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
+import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
 import { ProductStars } from "@/components/products/product-stars";
 
 type ProductCardProps = Product & {
@@ -17,6 +19,8 @@ export default function ProductCard({
 }: ProductCardProps) {
   const imageUrl = product.image[0]?.url ?? "/next.svg";
   const categoryName = product.category?.name ?? "Product";
+  const discountPercent = product.discountPercent ?? 0;
+  const freeShipping = product.shipping === true;
 
   if (view === "list") {
     return (
@@ -54,12 +58,22 @@ export default function ProductCard({
             <ProductStars rating={product.stars} className="mt-0.5" />
           </div>
 
-          <div className="flex shrink-0 flex-col justify-center border-t border-border/50 pt-3 sm:w-36 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right md:w-40">
+          <div className="flex shrink-0 flex-col justify-center gap-2 border-t border-border/50 pt-3 sm:w-36 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right md:w-40">
             <ProductPrice
               price={product.price}
+              discountPercent={discountPercent}
               currency={product.currency}
               className="sm:justify-end"
             />
+            <div className="flex flex-wrap gap-1 sm:justify-end">
+              <ProductDiscountBadge discountPercent={discountPercent} />
+              <ProductShippingBadge
+                freeShipping={freeShipping}
+                shippingCharges={product.shippingCharges}
+                currency={product.currency}
+                variant="compact"
+              />
+            </div>
           </div>
         </div>
       </Link>
@@ -83,6 +97,18 @@ export default function ProductCard({
         <span className="absolute top-3 right-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#6254f3] uppercase shadow-sm backdrop-blur-sm">
           {categoryName}
         </span>
+        {(discountPercent > 0 || freeShipping) && (
+          <div className="absolute top-3 left-3 flex flex-col gap-1">
+            <ProductDiscountBadge discountPercent={discountPercent} />
+            {freeShipping ? (
+              <ProductShippingBadge
+                freeShipping
+                currency={product.currency}
+                variant="compact"
+              />
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="flex min-h-[8rem] flex-1 flex-col gap-2 p-4">
@@ -96,7 +122,11 @@ export default function ProductCard({
           <ProductStars rating={product.stars} />
         </div>
         <div className="mt-auto border-t border-border/50 pt-2.5">
-          <ProductPrice price={product.price} currency={product.currency} />
+          <ProductPrice
+            price={product.price}
+            discountPercent={discountPercent}
+            currency={product.currency}
+          />
         </div>
       </div>
     </Link>

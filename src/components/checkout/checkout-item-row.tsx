@@ -6,11 +6,25 @@ import {
   ColorSwatch,
   QuantityDisplay,
 } from "@/components/cart/cart-product-display";
+import {
+  CartLinePricingDetails,
+  type CartPricedLine,
+} from "@/components/cart/cart-line-pricing";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { CartItem } from "@/reducer/cartReducer";
 
-export function CheckoutItemMobile({ item }: { item: CartItem }) {
-  const lineTotal = item.price * item.amount;
+type CheckoutItemProps = {
+  item: CartItem;
+  pricedLine?: CartPricedLine;
+  currency?: string;
+};
+
+export function CheckoutItemMobile({
+  item,
+  pricedLine,
+  currency,
+}: CheckoutItemProps) {
+  const lineTotal = pricedLine?.lineTotal ?? item.price * item.amount;
 
   return (
     <article className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
@@ -20,9 +34,13 @@ export function CheckoutItemMobile({ item }: { item: CartItem }) {
           <h3 className="line-clamp-2 text-base font-semibold leading-snug text-foreground">
             {item.name}
           </h3>
-          <p className="text-sm font-medium tabular-nums text-muted-foreground">
-            <FormatPrice price={item.price} /> each
-          </p>
+          {pricedLine ? (
+            <CartLinePricingDetails priced={pricedLine} currency={currency} />
+          ) : (
+            <p className="text-sm font-medium tabular-nums text-muted-foreground">
+              <FormatPrice price={item.price} currency={currency} /> each
+            </p>
+          )}
           <ColorSwatch color={item.color} />
         </div>
       </div>
@@ -41,7 +59,7 @@ export function CheckoutItemMobile({ item }: { item: CartItem }) {
             Line total
           </p>
           <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
-            <FormatPrice price={lineTotal} />
+            <FormatPrice price={lineTotal} currency={currency} />
           </p>
         </div>
       </div>
@@ -49,8 +67,12 @@ export function CheckoutItemMobile({ item }: { item: CartItem }) {
   );
 }
 
-export function CheckoutItemRow({ item }: { item: CartItem }) {
-  const lineTotal = item.price * item.amount;
+export function CheckoutItemRow({
+  item,
+  pricedLine,
+  currency,
+}: CheckoutItemProps) {
+  const lineTotal = pricedLine?.lineTotal ?? item.price * item.amount;
 
   return (
     <TableRow className="hover:bg-muted/20">
@@ -66,8 +88,19 @@ export function CheckoutItemRow({ item }: { item: CartItem }) {
         </div>
       </TableCell>
 
-      <TableCell className="w-32 py-6 text-right font-semibold tabular-nums text-foreground">
-        <FormatPrice price={item.price} />
+      <TableCell className="w-40 whitespace-normal py-6 text-right">
+        {pricedLine ? (
+          <CartLinePricingDetails
+            priced={pricedLine}
+            currency={currency}
+            compact
+            className="items-end text-right"
+          />
+        ) : (
+          <span className="font-semibold tabular-nums text-foreground">
+            <FormatPrice price={item.price} currency={currency} />
+          </span>
+        )}
       </TableCell>
 
       <TableCell className="w-44 whitespace-normal py-6">
@@ -77,7 +110,7 @@ export function CheckoutItemRow({ item }: { item: CartItem }) {
       </TableCell>
 
       <TableCell className="w-32 py-6 pr-8 text-right text-base font-bold tabular-nums text-foreground xl:pr-10">
-        <FormatPrice price={lineTotal} />
+        <FormatPrice price={lineTotal} currency={currency} />
       </TableCell>
     </TableRow>
   );

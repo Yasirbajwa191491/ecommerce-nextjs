@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import FormatPrice from "@/helpers/FormatPrice";
 import { Button } from "@/components/ui/button";
@@ -11,10 +10,16 @@ import {
   CartProductImage,
   ColorSwatch,
 } from "@/components/cart/cart-product-display";
+import {
+  CartLinePricingDetails,
+  type CartPricedLine,
+} from "@/components/cart/cart-line-pricing";
 import type { CartItem as CartItemType } from "@/reducer/cartReducer";
 
 type CartItemProps = {
   item: CartItemType;
+  pricedLine?: CartPricedLine;
+  currency?: string;
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
@@ -106,11 +111,13 @@ function RemoveButton({
 
 export function CartItemMobile({
   item,
+  pricedLine,
+  currency,
   onIncrement,
   onDecrement,
   onRemove,
 }: CartItemProps) {
-  const lineTotal = item.price * item.amount;
+  const lineTotal = pricedLine?.lineTotal ?? item.price * item.amount;
 
   return (
     <article className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
@@ -123,9 +130,18 @@ export function CartItemMobile({
             </h3>
             <RemoveButton item={item} onRemove={onRemove} />
           </div>
-          <p className="mt-1 text-sm font-medium tabular-nums text-muted-foreground">
-            <FormatPrice price={item.price} /> each
-          </p>
+          {pricedLine ? (
+            <div className="mt-1">
+              <CartLinePricingDetails
+                priced={pricedLine}
+                currency={currency}
+              />
+            </div>
+          ) : (
+            <p className="mt-1 text-sm font-medium tabular-nums text-muted-foreground">
+              <FormatPrice price={item.price} currency={currency} /> each
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <ColorSwatch color={item.color} />
             <StockBadge max={item.max} amount={item.amount} />
@@ -144,7 +160,7 @@ export function CartItemMobile({
             Line total
           </p>
           <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
-            <FormatPrice price={lineTotal} />
+            <FormatPrice price={lineTotal} currency={currency} />
           </p>
         </div>
       </div>
@@ -154,11 +170,13 @@ export function CartItemMobile({
 
 export function CartItemRow({
   item,
+  pricedLine,
+  currency,
   onIncrement,
   onDecrement,
   onRemove,
 }: CartItemProps) {
-  const lineTotal = item.price * item.amount;
+  const lineTotal = pricedLine?.lineTotal ?? item.price * item.amount;
 
   return (
     <TableRow className="hover:bg-muted/20">
@@ -177,8 +195,19 @@ export function CartItemRow({
         </div>
       </TableCell>
 
-      <TableCell className="w-32 py-6 text-right font-semibold tabular-nums text-foreground">
-        <FormatPrice price={item.price} />
+      <TableCell className="w-40 whitespace-normal py-6 text-right">
+        {pricedLine ? (
+          <CartLinePricingDetails
+            priced={pricedLine}
+            currency={currency}
+            compact
+            className="items-end text-right"
+          />
+        ) : (
+          <span className="font-semibold tabular-nums text-foreground">
+            <FormatPrice price={item.price} currency={currency} />
+          </span>
+        )}
       </TableCell>
 
       <TableCell className="w-44 whitespace-normal py-6">
@@ -192,7 +221,7 @@ export function CartItemRow({
       </TableCell>
 
       <TableCell className="w-32 py-6 text-right text-base font-bold tabular-nums text-foreground">
-        <FormatPrice price={lineTotal} />
+        <FormatPrice price={lineTotal} currency={currency} />
       </TableCell>
 
       <TableCell className="w-28 whitespace-normal py-6 pr-8 text-right xl:pr-10">

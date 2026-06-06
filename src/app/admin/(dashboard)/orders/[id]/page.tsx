@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrencyAmount } from "@/lib/currencies";
+import { normalizeOrderDiscountTotal, normalizeOrderItemLike } from "@/lib/order-item-display";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import type { OrderStatus, PaymentStatus } from "@/types/order";
 import { ArrowLeft } from "lucide-react";
@@ -102,6 +103,9 @@ export default function AdminOrderDetailPage() {
   const order = detail?.order;
   const items = detail?.items ?? [];
   const logs = detail?.transactionLogs ?? [];
+  const discountTotal = order
+    ? normalizeOrderDiscountTotal(order, items)
+    : 0;
 
   useEffect(() => {
     if (!detail?.order || backfillAttemptedRef.current) return;
@@ -242,6 +246,14 @@ export default function AdminOrderDetailPage() {
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatCurrencyAmount(order.subtotal, order.currency)}</span>
             </div>
+            {discountTotal > 0 ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Discount</span>
+                <span className="text-rose-600">
+                  −{formatCurrencyAmount(discountTotal, order.currency)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Tax</span>
               <span>{formatCurrencyAmount(order.tax, order.currency)}</span>
@@ -302,12 +314,17 @@ export default function AdminOrderDetailPage() {
                 <TableHead>Color</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Qty</TableHead>
-                <TableHead>Unit price</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>Original</TableHead>
+                <TableHead>Discount</TableHead>
+                <TableHead>Final</TableHead>
+                <TableHead>Shipping</TableHead>
+                <TableHead>Line total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item: Doc<"orderItems">) => (
+              {items.map((item: Doc<"orderItems">) => {
+                const normalized = normalizeOrderItemLike(item);
+                return (
                 <TableRow key={item._id}>
                   <TableCell>
                     {item.imageUrl ? (
@@ -330,13 +347,33 @@ export default function AdminOrderDetailPage() {
                   <TableCell>{item.size || "—"}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>
-                    {formatCurrencyAmount(item.unitPrice, order.currency)}
+                    {formatCurrencyAmount(
+                      normalized.originalUnitPrice,
+                      order.currency
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {normalized.discountPercent > 0
+                      ? `${normalized.discountPercent}% (−${formatCurrencyAmount(normalized.lineDiscountTotal, order.currency)})`
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {formatCurrencyAmount(normalized.finalUnitPrice, order.currency)}
+                  </TableCell>
+                  <TableCell>
+                    {normalized.lineShippingTotal > 0
+                      ? formatCurrencyAmount(
+                          normalized.lineShippingTotal,
+                          order.currency
+                        )
+                      : "—"}
                   </TableCell>
                   <TableCell>
                     {formatCurrencyAmount(item.lineTotal, order.currency)}
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
           <div className="mt-4 flex flex-col items-end gap-1 text-sm">
@@ -344,6 +381,14 @@ export default function AdminOrderDetailPage() {
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatCurrencyAmount(order.subtotal, order.currency)}</span>
             </div>
+            {discountTotal > 0 ? (
+              <div className="flex w-full max-w-xs justify-between">
+                <span className="text-muted-foreground">Discount</span>
+                <span className="text-rose-600">
+                  −{formatCurrencyAmount(discountTotal, order.currency)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex w-full max-w-xs justify-between">
               <span className="text-muted-foreground">Tax</span>
               <span>{formatCurrencyAmount(order.tax, order.currency)}</span>

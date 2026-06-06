@@ -15,6 +15,10 @@ import { isProductActive } from "./lib/productActive";
 import { paginateArray } from "./lib/pagination";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
 import { productImageValidator } from "./schema";
+import {
+  normalizeProductShippingCharges,
+  validateProductDiscountPercent,
+} from "./lib/pricing";
 
 const productFields = {
   name: v.string(),
@@ -27,12 +31,27 @@ const productFields = {
   categoryId: v.id("productCategories"),
   featured: v.boolean(),
   shipping: v.boolean(),
+  discountPercent: v.optional(v.number()),
+  shippingCharges: v.optional(v.number()),
   stock: v.number(),
   reviews: v.number(),
   stars: v.number(),
   description: v.string(),
   active: v.optional(v.boolean()),
 };
+
+function normalizeProductPricingFields(args: {
+  shipping: boolean;
+  discountPercent?: number;
+  shippingCharges?: number;
+}) {
+  const discountPercent = validateProductDiscountPercent(args.discountPercent);
+  const shippingCharges = normalizeProductShippingCharges(
+    args.shipping,
+    args.shippingCharges
+  );
+  return { discountPercent, shippingCharges };
+}
 
 const bySortOrder = (
   a: { sortOrder?: number | null },
@@ -321,6 +340,7 @@ export const create = mutation({
       throw new Error("Category not found");
     }
     await assertUniqueProductName(ctx, args.name);
+    const pricing = normalizeProductPricingFields(args);
     const activeProducts = await ctx.db.query("products").collect();
     const maxSortOrder = activeProducts
       .filter(isProductActive)
@@ -328,6 +348,8 @@ export const create = mutation({
     const nextSortOrder = maxSortOrder + 1;
     const productId = await ctx.db.insert("products", {
       ...args,
+      discountPercent: pricing.discountPercent,
+      shippingCharges: pricing.shippingCharges,
       active: args.active ?? true,
       sortOrder: nextSortOrder,
     });
@@ -361,7 +383,13 @@ export const update = mutation({
       throw new Error("Category not found");
     }
     await assertUniqueProductName(ctx, data.name, id);
-    await ctx.db.patch(id, { ...data, active: data.active ?? true });
+    const pricing = normalizeProductPricingFields(data);
+    await ctx.db.patch(id, {
+      ...data,
+      discountPercent: pricing.discountPercent,
+      shippingCharges: pricing.shippingCharges,
+      active: data.active ?? true,
+    });
 
     const now = Date.now();
     await insertAdminActivityLog(ctx, {

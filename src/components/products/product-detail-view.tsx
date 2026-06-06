@@ -13,7 +13,10 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { useSingleProduct } from "@/hooks/useProducts";
 import { ProductImageGallery } from "@/components/products/product-image-gallery";
 import { ProductPrice } from "@/components/products/product-price";
+import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
+import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
 import { ProductStars } from "@/components/products/product-stars";
+import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
 import AddToCart from "@/components/products/AddToCart";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,7 +27,6 @@ type ProductDetailViewProps = {
 };
 
 const trustItems = [
-  { icon: Truck, label: "Free delivery" },
   { icon: RefreshCw, label: "30-day returns" },
   { icon: Package, label: "Secure packaging" },
   { icon: ShieldCheck, label: "2-year warranty" },
@@ -80,6 +82,8 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
 
   const categoryName = singleProduct.category?.name ?? "Product";
   const inStock = singleProduct.stock > 0;
+  const discountPercent = singleProduct.discountPercent ?? 0;
+  const freeShipping = singleProduct.shipping === true;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
@@ -157,19 +161,33 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-5">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Price
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Price
+              </p>
+              <ProductDiscountBadge discountPercent={discountPercent} />
+            </div>
             <ProductPrice
               price={singleProduct.price}
+              discountPercent={discountPercent}
               currency={singleProduct.currency}
               className="mt-1"
+              size="md"
             />
-            {singleProduct.shipping ? (
-              <p className="mt-2 text-sm font-medium text-emerald-600">
-                Free shipping included
-              </p>
-            ) : null}
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <Truck className="size-4 shrink-0 text-[#6254f3]" />
+              {freeShipping ? (
+                <span className="font-medium text-emerald-600">Free Shipping</span>
+              ) : (
+                <span className="font-medium text-foreground">
+                  Shipping Charges:{" "}
+                  {formatCurrencyAmount(
+                    singleProduct.shippingCharges ?? 0,
+                    singleProduct.currency ?? DEFAULT_CURRENCY
+                  )}
+                </span>
+              )}
+            </div>
           </div>
 
           {singleProduct.description ? (
@@ -207,7 +225,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
             </div>
           </dl>
 
-          <div className="grid grid-cols-2 gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:grid-cols-4 sm:p-5">
+          <div className="grid grid-cols-3 gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:p-5">
             {trustItems.map(({ icon: Icon, label }) => (
               <div
                 key={label}

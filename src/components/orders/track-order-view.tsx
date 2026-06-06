@@ -78,10 +78,25 @@ function CustomerOrderCard({ order }: { order: PublicOrderSummary }) {
             <PaymentStatusBadge status={order.paymentStatus} />
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">
+        <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
           <p className="text-lg font-semibold text-[#6254f3]">
             {formatCurrencyAmount(order.total, order.currency)}
           </p>
+          {(order.discountTotal > 0 || order.shipping > 0) && (
+            <div className="text-xs text-muted-foreground">
+              {order.discountTotal > 0 ? (
+                <span>
+                  Discount: −{formatCurrencyAmount(order.discountTotal, order.currency)}
+                </span>
+              ) : null}
+              {order.discountTotal > 0 && order.shipping > 0 ? " · " : null}
+              {order.shipping > 0 ? (
+                <span>
+                  Shipping: {formatCurrencyAmount(order.shipping, order.currency)}
+                </span>
+              ) : null}
+            </div>
+          )}
           <Button
             size="sm"
             className={COMPACT_PRIMARY_BUTTON_CLASS}

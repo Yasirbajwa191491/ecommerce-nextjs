@@ -25,6 +25,7 @@ export type Order = {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   subtotal: number;
+  discountTotal?: number;
   tax: number;
   shipping: number;
   total: number;
@@ -49,6 +50,13 @@ export type OrderItem = {
   unitPrice: number;
   lineTotal: number;
   imageUrl: string;
+  originalUnitPrice?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  lineDiscountTotal?: number;
+  finalUnitPrice?: number;
+  shippingCharge?: number;
+  lineShippingTotal?: number;
 };
 
 export type PublicOrderItem = {
@@ -60,6 +68,13 @@ export type PublicOrderItem = {
   unitPrice: number;
   lineTotal: number;
   imageUrl: string;
+  originalUnitPrice: number;
+  discountPercent: number;
+  discountAmount: number;
+  lineDiscountTotal: number;
+  finalUnitPrice: number;
+  shippingCharge: number;
+  lineShippingTotal: number;
 };
 
 export type PublicOrderSummary = {
@@ -68,6 +83,8 @@ export type PublicOrderSummary = {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   total: number;
+  discountTotal: number;
+  shipping: number;
   currency: string;
   createdAt: number;
   updatedAt: number;

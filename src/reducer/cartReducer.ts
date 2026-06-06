@@ -66,7 +66,7 @@ export const cartInitialState: CartState = {
   cart: [],
   total_item: 0,
   total_price: 0,
-  shipping_fee: 50000,
+  shipping_fee: 0,
 };
 
 export function cartReducer(state: CartState, action: CartAction): CartState {

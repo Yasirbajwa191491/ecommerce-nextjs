@@ -109,7 +109,7 @@ export const trackByCustomer = action({
 
     return {
       found: true,
-      orders: orders.map(toPublicOrderSummary),
+      orders: orders.map((order) => toPublicOrderSummary(order)),
     };
   },
 });

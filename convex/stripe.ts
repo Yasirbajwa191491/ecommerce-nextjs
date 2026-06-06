@@ -22,6 +22,65 @@ function getStripe(): Stripe {
   return new Stripe(key);
 }
 
+function buildStripeLineItems(
+  priced: {
+    currency: string;
+    shipping: number;
+    items: PricedLineItem[];
+  }
+): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
+    priced.items.map((item: PricedLineItem) => {
+      const discountNote =
+        item.discountPercent > 0 ? ` · ${item.discountPercent}% off` : "";
+      return {
+        price_data: {
+          currency: priced.currency.toLowerCase(),
+          unit_amount: Math.round(item.finalUnitPrice * 100),
+          product_data: {
+            name: item.productName,
+            description: `Color: ${item.color}${discountNote}`,
+            images: item.imageUrl ? [item.imageUrl] : undefined,
+          },
+        },
+        quantity: item.quantity,
+      };
+    });
+
+  if (priced.shipping > 0) {
+    lineItems.push({
+      price_data: {
+        currency: priced.currency.toLowerCase(),
+        unit_amount: Math.round(priced.shipping * 100),
+        product_data: {
+          name: "Shipping",
+          description: "Order shipping charges",
+        },
+      },
+      quantity: 1,
+    });
+  }
+
+  return lineItems;
+}
+
+function assertStripeAmountMatchesOrder(
+  lineItems: Stripe.Checkout.SessionCreateParams.LineItem[],
+  expectedTotal: number
+): void {
+  const centsTotal = lineItems.reduce((sum, item) => {
+    const unitAmount = item.price_data?.unit_amount ?? 0;
+    const quantity = item.quantity ?? 1;
+    return sum + unitAmount * quantity;
+  }, 0);
+  const expectedCents = Math.round(expectedTotal * 100);
+  if (centsTotal !== expectedCents) {
+    throw new ConvexError(
+      `Stripe line items total (${centsTotal}) does not match order total (${expectedCents})`
+    );
+  }
+}
+
 export const createCheckoutSession = action({
   args: {
     lines: v.array(cartLineValidator),
@@ -41,19 +100,8 @@ export const createCheckoutSession = action({
     const stripe = getStripe();
     const appUrl = getSiteUrl();
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      priced.items.map((item: PricedLineItem) => ({
-        price_data: {
-          currency: priced.currency.toLowerCase(),
-          unit_amount: Math.round(item.unitPrice * 100),
-          product_data: {
-            name: item.productName,
-            description: `Color: ${item.color}`,
-            images: item.imageUrl ? [item.imageUrl] : undefined,
-          },
-        },
-        quantity: item.quantity,
-      }));
+    const lineItems = buildStripeLineItems(priced);
+    assertStripeAmountMatchesOrder(lineItems, priced.total);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",

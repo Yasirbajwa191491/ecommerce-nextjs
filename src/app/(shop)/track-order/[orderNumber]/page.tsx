@@ -24,6 +24,8 @@ import {
 import { formatCurrencyAmount } from "@/lib/currencies";
 import type { PublicOrderItem } from "@/types/order";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
+import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
+import { OrderItemPricing } from "@/components/orders/order-item-pricing";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 const PRIMARY_BUTTON_CLASS =
@@ -201,18 +203,33 @@ function TrackOrderDetailContent() {
                   {item.sku ? <span>SKU {item.sku}</span> : null}
                   {item.size ? <span>Size {item.size}</span> : null}
                 </div>
+                <div className="mt-2 hidden sm:block">
+                  <OrderItemPricing item={item} currency={order.currency} />
+                </div>
               </div>
-              <p className="shrink-0 font-semibold">
-                {formatCurrencyAmount(item.lineTotal, order.currency)}
-              </p>
+              <OrderItemPricing
+                item={item}
+                currency={order.currency}
+                compact
+                className="sm:hidden"
+              />
+              <div className="hidden shrink-0 sm:block">
+                <p className="font-semibold tabular-nums">
+                  {formatCurrencyAmount(item.lineTotal, order.currency)}
+                </p>
+              </div>
             </div>
           ))}
-          <div className="flex justify-between border-t pt-4 text-lg font-semibold">
-            <span>Total</span>
-            <span className="text-[#6254f3]">
-              {formatCurrencyAmount(order.total, order.currency)}
-            </span>
-          </div>
+          <OrderSummaryBreakdown
+            subtotal={order.subtotal}
+            discountTotal={order.discountTotal}
+            shipping={order.shipping}
+            tax={order.tax}
+            total={order.total}
+            currency={order.currency}
+            showProductsLabel
+            className="mt-2"
+          />
         </CardContent>
       </Card>
 

@@ -81,6 +81,8 @@ type ProductForm = {
   categoryId: string;
   featured: boolean;
   shipping: boolean;
+  discountPercent: number;
+  shippingCharges: number;
   stock: number;
   reviews: number;
   stars: number;
@@ -99,6 +101,8 @@ const emptyForm = (): ProductForm => ({
   categoryId: "",
   featured: false,
   shipping: true,
+  discountPercent: 0,
+  shippingCharges: 0,
   stock: 0,
   reviews: 0,
   stars: 0,
@@ -247,6 +251,8 @@ export default function AdminProductsPage() {
       categoryId: p.categoryId,
       featured: productFlag(p.featured),
       shipping: productFlag(p.shipping),
+      discountPercent: p.discountPercent ?? 0,
+      shippingCharges: p.shippingCharges ?? 0,
       stock: p.stock,
       reviews: p.reviews,
       stars: p.stars,
@@ -281,6 +287,8 @@ export default function AdminProductsPage() {
     categoryId: f.categoryId as Id<"productCategories">,
     featured: f.featured,
     shipping: f.shipping,
+    discountPercent: Number(f.discountPercent) || 0,
+    shippingCharges: f.shipping ? 0 : Number(f.shippingCharges) || 0,
     stock: Number(f.stock),
     reviews: Number(f.reviews),
     stars: Number(f.stars),
@@ -898,6 +906,60 @@ export default function AdminProductsPage() {
               </AdminFormField>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <AdminFormField
+                label="Discount percentage (0–100)"
+                htmlFor="product-discount"
+                error={validation.fieldError("discountPercent")}
+              >
+                <Input
+                  id="product-discount"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="1"
+                  value={form.discountPercent}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      discountPercent: Number(e.target.value),
+                    }))
+                  }
+                  onBlur={() => validation.touch("discountPercent")}
+                  aria-invalid={!!validation.fieldError("discountPercent")}
+                  className={invalidInputClass(
+                    validation.fieldError("discountPercent")
+                  )}
+                />
+              </AdminFormField>
+              {!form.shipping ? (
+                <AdminFormField
+                  label="Shipping charges"
+                  htmlFor="product-shipping-charges"
+                  error={validation.fieldError("shippingCharges")}
+                >
+                  <Input
+                    id="product-shipping-charges"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.shippingCharges}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        shippingCharges: Number(e.target.value),
+                      }))
+                    }
+                    onBlur={() => validation.touch("shippingCharges")}
+                    aria-invalid={!!validation.fieldError("shippingCharges")}
+                    className={invalidInputClass(
+                      validation.fieldError("shippingCharges")
+                    )}
+                  />
+                </AdminFormField>
+              ) : null}
+            </div>
+
             <div className="grid gap-3 rounded-lg border p-4">
               <div className="flex items-center justify-between gap-4">
                 <Label htmlFor="product-active">Active</Label>
@@ -925,7 +987,11 @@ export default function AdminProductsPage() {
                   id="product-shipping"
                   checked={form.shipping === true}
                   onCheckedChange={(shipping) =>
-                    setForm((f) => ({ ...f, shipping: shipping === true }))
+                    setForm((f) => ({
+                      ...f,
+                      shipping: shipping === true,
+                      shippingCharges: shipping === true ? 0 : f.shippingCharges,
+                    }))
                   }
                 />
               </div>

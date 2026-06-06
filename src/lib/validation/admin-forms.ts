@@ -73,12 +73,20 @@ export type ProductFormValues = {
   reviews: number;
   stars: number;
   description: string;
+  shipping?: boolean;
+  discountPercent?: number;
+  shippingCharges?: number;
 };
 
 export function validateProductForm(
   values: ProductFormValues,
   options?: { takenNames?: string[] }
-): Partial<Record<keyof ProductFormValues | `imageUrls.${number}`, string>> {
+): Partial<
+  Record<
+    keyof ProductFormValues | `imageUrls.${number}`,
+    string
+  >
+> {
   const errors: Partial<
     Record<keyof ProductFormValues | `imageUrls.${number}`, string>
   > = {};
@@ -144,6 +152,22 @@ export function validateProductForm(
   if (description) errors.description = description;
   else if (values.description.trim().length < 10) {
     errors.description = "Description must be at least 10 characters";
+  }
+
+  const discountPercent = values.discountPercent ?? 0;
+  if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+    errors.discountPercent = "Discount must be between 0 and 100";
+  }
+
+  const freeShipping = values.shipping !== false;
+  if (!freeShipping) {
+    const shippingCharges = values.shippingCharges ?? 0;
+    const shippingError = validatePositiveNumber(
+      shippingCharges,
+      "Shipping charges",
+      { min: 0, allowZero: true }
+    );
+    if (shippingError) errors.shippingCharges = shippingError;
   }
 
   return errors;

@@ -15,6 +15,9 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 import FormatPrice from "@/helpers/FormatPrice";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
+import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
+import { OrderItemPricing } from "@/components/orders/order-item-pricing";
+import { normalizeOrderItemLike } from "@/lib/order-item-display";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,17 +76,6 @@ function CheckoutSuccessContent() {
       return "Your payment was successful and your order is confirmed.";
     }
     return "Your order has been received.";
-  }, [order]);
-
-  const totalLabel = useMemo(() => {
-    if (!order) return "Total";
-    if (order.paymentMethod === "cod") {
-      return "Total remaining to pay";
-    }
-    if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") {
-      return "Total due";
-    }
-    return "Total paid";
   }, [order]);
 
   if (!orderNumber) {
@@ -156,35 +148,56 @@ function CheckoutSuccessContent() {
                   Items ordered
                 </h2>
                 <ul className="divide-y divide-border/60 rounded-xl border border-border/60">
-                  {items.map((item: Doc<"orderItems">) => (
-                    <li
-                      key={item._id}
-                      className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {item.productName} × {item.quantity}
-                        </p>
-                        <div className="mt-1.5">
-                          <ColorSwatch color={item.color} />
+                  {items.map((item: Doc<"orderItems">) => {
+                    const normalized = normalizeOrderItemLike(item);
+                    return (
+                      <li
+                        key={item._id}
+                        className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-start sm:justify-between"
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {item.productName} × {item.quantity}
+                          </p>
+                          <div className="mt-1.5">
+                            <ColorSwatch color={item.color} />
+                          </div>
+                          <div className="mt-2">
+                            <OrderItemPricing
+                              item={{
+                                ...normalized,
+                                productName: item.productName,
+                                color: item.color,
+                                quantity: item.quantity,
+                                lineTotal: item.lineTotal,
+                                imageUrl: item.imageUrl,
+                                unitPrice: normalized.finalUnitPrice,
+                              }}
+                              currency={order.currency}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <span className="font-semibold tabular-nums">
-                        <FormatPrice price={item.lineTotal} />
-                      </span>
-                    </li>
-                  ))}
+                        <span className="font-semibold tabular-nums">
+                          <FormatPrice
+                            price={item.lineTotal}
+                            currency={order.currency}
+                          />
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 
-              <div className="rounded-xl bg-[#6254f3]/8 px-4 py-4 ring-1 ring-[#6254f3]/15">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{totalLabel}</span>
-                  <span className="text-xl font-bold tabular-nums">
-                    <FormatPrice price={order.total} />
-                  </span>
-                </div>
-              </div>
+              <OrderSummaryBreakdown
+                subtotal={order.subtotal}
+                discountTotal={order.discountTotal ?? 0}
+                shipping={order.shipping}
+                tax={order.tax}
+                total={order.total}
+                currency={order.currency}
+                showProductsLabel
+              />
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button
