@@ -1,9 +1,18 @@
 const DEFAULT_SITE_URL = "http://localhost:3000";
+const LOCALHOST_URL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i;
+
+function isLocalhostUrl(url: string): boolean {
+  return LOCALHOST_URL.test(url);
+}
 
 /** Public site URL for metadata, links, and build-time env injection. */
 export function resolveSiteUrl(env: NodeJS.ProcessEnv = process.env): string {
   const explicit = env.SITE_URL?.trim() || env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return explicit;
+  const onVercel = env.VERCEL === "1" || Boolean(env.VERCEL_ENV);
+
+  if (explicit && (!onVercel || !isLocalhostUrl(explicit))) {
+    return explicit;
+  }
 
   if (env.VERCEL_ENV === "production" && env.VERCEL_PROJECT_PRODUCTION_URL?.trim()) {
     return `https://${env.VERCEL_PROJECT_PRODUCTION_URL.trim()}`;
@@ -12,6 +21,8 @@ export function resolveSiteUrl(env: NodeJS.ProcessEnv = process.env): string {
   if (env.VERCEL_URL?.trim()) {
     return `https://${env.VERCEL_URL.trim()}`;
   }
+
+  if (explicit) return explicit;
 
   return DEFAULT_SITE_URL;
 }

@@ -2,9 +2,21 @@
 import { execSync } from "node:child_process";
 import { resolveSiteUrl } from "./resolve-site-url.mjs";
 
+if (!process.env.CONVEX_DEPLOY_KEY?.trim()) {
+  console.error(
+    "[vercel-build] Missing CONVEX_DEPLOY_KEY.\n" +
+      "Add it in Vercel → Settings → Environment Variables:\n" +
+      "  • Production deploy key → Production environment only\n" +
+      "  • Preview deploy key → Preview environment only\n" +
+      "Generate keys in the Convex dashboard → Project Settings → Deploy Keys."
+  );
+  process.exit(1);
+}
+
 const siteUrl = resolveSiteUrl();
 
 console.log(`[vercel-build] VERCEL_ENV=${process.env.VERCEL_ENV ?? "local"}`);
+console.log(`[vercel-build] VERCEL_URL=${process.env.VERCEL_URL ?? "(unset)"}`);
 console.log(`[vercel-build] SITE_URL=${siteUrl}`);
 
 const buildEnv = {

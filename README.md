@@ -35,10 +35,11 @@ Open http://localhost:3000/home
 1. Import the repo in Vercel and set **Root Directory** to `ecommerce-nextjs`.
 2. In the Convex dashboard, create a **production** deployment and generate a **Production deploy key**.
 3. Generate a **Preview deploy key** for PR preview backends.
-4. In Vercel → **Environment Variables**:
+4. In Vercel → **Environment Variables** (required):
    - `CONVEX_DEPLOY_KEY` = production key → **Production** only
    - `CONVEX_DEPLOY_KEY` = preview key → **Preview** only
-   - Optional: `SITE_URL` = `https://your-custom-domain.com` on **Production** (overrides auto-detected Vercel URL)
+   - Do **not** copy `SITE_URL=http://localhost:3000` from `.env.example` into Vercel
+   - Optional: `SITE_URL` = `https://your-custom-domain.com` on **Production** only
 5. On Convex production, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, etc.
 6. Deploy. The build runs `npm run build:vercel`, which:
    - Resolves `SITE_URL` (preview: `https://<branch>.vercel.app`, production: production domain)
