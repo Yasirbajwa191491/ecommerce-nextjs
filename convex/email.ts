@@ -6,9 +6,16 @@ import { v, ConvexError } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/components";
 import { OtpEmail } from "../src/emails/otp-email";
+import { CampaignEmail } from "../src/emails/campaign-email";
 import { OTP_EXPIRES_MINUTES } from "../src/lib/otp-config";
 import type { Doc } from "./_generated/dataModel";
 import { getSiteUrl } from "./lib/siteUrl";
+import { applyEmailPlaceholders, buildPlaceholderContext } from "./lib/emailPlaceholders";
+import { calculateFinalPrice } from "./lib/pricing";
+import { BATCH_SIZE } from "./lib/campaignQueue";
+import { generateUnsubscribeToken } from "./lib/subscriberTokens";
+
+const STORE_NAME = "Ecommerce Store";
 
 function resendFailureMessage(message: string, to: string, from: string) {
   const lower = message.toLowerCase();
@@ -162,3 +169,182 @@ export const sendOrderConfirmation = internalAction({
     }
   },
 });
+
+function formatMoney(amount: number, currency: string) {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}
+
+export const processCampaignBatch = internalAction({
+  args: { campaignId: v.id("emailCampaigns") },
+  handler: async (ctx, args) => {
+    const campaign = await ctx.runQuery(internal.emailCampaigns.getCampaignForSend, {
+      campaignId: args.campaignId,
+    });
+
+    if (!campaign || campaign.status !== "sending") {
+      return;
+    }
+
+    const pending = await ctx.runQuery(internal.emailCampaigns.getPendingRecipients, {
+      campaignId: args.campaignId,
+      limit: BATCH_SIZE,
+    });
+
+    if (pending.length === 0) {
+      await ctx.runMutation(internal.emailCampaigns.finalizeCampaign, {
+        campaignId: args.campaignId,
+      });
+      return;
+    }
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = await ctx.runQuery(internal.settings.getEmailFrom, {});
+    const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
+    const siteUrl = getSiteUrl();
+    const sentAt = Date.now();
+
+    let sentDelta = 0;
+    let failedDelta = 0;
+    let deliveredDelta = 0;
+
+    for (const { recipient, subscriber } of pending) {
+      if (!subscriber) continue;
+
+      let token = subscriber.unsubscribeToken;
+      if (!token) {
+        token = generateUnsubscribeToken();
+        await ctx.runMutation(internal.emailHelpers.ensureSubscriberToken, {
+          subscriberId: subscriber._id,
+          token,
+        });
+      }
+
+      const placeholderContext = buildPlaceholderContext({
+        subscriberEmail: subscriber.email,
+        unsubscribeToken: token,
+        siteUrl,
+        companyName: STORE_NAME,
+        companyEmail: branding.email,
+        companyPhone: branding.phone,
+        companyAddress: branding.address,
+        sentAt,
+      });
+
+      const bodyHtml = applyEmailPlaceholders(
+        campaign.contentHtml ?? "",
+        placeholderContext
+      );
+
+      const products = [];
+      for (const productId of campaign.productIds ?? []) {
+        const product = await ctx.runQuery(internal.emailHelpers.getProductForEmail, {
+          productId,
+        });
+        if (!product) continue;
+        const discountPercent = product.discountPercent ?? 0;
+        if (discountPercent <= 0) continue;
+        const currency = product.currency ?? "USD";
+        const discountedPrice = calculateFinalPrice(product.price, discountPercent);
+        products.push({
+          id: product._id,
+          name: product.name,
+          imageUrl: product.image[0]?.url ?? "",
+          originalPrice: formatMoney(product.price, currency),
+          discountedPrice: formatMoney(discountedPrice, currency),
+          discountPercent,
+          shopUrl: `${siteUrl}/product/${product._id}`,
+        });
+      }
+
+      if (!apiKey) {
+        await ctx.runMutation(internal.emailCampaigns.markRecipientFailed, {
+          recipientId: recipient._id,
+          error: "RESEND_API_KEY not configured",
+          failedAt: sentAt,
+        });
+        failedDelta += 1;
+        continue;
+      }
+
+      try {
+        const html = await render(
+          CampaignEmail({
+            subject: campaign.subject,
+            companyName: STORE_NAME,
+            companyEmail: branding.email,
+            companyPhone: branding.phone,
+            companyAddress: branding.address,
+            unsubscribeLink: placeholderContext.unsubscribeLink,
+            bodyHtml,
+            products,
+          })
+        );
+
+        const resend = new Resend(apiKey);
+        const { data, error } = await resend.emails.send({
+          from,
+          to: subscriber.email,
+          subject: applyEmailPlaceholders(campaign.subject, placeholderContext),
+          html,
+        });
+
+        if (error) {
+          await ctx.runMutation(internal.emailCampaigns.markRecipientFailed, {
+            recipientId: recipient._id,
+            error: error.message,
+            failedAt: sentAt,
+          });
+          failedDelta += 1;
+        } else {
+          await ctx.runMutation(internal.emailCampaigns.markRecipientSent, {
+            recipientId: recipient._id,
+            resendMessageId: data?.id,
+            sentAt,
+          });
+          sentDelta += 1;
+          deliveredDelta += 1;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown send error";
+        await ctx.runMutation(internal.emailCampaigns.markRecipientFailed, {
+          recipientId: recipient._id,
+          error: message,
+          failedAt: sentAt,
+        });
+        failedDelta += 1;
+      }
+    }
+
+    if (sentDelta > 0 || failedDelta > 0) {
+      await ctx.runMutation(internal.emailCampaigns.updateCampaignStats, {
+        campaignId: args.campaignId,
+        sentDelta,
+        failedDelta,
+        deliveredDelta,
+      });
+    }
+
+    const morePending = await ctx.runQuery(internal.emailCampaigns.getPendingRecipients, {
+      campaignId: args.campaignId,
+      limit: 1,
+    });
+
+    if (morePending.length > 0) {
+      await ctx.scheduler.runAfter(1000, internal.email.processCampaignBatch, {
+        campaignId: args.campaignId,
+      });
+    } else {
+      await ctx.runMutation(internal.emailCampaigns.finalizeCampaign, {
+        campaignId: args.campaignId,
+      });
+    }
+  },
+});
+

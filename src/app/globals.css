@@ -28,11 +28,6 @@ body {
   box-sizing: border-box;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
@@ -155,6 +150,19 @@ a {
   html {
     @apply font-sans;
   }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* Primary link buttons: explicit contrast (anchors used to inherit dark text). */
+a[data-slot="button"].bg-primary {
+  color: #ffffff !important;
+}
+
+.dark a[data-slot="button"].bg-primary {
+  color: var(--primary-foreground) !important;
 }
 
 /* Drawer menu: explicit spacing (survives any global * resets in styled-components). */

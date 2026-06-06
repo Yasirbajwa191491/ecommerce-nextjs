@@ -10,6 +10,8 @@ export type AdminActivityLogInput = {
   actorName?: string;
   relatedOrderId?: Id<"orders">;
   relatedProductId?: Id<"products">;
+  relatedCampaignId?: Id<"emailCampaigns">;
+  relatedTemplateId?: Id<"emailTemplates">;
   createdAt: number;
 };
 

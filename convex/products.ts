@@ -16,6 +16,7 @@ import { paginateArray } from "./lib/pagination";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
 import { productImageValidator } from "./schema";
 import {
+  calculateFinalPrice,
   normalizeProductShippingCharges,
   validateProductDiscountPercent,
 } from "./lib/pricing";
@@ -477,5 +478,53 @@ export const reorder = mutation({
     for (let i = 0; i < unique.length; i += 1) {
       await ctx.db.patch(unique[i], { sortOrder: i });
     }
+  },
+});
+
+function filterDiscountedProducts<
+  T extends { name: string; discountPercent?: number },
+>(products: T[], search?: string) {
+  const discounted = products.filter(
+    (p) => (p.discountPercent ?? 0) > 0
+  );
+  if (!search?.trim()) return discounted;
+  const term = search.trim().toLowerCase();
+  return discounted.filter((p) => p.name.toLowerCase().includes(term));
+}
+
+/** Admin: discounted products for email campaign product picker. */
+export const listDiscountedPaginated = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const products = await loadActiveProducts(ctx);
+    const filtered = filterDiscountedProducts(products, args.search);
+    const sorted = filtered.sort(bySortOrder);
+
+    const { page, isDone, continueCursor } = paginateArray(
+      sorted,
+      args.paginationOpts
+    );
+
+    return {
+      page: page.map((p) => {
+        const discountPercent = p.discountPercent ?? 0;
+        const discountedPrice = calculateFinalPrice(p.price, discountPercent);
+        return {
+          _id: p._id,
+          name: p.name,
+          imageUrl: p.image[0]?.url ?? "",
+          price: p.price,
+          discountedPrice,
+          discountPercent,
+          currency: p.currency ?? "USD",
+        };
+      }),
+      isDone,
+      continueCursor,
+    };
   },
 });

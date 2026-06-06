@@ -28,6 +28,8 @@ type AdminListToolbarProps = {
   canReorder?: boolean;
   filters?: ReactNode;
   sortControl?: ReactNode;
+  showSearch?: boolean;
+  action?: ReactNode;
   actionLabel?: string;
   onAction?: () => void;
 };
@@ -46,6 +48,8 @@ export function AdminListToolbar({
   canReorder = true,
   filters,
   sortControl,
+  showSearch = true,
+  action,
   actionLabel,
   onAction,
 }: AdminListToolbarProps) {
@@ -100,11 +104,12 @@ export function AdminListToolbar({
           </Button>
         )
       ) : null}
-      {actionLabel && onAction ? (
-        <Button size="sm" onClick={onAction}>
-          {actionLabel}
-        </Button>
-      ) : null}
+      {action ??
+        (actionLabel && onAction ? (
+          <Button size="sm" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        ) : null)}
     </div>
   );
 
@@ -117,7 +122,7 @@ export function AdminListToolbar({
         </div>
       ) : null}
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:ml-auto sm:justify-end">
-        {searchInput}
+        {showSearch ? searchInput : null}
         {actionButtons}
       </div>
     </div>

@@ -1,6 +1,12 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
+  emailCampaignSegmentValidator,
+  emailCampaignStatusValidator,
+  emailRecipientStatusValidator,
+  emailTemplateStatusValidator,
+} from "./lib/emailMarketingValidators";
+import {
   orderStatusLogActorValidator,
   orderStatusValidator,
   paymentLogActorValidator,
@@ -52,7 +58,81 @@ export default defineSchema({
     active: v.boolean(),
     subscribedAt: v.number(),
     source: v.optional(v.string()),
-  }).index("by_email", ["email"]),
+    unsubscribedAt: v.optional(v.number()),
+    unsubscribeToken: v.optional(v.string()),
+  })
+    .index("by_email", ["email"])
+    .index("by_unsubscribe_token", ["unsubscribeToken"])
+    .index("by_active_subscribed", ["active", "subscribedAt"]),
+
+  emailTemplates: defineTable({
+    name: v.string(),
+    subject: v.string(),
+    contentJson: v.string(),
+    contentHtml: v.string(),
+    status: emailTemplateStatusValidator,
+    productIds: v.optional(v.array(v.id("products"))),
+    createdByUserId: v.string(),
+    createdByName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status_updated", ["status", "updatedAt"])
+    .index("by_created_at", ["createdAt"]),
+
+  emailCampaigns: defineTable({
+    name: v.string(),
+    subject: v.string(),
+    templateId: v.optional(v.id("emailTemplates")),
+    contentJson: v.optional(v.string()),
+    contentHtml: v.optional(v.string()),
+    productIds: v.optional(v.array(v.id("products"))),
+    segmentType: emailCampaignSegmentValidator,
+    segmentCriteria: v.optional(v.string()),
+    selectedSubscriberIds: v.optional(v.array(v.id("subscribers"))),
+    status: emailCampaignStatusValidator,
+    scheduledAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    recipientCount: v.number(),
+    productCount: v.number(),
+    emailsSent: v.number(),
+    emailsDelivered: v.number(),
+    emailsFailed: v.number(),
+    emailsOpened: v.number(),
+    emailsClicked: v.number(),
+    sentByUserId: v.optional(v.string()),
+    sentByName: v.optional(v.string()),
+    sendLockAt: v.optional(v.number()),
+    idempotencyKey: v.optional(v.string()),
+    createdByUserId: v.string(),
+    createdByName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_sent_at", ["sentAt"])
+    .index("by_created_at", ["createdAt"]),
+
+  emailCampaignRecipients: defineTable({
+    campaignId: v.id("emailCampaigns"),
+    subscriberId: v.id("subscribers"),
+    email: v.string(),
+    status: emailRecipientStatusValidator,
+    sentAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+    openedAt: v.optional(v.number()),
+    clickedAt: v.optional(v.number()),
+    retryCount: v.number(),
+    lastError: v.optional(v.string()),
+    resendMessageId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_campaign_id", ["campaignId"])
+    .index("by_campaign_id_status", ["campaignId", "status"])
+    .index("by_campaign_subscriber", ["campaignId", "subscriberId"])
+    .index("by_sent_at", ["sentAt"]),
 
   contactMessages: defineTable({
     name: v.string(),
@@ -173,6 +253,8 @@ export default defineSchema({
     actorName: v.optional(v.string()),
     relatedOrderId: v.optional(v.id("orders")),
     relatedProductId: v.optional(v.id("products")),
+    relatedCampaignId: v.optional(v.id("emailCampaigns")),
+    relatedTemplateId: v.optional(v.id("emailTemplates")),
     createdAt: v.number(),
   }).index("by_created_at", ["createdAt"]),
 

@@ -1,5 +1,7 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import Link from "next/link"
+import type { ComponentProps } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -8,7 +10,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default:
+          "bg-primary !text-white hover:bg-primary/80 dark:!text-primary-foreground [&_svg]:text-current",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -59,4 +62,22 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+type ButtonLinkProps = ComponentProps<typeof Link> &
+  VariantProps<typeof buttonVariants>
+
+function ButtonLink({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonLinkProps) {
+  return (
+    <Link
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, ButtonLink, buttonVariants }

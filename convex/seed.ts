@@ -138,6 +138,7 @@ export const seedAll = mutation({
     await ctx.runMutation(internal.migrations.stripLegacyProductFields, {});
     await ctx.runMutation(internal.seed.seedCategoriesAndProducts, {});
     await ctx.runMutation(internal.settings.seedDefaults, {});
+    await ctx.runMutation(internal.subscribers.ensureSubscriberTokens, {});
     await ctx.scheduler.runAfter(0, internal.seed.seedSuperAdmin, {});
     return { ok: true };
   },

@@ -202,6 +202,34 @@ export const getEmailFrom = internalQuery({
   handler: async (ctx) => getEmailFromValue(ctx),
 });
 
+export const getPublicBranding = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("settings").collect();
+    const map: Record<string, string> = {};
+
+    for (const setting of SYSTEM_DEFAULTS) {
+      if (!PUBLIC_SETTING_KEYS.includes(setting.key as (typeof PUBLIC_SETTING_KEYS)[number])) {
+        continue;
+      }
+      map[setting.key] = setting.value;
+    }
+
+    for (const row of rows) {
+      if (!PUBLIC_SETTING_KEYS.includes(row.key as (typeof PUBLIC_SETTING_KEYS)[number])) {
+        continue;
+      }
+      map[row.key] = row.value;
+    }
+
+    return {
+      address: map.address ?? SYSTEM_DEFAULTS.find((s) => s.key === "address")!.value,
+      phone: map.phone ?? SYSTEM_DEFAULTS.find((s) => s.key === "phone")!.value,
+      email: map.email ?? SYSTEM_DEFAULTS.find((s) => s.key === "email")!.value,
+    };
+  },
+});
+
 export const listTakenNames = query({
   args: { excludeId: v.optional(v.id("settings")) },
   handler: async (ctx, args) => {
