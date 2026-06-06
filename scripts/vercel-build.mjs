@@ -1,17 +1,9 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
+import { convexBuildEnv, requireConvexDeployKey } from "./convex-deploy-env.mjs";
 import { resolveSiteUrl } from "./resolve-site-url.mjs";
 
-if (!process.env.CONVEX_DEPLOY_KEY?.trim()) {
-  console.error(
-    "[vercel-build] Missing CONVEX_DEPLOY_KEY.\n" +
-      "Add it in Vercel → Settings → Environment Variables:\n" +
-      "  • Production deploy key → Production environment only\n" +
-      "  • Preview deploy key → Preview environment only\n" +
-      "Generate keys in the Convex dashboard → Project Settings → Deploy Keys."
-  );
-  process.exit(1);
-}
+requireConvexDeployKey();
 
 const siteUrl = resolveSiteUrl();
 
@@ -20,7 +12,7 @@ console.log(`[vercel-build] VERCEL_URL=${process.env.VERCEL_URL ?? "(unset)"}`);
 console.log(`[vercel-build] SITE_URL=${siteUrl}`);
 
 const buildEnv = {
-  ...process.env,
+  ...convexBuildEnv(process.env),
   SITE_URL: siteUrl,
   NEXT_PUBLIC_SITE_URL: siteUrl,
 };

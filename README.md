@@ -36,8 +36,9 @@ Open http://localhost:3000/home
 2. In the Convex dashboard, create a **production** deployment and generate a **Production deploy key**.
 3. Generate a **Preview deploy key** for PR preview backends.
 4. In Vercel → **Environment Variables** (required):
-   - `CONVEX_DEPLOY_KEY` = production key → **Production** only
+   - `CONVEX_DEPLOY_KEY` = **full** production key (`prod:…|eyJ…`) → **Production** only
    - `CONVEX_DEPLOY_KEY` = preview key → **Preview** only
+   - **Remove** if present: `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` (dev values from `.env.local` break Vercel builds)
    - Do **not** copy `SITE_URL=http://localhost:3000` from `.env.example` into Vercel
    - Optional: `SITE_URL` = `https://your-custom-domain.com` on **Production** only
 5. On Convex production, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, etc.
