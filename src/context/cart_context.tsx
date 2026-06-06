@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useReducer, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, ReactNode } from "react";
 import { Product } from "@/types/product";
 import { cartReducer, getInitialCartState } from "@/reducer/cartReducer";
 
@@ -24,20 +24,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     dispatch({ type: "CART_ITEM_PRICE_TOTAL" });
     if (state.cart.length) localStorage.setItem("thapaCart", JSON.stringify(state.cart));
+    else localStorage.removeItem("thapaCart");
   }, [state.cart]);
 
+  const addToCart = useCallback(
+    (id: string, color: string, amount: number, product: Product) =>
+      dispatch({ type: "ADD_TO_CART", payload: { id, color, amount, product } }),
+    []
+  );
+  const setDecrease = useCallback(
+    (id: string) => dispatch({ type: "SET_DECREMENT", payload: id }),
+    []
+  );
+  const setIncrement = useCallback(
+    (id: string) => dispatch({ type: "SET_INCREMENT", payload: id }),
+    []
+  );
+  const removeItem = useCallback(
+    (id: string) => dispatch({ type: "REMOVE_ITEM", payload: id }),
+    []
+  );
+  const clearCart = useCallback(() => dispatch({ type: "CLEAR_CART" }), []);
+
+  const value = useMemo(
+    () => ({
+      ...state,
+      addToCart,
+      setDecrease,
+      setIncrement,
+      removeItem,
+      clearCart,
+    }),
+    [state, addToCart, setDecrease, setIncrement, removeItem, clearCart]
+  );
+
   return (
-    <CartContext.Provider
-      value={{
-        ...state,
-        addToCart: (id, color, amount, product) =>
-          dispatch({ type: "ADD_TO_CART", payload: { id, color, amount, product } }),
-        setDecrease: (id) => dispatch({ type: "SET_DECREMENT", payload: id }),
-        setIncrement: (id) => dispatch({ type: "SET_INCREMENT", payload: id }),
-        removeItem: (id) => dispatch({ type: "REMOVE_ITEM", payload: id }),
-        clearCart: () => dispatch({ type: "CLEAR_CART" }),
-      }}
-    >
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

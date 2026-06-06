@@ -263,6 +263,7 @@ export const markOrderPaid = internalMutation({
     orderId: v.id("orders"),
     stripePaymentIntentId: v.optional(v.string()),
     stripeSessionId: v.optional(v.string()),
+    paidTotalCents: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
@@ -273,9 +274,15 @@ export const markOrderPaid = internalMutation({
     }
 
     const now = Date.now();
+    const paidTotal =
+      args.paidTotalCents !== undefined
+        ? Math.round(args.paidTotalCents) / 100
+        : order.total;
+
     await ctx.db.patch(args.orderId, {
       paymentStatus: "paid",
       status: "confirmed",
+      total: paidTotal,
       stripePaymentIntentId:
         args.stripePaymentIntentId ?? order.stripePaymentIntentId,
       stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,

@@ -107,6 +107,7 @@ export const processWebhook = internalAction({
                 ? session.payment_intent
                 : session.payment_intent?.id,
             stripeSessionId: session.id,
+            paidTotalCents: session.amount_total ?? undefined,
           });
         }
         break;

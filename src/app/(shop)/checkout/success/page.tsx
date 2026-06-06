@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, Suspense } from "react";
+import { useEffect, useMemo, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
@@ -14,6 +14,7 @@ import {
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 import FormatPrice from "@/helpers/FormatPrice";
+import { ColorSwatch } from "@/components/cart/cart-product-display";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +29,8 @@ import { cn } from "@/lib/utils";
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const { clearCart } = useCartContext();
+
+  const clearedCartRef = useRef(false);
 
   const orderNumber =
     searchParams.get("orderNumber") ??
@@ -47,11 +50,11 @@ function CheckoutSuccessContent() {
   );
 
   useEffect(() => {
-    if (orderData?.order) {
-      clearCart();
-      sessionStorage.removeItem("lastOrderNumber");
-      sessionStorage.removeItem("lastOrderEmail");
-    }
+    if (!orderData?.order || clearedCartRef.current) return;
+    clearedCartRef.current = true;
+    clearCart();
+    sessionStorage.removeItem("lastOrderNumber");
+    sessionStorage.removeItem("lastOrderEmail");
   }, [orderData?.order, clearCart]);
 
   const isLoading = orderNumber && orderData === undefined;
@@ -70,6 +73,17 @@ function CheckoutSuccessContent() {
       return "Your payment was successful and your order is confirmed.";
     }
     return "Your order has been received.";
+  }, [order]);
+
+  const totalLabel = useMemo(() => {
+    if (!order) return "Total";
+    if (order.paymentMethod === "cod") {
+      return "Total remaining to pay";
+    }
+    if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") {
+      return "Total due";
+    }
+    return "Total paid";
   }, [order]);
 
   if (!orderNumber) {
@@ -151,9 +165,9 @@ function CheckoutSuccessContent() {
                         <p className="font-medium text-foreground">
                           {item.productName} × {item.quantity}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Color: {item.color}
-                        </p>
+                        <div className="mt-1.5">
+                          <ColorSwatch color={item.color} />
+                        </div>
                       </div>
                       <span className="font-semibold tabular-nums">
                         <FormatPrice price={item.lineTotal} />
@@ -165,7 +179,7 @@ function CheckoutSuccessContent() {
 
               <div className="rounded-xl bg-[#6254f3]/8 px-4 py-4 ring-1 ring-[#6254f3]/15">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total paid</span>
+                  <span className="text-muted-foreground">{totalLabel}</span>
                   <span className="text-xl font-bold tabular-nums">
                     <FormatPrice price={order.total} />
                   </span>

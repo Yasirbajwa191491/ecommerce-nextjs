@@ -118,7 +118,8 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
     case "REMOVE_ITEM":
       return { ...state, cart: state.cart.filter((i) => i.id !== action.payload) };
     case "CLEAR_CART":
-      return { ...state, cart: [] };
+      if (!state.cart.length) return state;
+      return { ...state, cart: [], total_item: 0, total_price: 0 };
     case "NORMALIZE_CART":
       return {
         ...state,
