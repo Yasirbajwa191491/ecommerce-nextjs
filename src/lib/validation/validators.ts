@@ -1,3 +1,5 @@
+import { isValidPhoneNumber } from "libphonenumber-js";
+
 export type ValidationResult = string | undefined;
 
 const EMAIL_REGEX =
@@ -126,4 +128,14 @@ export function validatePositiveNumber(
 
 export function validateRating(stars: number): ValidationResult {
   return validatePositiveNumber(stars, "Rating", { min: 0, max: 5, allowZero: true });
+}
+
+export function validatePhone(phone: string): ValidationResult {
+  const required = validateRequired(phone, "Phone number");
+  if (required) return required;
+
+  if (!isValidPhoneNumber(phone.trim())) {
+    return "Enter a valid phone number";
+  }
+  return undefined;
 }

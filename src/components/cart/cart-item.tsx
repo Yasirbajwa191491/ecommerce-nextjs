@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import {
+  CartProductImage,
+  ColorSwatch,
+} from "@/components/cart/cart-product-display";
 import type { CartItem as CartItemType } from "@/reducer/cartReducer";
 
 type CartItemProps = {
@@ -15,19 +19,6 @@ type CartItemProps = {
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
 };
-
-function ColorSwatch({ color }: { color: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-2.5 py-1">
-      <span
-        aria-hidden
-        className="size-4 shrink-0 rounded-full border border-white/80 shadow-sm ring-1 ring-border/60"
-        style={{ backgroundColor: color }}
-      />
-      <span className="text-xs font-medium text-foreground">Selected color</span>
-    </span>
-  );
-}
 
 function StockBadge({ max, amount }: { max: number; amount: number }) {
   const lowStock = max - amount <= 5;
@@ -86,31 +77,6 @@ function QuantityStepper({
   );
 }
 
-function ProductImage({ item, size = "md" }: { item: CartItemType; size?: "md" | "lg" }) {
-  return (
-    <div
-      className={cn(
-        "relative shrink-0 overflow-hidden rounded-xl bg-muted ring-1 ring-border/60 shadow-sm",
-        size === "lg" ? "size-28" : "size-20 sm:size-24"
-      )}
-    >
-      {item.image ? (
-        <Image
-          src={item.image}
-          alt={item.name}
-          fill
-          sizes={size === "lg" ? "112px" : "96px"}
-          className="object-cover"
-        />
-      ) : (
-        <div className="flex size-full items-center justify-center text-xs text-muted-foreground">
-          No image
-        </div>
-      )}
-    </div>
-  );
-}
-
 function RemoveButton({
   item,
   onRemove,
@@ -149,7 +115,7 @@ export function CartItemMobile({
   return (
     <article className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
       <div className="flex gap-4">
-        <ProductImage item={item} />
+        <CartProductImage item={item} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-base font-semibold leading-snug text-foreground">
@@ -198,7 +164,7 @@ export function CartItemRow({
     <TableRow className="hover:bg-muted/20">
       <TableCell className="whitespace-normal py-6 pl-8 pr-4 xl:pl-10">
         <div className="flex min-w-0 items-center gap-5">
-          <ProductImage item={item} size="lg" />
+          <CartProductImage item={item} size="lg" />
           <div className="min-w-0 space-y-2.5">
             <h3 className="text-base font-semibold leading-snug text-foreground">
               {item.name}

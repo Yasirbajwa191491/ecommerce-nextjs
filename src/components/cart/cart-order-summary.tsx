@@ -8,7 +8,6 @@ import {
   ShoppingBag,
   Truck,
 } from "lucide-react";
-import { toast } from "sonner";
 import FormatPrice from "@/helpers/FormatPrice";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,12 +39,6 @@ export function CartOrderSummary({
   className,
 }: CartOrderSummaryProps) {
   const total = subtotal + tax;
-
-  const handleCheckout = () => {
-    toast.info("Checkout coming soon", {
-      description: "Shipping and payment will be available in the next step.",
-    });
-  };
 
   return (
     <Card
@@ -115,9 +108,8 @@ export function CartOrderSummary({
       <CardFooter className="flex flex-col items-center gap-4 border-t border-border/60 bg-muted/15 px-6 py-6 sm:px-7">
         <div className="flex w-full flex-col items-center gap-3">
           <Button
-            type="button"
-            onClick={handleCheckout}
-            className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:shadow-lg active:scale-[0.98]"
+            render={<Link href="/checkout" />}
+            className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] [&_svg]:!text-white"
           >
             Proceed to checkout
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

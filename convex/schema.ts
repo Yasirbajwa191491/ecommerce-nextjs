@@ -60,4 +60,72 @@ export default defineSchema({
     isSystem: v.boolean(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  orders: defineTable({
+    orderNumber: v.string(),
+    customerEmail: v.string(),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    customerAddress: v.string(),
+    customerNotes: v.optional(v.string()),
+    termsAccepted: v.boolean(),
+    privacyAccepted: v.boolean(),
+    userId: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("cancelled"),
+      v.literal("failed"),
+      v.literal("expired")
+    ),
+    paymentMethod: v.union(v.literal("cod"), v.literal("stripe")),
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed")
+    ),
+    subtotal: v.number(),
+    tax: v.number(),
+    shipping: v.number(),
+    total: v.number(),
+    currency: v.string(),
+    stripeSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    paidAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order_number", ["orderNumber"])
+    .index("by_stripe_session", ["stripeSessionId"])
+    .index("by_idempotency_key", ["idempotencyKey"])
+    .index("by_customer_email", ["customerEmail"])
+    .index("by_status", ["status"]),
+
+  orderItems: defineTable({
+    orderId: v.id("orders"),
+    productId: v.id("products"),
+    productName: v.string(),
+    color: v.string(),
+    quantity: v.number(),
+    unitPrice: v.number(),
+    lineTotal: v.number(),
+    imageUrl: v.string(),
+  }).index("by_order_id", ["orderId"]),
+
+  customerProfiles: defineTable({
+    email: v.string(),
+    fullName: v.string(),
+    phone: v.string(),
+    address: v.string(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  stripeWebhookEvents: defineTable({
+    eventId: v.string(),
+    type: v.string(),
+    orderId: v.optional(v.id("orders")),
+    payloadSummary: v.optional(v.string()),
+    processedAt: v.number(),
+  }).index("by_event_id", ["eventId"]),
 });

@@ -26,8 +26,8 @@ const SUPPORT_LINKS = [
 ] as const;
 
 const LEGAL_LINKS = [
-  { href: "/about", label: "Privacy policy" },
-  { href: "/about", label: "Terms of service" },
+  { href: "/privacy", label: "Privacy policy" },
+  { href: "/terms", label: "Terms of service" },
 ] as const;
 
 const SOCIAL_LINKS = [

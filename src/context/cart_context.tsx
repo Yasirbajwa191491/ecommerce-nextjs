@@ -18,6 +18,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, undefined, getInitialCartState);
 
   useEffect(() => {
+    dispatch({ type: "NORMALIZE_CART" });
+  }, []);
+
+  useEffect(() => {
     dispatch({ type: "CART_ITEM_PRICE_TOTAL" });
     if (state.cart.length) localStorage.setItem("thapaCart", JSON.stringify(state.cart));
   }, [state.cart]);

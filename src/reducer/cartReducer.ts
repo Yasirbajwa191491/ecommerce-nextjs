@@ -2,6 +2,7 @@ import { Product } from "@/types/product";
 
 export type CartItem = {
   id: string;
+  productId: string;
   name: string;
   color: string;
   amount: number;
@@ -23,12 +24,39 @@ type CartAction =
   | { type: "SET_INCREMENT"; payload: string }
   | { type: "SET_DECREMENT"; payload: string }
   | { type: "CLEAR_CART" }
-  | { type: "CART_ITEM_PRICE_TOTAL" };
+  | { type: "CART_ITEM_PRICE_TOTAL" }
+  | { type: "NORMALIZE_CART" };
+
+export function resolveCartProductId(
+  item: Pick<CartItem, "id" | "color" | "productId">
+): string {
+  const existing = item.productId?.trim();
+  if (existing) return existing;
+
+  if (item.color && item.id.endsWith(item.color)) {
+    return item.id.slice(0, item.id.length - item.color.length);
+  }
+
+  const colorIndex = item.color ? item.id.lastIndexOf(item.color) : -1;
+  if (colorIndex > 0) {
+    return item.id.slice(0, colorIndex);
+  }
+
+  return item.id;
+}
+
+export function normalizeCartItem(item: CartItem): CartItem {
+  return {
+    ...item,
+    productId: resolveCartProductId(item),
+  };
+}
 
 const getLocalCartData = (): CartItem[] => {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem("thapaCart") || "[]");
+    const raw = JSON.parse(localStorage.getItem("thapaCart") || "[]") as CartItem[];
+    return raw.map(normalizeCartItem);
   } catch {
     return [];
   }
@@ -62,6 +90,7 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
           ...state.cart,
           {
             id: id + color,
+            productId: id,
             name: product.name,
             color,
             amount,
@@ -90,6 +119,11 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, cart: state.cart.filter((i) => i.id !== action.payload) };
     case "CLEAR_CART":
       return { ...state, cart: [] };
+    case "NORMALIZE_CART":
+      return {
+        ...state,
+        cart: state.cart.map(normalizeCartItem),
+      };
     case "CART_ITEM_PRICE_TOTAL": {
       const totals = state.cart.reduce(
         (a, i) => ({ total_item: a.total_item + i.amount, total_price: a.total_price + i.price * i.amount }),

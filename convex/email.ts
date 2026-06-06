@@ -7,6 +7,8 @@ import { Resend } from "resend";
 import { render } from "@react-email/components";
 import { OtpEmail } from "../src/emails/otp-email";
 import { OTP_EXPIRES_MINUTES } from "../src/lib/otp-config";
+import type { Doc } from "./_generated/dataModel";
+import { getSiteUrl } from "./lib/siteUrl";
 
 function resendFailureMessage(message: string, to: string, from: string) {
   const lower = message.toLowerCase();
@@ -77,5 +79,86 @@ export const sendOtpEmail = internalAction({
     console.log(
       `[auth] OTP email accepted by Resend (id: ${data?.id ?? "unknown"}) → ${args.email}`
     );
+  },
+});
+
+export const sendOrderConfirmation = internalAction({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      const from = await ctx.runQuery(internal.settings.getEmailFrom, {});
+      const orderData = await ctx.runQuery(internal.orders.getOrderForEmail, {
+        orderId: args.orderId,
+      });
+
+      if (!orderData) {
+        console.warn(`[orders] Order ${args.orderId} not found for email`);
+        return;
+      }
+
+      const { order, items } = orderData;
+
+      if (!apiKey) {
+        console.warn(
+          `[orders] RESEND_API_KEY not set — skipping confirmation for ${order.orderNumber}`
+        );
+        return;
+      }
+
+      const appUrl = getSiteUrl();
+      const { OrderConfirmationEmail } = await import(
+        "../src/emails/order-confirmation-email"
+      );
+
+      const html = await render(
+        OrderConfirmationEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          subtotal: order.subtotal,
+          tax: order.tax,
+          shipping: order.shipping,
+          total: order.total,
+          currency: order.currency,
+          customerAddress: order.customerAddress,
+          items: items.map((item: Doc<"orderItems">) => ({
+            productName: item.productName,
+            color: item.color,
+            quantity: item.quantity,
+            lineTotal: item.lineTotal,
+            currency: order.currency,
+          })),
+          supportUrl: `${appUrl}/contact`,
+        })
+      );
+
+      const resend = new Resend(apiKey);
+      const subject = `Order confirmed — ${order.orderNumber}`;
+
+      const { data, error } = await resend.emails.send({
+        from,
+        to: order.customerEmail,
+        subject,
+        html,
+      });
+
+      if (error) {
+        console.error("[orders] Order confirmation email failed:", error);
+        console.warn(
+          `[orders] Skipping confirmation email for ${order.orderNumber}: ${resendFailureMessage(error.message, order.customerEmail, from)}`
+        );
+        return;
+      }
+
+      console.log(
+        `[orders] Confirmation email sent (id: ${data?.id ?? "unknown"}) → ${order.customerEmail}`
+      );
+    } catch (error) {
+      console.error("[orders] Order confirmation email unexpected error:", error);
+    }
   },
 });

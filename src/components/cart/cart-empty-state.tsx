@@ -32,7 +32,7 @@ export function CartEmptyState() {
         <Button
           render={<Link href="/products" />}
           size="lg"
-          className="h-12 gap-2 rounded-full bg-[#6254f3] px-8 text-base font-semibold shadow-md shadow-[#6254f3]/25 hover:bg-[#5548e0]"
+          className="h-12 gap-2 rounded-full bg-[#6254f3] px-8 text-base font-semibold !text-white shadow-md shadow-[#6254f3]/25 hover:bg-[#5548e0] hover:!text-white [&_svg]:!text-white"
         >
           <Sparkles className="size-4" />
           Start shopping
