@@ -1,0 +1,237 @@
+"use client";
+
+import Image from "next/image";
+import { Minus, Plus, Trash2 } from "lucide-react";
+import FormatPrice from "@/helpers/FormatPrice";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { TableCell, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import type { CartItem as CartItemType } from "@/reducer/cartReducer";
+
+type CartItemProps = {
+  item: CartItemType;
+  onIncrement: (id: string) => void;
+  onDecrement: (id: string) => void;
+  onRemove: (id: string) => void;
+};
+
+function ColorSwatch({ color }: { color: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-2.5 py-1">
+      <span
+        aria-hidden
+        className="size-4 shrink-0 rounded-full border border-white/80 shadow-sm ring-1 ring-border/60"
+        style={{ backgroundColor: color }}
+      />
+      <span className="text-xs font-medium text-foreground">Selected color</span>
+    </span>
+  );
+}
+
+function StockBadge({ max, amount }: { max: number; amount: number }) {
+  const lowStock = max - amount <= 5;
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        lowStock
+          ? "border-amber-200 bg-amber-50 text-amber-700"
+          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+      )}
+    >
+      {lowStock ? `Only ${max} left` : `${max} in stock`}
+    </Badge>
+  );
+}
+
+function QuantityStepper({
+  item,
+  onIncrement,
+  onDecrement,
+}: Pick<CartItemProps, "item" | "onIncrement" | "onDecrement">) {
+  const atMax = item.amount >= item.max;
+  const atMin = item.amount <= 1;
+
+  return (
+    <div className="inline-flex h-10 items-center rounded-xl border border-border/70 bg-muted/30 p-1 shadow-sm">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => onDecrement(item.id)}
+        disabled={atMin}
+        aria-label={`Decrease quantity of ${item.name}`}
+        className="size-8 rounded-lg bg-background shadow-sm hover:bg-background disabled:opacity-40"
+      >
+        <Minus className="size-3.5" />
+      </Button>
+      <span className="min-w-10 text-center text-sm font-bold tabular-nums text-foreground">
+        {item.amount}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => onIncrement(item.id)}
+        disabled={atMax}
+        aria-label={`Increase quantity of ${item.name}`}
+        className="size-8 rounded-lg bg-background shadow-sm hover:bg-background disabled:opacity-40"
+      >
+        <Plus className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function ProductImage({ item, size = "md" }: { item: CartItemType; size?: "md" | "lg" }) {
+  return (
+    <div
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-xl bg-muted ring-1 ring-border/60 shadow-sm",
+        size === "lg" ? "size-28" : "size-20 sm:size-24"
+      )}
+    >
+      {item.image ? (
+        <Image
+          src={item.image}
+          alt={item.name}
+          fill
+          sizes={size === "lg" ? "112px" : "96px"}
+          className="object-cover"
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center text-xs text-muted-foreground">
+          No image
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RemoveButton({
+  item,
+  onRemove,
+  showLabel = false,
+}: {
+  item: CartItemType;
+  onRemove: (id: string) => void;
+  showLabel?: boolean;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size={showLabel ? "sm" : "icon-sm"}
+      onClick={() => onRemove(item.id)}
+      aria-label={`Remove ${item.name} from cart`}
+      className={cn(
+        "text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
+        showLabel && "gap-1.5 px-2.5"
+      )}
+    >
+      <Trash2 className="size-4" />
+      {showLabel ? <span className="text-xs font-medium">Remove</span> : null}
+    </Button>
+  );
+}
+
+export function CartItemMobile({
+  item,
+  onIncrement,
+  onDecrement,
+  onRemove,
+}: CartItemProps) {
+  const lineTotal = item.price * item.amount;
+
+  return (
+    <article className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex gap-4">
+        <ProductImage item={item} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2 text-base font-semibold leading-snug text-foreground">
+              {item.name}
+            </h3>
+            <RemoveButton item={item} onRemove={onRemove} />
+          </div>
+          <p className="mt-1 text-sm font-medium tabular-nums text-muted-foreground">
+            <FormatPrice price={item.price} /> each
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <ColorSwatch color={item.color} />
+            <StockBadge max={item.max} amount={item.amount} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/25 px-4 py-3">
+        <QuantityStepper
+          item={item}
+          onIncrement={onIncrement}
+          onDecrement={onDecrement}
+        />
+        <div className="text-right">
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Line total
+          </p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+            <FormatPrice price={lineTotal} />
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function CartItemRow({
+  item,
+  onIncrement,
+  onDecrement,
+  onRemove,
+}: CartItemProps) {
+  const lineTotal = item.price * item.amount;
+
+  return (
+    <TableRow className="hover:bg-muted/20">
+      <TableCell className="whitespace-normal py-6 pl-8 pr-4 xl:pl-10">
+        <div className="flex min-w-0 items-center gap-5">
+          <ProductImage item={item} size="lg" />
+          <div className="min-w-0 space-y-2.5">
+            <h3 className="text-base font-semibold leading-snug text-foreground">
+              {item.name}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <ColorSwatch color={item.color} />
+              <StockBadge max={item.max} amount={item.amount} />
+            </div>
+          </div>
+        </div>
+      </TableCell>
+
+      <TableCell className="w-32 py-6 text-right font-semibold tabular-nums text-foreground">
+        <FormatPrice price={item.price} />
+      </TableCell>
+
+      <TableCell className="w-44 whitespace-normal py-6">
+        <div className="flex justify-center">
+          <QuantityStepper
+            item={item}
+            onIncrement={onIncrement}
+            onDecrement={onDecrement}
+          />
+        </div>
+      </TableCell>
+
+      <TableCell className="w-32 py-6 text-right text-base font-bold tabular-nums text-foreground">
+        <FormatPrice price={lineTotal} />
+      </TableCell>
+
+      <TableCell className="w-28 whitespace-normal py-6 pr-8 text-right xl:pr-10">
+        <RemoveButton item={item} onRemove={onRemove} showLabel />
+      </TableCell>
+    </TableRow>
+  );
+}
