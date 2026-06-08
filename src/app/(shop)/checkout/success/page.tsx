@@ -199,18 +199,18 @@ function CheckoutSuccessContent() {
                 showProductsLabel
               />
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex w-full flex-col items-center gap-3">
                 <Button
                   render={<Link href="/products" />}
-                  className="h-11 flex-1 gap-2 rounded-full bg-[#6254f3] hover:bg-[#5548e0]"
+                  className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] [&_svg]:!text-white"
                 >
                   <ShoppingBag className="size-4" />
                   Continue shopping
                 </Button>
                 <Button
                   render={<Link href="/contact" />}
-                  variant="outline"
-                  className="h-11 flex-1 rounded-full"
+                  variant="ghost"
+                  className="h-10 gap-2 rounded-full px-6 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 >
                   Contact support
                 </Button>
