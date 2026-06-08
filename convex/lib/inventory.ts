@@ -6,11 +6,26 @@ export type StockLine = {
   quantity: number;
 };
 
+/** Sum quantities for the same product (e.g. multiple color lines in one cart). */
+export function aggregateStockLines(lines: StockLine[]): StockLine[] {
+  const byProduct = new Map<Id<"products">, number>();
+  for (const line of lines) {
+    byProduct.set(
+      line.productId,
+      (byProduct.get(line.productId) ?? 0) + line.quantity
+    );
+  }
+  return Array.from(byProduct.entries()).map(([productId, quantity]) => ({
+    productId,
+    quantity,
+  }));
+}
+
 export async function assertStockAvailable(
   ctx: MutationCtx,
   lines: StockLine[]
 ): Promise<void> {
-  for (const line of lines) {
+  for (const line of aggregateStockLines(lines)) {
     const product = await ctx.db.get(line.productId);
     if (!product) {
       throw new Error("A product in your cart no longer exists");
@@ -27,7 +42,7 @@ export async function decrementStock(
   ctx: MutationCtx,
   lines: StockLine[]
 ): Promise<void> {
-  for (const line of lines) {
+  for (const line of aggregateStockLines(lines)) {
     const product = await ctx.db.get(line.productId);
     if (!product) {
       throw new Error("A product in your cart no longer exists");
@@ -46,7 +61,7 @@ export async function restoreStock(
   ctx: MutationCtx,
   lines: StockLine[]
 ): Promise<void> {
-  for (const line of lines) {
+  for (const line of aggregateStockLines(lines)) {
     const product = await ctx.db.get(line.productId);
     if (!product) continue;
     await ctx.db.patch(line.productId, {

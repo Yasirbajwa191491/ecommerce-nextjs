@@ -117,7 +117,16 @@ export const validateCartForCheckout = query({
   },
   handler: async (ctx, args) => {
     validateCartLines(args.lines);
-    return await priceCartLines(ctx, args.lines);
+    try {
+      const priced = await priceCartLines(ctx, args.lines);
+      return { status: "ok" as const, ...priced };
+    } catch (error) {
+      return {
+        status: "error" as const,
+        message:
+          error instanceof Error ? error.message : "Unable to validate your cart",
+      };
+    }
   },
 });
 

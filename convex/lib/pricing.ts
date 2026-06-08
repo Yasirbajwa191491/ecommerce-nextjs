@@ -34,7 +34,7 @@ export function calculateLineDiscountTotal(
   );
 }
 
-/** Flat shipping charge per cart line (not multiplied by quantity). */
+/** Flat shipping charge for a product (not multiplied by quantity). */
 export function calculateLineShipping(
   shippingCharges: number,
   freeShipping: boolean
@@ -42,6 +42,22 @@ export function calculateLineShipping(
   if (freeShipping) return 0;
   if (!Number.isFinite(shippingCharges) || shippingCharges < 0) return 0;
   return roundMoney(shippingCharges);
+}
+
+/**
+ * Charge shipping once per unique product in an order.
+ * Additional cart lines for the same product (e.g. different colors) get $0 shipping.
+ */
+export function allocateProductShipping(
+  productId: string,
+  shippingCharges: number,
+  freeShipping: boolean,
+  allocatedProductIds: Set<string>
+): number {
+  if (freeShipping) return 0;
+  if (allocatedProductIds.has(productId)) return 0;
+  allocatedProductIds.add(productId);
+  return calculateLineShipping(shippingCharges, freeShipping);
 }
 
 export type LinePricingInput = {

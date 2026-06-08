@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import FormatPrice from "@/helpers/FormatPrice";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
@@ -42,7 +43,7 @@ export function CartView() {
     clearCart,
   } = useCartContext();
 
-  const { priced, isLoading, getPricedItem } = useCartPricing(cart);
+  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(cart);
   const currency = priced?.currency;
   const displaySubtotal = priced?.subtotal ?? total_price;
   const displayTotal = priced?.total ?? total_price;
@@ -99,6 +100,13 @@ export function CartView() {
                 {total_item} {total_item === 1 ? "item" : "items"}
               </Badge>
             </div>
+
+            {pricingError ? (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTitle>Cart update needed</AlertTitle>
+                <AlertDescription>{pricingError}</AlertDescription>
+              </Alert>
+            ) : null}
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-12">
               <div className="min-w-0 space-y-4">

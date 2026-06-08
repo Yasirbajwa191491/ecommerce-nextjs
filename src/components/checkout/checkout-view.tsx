@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, CreditCard } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summary";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useCartContext } from "@/context/cart_context";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
@@ -14,7 +15,7 @@ import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
 export function CheckoutView() {
   const router = useRouter();
   const { cart } = useCartContext();
-  const { priced, isLoading, getPricedItem } = useCartPricing(cart);
+  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(cart);
   const [customerPrefill, setCustomerPrefill] = useState<
     ReturnType<typeof loadCheckoutCustomer>
   >(null);
@@ -97,6 +98,13 @@ export function CheckoutView() {
             Back to cart
           </Button>
         </div>
+
+        {pricingError ? (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTitle>Cannot complete checkout</AlertTitle>
+            <AlertDescription>{pricingError}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1fr)_440px] 2xl:gap-12">
           <div className="min-w-0 xl:sticky xl:top-24">

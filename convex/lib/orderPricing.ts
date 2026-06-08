@@ -2,6 +2,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { isProductActive } from "./productActive";
 import {
+  allocateProductShipping,
   calculateLineTotals,
   calculateOrderTotals,
   clampDiscountPercent,
@@ -55,6 +56,8 @@ export async function priceCartLines(
   }
 
   const pricedLines: PricedLineItem[] = [];
+  const shippingAllocatedForProduct = new Set<string>();
+  const requestedQtyByProduct = new Map<string, number>();
   let currency: string | null = null;
 
   for (const line of lines) {
@@ -68,7 +71,12 @@ export async function priceCartLines(
     if (!product.colors.includes(line.color)) {
       throw new Error(`Invalid color selected for "${product.name}"`);
     }
-    if (product.stock < line.quantity) {
+
+    const totalRequested =
+      (requestedQtyByProduct.get(line.productId) ?? 0) + line.quantity;
+    requestedQtyByProduct.set(line.productId, totalRequested);
+
+    if (product.stock < totalRequested) {
       throw new Error(
         `Insufficient stock for "${product.name}". Only ${product.stock} available.`
       );
@@ -94,8 +102,15 @@ export async function priceCartLines(
       discountPercent,
       shippingCharges,
       quantity: line.quantity,
-      freeShipping,
+      freeShipping: true,
     });
+
+    const lineShippingTotal = allocateProductShipping(
+      line.productId,
+      shippingCharges,
+      freeShipping,
+      shippingAllocatedForProduct
+    );
 
     pricedLines.push({
       productId: line.productId,
@@ -112,8 +127,8 @@ export async function priceCartLines(
       lineDiscountTotal: linePricing.lineDiscountTotal,
       finalUnitPrice: linePricing.finalUnitPrice,
       originalLineSubtotal: linePricing.originalLineSubtotal,
-      shippingCharge: linePricing.shippingCharge,
-      lineShippingTotal: linePricing.lineShippingTotal,
+      shippingCharge: lineShippingTotal,
+      lineShippingTotal,
     });
   }
 

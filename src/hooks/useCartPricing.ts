@@ -42,10 +42,14 @@ export function useCartPricing(cart: CartItem[]) {
     [cart]
   );
 
-  const priced = useQuery(
+  const result = useQuery(
     api.orders.validateCartForCheckout,
     cart.length > 0 ? { lines } : "skip"
   );
+
+  const priced = result?.status === "ok" ? result : undefined;
+  const pricingError =
+    result?.status === "error" ? result.message : undefined;
 
   const pricedItemByKey = useMemo(() => {
     const map = new Map<string, PricedCartItem>();
@@ -61,7 +65,8 @@ export function useCartPricing(cart: CartItem[]) {
 
   return {
     priced,
-    isLoading: cart.length > 0 && priced === undefined,
+    pricingError,
+    isLoading: cart.length > 0 && result === undefined,
     getPricedItem,
   };
 }
