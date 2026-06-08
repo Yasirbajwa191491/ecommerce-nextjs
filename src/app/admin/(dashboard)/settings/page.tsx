@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form-field";
@@ -186,6 +187,13 @@ export default function AdminSettingsPage() {
       <AdminPageHeader
         title="Settings"
         description="Manage store contact details and custom site settings."
+      />
+
+      <AdminListToolbar
+        hideTabs
+        showSearch={false}
+        search=""
+        onSearchChange={() => {}}
         actionLabel="Add setting"
         onAction={openCreate}
       />

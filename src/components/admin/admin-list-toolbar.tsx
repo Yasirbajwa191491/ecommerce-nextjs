@@ -75,13 +75,14 @@ export function AdminListToolbar({
   );
 
   const actionButtons = (
-    <div className="flex shrink-0 items-center justify-end gap-2">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
       {onReorderModeChange ? (
         reorderMode ? (
           <Button
             variant="outline"
             size="sm"
             onClick={() => onReorderModeChange(false)}
+            className="w-full sm:w-auto"
           >
             <Check className="size-4" />
             <span className="hidden sm:inline">Done reordering</span>
@@ -99,6 +100,7 @@ export function AdminListToolbar({
                 ? "Reorder list"
                 : "Reorder is only available for active items"
             }
+            className="w-full sm:w-auto"
           >
             <ListOrdered className="size-4" />
           </Button>
@@ -106,7 +108,7 @@ export function AdminListToolbar({
       ) : null}
       {action ??
         (actionLabel && onAction ? (
-          <Button size="sm" onClick={onAction}>
+          <Button size="sm" onClick={onAction} className="w-full sm:w-auto">
             {actionLabel}
           </Button>
         ) : null)}
@@ -121,7 +123,7 @@ export function AdminListToolbar({
           {sortControl}
         </div>
       ) : null}
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:ml-auto sm:justify-end">
+      <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2 sm:ml-auto sm:justify-end">
         {showSearch ? searchInput : null}
         {actionButtons}
       </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -178,6 +179,13 @@ export default function AdminUsersPage() {
       <AdminPageHeader
         title="Users"
         description="Manage admin and staff accounts."
+      />
+
+      <AdminListToolbar
+        hideTabs
+        showSearch={false}
+        search=""
+        onSearchChange={() => {}}
         actionLabel="Add user"
         onAction={() => setDialogOpen(true)}
       />

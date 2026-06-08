@@ -30,13 +30,19 @@ export function AdminPageHeader({
           ) : null}
         </div>
         {action ? (
-          <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end lg:shrink-0">
             {action}
           </div>
         ) : actionLabel && onAction ? (
-          <Button size="sm" onClick={onAction} className="shrink-0">
-            {actionLabel}
-          </Button>
+          <div className="w-full sm:w-auto lg:shrink-0">
+            <Button
+              size="sm"
+              onClick={onAction}
+              className="w-full sm:w-auto"
+            >
+              {actionLabel}
+            </Button>
+          </div>
         ) : null}
       </div>
     </div>
