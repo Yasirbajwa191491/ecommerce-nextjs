@@ -10,6 +10,7 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import type { Product } from "@/types/product";
 import type { ProductSort } from "@/lib/shop/product-sort";
 import { ProductCatalogFilters } from "@/components/products/product-catalog-filters";
+import { ProductCatalogMobileFilters } from "@/components/products/product-catalog-mobile-filters";
 import { ProductCatalogToolbar } from "@/components/products/product-catalog-toolbar";
 import { ProductCatalogLoadMore } from "@/components/products/product-catalog-load-more";
 import ProductCard from "@/components/products/ProductCard";
@@ -40,6 +41,7 @@ export default function ProductCatalog() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const debouncedPriceRange = useDebouncedValue(priceRange, 400);
   const [priceInitialized, setPriceInitialized] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const categories = useQuery(api.productCategories.listActive);
   const priceBounds = useQuery(api.products.getPublicPriceBounds);
@@ -211,6 +213,21 @@ export default function ProductCatalog() {
   };
 
   const bounds = priceBounds ?? { minPrice: 0, maxPrice: 0 };
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (categoryId !== "all") count += 1;
+    if (
+      priceBounds &&
+      priceFilterReady &&
+      (priceRange[0] > priceBounds.minPrice ||
+        priceRange[1] < priceBounds.maxPrice)
+    ) {
+      count += 1;
+    }
+    return count;
+  }, [categoryId, priceBounds, priceFilterReady, priceRange]);
+
   const showNoResults =
     !isInitialLoading &&
     !isRefetching &&
@@ -243,7 +260,7 @@ export default function ProductCatalog() {
           paddingRight: "clamp(1rem, 3vw, 3rem)",
         }}
       >
-        <div className="grid grid-cols-[minmax(0,5.75rem)_minmax(0,1fr)] gap-1.5 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] sm:gap-3 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
           <ProductCatalogFilters
             categories={categories ?? []}
             categoryId={categoryId}
@@ -252,10 +269,23 @@ export default function ProductCatalog() {
             priceRange={priceRange}
             onPriceRangeChange={setPriceRange}
             onClear={handleClear}
-            className="sticky top-[4.25rem] z-10 self-start max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain sm:top-[4.5rem] lg:top-24 lg:max-h-[calc(100vh-11rem)]"
+            className="hidden md:sticky md:top-24 md:z-10 md:block md:self-start md:max-h-[calc(100vh-11rem)] md:overflow-y-auto md:overscroll-contain"
           />
 
           <section className="min-w-0">
+            <ProductCatalogMobileFilters
+              open={mobileFiltersOpen}
+              onOpenChange={setMobileFiltersOpen}
+              categories={categories ?? []}
+              categoryId={categoryId}
+              onCategoryChange={setCategoryId}
+              priceBounds={bounds}
+              priceRange={priceRange}
+              onPriceRangeChange={setPriceRange}
+              onClear={handleClear}
+              activeFilterCount={activeFilterCount}
+            />
+
             <ProductCatalogToolbar
               totalCount={totalCount ?? 0}
               searchQuery={urlSearch.trim() || undefined}
