@@ -75,3 +75,17 @@ export const stripLegacyProductFields = internalMutation({
     return { stripped: products.length };
   },
 });
+
+/** Reset manually entered review stats; real values rebuild from approved reviews. */
+export const resetProductReviewStats = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+    for (const product of products) {
+      if (product.stars !== 0 || product.reviews !== 0) {
+        await ctx.db.patch(product._id, { stars: 0, reviews: 0 });
+      }
+    }
+    return { reset: products.length };
+  },
+});

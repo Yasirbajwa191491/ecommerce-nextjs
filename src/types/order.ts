@@ -60,6 +60,7 @@ export type OrderItem = {
 };
 
 export type PublicOrderItem = {
+  productId: string;
   productName: string;
   color: string;
   sku?: string;

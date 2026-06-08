@@ -14,6 +14,7 @@ import {
   Package,
   Settings,
   ShoppingCart,
+  Star,
   UserCircle2,
   Users,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const NAV = [
   { href: "/admin/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
   { href: "/admin/email-marketing", label: "Email Marketing", icon: Mail },
   { href: "/admin/contact-messages", label: "Contact", icon: MessageSquare },

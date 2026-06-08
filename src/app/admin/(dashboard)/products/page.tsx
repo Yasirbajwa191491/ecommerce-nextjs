@@ -84,8 +84,6 @@ type ProductForm = {
   discountPercent: number;
   shippingCharges: number;
   stock: number;
-  reviews: number;
-  stars: number;
   description: string;
   active: boolean;
 };
@@ -104,8 +102,6 @@ const emptyForm = (): ProductForm => ({
   discountPercent: 0,
   shippingCharges: 0,
   stock: 0,
-  reviews: 0,
-  stars: 0,
   description: "",
   active: true,
 });
@@ -254,8 +250,6 @@ export default function AdminProductsPage() {
       discountPercent: p.discountPercent ?? 0,
       shippingCharges: p.shippingCharges ?? 0,
       stock: p.stock,
-      reviews: p.reviews,
-      stars: p.stars,
       description: p.description,
       active: isProductActive(p),
     });
@@ -290,8 +284,6 @@ export default function AdminProductsPage() {
     discountPercent: Number(f.discountPercent) || 0,
     shippingCharges: f.shipping ? 0 : Number(f.shippingCharges) || 0,
     stock: Number(f.stock),
-    reviews: Number(f.reviews),
-    stars: Number(f.stars),
     description: f.description.trim(),
     active: f.active,
   });
@@ -864,47 +856,6 @@ export default function AdminProductsPage() {
                 className={invalidInputClass(validation.fieldError("description"))}
               />
             </AdminFormField>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <AdminFormField
-                label="Reviews"
-                htmlFor="product-reviews"
-                error={validation.fieldError("reviews")}
-              >
-                <Input
-                  id="product-reviews"
-                  type="number"
-                  min={0}
-                  value={form.reviews}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, reviews: Number(e.target.value) }))
-                  }
-                  onBlur={() => validation.touch("reviews")}
-                  aria-invalid={!!validation.fieldError("reviews")}
-                  className={invalidInputClass(validation.fieldError("reviews"))}
-                />
-              </AdminFormField>
-              <AdminFormField
-                label="Rating (0–5)"
-                htmlFor="product-stars"
-                error={validation.fieldError("stars")}
-              >
-                <Input
-                  id="product-stars"
-                  type="number"
-                  min={0}
-                  max={5}
-                  step="0.1"
-                  value={form.stars}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, stars: Number(e.target.value) }))
-                  }
-                  onBlur={() => validation.touch("stars")}
-                  aria-invalid={!!validation.fieldError("stars")}
-                  className={invalidInputClass(validation.fieldError("stars"))}
-                />
-              </AdminFormField>
-            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <AdminFormField

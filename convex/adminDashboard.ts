@@ -21,6 +21,7 @@ import {
   resolveDashboardRange,
   resolvePreviousPeriod,
 } from "./lib/dashboardRange";
+import { computeReviewAnalytics } from "./lib/reviewAggregates";
 
 const rangeArgs = dashboardRangeArgs;
 
@@ -169,5 +170,13 @@ export const getActivity = query({
       args.dateTo
     );
     return await fetchActivityFeed(ctx, currentRange, 15);
+  },
+});
+
+export const getReviewAnalytics = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await computeReviewAnalytics(ctx);
   },
 });

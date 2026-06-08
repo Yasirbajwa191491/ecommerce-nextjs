@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
+import { OrderDeliveredReviews } from "@/components/reviews/order-delivered-reviews";
 import Image from "next/image";
 import { api } from "../../../../../convex/_generated/api";
 import {
@@ -33,7 +34,9 @@ const PRIMARY_BUTTON_CLASS =
 
 function TrackOrderDetailContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orderNumber = decodeURIComponent(params.orderNumber as string);
+  const highlightProductId = searchParams.get("review") ?? undefined;
 
   const getPublicOrderDetail = useAction(api.orderTracking.getPublicOrderDetail);
 
@@ -232,6 +235,15 @@ function TrackOrderDetailContent() {
           />
         </CardContent>
       </Card>
+
+      {order.status === "delivered" ? (
+        <OrderDeliveredReviews
+          orderNumber={order.orderNumber}
+          customerEmail={order.customerEmail}
+          items={order.items}
+          highlightProductId={highlightProductId}
+        />
+      ) : null}
 
       <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
         <CardHeader>

@@ -1,5 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
@@ -280,6 +281,27 @@ export const updateCodPaymentStatus = mutation({
       amount: order.total,
       currency: order.currency,
       createdAt: now,
+    });
+
+    return { success: true as const };
+  },
+});
+
+export const sendReviewInvitation = mutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new ConvexError("Order not found");
+
+    if (order.status !== "delivered") {
+      throw new ConvexError(
+        "Review invitations can only be sent for delivered orders"
+      );
+    }
+
+    await ctx.scheduler.runAfter(0, internal.email.sendReviewInvitation, {
+      orderId: args.orderId,
     });
 
     return { success: true as const };

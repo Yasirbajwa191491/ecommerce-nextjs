@@ -7,7 +7,7 @@ import { ProductImageFrame } from "@/components/products/product-image-frame";
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
-import { ProductStars } from "@/components/products/product-stars";
+import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
 
 type ProductCardProps = Product & {
   view?: "grid" | "list";
@@ -55,7 +55,12 @@ export default function ProductCard({
                 {product.description}
               </p>
             ) : null}
-            <ProductStars rating={product.stars} className="mt-0.5" />
+            <ProductRatingDisplay
+              rating={product.stars}
+              reviewCount={product.reviews}
+              className="mt-0.5"
+              compact
+            />
           </div>
 
           <div className="flex shrink-0 flex-col justify-center gap-2 border-t border-border/50 pt-3 sm:w-36 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right md:w-40">
@@ -118,9 +123,11 @@ export default function ProductCard({
         <h3 className="line-clamp-2 h-[2.75rem] text-base font-semibold leading-snug tracking-tight text-foreground">
           {product.name}
         </h3>
-        <div className="h-5">
-          <ProductStars rating={product.stars} />
-        </div>
+        <ProductRatingDisplay
+          rating={product.stars}
+          reviewCount={product.reviews}
+          compact
+        />
         <div className="mt-auto border-t border-border/50 pt-2.5">
           <ProductPrice
             price={product.price}

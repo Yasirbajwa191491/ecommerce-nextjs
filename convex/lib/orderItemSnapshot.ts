@@ -1,6 +1,7 @@
 import type { Doc } from "../_generated/dataModel";
 
 export type NormalizedOrderItem = {
+  productId: string;
   productName: string;
   color: string;
   sku?: string;
@@ -30,6 +31,7 @@ export function normalizeOrderItem(item: Doc<"orderItems">): NormalizedOrderItem
   const lineShippingTotal = item.lineShippingTotal ?? shippingCharge;
 
   return {
+    productId: item.productId,
     productName: item.productName,
     color: item.color,
     sku: item.sku,

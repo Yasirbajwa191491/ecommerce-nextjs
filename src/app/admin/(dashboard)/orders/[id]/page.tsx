@@ -44,7 +44,8 @@ import { formatCurrencyAmount } from "@/lib/currencies";
 import { normalizeOrderDiscountTotal, normalizeOrderItemLike } from "@/lib/order-item-display";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import type { OrderStatus, PaymentStatus } from "@/types/order";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const ORDER_STATUSES: OrderStatus[] = [
   "pending",
@@ -90,6 +91,7 @@ export default function AdminOrderDetailPage() {
   const updateCodPaymentStatus = useMutation(
     api.adminOrders.updateCodPaymentStatus
   );
+  const sendReviewInvitation = useMutation(api.adminOrders.sendReviewInvitation);
 
   const [pendingOrderStatus, setPendingOrderStatus] = useState<OrderStatus | "">("");
   const [pendingPaymentStatus, setPendingPaymentStatus] = useState<
@@ -99,10 +101,21 @@ export default function AdminOrderDetailPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
 
   const order = detail?.order;
   const items = detail?.items ?? [];
   const logs = detail?.transactionLogs ?? [];
+
+  const reviewStatus = useQuery(
+    api.productReviews.getOrderReviewStatus,
+    order?.status === "delivered"
+      ? {
+          orderNumber: order.orderNumber,
+          customerEmail: order.customerEmail,
+        }
+      : "skip"
+  );
   const discountTotal = order
     ? normalizeOrderDiscountTotal(order, items)
     : 0;
@@ -155,6 +168,21 @@ export default function AdminOrderDetailPage() {
       );
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleSendReviewInvitation = async () => {
+    setIsSendingInvitation(true);
+    try {
+      await sendReviewInvitation({ orderId });
+      toastSuccess("Review invitation email queued");
+    } catch (error) {
+      toastError(error, {
+        title: "Couldn't send invitation",
+        fallback: "Failed to send review invitation email.",
+      });
+    } finally {
+      setIsSendingInvitation(false);
     }
   };
 
@@ -319,11 +347,18 @@ export default function AdminOrderDetailPage() {
                 <TableHead>Final</TableHead>
                 <TableHead>Shipping</TableHead>
                 <TableHead>Line total</TableHead>
+                {order.status === "delivered" ? (
+                  <TableHead>Review</TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item: Doc<"orderItems">) => {
                 const normalized = normalizeOrderItemLike(item);
+                const itemReview = reviewStatus?.find(
+                  (r: { productId: string; status: string }) =>
+                    r.productId === item.productId
+                );
                 return (
                 <TableRow key={item._id}>
                   <TableCell>
@@ -371,6 +406,19 @@ export default function AdminOrderDetailPage() {
                   <TableCell>
                     {formatCurrencyAmount(item.lineTotal, order.currency)}
                   </TableCell>
+                  {order.status === "delivered" ? (
+                    <TableCell>
+                      {itemReview?.status === "approved" ? (
+                        <Badge className="bg-emerald-600">Approved</Badge>
+                      ) : itemReview?.status === "pending" ? (
+                        <Badge variant="outline">Pending</Badge>
+                      ) : itemReview?.status === "eligible" ? (
+                        <Badge variant="secondary">Not reviewed</Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
               })}
@@ -514,6 +562,20 @@ export default function AdminOrderDetailPage() {
             <p className="text-sm text-muted-foreground">
               Current status: <OrderStatusBadge status={order.status} />
             </p>
+            {order.status === "delivered" ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start gap-2"
+                disabled={isSendingInvitation}
+                onClick={() => void handleSendReviewInvitation()}
+              >
+                <Mail className="size-4" />
+                {isSendingInvitation
+                  ? "Sending invitation…"
+                  : "Send review invitation email"}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </div>

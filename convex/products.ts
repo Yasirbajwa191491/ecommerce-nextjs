@@ -35,8 +35,6 @@ const productFields = {
   discountPercent: v.optional(v.number()),
   shippingCharges: v.optional(v.number()),
   stock: v.number(),
-  reviews: v.number(),
-  stars: v.number(),
   description: v.string(),
   active: v.optional(v.boolean()),
 };
@@ -353,6 +351,8 @@ export const create = mutation({
       shippingCharges: pricing.shippingCharges,
       active: args.active ?? true,
       sortOrder: nextSortOrder,
+      stars: 0,
+      reviews: 0,
     });
 
     const now = Date.now();

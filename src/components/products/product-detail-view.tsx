@@ -15,7 +15,8 @@ import { ProductImageGallery } from "@/components/products/product-image-gallery
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
-import { ProductStars } from "@/components/products/product-stars";
+import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
+import { ProductReviewSection } from "@/components/reviews/product-review-section";
 import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
 import AddToCart from "@/components/products/AddToCart";
 import { Badge } from "@/components/ui/badge";
@@ -150,15 +151,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <ProductStars rating={singleProduct.stars} />
-            {singleProduct.reviews > 0 ? (
-              <span className="text-sm text-muted-foreground">
-                ({singleProduct.reviews.toLocaleString()}{" "}
-                {singleProduct.reviews === 1 ? "review" : "reviews"})
-              </span>
-            ) : null}
-          </div>
+          <ProductRatingDisplay
+            rating={singleProduct.stars}
+            reviewCount={singleProduct.reviews}
+          />
 
           <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-center gap-2">
@@ -260,6 +256,11 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           )}
         </div>
       </div>
+
+      <ProductReviewSection
+        productId={singleProduct._id}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
 
       {singleProduct.description ? (
         <section className="mt-12 border-t border-border/60 pt-10 lg:mt-16">

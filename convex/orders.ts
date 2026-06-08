@@ -583,6 +583,16 @@ export const applyTrackingRateLimit = internalMutation({
   },
 });
 
+export const markReviewInvitationSent = internalMutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orderId, {
+      reviewInvitationSentAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const lookupOrderForTracking = internalQuery({
   args: {
     orderNumber: v.string(),

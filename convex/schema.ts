@@ -175,6 +175,7 @@ export default defineSchema({
     stripeTransactionId: v.optional(v.string()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
+    reviewInvitationSentAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -204,7 +205,40 @@ export default defineSchema({
     finalUnitPrice: v.optional(v.number()),
     shippingCharge: v.optional(v.number()),
     lineShippingTotal: v.optional(v.number()),
-  }).index("by_order_id", ["orderId"]),
+  })
+    .index("by_order_id", ["orderId"])
+    .index("by_product_id", ["productId"]),
+
+  productReviews: defineTable({
+    productId: v.id("products"),
+    orderId: v.id("orders"),
+    customerName: v.string(),
+    customerEmail: v.string(),
+    customerUserId: v.optional(v.string()),
+    rating: v.number(),
+    title: v.string(),
+    content: v.string(),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
+    isVerifiedPurchase: v.boolean(),
+    isApproved: v.boolean(),
+    helpfulCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order_product", ["orderId", "productId"])
+    .index("by_product_approved_created", ["productId", "isApproved", "createdAt"])
+    .index("by_product_approved_rating", ["productId", "isApproved", "rating"])
+    .index("by_product_approved_helpful", ["productId", "isApproved", "helpfulCount"])
+    .index("by_customer_email", ["customerEmail"])
+    .index("by_approval_created", ["isApproved", "createdAt"])
+    .index("by_rating", ["rating"])
+    .index("by_order_id", ["orderId"]),
+
+  reviewHelpfulVotes: defineTable({
+    reviewId: v.id("productReviews"),
+    voterKey: v.string(),
+    createdAt: v.number(),
+  }).index("by_review_voter", ["reviewId", "voterKey"]),
 
   orderStatusLogs: defineTable({
     orderId: v.id("orders"),

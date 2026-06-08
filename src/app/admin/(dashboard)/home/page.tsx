@@ -13,6 +13,7 @@ import { DashboardTopCategories } from "@/components/admin/dashboard/dashboard-t
 import { DashboardRecentOrders } from "@/components/admin/dashboard/dashboard-recent-orders";
 import { DashboardLowStock } from "@/components/admin/dashboard/dashboard-low-stock";
 import { DashboardActivityFeed } from "@/components/admin/dashboard/dashboard-activity-feed";
+import { DashboardReviewAnalytics } from "@/components/admin/dashboard/dashboard-review-analytics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInView } from "@/hooks/use-in-view";
 import {
@@ -54,6 +55,8 @@ function DashboardContent() {
         </div>
 
         <DashboardBreakdownSection queryArgs={queryArgs} />
+
+        <DashboardReviewAnalytics />
 
         <div ref={belowFoldRef} className="space-y-6">
           {belowFoldVisible ? (

@@ -1,0 +1,221 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { RatingBreakdown } from "@/components/reviews/rating-breakdown";
+import { ReviewCard } from "@/components/reviews/review-card";
+import { ProductStars } from "@/components/products/product-stars";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toastError, toastSuccess } from "@/lib/app-toast";
+import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 5;
+
+type ReviewSort = "recent" | "highest" | "lowest" | "helpful";
+type RatingFilter = "all" | 1 | 2 | 3 | 4 | 5;
+
+type ProductReviewSectionProps = {
+  productId: Id<"products">;
+  className?: string;
+};
+
+function getVoterKey() {
+  if (typeof window === "undefined") return "anonymous";
+  const key = "reviewVoterKey";
+  let value = localStorage.getItem(key);
+  if (!value) {
+    value = crypto.randomUUID();
+    localStorage.setItem(key, value);
+  }
+  return value;
+}
+
+export function ProductReviewSection({
+  productId,
+  className,
+}: ProductReviewSectionProps) {
+  const [sort, setSort] = useState<ReviewSort>("recent");
+  const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
+  const [helpfulLoadingId, setHelpfulLoadingId] = useState<string | null>(null);
+
+  const summary = useQuery(api.productReviews.getProductReviewSummary, {
+    productId,
+  });
+
+  const listArgs = useMemo(
+    () => ({
+      productId,
+      sort,
+      ratingFilter: ratingFilter === "all" ? undefined : ratingFilter,
+    }),
+    [productId, sort, ratingFilter]
+  );
+
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.productReviews.listProductReviews,
+    listArgs,
+    { initialNumItems: PAGE_SIZE }
+  );
+
+  const markHelpful = useMutation(api.productReviews.markReviewHelpful);
+
+  const handleMarkHelpful = useCallback(
+    async (reviewId: string) => {
+      setHelpfulLoadingId(reviewId);
+      try {
+        await markHelpful({
+          reviewId: reviewId as Id<"productReviews">,
+          voterKey: getVoterKey(),
+        });
+        toastSuccess("Thanks for your feedback");
+      } catch (error) {
+        toastError(error, { title: "Couldn't record vote" });
+      } finally {
+        setHelpfulLoadingId(null);
+      }
+    },
+    [markHelpful]
+  );
+
+  const canLoadMore = status === "CanLoadMore";
+
+  if (summary === undefined) {
+    return (
+      <section className={cn("space-y-4", className)}>
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full" />
+      </section>
+    );
+  }
+
+  return (
+    <section className={cn("space-y-8", className)}>
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          Customer reviews
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ratings from verified purchases
+        </p>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,280px)_1fr]">
+        <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-5">
+          <div className="text-center lg:text-left">
+            <div className="flex flex-col items-center gap-2 lg:items-start">
+              <ProductStars
+                rating={summary.averageRating}
+                className="[&_span]:text-base [&_svg]:size-5"
+              />
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                  {summary.averageRating.toFixed(1)} out of 5
+                </span>
+                {summary.totalReviews > 0 ? (
+                  <>
+                    {" "}
+                    · Based on {summary.totalReviews.toLocaleString()}{" "}
+                    {summary.totalReviews === 1 ? "review" : "reviews"}
+                  </>
+                ) : null}
+              </p>
+            </div>
+          </div>
+          {summary.totalReviews > 0 ? (
+            <RatingBreakdown distribution={summary.distribution} />
+          ) : null}
+          <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+            Purchased this item?{" "}
+            <Link href="/track-order" className="font-medium text-[#6254f3] hover:underline">
+              Track your order
+            </Link>{" "}
+            to leave a verified review after delivery.
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["all", "All"],
+                  [5, "5★"],
+                  [4, "4★"],
+                  [3, "3★"],
+                  [2, "2★"],
+                  [1, "1★"],
+                ] as const
+              ).map(([value, label]) => (
+                <Button
+                  key={String(value)}
+                  type="button"
+                  size="sm"
+                  variant={ratingFilter === value ? "default" : "outline"}
+                  className="rounded-full"
+                  onClick={() => setRatingFilter(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <Select
+              value={sort}
+              onValueChange={(v) => setSort(v as ReviewSort)}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Most recent</SelectItem>
+                <SelectItem value="highest">Highest rating</SelectItem>
+                <SelectItem value="lowest">Lowest rating</SelectItem>
+                <SelectItem value="helpful">Most helpful</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {results.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+              <p className="font-medium text-foreground">No reviews yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Be the first to share your experience after your order is delivered.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {results.map((review) => (
+                <ReviewCard
+                  key={review._id}
+                  review={review}
+                  onMarkHelpful={handleMarkHelpful}
+                  helpfulLoading={helpfulLoadingId === review._id}
+                />
+              ))}
+            </div>
+          )}
+
+          {canLoadMore ? (
+            <Button
+              variant="outline"
+              className="w-full rounded-full"
+              onClick={() => loadMore(PAGE_SIZE)}
+            >
+              Load more reviews
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}

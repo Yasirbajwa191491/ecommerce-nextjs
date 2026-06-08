@@ -181,6 +181,85 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
+export const sendReviewInvitation = internalAction({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      const from = await ctx.runQuery(internal.settings.getEmailFrom, {});
+      const orderData = await ctx.runQuery(internal.orders.getOrderForEmail, {
+        orderId: args.orderId,
+      });
+
+      if (!orderData) {
+        console.warn(`[reviews] Order ${args.orderId} not found for invitation`);
+        return;
+      }
+
+      const { order, items } = orderData;
+
+      if (order.status !== "delivered") {
+        console.warn(
+          `[reviews] Skipping invitation — order ${order.orderNumber} not delivered`
+        );
+        return;
+      }
+
+      if (!apiKey) {
+        console.warn(
+          `[reviews] RESEND_API_KEY not set — skipping invitation for ${order.orderNumber}`
+        );
+        return;
+      }
+
+      const appUrl = getSiteUrl();
+      const reviewUrl = `${appUrl}/track-order/${encodeURIComponent(order.orderNumber)}`;
+      const { ReviewInvitationEmail } = await import(
+        "../src/emails/review-invitation-email"
+      );
+
+      const html = await render(
+        ReviewInvitationEmail({
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          reviewUrl,
+          productNames: items.map((item) => item.productName),
+        })
+      );
+
+      const resend = new Resend(apiKey);
+      const subject = `How was your order ${order.orderNumber}?`;
+
+      const { data, error } = await resend.emails.send({
+        from,
+        to: order.customerEmail,
+        subject,
+        html,
+      });
+
+      if (error) {
+        console.error("[reviews] Review invitation email failed:", error);
+        throw new ConvexError(
+          resendFailureMessage(error.message, order.customerEmail, from)
+        );
+      }
+
+      await ctx.runMutation(internal.orders.markReviewInvitationSent, {
+        orderId: args.orderId,
+      });
+
+      console.log(
+        `[reviews] Invitation sent (id: ${data?.id ?? "unknown"}) → ${order.customerEmail}`
+      );
+    } catch (error) {
+      console.error("[reviews] Review invitation unexpected error:", error);
+      throw error;
+    }
+  },
+});
+
 export const processCampaignBatch = internalAction({
   args: { campaignId: v.id("emailCampaigns") },
   handler: async (ctx, args) => {

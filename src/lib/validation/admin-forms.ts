@@ -3,7 +3,6 @@ import {
   validateEmail,
   validatePersonName,
   validatePositiveNumber,
-  validateRating,
   validateRequired,
   validateSlug,
   validateStrongPassword,
@@ -70,8 +69,6 @@ export type ProductFormValues = {
   imageUrls: string[];
   categoryId: string;
   stock: number;
-  reviews: number;
-  stars: number;
   description: string;
   shipping?: boolean;
   discountPercent?: number;
@@ -121,15 +118,6 @@ export function validateProductForm(
     allowZero: true,
   });
   if (stock) errors.stock = stock;
-
-  const reviews = validatePositiveNumber(values.reviews, "Reviews", {
-    min: 0,
-    allowZero: true,
-  });
-  if (reviews) errors.reviews = reviews;
-
-  const stars = validateRating(values.stars);
-  if (stars) errors.stars = stars;
 
   const colors = values.colors.map((c) => c.trim()).filter(Boolean);
   if (colors.length === 0) {
