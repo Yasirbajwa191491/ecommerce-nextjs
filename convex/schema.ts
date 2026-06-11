@@ -7,6 +7,13 @@ import {
   emailTemplateStatusValidator,
 } from "./lib/emailMarketingValidators";
 import {
+  aiAnalysisStatusValidator,
+  aiModerationValidator,
+  aiSentimentValidator,
+  productInsightsStatusValidator,
+  reviewTopicValidator,
+} from "./lib/aiValidators";
+import {
   orderStatusLogActorValidator,
   orderStatusValidator,
   paymentLogActorValidator,
@@ -224,6 +231,17 @@ export default defineSchema({
     helpfulCount: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    aiAnalysisStatus: v.optional(aiAnalysisStatusValidator),
+    aiSentiment: v.optional(aiSentimentValidator),
+    aiSentimentConfidence: v.optional(v.number()),
+    aiTags: v.optional(v.array(v.string())),
+    aiModeration: v.optional(aiModerationValidator),
+    embedding: v.optional(v.array(v.float64())),
+    aiAnalyzedAt: v.optional(v.number()),
+    aiError: v.optional(v.string()),
+    adminReplyDraft: v.optional(v.string()),
+    adminReplyPublished: v.optional(v.string()),
+    adminReplyPublishedAt: v.optional(v.number()),
   })
     .index("by_order_product", ["orderId", "productId"])
     .index("by_product_approved_created", ["productId", "isApproved", "createdAt"])
@@ -232,7 +250,29 @@ export default defineSchema({
     .index("by_customer_email", ["customerEmail"])
     .index("by_approval_created", ["isApproved", "createdAt"])
     .index("by_rating", ["rating"])
-    .index("by_order_id", ["orderId"]),
+    .index("by_order_id", ["orderId"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 384,
+      filterFields: ["productId", "isApproved"],
+    }),
+
+  productReviewInsights: defineTable({
+    productId: v.id("products"),
+    summary: v.string(),
+    topics: v.array(reviewTopicValidator),
+    reviewCountAtGeneration: v.number(),
+    generatedAt: v.number(),
+    aiAnalysisStatus: productInsightsStatusValidator,
+  }).index("by_product", ["productId"]),
+
+  reviewTagIndex: defineTable({
+    productId: v.id("products"),
+    reviewId: v.id("productReviews"),
+    tagSlug: v.string(),
+    tagLabel: v.string(),
+    isApproved: v.boolean(),
+  }).index("by_product_tag", ["productId", "tagSlug", "isApproved"]),
 
   reviewHelpfulVotes: defineTable({
     reviewId: v.id("productReviews"),

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
 import { BadgeCheck, ThumbsUp } from "lucide-react";
 import { ProductStars } from "@/components/products/product-stars";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ export type PublicReview = {
   isVerifiedPurchase: boolean;
   helpfulCount: number;
   createdAt: number;
+  aiTags?: string[];
+  adminReplyPublished?: string;
 };
 
 type ReviewCardProps = {
@@ -61,6 +64,11 @@ export function ReviewCard({
             Verified Purchase
           </span>
         ) : null}
+        {review.aiTags?.map((tag) => (
+          <Badge key={tag} variant="outline" className="rounded-full text-xs">
+            {tag}
+          </Badge>
+        ))}
       </div>
 
       <h3 className="mt-3 font-semibold text-foreground">{review.title}</h3>
@@ -87,6 +95,17 @@ export function ReviewCard({
               />
             </a>
           ))}
+        </div>
+      ) : null}
+
+      {review.adminReplyPublished ? (
+        <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Store response
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-foreground">
+            {review.adminReplyPublished}
+          </p>
         </div>
       ) : null}
 

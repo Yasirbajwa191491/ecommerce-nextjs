@@ -242,5 +242,8 @@ export function toPublicReview(
     helpfulCount: review.helpfulCount,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
+    aiTags:
+      review.aiAnalysisStatus === "complete" ? review.aiTags : undefined,
+    adminReplyPublished: review.adminReplyPublished,
   };
 }

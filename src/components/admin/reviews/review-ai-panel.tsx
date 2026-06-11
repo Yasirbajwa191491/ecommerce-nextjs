@@ -1,0 +1,220 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import type { Doc } from "../../../../convex/_generated/dataModel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { toastError, toastSuccess } from "@/lib/app-toast";
+import {
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
+
+type ReviewAiPanelProps = {
+  review: Doc<"productReviews">;
+};
+
+const sentimentStyles = {
+  positive: "bg-emerald-600",
+  neutral: "bg-slate-500",
+  negative: "bg-rose-600",
+} as const;
+
+export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
+  const [replyDraft, setReplyDraft] = useState(review.adminReplyDraft ?? "");
+  const [generating, setGenerating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  const retryAi = useMutation(api.adminReviews.retryAiAnalysis);
+  const generateReply = useMutation(api.adminReviews.generateReplyDraft);
+  const publishReply = useMutation(api.adminReviews.publishReply);
+  const clearDraft = useMutation(api.adminReviews.clearReplyDraft);
+
+  useEffect(() => {
+    setReplyDraft(review.adminReplyDraft ?? "");
+  }, [review.adminReplyDraft]);
+
+  const isAnalyzing =
+    review.aiAnalysisStatus === "pending" ||
+    review.aiAnalysisStatus === "processing";
+
+  const handleRetry = async () => {
+    try {
+      await retryAi({ id: review._id });
+      toastSuccess("AI analysis queued");
+    } catch (error) {
+      toastError(error, { title: "Couldn't retry AI analysis" });
+    }
+  };
+
+  const handleGenerateReply = async () => {
+    setGenerating(true);
+    try {
+      await generateReply({ id: review._id });
+      toastSuccess("Generating reply… refresh in a moment");
+    } catch (error) {
+      toastError(error, { title: "Couldn't generate reply" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePublishReply = async () => {
+    setPublishing(true);
+    try {
+      await publishReply({ id: review._id, reply: replyDraft });
+      toastSuccess("Reply published");
+    } catch (error) {
+      toastError(error, { title: "Couldn't publish reply" });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleClearDraft = async () => {
+    try {
+      await clearDraft({ id: review._id });
+      setReplyDraft("");
+      toastSuccess("Draft cleared");
+    } catch (error) {
+      toastError(error, { title: "Couldn't clear draft" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="size-4" />
+          AI Intelligence
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {isAnalyzing ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            AI analysis in progress…
+          </div>
+        ) : null}
+
+        {review.aiAnalysisStatus === "failed" ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/30">
+            <span className="text-amber-800 dark:text-amber-200">
+              {review.aiError ?? "AI analysis failed"}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => void handleRetry()}>
+              <RefreshCw className="size-3.5" />
+              Retry
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Sentiment</p>
+          {review.aiSentiment ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={sentimentStyles[review.aiSentiment]}>
+                {review.aiSentiment}
+              </Badge>
+              {review.aiSentimentConfidence != null ? (
+                <span className="text-sm text-muted-foreground">
+                  {(review.aiSentimentConfidence * 100).toFixed(0)}% confidence
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Not analyzed yet</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">AI Tags</p>
+          {review.aiTags?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {review.aiTags.map((tag) => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No tags generated</p>
+          )}
+        </div>
+
+        {review.aiModeration?.flagged ? (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <p className="font-semibold">AI moderation warning</p>
+              <p>{review.aiModeration.reason ?? "Flagged for review"}</p>
+              <p className="mt-1 text-xs opacity-80">
+                Advisory only — admin approval is still required.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">Admin reply</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleGenerateReply()}
+              disabled={generating}
+            >
+              {generating ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Wand2 className="size-3.5" />
+              )}
+              Generate Reply
+            </Button>
+          </div>
+          <Textarea
+            value={replyDraft}
+            onChange={(e) => setReplyDraft(e.target.value)}
+            placeholder="Generate or write a professional reply…"
+            rows={5}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={() => void handlePublishReply()}
+              disabled={publishing || !replyDraft.trim()}
+            >
+              Publish Reply
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleClearDraft()}
+              disabled={!replyDraft}
+            >
+              Discard Draft
+            </Button>
+          </div>
+          {review.adminReplyPublished ? (
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
+              <p className="font-medium text-muted-foreground">Published reply</p>
+              <p className="mt-1 whitespace-pre-wrap">{review.adminReplyPublished}</p>
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

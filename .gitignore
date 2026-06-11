@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# dependencies (root and nested workspaces)
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -14,11 +14,12 @@
 /coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
+dist/
 
 # misc
 .DS_Store
@@ -39,3 +40,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# convex generated local state
+.convex/
+
+# AI worker — model caches and heavy runtime data
+services/review-ai-worker/node_modules/
+services/review-ai-worker/.cache/
+**/.cache/huggingface/
+**/.cache/transformers/
+*.onnx
+*.onnx.data
+*.bin
+*.safetensors
+*.gguf
+
+# docker / ollama local volumes (if created beside compose)
+ollama_data/
+transformers_cache/
+
+# logs and temp
+*.log
+tmp/
+temp/

@@ -1,6 +1,9 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
+import { clearTagIndexForReview } from "./lib/ai/tagIndex";
+import { slugifyTag } from "./lib/ai/tagUtils";
 import { paginateArray } from "./lib/pagination";
 import { normalizeEmail } from "./lib/publicOrderDto";
 import {
@@ -53,6 +56,8 @@ const publicReviewValidator = v.object({
   helpfulCount: v.number(),
   createdAt: v.number(),
   updatedAt: v.number(),
+  aiTags: v.optional(v.array(v.string())),
+  adminReplyPublished: v.optional(v.string()),
 });
 
 async function lookupOrderByNumber(
@@ -99,11 +104,26 @@ export const getProductReviewSummary = query({
   },
 });
 
+export const getReviewById = query({
+  args: { reviewId: v.id("productReviews") },
+  returns: v.union(publicReviewValidator, v.null()),
+  handler: async (ctx, args) => {
+    const review = await ctx.db.get(args.reviewId);
+    if (!review || !review.isApproved) return null;
+
+    return toPublicReview(
+      review,
+      await resolveReviewImageUrls(ctx, review.imageStorageIds)
+    );
+  },
+});
+
 export const listProductReviews = query({
   args: {
     productId: v.id("products"),
     sort: v.optional(reviewSortValidator),
     ratingFilter: ratingFilterValidator,
+    tagFilter: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
@@ -116,6 +136,24 @@ export const listProductReviews = query({
 
     if (args.ratingFilter !== undefined) {
       reviews = reviews.filter((r) => r.rating === args.ratingFilter);
+    }
+
+    if (args.tagFilter) {
+      const tagSlug = slugifyTag(args.tagFilter);
+      const taggedReviewIds = new Set(
+        (
+          await ctx.db
+            .query("reviewTagIndex")
+            .withIndex("by_product_tag", (q) =>
+              q
+                .eq("productId", args.productId)
+                .eq("tagSlug", tagSlug)
+                .eq("isApproved", true)
+            )
+            .collect()
+        ).map((row) => row.reviewId)
+      );
+      reviews = reviews.filter((r) => taggedReviewIds.has(r._id));
     }
 
     reviews = sortReviews(reviews, args.sort ?? "recent");
@@ -337,7 +375,7 @@ export const createReview = mutation({
     }
 
     const now = Date.now();
-    return await ctx.db.insert("productReviews", {
+    const reviewId = await ctx.db.insert("productReviews", {
       productId: args.productId,
       orderId: order._id,
       customerName: order.customerName,
@@ -352,7 +390,14 @@ export const createReview = mutation({
       helpfulCount: 0,
       createdAt: now,
       updatedAt: now,
+      aiAnalysisStatus: "pending",
     });
+
+    await ctx.scheduler.runAfter(0, internal.reviewAiActions.processReview, {
+      reviewId,
+    });
+
+    return reviewId;
   },
 });
 
@@ -400,6 +445,26 @@ export const updateReview = mutation({
       content,
       imageStorageIds: imageStorageIds.length ? imageStorageIds : undefined,
       updatedAt: Date.now(),
+      aiAnalysisStatus: "pending",
+      aiSentiment: undefined,
+      aiSentimentConfidence: undefined,
+      aiTags: undefined,
+      aiModeration: undefined,
+      embedding: undefined,
+      aiAnalyzedAt: undefined,
+      aiError: undefined,
+    });
+
+    const tagRows = await ctx.db
+      .query("reviewTagIndex")
+      .filter((q) => q.eq(q.field("reviewId"), args.reviewId))
+      .collect();
+    for (const row of tagRows) {
+      await ctx.db.delete(row._id);
+    }
+
+    await ctx.scheduler.runAfter(0, internal.reviewAiActions.processReview, {
+      reviewId: args.reviewId,
     });
 
     return args.reviewId;
@@ -439,6 +504,7 @@ export const deleteReview = mutation({
       await ctx.db.delete(vote._id);
     }
 
+    await clearTagIndexForReview(ctx, args.reviewId);
     await ctx.db.delete(args.reviewId);
     return null;
   },

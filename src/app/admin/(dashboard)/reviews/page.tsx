@@ -29,7 +29,18 @@ import {
 } from "@/components/ui/table";
 import { ProductStars } from "@/components/products/product-stars";
 import { toastError, toastSuccess } from "@/lib/app-toast";
-import { Check, Eye, Trash2, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  AlertTriangle,
+  Check,
+  Eye,
+  Smile,
+  Frown,
+  Meh,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type ReviewRow = Doc<"productReviews"> & {
   productName: string;
@@ -49,6 +60,7 @@ export default function AdminReviewsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "pending" | "approved">("all");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [deleteId, setDeleteId] = useState<Id<"productReviews"> | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -57,6 +69,7 @@ export default function AdminReviewsPage() {
     {
       status: status === "all" ? undefined : status,
       search: search || undefined,
+      flaggedOnly: flaggedOnly || undefined,
     },
     { initialNumItems: PAGE_SIZE }
   );
@@ -139,6 +152,14 @@ export default function AdminReviewsPage() {
             <SelectItem value="approved">Approved</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="flagged-only"
+            checked={flaggedOnly}
+            onCheckedChange={setFlaggedOnly}
+          />
+          <Label htmlFor="flagged-only">Flagged by AI</Label>
+        </div>
       </div>
 
       <AdminTableCard>
@@ -148,6 +169,7 @@ export default function AdminReviewsPage() {
               <TableHead>Product</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Rating</TableHead>
+              <TableHead>AI</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Verified</TableHead>
               <TableHead>Status</TableHead>
@@ -158,7 +180,7 @@ export default function AdminReviewsPage() {
           <TableBody>
             {reviews.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   No reviews found.
                 </TableCell>
               </TableRow>
@@ -178,6 +200,25 @@ export default function AdminReviewsPage() {
                   </TableCell>
                   <TableCell>
                     <ProductStars rating={review.rating} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {review.aiSentiment === "positive" ? (
+                        <Smile className="size-4 text-emerald-600" aria-label="Positive" />
+                      ) : review.aiSentiment === "negative" ? (
+                        <Frown className="size-4 text-rose-600" aria-label="Negative" />
+                      ) : review.aiSentiment === "neutral" ? (
+                        <Meh className="size-4 text-slate-500" aria-label="Neutral" />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                      {review.aiModeration?.flagged ? (
+                        <AlertTriangle
+                          className="size-4 text-amber-600"
+                          aria-label="Flagged"
+                        />
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">
                     {review.title}

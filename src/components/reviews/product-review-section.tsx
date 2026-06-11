@@ -6,7 +6,10 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { RatingBreakdown } from "@/components/reviews/rating-breakdown";
+import { ReviewAiSummary } from "@/components/reviews/review-ai-summary";
 import { ReviewCard } from "@/components/reviews/review-card";
+import { ReviewSemanticSearch } from "@/components/reviews/review-semantic-search";
+import { ReviewTopicInsights } from "@/components/reviews/review-topic-insights";
 import { ProductStars } from "@/components/products/product-stars";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,9 +50,19 @@ export function ProductReviewSection({
 }: ProductReviewSectionProps) {
   const [sort, setSort] = useState<ReviewSort>("recent");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [semanticIds, setSemanticIds] = useState<string[] | null>(null);
   const [helpfulLoadingId, setHelpfulLoadingId] = useState<string | null>(null);
 
   const summary = useQuery(api.productReviews.getProductReviewSummary, {
+    productId,
+  });
+
+  const insights = useQuery(api.productReviewInsights.getByProductId, {
+    productId,
+  });
+
+  const tags = useQuery(api.productReviewInsights.listProductReviewTags, {
     productId,
   });
 
@@ -58,8 +71,9 @@ export function ProductReviewSection({
       productId,
       sort,
       ratingFilter: ratingFilter === "all" ? undefined : ratingFilter,
+      tagFilter: tagFilter ?? undefined,
     }),
-    [productId, sort, ratingFilter]
+    [productId, sort, ratingFilter, tagFilter]
   );
 
   const { results, status, loadMore } = usePaginatedQuery(
@@ -69,6 +83,10 @@ export function ProductReviewSection({
   );
 
   const markHelpful = useMutation(api.productReviews.markReviewHelpful);
+
+  const handleSemanticResults = useCallback((ids: string[] | null) => {
+    setSemanticIds(ids);
+  }, []);
 
   const handleMarkHelpful = useCallback(
     async (reviewId: string) => {
@@ -88,7 +106,13 @@ export function ProductReviewSection({
     [markHelpful]
   );
 
-  const canLoadMore = status === "CanLoadMore";
+  const displayedReviews = useMemo(() => {
+    if (!semanticIds) return results;
+    const idSet = new Set(semanticIds);
+    return results.filter((review) => idSet.has(review._id));
+  }, [results, semanticIds]);
+
+  const canLoadMore = status === "CanLoadMore" && !semanticIds;
 
   if (summary === undefined) {
     return (
@@ -109,6 +133,16 @@ export function ProductReviewSection({
           Ratings from verified purchases
         </p>
       </div>
+
+      <ReviewAiSummary
+        summary={insights?.summary}
+        status={insights?.aiAnalysisStatus}
+      />
+
+      <ReviewTopicInsights
+        topics={insights?.topics}
+        status={insights?.aiAnalysisStatus}
+      />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,280px)_1fr]">
         <div className="space-y-6 rounded-2xl border border-border/60 bg-card p-5">
@@ -145,6 +179,32 @@ export function ProductReviewSection({
         </div>
 
         <div className="space-y-4">
+          <ReviewSemanticSearch
+            productId={productId}
+            onResults={handleSemanticResults}
+          />
+
+          {tags && tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag: { tagSlug: string; tagLabel: string; count: number }) => (
+                <Button
+                  key={tag.tagSlug}
+                  type="button"
+                  size="sm"
+                  variant={tagFilter === tag.tagSlug ? "default" : "outline"}
+                  className="rounded-full"
+                  onClick={() =>
+                    setTagFilter((current) =>
+                      current === tag.tagSlug ? null : tag.tagSlug
+                    )
+                  }
+                >
+                  {tag.tagLabel} ({tag.count})
+                </Button>
+              ))}
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-2">
               {(
@@ -185,16 +245,20 @@ export function ProductReviewSection({
             </Select>
           </div>
 
-          {results.length === 0 ? (
+          {displayedReviews.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
-              <p className="font-medium text-foreground">No reviews yet</p>
+              <p className="font-medium text-foreground">
+                {semanticIds ? "No matching reviews" : "No reviews yet"}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Be the first to share your experience after your order is delivered.
+                {semanticIds
+                  ? "Try a different search phrase."
+                  : "Be the first to share your experience after your order is delivered."}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {results.map((review) => (
+              {displayedReviews.map((review) => (
                 <ReviewCard
                   key={review._id}
                   review={review}

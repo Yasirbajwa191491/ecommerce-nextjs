@@ -23,6 +23,7 @@ import {
   ProductColorSwatches,
   ProductImageThumbnails,
 } from "@/components/admin/product-table-preview";
+import { AdminProductReviewInsights } from "@/components/admin/admin-product-review-insights";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -910,6 +911,10 @@ export default function AdminProductsPage() {
                 </AdminFormField>
               ) : null}
             </div>
+
+            {editing ? (
+              <AdminProductReviewInsights productId={editing._id} />
+            ) : null}
 
             <div className="grid gap-3 rounded-lg border p-4">
               <div className="flex items-center justify-between gap-4">
