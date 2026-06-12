@@ -149,7 +149,11 @@ export const generateReply = internalAction({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Reply generation failed";
-      throw new Error(message);
+      const friendly = message.includes("503") || message.includes("429")
+        ? "The AI provider is temporarily busy. Please click Generate Reply again in a minute."
+        : message;
+      console.error("Reply generation failed:", message);
+      throw new Error(friendly);
     }
 
     return null;

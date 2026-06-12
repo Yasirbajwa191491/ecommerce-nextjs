@@ -1,6 +1,9 @@
 /** Embedding dimensions for Xenova/all-MiniLM-L6-v2 */
 export const EMBEDDING_DIMENSIONS = 384;
 
+/** Default Gemini embedding model (text-embedding-004 retired Jan 2026) */
+export const GEMINI_EMBEDDING_MODEL_DEFAULT = "gemini-embedding-001";
+
 /** Minimum approved reviews before generating product summary */
 export const MIN_REVIEWS_FOR_SUMMARY = 3;
 
