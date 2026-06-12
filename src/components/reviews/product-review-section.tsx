@@ -7,7 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { RatingBreakdown } from "@/components/reviews/rating-breakdown";
 import { ReviewAiSummary } from "@/components/reviews/review-ai-summary";
-import { ReviewCard } from "@/components/reviews/review-card";
+import { ReviewCard, type PublicReview } from "@/components/reviews/review-card";
 import { ReviewSemanticSearch } from "@/components/reviews/review-semantic-search";
 import { ReviewTopicInsights } from "@/components/reviews/review-topic-insights";
 import { ProductStars } from "@/components/products/product-stars";
@@ -51,7 +51,9 @@ export function ProductReviewSection({
   const [sort, setSort] = useState<ReviewSort>("recent");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [semanticIds, setSemanticIds] = useState<string[] | null>(null);
+  const [semanticReviews, setSemanticReviews] = useState<PublicReview[] | null>(
+    null
+  );
   const [helpfulLoadingId, setHelpfulLoadingId] = useState<string | null>(null);
 
   const summary = useQuery(api.productReviews.getProductReviewSummary, {
@@ -84,8 +86,8 @@ export function ProductReviewSection({
 
   const markHelpful = useMutation(api.productReviews.markReviewHelpful);
 
-  const handleSemanticResults = useCallback((ids: string[] | null) => {
-    setSemanticIds(ids);
+  const handleSemanticResults = useCallback((reviews: PublicReview[] | null) => {
+    setSemanticReviews(reviews);
   }, []);
 
   const handleMarkHelpful = useCallback(
@@ -106,13 +108,9 @@ export function ProductReviewSection({
     [markHelpful]
   );
 
-  const displayedReviews = useMemo(() => {
-    if (!semanticIds) return results;
-    const idSet = new Set(semanticIds);
-    return results.filter((review) => idSet.has(review._id));
-  }, [results, semanticIds]);
+  const displayedReviews = semanticReviews ?? results;
 
-  const canLoadMore = status === "CanLoadMore" && !semanticIds;
+  const canLoadMore = status === "CanLoadMore" && !semanticReviews;
 
   if (summary === undefined) {
     return (
@@ -248,10 +246,10 @@ export function ProductReviewSection({
           {displayedReviews.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
               <p className="font-medium text-foreground">
-                {semanticIds ? "No matching reviews" : "No reviews yet"}
+                {semanticReviews ? "No matching reviews" : "No reviews yet"}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {semanticIds
+                {semanticReviews
                   ? "Try a different search phrase."
                   : "Be the first to share your experience after your order is delivered."}
               </p>

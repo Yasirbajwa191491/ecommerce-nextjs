@@ -216,6 +216,7 @@ export const sendReviewInvitation = internalAction({
 
       const appUrl = getSiteUrl();
       const reviewUrl = `${appUrl}/track-order/${encodeURIComponent(order.orderNumber)}`;
+      const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
       const { ReviewInvitationEmail } = await import(
         "../src/emails/review-invitation-email"
       );
@@ -225,12 +226,21 @@ export const sendReviewInvitation = internalAction({
           customerName: order.customerName,
           orderNumber: order.orderNumber,
           reviewUrl,
-          productNames: items.map((item) => item.productName),
+          storeName: STORE_NAME,
+          supportEmail: branding.email,
+          supportPhone: branding.phone,
+          supportAddress: branding.address,
+          products: items.map((item) => ({
+            name: item.productName,
+            imageUrl: item.imageUrl,
+            color: item.color,
+            quantity: item.quantity,
+          })),
         })
       );
 
       const resend = new Resend(apiKey);
-      const subject = `How was your order ${order.orderNumber}?`;
+      const subject = `How was your order? We'd love your feedback (${order.orderNumber})`;
 
       const { data, error } = await resend.emails.send({
         from,

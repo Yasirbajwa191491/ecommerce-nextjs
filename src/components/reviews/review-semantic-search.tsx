@@ -5,12 +5,13 @@ import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
+import type { PublicReview } from "@/components/reviews/review-card";
 import { Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ReviewSemanticSearchProps = {
   productId: Id<"products">;
-  onResults: (reviewIds: string[] | null) => void;
+  onResults: (reviews: PublicReview[] | null) => void;
   className?: string;
 };
 
@@ -39,9 +40,23 @@ export function ReviewSemanticSearch({
     setLoading(true);
 
     void search({ productId, queryText: debounced })
-      .then((results: { _id: string }[]) => {
+      .then((results) => {
         if (!cancelled) {
-          onResults(results.map((r) => r._id));
+          onResults(
+            results.map((review) => ({
+              _id: review._id,
+              customerName: review.customerName,
+              rating: review.rating,
+              title: review.title,
+              content: review.content,
+              imageUrls: review.imageUrls,
+              isVerifiedPurchase: review.isVerifiedPurchase,
+              helpfulCount: review.helpfulCount,
+              createdAt: review.createdAt,
+              aiTags: review.aiTags,
+              adminReplyPublished: review.adminReplyPublished,
+            }))
+          );
         }
       })
       .catch(() => {
