@@ -75,9 +75,8 @@ export async function geminiEmbed(
   if (!embedding?.length) {
     throw new Error("Gemini returned an empty embedding");
   }
-  return EMBEDDING_DIMENSIONS === 3072
-    ? embedding
-    : normalizeEmbedding(embedding);
+  // Truncated Gemini dimensions must be L2-normalized before vector search.
+  return normalizeEmbedding(embedding);
 }
 
 export function createGeminiProvider(

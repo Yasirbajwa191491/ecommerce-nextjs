@@ -12,8 +12,8 @@
 
 const VAPI_API_KEY = process.env.VAPI_API_KEY?.trim();
 const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim() ||
-  process.env.CONVEX_SITE_URL?.trim();
+  process.env.CONVEX_SITE_URL?.trim() ||
+  process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
 const EXISTING_ASSISTANT_ID = process.env.VAPI_ASSISTANT_ID?.trim();
 const WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET?.trim();
 
