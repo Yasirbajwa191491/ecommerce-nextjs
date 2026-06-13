@@ -3,7 +3,7 @@
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-
+import { formatVapiOutboundError } from "./lib/reviewCallErrors";
 export const placeOutboundCall = internalAction({
   args: { reviewCallId: v.id("review_calls") },
   returns: v.null(),
@@ -84,11 +84,12 @@ export const placeOutboundCall = internalAction({
           ?.map((entry) => entry.message)
           .filter(Boolean)
           .join("; ");
-        const reason =
+        const reason = formatVapiOutboundError(
           messagePart ??
-          errorsPart ??
-          data.error ??
-          `Vapi API error (${response.status})`;
+            errorsPart ??
+            data.error ??
+            `Vapi API error (${response.status})`
+        );
         console.error("[reviewCall] Vapi outbound failed:", {
           status: response.status,
           body: data,

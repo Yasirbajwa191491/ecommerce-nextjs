@@ -1,25 +1,30 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import {
+  AdminReviewCallFilters,
+  emptyReviewCallFilters,
+  toReviewCallFilterArgs,
+  type ReviewCallListFilters,
+} from "@/components/admin/admin-review-call-filters";
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { AdminTableInfiniteScroll } from "@/components/admin/admin-table-infinite-scroll";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -53,6 +58,16 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ] as const;
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  calling: "Calling",
+  completed: "Completed",
+  failed: "Failed",
+  no_answer: "No answer",
+  busy: "Busy",
+  cancelled: "Cancelled",
+};
+
 function formatDateTime(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -79,17 +94,15 @@ function KpiCard({
   loading?: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card className="min-w-0 py-0 shadow-none">
+      <CardContent className="p-3">
+        <p className="truncate text-xs text-muted-foreground">{title}</p>
         {loading ? (
-          <Skeleton className="h-8 w-16" />
+          <Skeleton className="mt-1 h-5 w-10" />
         ) : (
-          <p className="text-2xl font-semibold">{value ?? 0}</p>
+          <p className="mt-0.5 text-base font-semibold tabular-nums tracking-tight">
+            {value ?? 0}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -108,21 +121,19 @@ function statusVariant(
 }
 
 export default function AdminReviewCallsPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [orderNumberFilter, setOrderNumberFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [filters, setFilters] = useState<ReviewCallListFilters>(
+    emptyReviewCallFilters
+  );
   const [transcriptCallId, setTranscriptCallId] = useState<Id<"review_calls"> | null>(
     null
   );
   const [retryOrderId, setRetryOrderId] = useState<Id<"orders"> | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const dateFromMs = dateFrom ? new Date(dateFrom).getTime() : undefined;
-  const dateToMs = dateTo
-    ? new Date(`${dateTo}T23:59:59.999`).getTime()
-    : undefined;
+  const filterArgs = useMemo(() => toReviewCallFilterArgs(filters), [filters]);
 
   const listArgs = useMemo(
     () => ({
@@ -131,16 +142,16 @@ export default function AdminReviewCallsPage() {
           ? undefined
           : (statusFilter as Doc<"review_calls">["status"]),
       search: search.trim() || undefined,
-      orderNumber: orderNumberFilter.trim() || undefined,
-      dateFrom: dateFromMs,
-      dateTo: dateToMs,
+      orderNumber: filterArgs.orderNumber,
+      dateFrom: filterArgs.dateFrom,
+      dateTo: filterArgs.dateTo,
     }),
-    [statusFilter, search, orderNumberFilter, dateFromMs, dateToMs]
+    [statusFilter, search, filterArgs]
   );
 
   const analytics = useQuery(api.reviewCalls.getAnalytics, {
-    dateFrom: dateFromMs,
-    dateTo: dateToMs,
+    dateFrom: filterArgs.dateFrom,
+    dateTo: filterArgs.dateTo,
   });
 
   const { results, status, loadMore } = usePaginatedQuery(
@@ -148,6 +159,11 @@ export default function AdminReviewCallsPage() {
     listArgs,
     { initialNumItems: PAGE_SIZE }
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const transcriptDetail = useQuery(
     api.reviewCalls.getById,
@@ -181,14 +197,48 @@ export default function AdminReviewCallsPage() {
     }
   };
 
+  const statusControl = (
+    <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
+      <Label htmlFor="review-calls-status-filter" className="sr-only">
+        Call status
+      </Label>
+      <Select
+        value={statusFilter}
+        items={STATUS_OPTIONS}
+        onValueChange={(value) => setStatusFilter(value ?? "all")}
+      >
+        <SelectTrigger
+          id="review-calls-status-filter"
+          className="h-9 w-full sm:w-[11rem]"
+        >
+          <SelectValue placeholder="All statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUS_OPTIONS.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              label={option.label}
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
-    <div>
+    <div className="min-w-0 space-y-6">
       <AdminPageHeader
         title="Review Calls"
         description="AI-powered outbound review collection calls and analytics."
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <section
+        aria-label="Review call metrics"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7"
+      >
         <KpiCard title="Total calls" value={analytics?.totalCalls} loading={!analytics} />
         <KpiCard
           title="Completed"
@@ -214,171 +264,138 @@ export default function AdminReviewCallsPage() {
         <KpiCard
           title="Avg duration"
           value={
-            analytics
-              ? formatDuration(analytics.averageDurationMs)
-              : undefined
+            analytics ? formatDuration(analytics.averageDurationMs) : undefined
           }
           loading={!analytics}
         />
-      </div>
+      </section>
 
       <AdminListToolbar
         hideTabs
-        search={search}
-        onSearchChange={setSearch}
+        search={searchInput}
+        onSearchChange={setSearchInput}
         searchPlaceholder="Search customer, phone, order"
         filters={
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex min-w-[10rem] flex-col gap-1">
-              <Label htmlFor="review-call-status">Status</Label>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value ?? "all")}
-              >
-                <SelectTrigger id="review-call-status" className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex min-w-[10rem] flex-col gap-1">
-              <Label htmlFor="review-call-order">Order number</Label>
-              <Input
-                id="review-call-order"
-                value={orderNumberFilter}
-                onChange={(e) => setOrderNumberFilter(e.target.value)}
-                placeholder="ORD-..."
-                className="h-9"
-              />
-            </div>
-            <div className="flex min-w-[10rem] flex-col gap-1">
-              <Label htmlFor="review-call-from">From</Label>
-              <Input
-                id="review-call-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9"
-              />
-            </div>
-            <div className="flex min-w-[10rem] flex-col gap-1">
-              <Label htmlFor="review-call-to">To</Label>
-              <Input
-                id="review-call-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9"
-              />
-            </div>
-          </div>
+          <>
+            {statusControl}
+            <AdminReviewCallFilters
+              filters={filters}
+              onChange={setFilters}
+              onClear={() => setFilters(emptyReviewCallFilters())}
+            />
+          </>
         }
       />
 
       <AdminTableCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Attempt</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Reviews</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoadingFirstPage ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  {Array.from({ length: 9 }).map((__, col) => (
-                    <TableCell key={col}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : results.length === 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                  No review calls found.
-                </TableCell>
+                <TableHead className="min-w-[8rem]">Customer</TableHead>
+                <TableHead className="min-w-[9rem]">Phone</TableHead>
+                <TableHead className="min-w-[10rem]">Order</TableHead>
+                <TableHead className="min-w-[6rem]">Status</TableHead>
+                <TableHead className="min-w-[4.5rem]">Attempt</TableHead>
+                <TableHead className="min-w-[5rem]">Duration</TableHead>
+                <TableHead className="min-w-[4.5rem]">Reviews</TableHead>
+                <TableHead className="min-w-[9rem]">Date</TableHead>
+                <TableHead className="min-w-[6rem] text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              results.map((call) => (
-                <TableRow key={call._id}>
-                  <TableCell>{call.customerName}</TableCell>
-                  <TableCell>{call.customerPhone}</TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/admin/orders/${call.orderId}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {call.orderNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(call.status)}>{call.status}</Badge>
-                  </TableCell>
-                  <TableCell>{call.attemptNumber}</TableCell>
-                  <TableCell>{formatDuration(call.duration)}</TableCell>
-                  <TableCell>{call.reviewsCollectedCount}</TableCell>
-                  <TableCell>{formatDateTime(call.createdAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="View transcript"
-                        onClick={() => setTranscriptCallId(call._id)}
-                      >
-                        <ScrollText className="size-4" />
-                      </Button>
-                      {call.reviewsCollectedCount > 0 ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="View reviews"
-                          render={
-                            <Link
-                              href={`/admin/reviews?orderNumber=${encodeURIComponent(call.orderNumber)}`}
-                            />
-                          }
-                        >
-                          <ExternalLink className="size-4" />
-                        </Button>
-                      ) : null}
-                      {["failed", "no_answer", "busy", "cancelled"].includes(
-                        call.status
-                      ) ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="Retry call"
-                          onClick={() => setRetryOrderId(call.orderId)}
-                        >
-                          <RotateCcw className="size-4" />
-                        </Button>
-                      ) : null}
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {isLoadingFirstPage ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    {Array.from({ length: 9 }).map((__, col) => (
+                      <TableCell key={col}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : results.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={9}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No review calls found.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                results.map((call) => (
+                  <TableRow key={call._id}>
+                    <TableCell className="font-medium">{call.customerName}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {call.customerPhone}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/admin/orders/${call.orderId}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {call.orderNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant(call.status)}>
+                        {STATUS_LABELS[call.status] ?? call.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{call.attemptNumber}</TableCell>
+                    <TableCell>{formatDuration(call.duration)}</TableCell>
+                    <TableCell>{call.reviewsCollectedCount}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDateTime(call.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="View transcript"
+                          onClick={() => setTranscriptCallId(call._id)}
+                        >
+                          <ScrollText className="size-4" />
+                        </Button>
+                        {call.reviewsCollectedCount > 0 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="View reviews"
+                            render={
+                              <Link
+                                href={`/admin/reviews?orderNumber=${encodeURIComponent(call.orderNumber)}`}
+                              />
+                            }
+                          >
+                            <ExternalLink className="size-4" />
+                          </Button>
+                        ) : null}
+                        {["failed", "no_answer", "busy", "cancelled"].includes(
+                          call.status
+                        ) ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Retry call"
+                            onClick={() => setRetryOrderId(call.orderId)}
+                          >
+                            <RotateCcw className="size-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
         <AdminTableInfiniteScroll
           enabled={canLoadMore}
@@ -391,7 +408,7 @@ export default function AdminReviewCallsPage() {
         open={transcriptCallId !== null}
         onOpenChange={(open) => !open && setTranscriptCallId(null)}
       >
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Transcript — {transcriptDetail?.orderNumber ?? "Call"}

@@ -106,3 +106,17 @@ npx convex env set VAPI_REVIEW_ASSISTANT_ID "<assistant-id-from-script-output>"
 - Admin → **Orders** → **Collect review** (delivered orders with phone)
 - Admin → **Review Calls** — analytics and call history
 - Admin → **Settings** — enable automatic review calls (3/5/7 days after delivery)
+
+### International outbound calls (Pakistan, etc.)
+
+**Free Vapi phone numbers only support domestic (US) outbound calls.** Calling `+92…` or other international numbers returns:
+
+`Couldn't start call. Free Vapi numbers do not support international calls.`
+
+**Fix options:**
+
+1. **Import Twilio** (you already use Twilio for SMS): Vapi dashboard → **Phone Numbers** → add your Twilio number as BYO → assign **Product Review Collector** for outbound → copy the new **Phone Number ID** → `npx convex env set VAPI_PHONE_NUMBER_ID "<id>"`
+2. **Buy a paid Vapi number** with international dialing enabled for your target countries.
+3. **Dev testing only:** use a test order with a **US** customer phone (`+1…`) matching your caller ID country.
+
+Twilio trial accounts may still only call [verified numbers](https://www.twilio.com/docs/messaging/guides/how-to-use-your-free-trial-account).

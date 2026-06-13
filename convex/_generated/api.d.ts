@@ -58,6 +58,7 @@ import type * as lib_publicOrderDto from "../lib/publicOrderDto.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_requireAdmin from "../lib/requireAdmin.js";
 import type * as lib_reviewAggregates from "../lib/reviewAggregates.js";
+import type * as lib_reviewCallErrors from "../lib/reviewCallErrors.js";
 import type * as lib_reviewCallValidators from "../lib/reviewCallValidators.js";
 import type * as lib_reviews from "../lib/reviews.js";
 import type * as lib_settingsHelpers from "../lib/settingsHelpers.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/requireAdmin": typeof lib_requireAdmin;
   "lib/reviewAggregates": typeof lib_reviewAggregates;
+  "lib/reviewCallErrors": typeof lib_reviewCallErrors;
   "lib/reviewCallValidators": typeof lib_reviewCallValidators;
   "lib/reviews": typeof lib_reviews;
   "lib/settingsHelpers": typeof lib_settingsHelpers;
