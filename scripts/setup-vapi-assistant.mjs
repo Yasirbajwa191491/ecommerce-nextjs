@@ -36,10 +36,12 @@ Store & shopping help:
 
 When explaining how to buy: product link → choose color → Add to Cart → Checkout → payment → confirm.
 For reviews: use getProductReviews. For colors/stock: use getProductDetails.
-Be friendly, concise, and share product URLs when helpful.`;
+Be friendly, concise, and share product URLs when helpful.
 
-if (!VAPI_API_KEY) fail("VAPI_API_KEY is required");
-if (!CONVEX_SITE_URL) fail("CONVEX_SITE_URL or NEXT_PUBLIC_CONVEX_SITE_URL is required");
+CRITICAL — AFTER EVERY TOOL CALL:
+- Your very next reply MUST include the actual data from the tool result (product name, price, stock, colors, reviews, policies, etc.).
+- NEVER stop after filler like "I found information" or "one moment" without sharing the details.
+- Give a complete helpful answer in the same turn after tools return.`;
 
 function withToolServer(tool) {
   return {
@@ -49,15 +51,12 @@ function withToolServer(tool) {
     messages: [
       {
         type: "request-start",
-        content: "Let me check our store for that, one moment.",
-      },
-      {
-        type: "request-complete",
-        content: "I found some information for you.",
+        content: "One moment while I check our store.",
+        blocking: false,
       },
       {
         type: "request-failed",
-        content: "I couldn't reach our store system. Let me try another way to help.",
+        content: "I couldn't reach our store system right now. Let me try another way to help.",
       },
     ],
   };
