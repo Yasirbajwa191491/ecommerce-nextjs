@@ -1,6 +1,7 @@
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import type { ReviewCallStatus } from "../lib/reviewCallValidators";
 
 type ToolCall = {
   id: string;
@@ -13,16 +14,21 @@ type ToolCall = {
   };
 };
 
+type VapiCallPayload = {
+  id?: string;
+  type?: string;
+  assistantId?: string;
+  metadata?: Record<string, unknown>;
+};
+
 type VapiWebhookBody = {
   message?: {
     type?: string;
     role?: string;
     transcript?: string;
     transcriptType?: string;
-    call?: {
-      id?: string;
-      type?: string;
-    };
+    status?: string;
+    call?: VapiCallPayload;
     toolCallList?: ToolCall[];
     summary?: string;
     endedReason?: string;
@@ -32,6 +38,7 @@ type VapiWebhookBody = {
         message?: string;
         content?: string;
       }>;
+      transcript?: string;
     };
   };
 };
@@ -86,6 +93,98 @@ function parseParameters(toolCall: ToolCall): Record<string, unknown> {
   }
 
   return {};
+}
+
+function parseCallMetadata(call?: VapiCallPayload): Record<string, unknown> {
+  if (!call?.metadata) return {};
+  if (typeof call.metadata === "object" && !Array.isArray(call.metadata)) {
+    return call.metadata as Record<string, unknown>;
+  }
+  if (typeof call.metadata === "string") {
+    try {
+      const parsed = JSON.parse(call.metadata) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function isReviewCollectionCall(call?: VapiCallPayload): boolean {
+  const metadata = parseCallMetadata(call);
+  if (metadata.type === "review_collection") return true;
+  const reviewAssistantId = process.env.VAPI_REVIEW_ASSISTANT_ID?.trim();
+  if (reviewAssistantId && call?.assistantId === reviewAssistantId) return true;
+  return false;
+}
+
+function mapVapiStatusToReviewCall(status: string): ReviewCallStatus | null {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("ringing") || normalized.includes("in-progress")) {
+    return "calling";
+  }
+  if (normalized.includes("no-answer") || normalized.includes("no_answer")) {
+    return "no_answer";
+  }
+  if (normalized.includes("busy")) return "busy";
+  if (normalized.includes("failed") || normalized.includes("error")) {
+    return "failed";
+  }
+  return null;
+}
+
+function buildTranscriptFromArtifact(
+  messages: Array<{ role?: string; message?: string; content?: string }>
+): string {
+  return messages
+    .map((entry) => {
+      const role = entry.role === "user" ? "Customer" : "Assistant";
+      const text = (entry.message ?? entry.content ?? "").trim();
+      if (!text) return "";
+      return `${role}: ${text}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function executeReviewTool(
+  ctx: Parameters<Parameters<typeof httpAction>[0]>[0],
+  name: string,
+  parameters: Record<string, unknown>,
+  metadata: Record<string, unknown>
+) {
+  const reviewCallId = String(
+    parameters.reviewCallId ?? metadata.reviewCallId ?? ""
+  );
+  const orderId = String(parameters.orderId ?? metadata.orderId ?? "");
+
+  switch (name) {
+    case "getOrderProductsForReview":
+      return await ctx.runQuery(
+        internal.vapi.reviewCallTools.getOrderProductsForReview,
+        { reviewCallId, orderId }
+      );
+    case "createProductReview":
+      return await ctx.runMutation(
+        internal.vapi.reviewCallTools.createProductReview,
+        {
+          reviewCallId,
+          orderId,
+          productId: String(parameters.productId ?? ""),
+          rating: Number(parameters.rating ?? 0),
+          review: String(parameters.review ?? parameters.content ?? ""),
+          recommendationScore:
+            typeof parameters.recommendationScore === "number"
+              ? parameters.recommendationScore
+              : undefined,
+        }
+      );
+    default:
+      return { error: `Unknown review tool: ${name}` };
+  }
 }
 
 async function executeTool(
@@ -231,7 +330,90 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
     return jsonResponse({ ok: true });
   }
 
-  const callId = message.call?.id ?? "unknown";
+  const call = message.call;
+  const callId = call?.id ?? "unknown";
+  const callMetadata = parseCallMetadata(call);
+  const isReviewCall = isReviewCollectionCall(call);
+
+  if (isReviewCall) {
+    const reviewCallIdRaw = callMetadata.reviewCallId;
+    const reviewCallId =
+      typeof reviewCallIdRaw === "string" ? reviewCallIdRaw : undefined;
+
+    if (message.type === "status-update" && message.status) {
+      const mapped = mapVapiStatusToReviewCall(message.status);
+      if (mapped) {
+        await ctx.runMutation(internal.reviewCalls.updateCallStatus, {
+          reviewCallId: reviewCallId as Id<"review_calls"> | undefined,
+          vapiCallId: callId !== "unknown" ? callId : undefined,
+          status: mapped,
+          endedReason: message.status,
+        });
+      }
+    }
+
+    if (
+      message.type === "transcript" &&
+      message.transcript?.trim() &&
+      message.transcriptType !== "partial"
+    ) {
+      const role =
+        message.role === "user"
+          ? "Customer"
+          : message.role === "assistant"
+            ? "Assistant"
+            : "Speaker";
+      await ctx.runMutation(internal.reviewCalls.saveCallTranscript, {
+        reviewCallId: reviewCallId as Id<"review_calls"> | undefined,
+        vapiCallId: callId !== "unknown" ? callId : undefined,
+        transcript: `${role}: ${message.transcript.trim()}\n`,
+        finalize: false,
+      });
+    }
+
+    if (message.type === "tool-calls" && message.toolCallList?.length) {
+      const results = [];
+
+      for (const toolCall of message.toolCallList) {
+        const parameters = parseParameters(toolCall);
+        const toolName = toolCall.name ?? toolCall.function?.name ?? "unknown";
+        try {
+          const output = await executeReviewTool(
+            ctx,
+            toolName,
+            parameters,
+            callMetadata
+          );
+          results.push(toolResult(toolCall.id, output));
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Tool execution failed";
+          results.push(toolResult(toolCall.id, { error: errorMessage }));
+        }
+      }
+
+      return jsonResponse({ results });
+    }
+
+    if (message.type === "end-of-call-report") {
+      const artifactMessages = message.artifact?.messages ?? [];
+      const transcript =
+        message.artifact?.transcript?.trim() ||
+        buildTranscriptFromArtifact(artifactMessages);
+
+      await ctx.runMutation(internal.reviewCalls.saveCallTranscript, {
+        reviewCallId: reviewCallId as Id<"review_calls"> | undefined,
+        vapiCallId: callId !== "unknown" ? callId : undefined,
+        transcript: transcript || "(No transcript captured)",
+        summary: message.summary,
+        endedReason: message.endedReason,
+        finalize: true,
+      });
+    }
+
+    return jsonResponse({ ok: true });
+  }
+
   const channel =
     message.call?.type === "webCall" || message.call?.type === "inboundPhoneCall"
       ? ("voice" as const)

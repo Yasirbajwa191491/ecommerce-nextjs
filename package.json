@@ -17,6 +17,7 @@
     "seed": "convex run seed:seedAll",
     "seed:admin": "convex run seed:seedAdminAndSettings",
     "vapi:setup": "node scripts/setup-vapi-assistant.mjs",
+    "vapi:setup-review": "node scripts/setup-vapi-review-assistant.mjs",
     "ui:add": "shadcn add",
     "typecheck": "tsc --noEmit"
   },

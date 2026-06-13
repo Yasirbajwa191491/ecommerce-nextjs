@@ -46,6 +46,7 @@ import { toastError, toastSuccess } from "@/lib/app-toast";
 import type { OrderStatus, PaymentStatus } from "@/types/order";
 import { ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ReviewCollectionPanel } from "@/components/admin/review-collection-panel";
 
 const ORDER_STATUSES: OrderStatus[] = [
   "pending",
@@ -579,6 +580,14 @@ export default function AdminOrderDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {order ? (
+        <ReviewCollectionPanel
+          orderId={orderId}
+          orderNumber={order.orderNumber}
+          orderStatus={order.status}
+        />
+      ) : null}
 
       <Card>
         <CardHeader>

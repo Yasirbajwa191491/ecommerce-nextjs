@@ -19,6 +19,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -307,7 +314,11 @@ export default function AdminSettingsPage() {
               label={
                 editing?.key === "sms_order_confirmation_enabled"
                   ? "Send order confirmation SMS via Twilio"
-                  : "Setting value"
+                  : editing?.key === "review_call_auto_enabled"
+                    ? "Automatic review collection calls"
+                    : editing?.key === "review_call_auto_delay_days"
+                      ? "Days after delivery before auto call"
+                      : "Setting value"
               }
               htmlFor="setting-value"
               error={validation.fieldError("value")}
@@ -319,11 +330,19 @@ export default function AdminSettingsPage() {
                     ? "Used by the AI assistant and storefront FAQ. Plain text or markdown."
                     : editing?.key === "sms_order_confirmation_enabled"
                       ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. Off by default."
-                      : undefined
+                      : editing?.key === "review_call_auto_enabled"
+                        ? "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup."
+                        : editing?.key === "review_call_auto_delay_days"
+                          ? "Must be 3, 5, or 7 days. Used when automatic review calls are enabled."
+                          : undefined
               }
-              required={editing?.key !== "sms_order_confirmation_enabled"}
+              required={
+                editing?.key !== "sms_order_confirmation_enabled" &&
+                editing?.key !== "review_call_auto_enabled"
+              }
             >
-              {editing?.key === "sms_order_confirmation_enabled" ? (
+              {editing?.key === "sms_order_confirmation_enabled" ||
+              editing?.key === "review_call_auto_enabled" ? (
                 <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
                   <Switch
                     id="setting-value"
@@ -336,11 +355,34 @@ export default function AdminSettingsPage() {
                     }
                   />
                   <span className="text-sm text-muted-foreground">
-                    {form.value.trim().toLowerCase() === "true"
-                      ? "Enabled — customers receive SMS on order confirmation"
-                      : "Disabled — email only"}
+                    {editing?.key === "sms_order_confirmation_enabled"
+                      ? form.value.trim().toLowerCase() === "true"
+                        ? "Enabled — customers receive SMS on order confirmation"
+                        : "Disabled — email only"
+                      : form.value.trim().toLowerCase() === "true"
+                        ? "Enabled — review calls scheduled after delivery"
+                        : "Disabled — manual calls only from Orders"}
                   </span>
                 </div>
+              ) : editing?.key === "review_call_auto_delay_days" ? (
+                <Select
+                  value={form.value.trim() || "5"}
+                  onValueChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      value: value ?? "5",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3 days</SelectItem>
+                    <SelectItem value="5">5 days</SelectItem>
+                    <SelectItem value="7">7 days</SelectItem>
+                  </SelectContent>
+                </Select>
               ) : (
                 <Textarea
                   id="setting-value"

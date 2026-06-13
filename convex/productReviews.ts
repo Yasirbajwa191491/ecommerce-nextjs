@@ -411,6 +411,7 @@ export const createReview = mutation({
       isVerifiedPurchase: true,
       isApproved: false,
       helpfulCount: 0,
+      source: "web",
       createdAt: now,
       updatedAt: now,
       aiAnalysisStatus: "pending",

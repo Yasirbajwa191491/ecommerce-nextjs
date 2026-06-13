@@ -89,3 +89,20 @@ Add components: `npm run ui:add dialog`
 ## AI / editor rules
 
 Cursor rules in `.cursor/rules/` cover shadcn usage, Convex backend, pagination (16MB limit), Next.js patterns, and TypeScript strictness. See `AGENTS.md` for a short summary.
+
+## Vapi review collection calls
+
+Outbound AI calls to collect product reviews after delivery.
+
+```bash
+# Convex env (server-only)
+npx convex env set VAPI_API_KEY "<private-api-key>"
+npx convex env set VAPI_WEBHOOK_SECRET "<random-secret>"
+npx convex env set VAPI_PHONE_NUMBER_ID "<phone-number-id>"
+npm run vapi:setup-review
+npx convex env set VAPI_REVIEW_ASSISTANT_ID "<assistant-id-from-script-output>"
+```
+
+- Admin → **Orders** → **Collect review** (delivered orders with phone)
+- Admin → **Review Calls** — analytics and call history
+- Admin → **Settings** — enable automatic review calls (3/5/7 days after delivery)

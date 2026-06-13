@@ -50,6 +50,7 @@ import {
 import type { OrderStatus } from "@/types/order";
 
 import { Eye } from "lucide-react";
+import { ReviewCollectionPanel } from "@/components/admin/review-collection-panel";
 
 const ADMIN_LIST_PAGE_SIZE = 10;
 
@@ -206,14 +207,22 @@ export default function AdminOrdersPage() {
         return formatDateTime(order.createdAt);
       case "actions":
         return (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            render={<Link href={`/admin/orders/${order._id}`} />}
-            aria-label="View order"
-          >
-            <Eye className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <ReviewCollectionPanel
+              orderId={order._id}
+              orderNumber={order.orderNumber}
+              orderStatus={order.status}
+              compact
+            />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              render={<Link href={`/admin/orders/${order._id}`} />}
+              aria-label="View order"
+            >
+              <Eye className="size-4" />
+            </Button>
+          </div>
         );
       default:
         return null;

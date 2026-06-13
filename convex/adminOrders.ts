@@ -231,6 +231,27 @@ export const updateOrderStatus = mutation({
       createdAt: now,
     });
 
+    if (args.status === "delivered" && previousStatus !== "delivered") {
+      const delayDays = await ctx.runQuery(
+        internal.settings.getReviewCallAutoDelayDays,
+        {}
+      );
+      const enabledRow = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "review_call_auto_enabled"))
+        .unique();
+      const autoEnabled =
+        (enabledRow?.value ?? "false").trim().toLowerCase() === "true";
+
+      if (autoEnabled) {
+        await ctx.scheduler.runAfter(
+          delayDays * 24 * 60 * 60 * 1000,
+          internal.reviewCalls.scheduleAutoReviewCall,
+          { orderId: args.orderId }
+        );
+      }
+    }
+
     return { success: true as const };
   },
 });

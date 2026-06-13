@@ -17,6 +17,8 @@ export const SYSTEM_SETTING_KEYS = [
   "shipping_policy",
   "return_policy",
   "sms_order_confirmation_enabled",
+  "review_call_auto_enabled",
+  "review_call_auto_delay_days",
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -83,6 +85,16 @@ export const SYSTEM_DEFAULTS: {
     name: "SMS Order Confirmation",
     value: "false",
   },
+  {
+    key: "review_call_auto_enabled",
+    name: "Automatic Review Calls",
+    value: "false",
+  },
+  {
+    key: "review_call_auto_delay_days",
+    name: "Review Call Delay (Days)",
+    value: "5",
+  },
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -102,6 +114,20 @@ function assertValidSettingValue(key: string, value: string) {
       throw new ConvexError(
         "SMS order confirmation must be enabled or disabled (true or false)"
       );
+    }
+  }
+  if (key === "review_call_auto_enabled") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized !== "true" && normalized !== "false") {
+      throw new ConvexError(
+        "Automatic review calls must be enabled or disabled (true or false)"
+      );
+    }
+  }
+  if (key === "review_call_auto_delay_days") {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || ![3, 5, 7].includes(parsed)) {
+      throw new ConvexError("Review call delay must be 3, 5, or 7 days");
     }
   }
 }
@@ -239,6 +265,19 @@ export const getSmsOrderConfirmationEnabled = internalQuery({
   handler: async (ctx) => getSmsOrderConfirmationEnabledValue(ctx),
 });
 
+export const getReviewCallAutoDelayDays = internalQuery({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "review_call_auto_delay_days"))
+      .unique();
+    const parsed = Number.parseInt(row?.value ?? "5", 10);
+    return [3, 5, 7].includes(parsed) ? parsed : 5;
+  },
+});
+
 export const getPublicBranding = internalQuery({
   args: {},
   handler: async (ctx) => {
@@ -345,6 +384,9 @@ export const update = mutation({
 
     await assertUniqueSettingName(ctx, name, args.id);
     if (row.key === "sms_order_confirmation_enabled") {
+      value = value.toLowerCase();
+    }
+    if (row.key === "review_call_auto_enabled") {
       value = value.toLowerCase();
     }
     assertValidSettingValue(row.key, value);

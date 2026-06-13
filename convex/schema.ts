@@ -20,6 +20,10 @@ import {
   paymentMethodValidator,
   paymentStatusValidator,
 } from "./lib/orderValidators";
+import {
+  reviewCallStatusValidator,
+  reviewCollectedEntryValidator,
+} from "./lib/reviewCallValidators";
 
 export const productImageValidator = v.object({ url: v.string() });
 
@@ -242,6 +246,8 @@ export default defineSchema({
     adminReplyDraft: v.optional(v.string()),
     adminReplyPublished: v.optional(v.string()),
     adminReplyPublishedAt: v.optional(v.number()),
+    source: v.optional(v.union(v.literal("web"), v.literal("vapi"))),
+    recommendationScore: v.optional(v.number()),
   })
     .index("by_order_product", ["orderId", "productId"])
     .index("by_product_approved_created", ["productId", "isApproved", "createdAt"])
@@ -430,4 +436,26 @@ export default defineSchema({
     leadsCaptured: v.number(),
     humanEscalations: v.number(),
   }).index("by_dateKey", ["dateKey"]),
+
+  review_calls: defineTable({
+    orderId: v.id("orders"),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    vapiCallId: v.optional(v.string()),
+    status: reviewCallStatusValidator,
+    initiatedByAdminId: v.optional(v.string()),
+    attemptNumber: v.number(),
+    startedAt: v.optional(v.number()),
+    endedAt: v.optional(v.number()),
+    duration: v.optional(v.number()),
+    transcript: v.optional(v.string()),
+    reviewsCollected: v.array(reviewCollectedEntryValidator),
+    endedReason: v.optional(v.string()),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order_id", ["orderId"])
+    .index("by_vapi_call_id", ["vapiCallId"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_created_at", ["createdAt"]),
 });
