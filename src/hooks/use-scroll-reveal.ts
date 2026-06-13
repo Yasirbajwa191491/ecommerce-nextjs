@@ -11,7 +11,7 @@ type UseScrollRevealOptions = {
 export function useScrollReveal(options: UseScrollRevealOptions = {}) {
   const { threshold = 0.12, rootMargin = "0px 0px -6% 0px", once = true } =
     options;
-  const ref = useRef<HTMLElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

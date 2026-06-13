@@ -247,7 +247,7 @@ export const searchProducts = internalQuery({
     });
     const page = products.slice(0, limit);
     const enriched = await enrichProducts(ctx, page);
-    const mapped = enriched.map(toVapiProductSummary);
+    const mapped = enriched.map((product) => toVapiProductSummary(product));
     return { products: mapped, count: mapped.length };
   },
 });
@@ -486,8 +486,13 @@ export const getShoppingGuide = internalQuery({
     ),
   }),
   handler: async () => ({
-    pages: STORE_PAGE_URLS,
-    about: ABOUT_SUMMARY,
+    pages: { ...STORE_PAGE_URLS },
+    about: {
+      title: ABOUT_SUMMARY.title,
+      story: ABOUT_SUMMARY.story,
+      highlights: [...ABOUT_SUMMARY.highlights],
+      whyShop: [...ABOUT_SUMMARY.whyShop],
+    },
     howToBuy: [...HOW_TO_BUY_STEPS],
     paymentMethods: PAYMENT_METHODS.map(({ id, name, description }) => ({
       id,

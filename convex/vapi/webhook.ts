@@ -62,7 +62,7 @@ function toolResult(toolCallId: string, result: unknown) {
   };
 }
 
-function parseParameters(toolCall: ToolCall) {
+function parseParameters(toolCall: ToolCall): Record<string, unknown> {
   const raw =
     toolCall.parameters ??
     toolCall.arguments ??
@@ -78,9 +78,14 @@ function parseParameters(toolCall: ToolCall) {
     } catch {
       return {};
     }
+    return {};
   }
 
-  return raw ?? {};
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+
+  return {};
 }
 
 async function executeTool(
