@@ -116,14 +116,23 @@ export const sendOrderConfirmation = internalAction({
       }
 
       const appUrl = getSiteUrl();
+      const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
       const { OrderConfirmationEmail } = await import(
         "../src/emails/order-confirmation-email"
       );
+
+      const orderDate = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(order.createdAt));
+
+      const trackOrderUrl = `${appUrl}/track-order/${encodeURIComponent(order.orderNumber)}`;
 
       const html = await render(
         OrderConfirmationEmail({
           orderNumber: order.orderNumber,
           customerName: order.customerName,
+          orderDate,
           paymentMethod: order.paymentMethod,
           paymentStatus: order.paymentStatus,
           subtotal: order.subtotal,
@@ -138,8 +147,14 @@ export const sendOrderConfirmation = internalAction({
             quantity: item.quantity,
             lineTotal: item.lineTotal,
             currency: order.currency,
+            imageUrl: item.imageUrl,
           })),
+          trackOrderUrl,
           supportUrl: `${appUrl}/contact`,
+          storeName: STORE_NAME,
+          supportEmail: branding.email,
+          supportPhone: branding.phone,
+          supportAddress: branding.address,
         })
       );
 

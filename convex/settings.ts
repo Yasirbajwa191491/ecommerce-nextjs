@@ -4,7 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { validateEmailFromValue } from "./lib/emailFrom";
-import { getEmailFromValue, getLowStockThresholdValue } from "./lib/settingsHelpers";
+import { getEmailFromValue, getLowStockThresholdValue, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
 import { slugify } from "./lib/products";
 
 export const SYSTEM_SETTING_KEYS = [
@@ -16,6 +16,7 @@ export const SYSTEM_SETTING_KEYS = [
   "low_stock_threshold",
   "shipping_policy",
   "return_policy",
+  "sms_order_confirmation_enabled",
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -25,6 +26,7 @@ export const PUBLIC_SETTING_KEYS = [
   "business_hours",
   "shipping_policy",
   "return_policy",
+  "sms_order_confirmation_enabled",
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
@@ -76,6 +78,11 @@ export const SYSTEM_DEFAULTS: {
     value:
       "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. Refunds are processed to your original payment method after we receive and inspect the returned item.",
   },
+  {
+    key: "sms_order_confirmation_enabled",
+    name: "SMS Order Confirmation",
+    value: "false",
+  },
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -87,6 +94,14 @@ function assertValidSettingValue(key: string, value: string) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) {
       throw new ConvexError("Low stock threshold must be a non-negative integer");
+    }
+  }
+  if (key === "sms_order_confirmation_enabled") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized !== "true" && normalized !== "false") {
+      throw new ConvexError(
+        "SMS order confirmation must be enabled or disabled (true or false)"
+      );
     }
   }
 }
@@ -218,6 +233,12 @@ export const getEmailFrom = internalQuery({
   handler: async (ctx) => getEmailFromValue(ctx),
 });
 
+export const getSmsOrderConfirmationEnabled = internalQuery({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => getSmsOrderConfirmationEnabledValue(ctx),
+});
+
 export const getPublicBranding = internalQuery({
   args: {},
   handler: async (ctx) => {
@@ -313,7 +334,7 @@ export const update = mutation({
     }
 
     const name = normalizeSettingName(args.name);
-    const value = args.value.trim();
+    let value = args.value.trim();
 
     if (name.length < 2) {
       throw new ConvexError("Setting name must be at least 2 characters");
@@ -323,6 +344,9 @@ export const update = mutation({
     }
 
     await assertUniqueSettingName(ctx, name, args.id);
+    if (row.key === "sms_order_confirmation_enabled") {
+      value = value.toLowerCase();
+    }
     assertValidSettingValue(row.key, value);
 
     if (row.isSystem) {

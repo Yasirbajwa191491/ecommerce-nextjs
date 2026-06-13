@@ -229,7 +229,7 @@ export const createCashOrder = mutation({
     await insertOrderLineItems(ctx, orderId, priced.items);
     await logOrderCreated(ctx, orderId, "cod", now);
 
-    await ctx.scheduler.runAfter(0, internal.email.sendOrderConfirmation, {
+    await ctx.scheduler.runAfter(0, internal.notifications.sendOrderConfirmationNotifications, {
       orderId,
     });
 
@@ -391,7 +391,7 @@ export const markOrderPaid = internalMutation({
       });
     }
 
-    await ctx.scheduler.runAfter(0, internal.email.sendOrderConfirmation, {
+    await ctx.scheduler.runAfter(0, internal.notifications.sendOrderConfirmationNotifications, {
       orderId: args.orderId,
     });
 

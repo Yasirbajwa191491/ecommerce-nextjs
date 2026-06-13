@@ -51,6 +51,10 @@ function CheckoutSuccessContent() {
       ? { orderNumber, customerEmail }
       : "skip"
   );
+  const publicSettings = useQuery(api.settings.listPublic);
+
+  const smsNotificationsEnabled =
+    publicSettings?.sms_order_confirmation_enabled === "true";
 
   useEffect(() => {
     if (!orderData?.order || clearedCartRef.current) return;
@@ -224,7 +228,14 @@ function CheckoutSuccessContent() {
                     "animate-pulse"
                 )}
               >
-                A confirmation email will be sent to {order.customerEmail}.
+                {smsNotificationsEnabled ? (
+                  <>
+                    A confirmation email will be sent to {order.customerEmail}.
+                    A text message will be sent to {order.customerPhone}.
+                  </>
+                ) : (
+                  <>A confirmation email will be sent to {order.customerEmail}.</>
+                )}
               </p>
             </CardContent>
           </Card>

@@ -24,3 +24,10 @@ export async function getEmailFromValue(ctx: QueryCtx) {
   if (row?.value.trim()) return row.value.trim();
   return "Ecommerce Store <yasir.sohail@savari.io>";
 }
+
+export async function getSmsOrderConfirmationEnabledValue(
+  ctx: QueryCtx
+): Promise<boolean> {
+  const row = await findSettingByKey(ctx, "sms_order_confirmation_enabled");
+  return row?.value.trim().toLowerCase() === "true";
+}

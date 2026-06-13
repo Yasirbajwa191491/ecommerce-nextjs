@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -303,7 +304,11 @@ export default function AdminSettingsPage() {
               />
             </AdminFormField>
             <AdminFormField
-              label="Setting value"
+              label={
+                editing?.key === "sms_order_confirmation_enabled"
+                  ? "Send order confirmation SMS via Twilio"
+                  : "Setting value"
+              }
               htmlFor="setting-value"
               error={validation.fieldError("value")}
               description={
@@ -312,24 +317,46 @@ export default function AdminSettingsPage() {
                   : editing?.key === "shipping_policy" ||
                       editing?.key === "return_policy"
                     ? "Used by the AI assistant and storefront FAQ. Plain text or markdown."
-                    : undefined
+                    : editing?.key === "sms_order_confirmation_enabled"
+                      ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. Off by default."
+                      : undefined
               }
-              required
+              required={editing?.key !== "sms_order_confirmation_enabled"}
             >
-              <Textarea
-                id="setting-value"
-                rows={4}
-                value={form.value}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    value: event.target.value,
-                  }))
-                }
-                onBlur={() => validation.touch("value")}
-                aria-invalid={!!validation.fieldError("value")}
-                className={invalidInputClass(validation.fieldError("value"))}
-              />
+              {editing?.key === "sms_order_confirmation_enabled" ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                  <Switch
+                    id="setting-value"
+                    checked={form.value.trim().toLowerCase() === "true"}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        value: checked ? "true" : "false",
+                      }))
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {form.value.trim().toLowerCase() === "true"
+                      ? "Enabled — customers receive SMS on order confirmation"
+                      : "Disabled — email only"}
+                  </span>
+                </div>
+              ) : (
+                <Textarea
+                  id="setting-value"
+                  rows={4}
+                  value={form.value}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      value: event.target.value,
+                    }))
+                  }
+                  onBlur={() => validation.touch("value")}
+                  aria-invalid={!!validation.fieldError("value")}
+                  className={invalidInputClass(validation.fieldError("value"))}
+                />
+              )}
             </AdminFormField>
           </div>
           <DialogFooter>

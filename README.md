@@ -22,6 +22,12 @@ npx convex env set BETTER_AUTH_SECRET "<random-32+-char-secret>"
 # Optional — OTP emails via Resend (logs OTP to console if unset)
 npx convex env set RESEND_API_KEY "re_..."
 npx convex env set RESEND_FROM_EMAIL "onboarding@resend.dev"
+# Optional — order confirmation SMS via Twilio (toggle in Admin → Settings → SMS Order Confirmation)
+npx convex env set TWILIO_ACCOUNT_SID "ACxxxxxxxx"
+npx convex env set TWILIO_AUTH_TOKEN "your_auth_token"
+npx convex env set TWILIO_PHONE_NUMBER "+1xxxxxxxxxx"
+# Trial accounts prepend "Sent from your Twilio trial account" and allow only 1 SMS segment (~160 chars total).
+# Optional on paid accounts for longer messages: npx convex env set TWILIO_SMS_MAX_CHARS "320"
 # Lets admin Settings → Email From sync RESEND_FROM_EMAIL automatically
 npx convex deployment token create local-dev --save-env
 npm run seed            # categories, products, super admin
@@ -41,7 +47,7 @@ Open http://localhost:3000/home
    - **Remove** if present: `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` (dev values from `.env.local` break Vercel builds)
    - Do **not** copy `SITE_URL=http://localhost:3000` from `.env.example` into Vercel
    - Optional: `SITE_URL` = `https://your-custom-domain.com` on **Production** only
-5. On Convex **production**, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, etc.
+5. On Convex **production**, set secrets: `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, optional `TWILIO_*` for SMS, etc.
    - Set **`SITE_URL`** = `https://your-vercel-domain.vercel.app` here too (deploy keys often cannot auto-sync env vars)
 6. Deploy. The build runs `npm run build:vercel`, which:
    - Resolves `SITE_URL` (preview: `https://<branch>.vercel.app`, production: production domain)
