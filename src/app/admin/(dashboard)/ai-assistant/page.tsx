@@ -7,7 +7,7 @@ import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminTableCard } from "@/components/admin/admin-table-card";
 import { AdminTableInfiniteScroll } from "@/components/admin/admin-table-infinite-scroll";
-import { Badge } from "@/components/ui/badge";
+import { VapiConversationsPanel } from "@/components/admin/vapi-conversations-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -85,17 +85,10 @@ export default function AdminAiAssistantPage() {
   const dailyAnalytics = useQuery(api.vapi.admin.getDailyAnalytics, { days: 14 });
   const setupInfo = useQuery(api.vapi.admin.getSetupInfo);
 
-  const [logSearch, setLogSearch] = useState("");
   const [leadSearch, setLeadSearch] = useState("");
   const [ticketSearch, setTicketSearch] = useState("");
   const [selectedTicket, setSelectedTicket] =
     useState<Doc<"vapiSupportTickets"> | null>(null);
-
-  const logs = usePaginatedQuery(
-    api.vapi.admin.listLogsPaginated,
-    { search: logSearch || undefined },
-    { initialNumItems: PAGE_SIZE }
-  );
 
   const leads = usePaginatedQuery(
     api.vapi.admin.listLeadsPaginated,
@@ -108,12 +101,6 @@ export default function AdminAiAssistantPage() {
     { search: ticketSearch || undefined },
     { initialNumItems: PAGE_SIZE }
   );
-
-  const logsCanLoadMore = logs.status === "CanLoadMore";
-  const logsLoadingMore = logs.status === "LoadingMore";
-  const handleLoadMoreLogs = useCallback(() => {
-    if (logsCanLoadMore) logs.loadMore(PAGE_SIZE);
-  }, [logsCanLoadMore, logs.loadMore]);
 
   const leadsCanLoadMore = leads.status === "CanLoadMore";
   const leadsLoadingMore = leads.status === "LoadingMore";
@@ -165,7 +152,7 @@ export default function AdminAiAssistantPage() {
     <>
       <AdminPageHeader
         title="AI Assistant"
-        description="Vapi voice assistant analytics, conversation logs, leads, and support escalations."
+        description="Monitor voice and chat sessions, full transcripts, tool calls, leads, and support escalations."
       />
 
       <Tabs defaultValue="analytics" className="space-y-6">
@@ -249,54 +236,7 @@ export default function AdminAiAssistantPage() {
         </TabsContent>
 
         <TabsContent value="conversations">
-          <div className="mb-4 max-w-md">
-            <Input
-              placeholder="Search logs…"
-              value={logSearch}
-              onChange={(event) => setLogSearch(event.target.value)}
-            />
-          </div>
-          <AdminTableCard>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Content</TableHead>
-                  <TableHead>Tool</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.results.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                      No conversation logs yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  logs.results.map((log) => (
-                    <TableRow key={log._id}>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {formatDate(log.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{log.role}</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-md truncate">{log.content}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {log.toolName ?? "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </AdminTableCard>
-          <AdminTableInfiniteScroll
-            enabled={logsCanLoadMore}
-            isLoadingMore={logsLoadingMore}
-            onLoadMore={handleLoadMoreLogs}
-          />
+          <VapiConversationsPanel />
         </TabsContent>
 
         <TabsContent value="leads">

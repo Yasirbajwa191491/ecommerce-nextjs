@@ -1,5 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { requireAdmin } from "../lib/requireAdmin";
 import { paginateArray } from "../lib/pagination";
@@ -121,37 +123,165 @@ export const getSetupInfo = query({
   },
 });
 
-export const listLogsPaginated = query({
+const conversationSummaryValidator = v.object({
+  _id: v.id("vapiConversations"),
+  vapiCallId: v.string(),
+  channel: v.union(v.literal("voice"), v.literal("chat")),
+  startedAt: v.number(),
+  endedAt: v.union(v.number(), v.null()),
+  customerEmail: v.union(v.string(), v.null()),
+  customerPhone: v.union(v.string(), v.null()),
+  summary: v.union(v.string(), v.null()),
+  status: v.union(v.literal("active"), v.literal("ended")),
+  durationMs: v.union(v.number(), v.null()),
+  messageCount: v.number(),
+  userMessages: v.number(),
+  assistantMessages: v.number(),
+  toolCalls: v.number(),
+  preview: v.string(),
+});
+
+const conversationLogValidator = v.object({
+  _id: v.id("vapiConversationLogs"),
+  role: v.union(
+    v.literal("user"),
+    v.literal("assistant"),
+    v.literal("tool"),
+    v.literal("system")
+  ),
+  content: v.string(),
+  toolName: v.union(v.string(), v.null()),
+  toolInput: v.union(v.string(), v.null()),
+  toolOutput: v.union(v.string(), v.null()),
+  createdAt: v.number(),
+});
+
+async function summarizeConversation(
+  ctx: QueryCtx,
+  conversation: Doc<"vapiConversations">
+) {
+  const logs = await ctx.db
+    .query("vapiConversationLogs")
+    .withIndex("by_conversation", (q) => q.eq("conversationId", conversation._id))
+    .collect();
+
+  const userMessages = logs.filter((log) => log.role === "user").length;
+  const assistantMessages = logs.filter((log) => log.role === "assistant").length;
+  const toolCalls = logs.filter((log) => log.role === "tool").length;
+  const sorted = [...logs].sort((a, b) => b.createdAt - a.createdAt);
+  const lastMessage = sorted.find((log) => log.role !== "system");
+  const preview =
+    lastMessage?.content ??
+    conversation.summary ??
+    (conversation.channel === "voice" ? "Voice session" : "Chat session");
+
+  const endedAt = conversation.endedAt ?? null;
+
+  return {
+    _id: conversation._id,
+    vapiCallId: conversation.vapiCallId,
+    channel: conversation.channel,
+    startedAt: conversation.startedAt,
+    endedAt,
+    customerEmail: conversation.customerEmail ?? null,
+    customerPhone: conversation.customerPhone ?? null,
+    summary: conversation.summary ?? null,
+    status: endedAt ? ("ended" as const) : ("active" as const),
+    durationMs: endedAt ? endedAt - conversation.startedAt : null,
+    messageCount: logs.length,
+    userMessages,
+    assistantMessages,
+    toolCalls,
+    preview,
+  };
+}
+
+export const listConversationsPaginated = query({
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
-    toolName: v.optional(v.string()),
+    channel: v.optional(v.union(v.literal("voice"), v.literal("chat"))),
+    status: v.optional(v.union(v.literal("active"), v.literal("ended"))),
   },
+  returns: v.object({
+    page: v.array(conversationSummaryValidator),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let logs = await ctx.db.query("vapiConversationLogs").collect();
-    logs.sort((a, b) => b.createdAt - a.createdAt);
 
-    if (args.toolName?.trim()) {
-      const tool = args.toolName.trim().toLowerCase();
-      logs = logs.filter((log) => log.toolName?.toLowerCase() === tool);
+    let conversations = await ctx.db.query("vapiConversations").collect();
+    conversations.sort((a, b) => b.startedAt - a.startedAt);
+
+    if (args.channel) {
+      conversations = conversations.filter((c) => c.channel === args.channel);
+    }
+
+    if (args.status) {
+      conversations = conversations.filter((c) =>
+        args.status === "ended" ? Boolean(c.endedAt) : !c.endedAt
+      );
     }
 
     if (args.search?.trim()) {
       const term = args.search.trim().toLowerCase();
-      logs = logs.filter(
-        (log) =>
-          log.content.toLowerCase().includes(term) ||
-          log.toolName?.toLowerCase().includes(term) ||
-          log.toolInput?.toLowerCase().includes(term)
+      conversations = conversations.filter(
+        (c) =>
+          c.vapiCallId.toLowerCase().includes(term) ||
+          c.summary?.toLowerCase().includes(term) ||
+          c.customerEmail?.toLowerCase().includes(term) ||
+          c.customerPhone?.toLowerCase().includes(term)
       );
     }
 
     const { page, isDone, continueCursor } = paginateArray(
-      logs,
+      conversations,
       args.paginationOpts
     );
-    return { page, isDone, continueCursor };
+
+    const summaries = await Promise.all(
+      page.map((conversation) => summarizeConversation(ctx, conversation))
+    );
+
+    return { page: summaries, isDone, continueCursor };
+  },
+});
+
+export const getConversationDetail = query({
+  args: { conversationId: v.id("vapiConversations") },
+  returns: v.union(
+    v.object({
+      conversation: conversationSummaryValidator,
+      logs: v.array(conversationLogValidator),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) return null;
+
+    const logs = await ctx.db
+      .query("vapiConversationLogs")
+      .withIndex("by_conversation", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
+      .collect();
+    logs.sort((a, b) => a.createdAt - b.createdAt);
+
+    return {
+      conversation: await summarizeConversation(ctx, conversation),
+      logs: logs.map((log) => ({
+        _id: log._id,
+        role: log.role,
+        content: log.content,
+        toolName: log.toolName ?? null,
+        toolInput: log.toolInput ?? null,
+        toolOutput: log.toolOutput ?? null,
+        createdAt: log.createdAt,
+      })),
+    };
   },
 });
 

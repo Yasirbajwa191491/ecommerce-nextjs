@@ -371,7 +371,12 @@ export default defineSchema({
 
   vapiConversationLogs: defineTable({
     conversationId: v.id("vapiConversations"),
-    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("tool"),
+      v.literal("system")
+    ),
     content: v.string(),
     toolName: v.optional(v.string()),
     toolInput: v.optional(v.string()),

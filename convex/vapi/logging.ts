@@ -29,7 +29,10 @@ export const upsertConversation = internalMutation({
     summary: v.optional(v.string()),
     ended: v.optional(v.boolean()),
   },
-  returns: v.id("vapiConversations"),
+  returns: v.object({
+    conversationId: v.id("vapiConversations"),
+    isNew: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("vapiConversations")
@@ -45,7 +48,7 @@ export const upsertConversation = internalMutation({
         summary: args.summary ?? existing.summary,
         endedAt: args.ended ? now : existing.endedAt,
       });
-      return existing._id;
+      return { conversationId: existing._id, isNew: false };
     }
 
     const conversationId = await ctx.db.insert("vapiConversations", {
@@ -58,25 +61,49 @@ export const upsertConversation = internalMutation({
     });
 
     await incrementDailyAnalytics(ctx, "conversations");
-    return conversationId;
+    return { conversationId, isNew: true };
   },
 });
 
 export const appendLog = internalMutation({
   args: {
     conversationId: v.id("vapiConversations"),
-    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("tool"),
+      v.literal("system")
+    ),
     content: v.string(),
     toolName: v.optional(v.string()),
     toolInput: v.optional(v.string()),
     toolOutput: v.optional(v.string()),
+    dedupe: v.optional(v.boolean()),
   },
-  returns: v.id("vapiConversationLogs"),
+  returns: v.union(v.id("vapiConversationLogs"), v.null()),
   handler: async (ctx, args) => {
+    const content = args.content.trim();
+    if (!content) return null;
+
+    if (args.dedupe) {
+      const recent = await ctx.db
+        .query("vapiConversationLogs")
+        .withIndex("by_conversation", (q) =>
+          q.eq("conversationId", args.conversationId)
+        )
+        .order("desc")
+        .take(8);
+
+      const duplicate = recent.some(
+        (log) => log.role === args.role && log.content === content
+      );
+      if (duplicate) return null;
+    }
+
     return await ctx.db.insert("vapiConversationLogs", {
       conversationId: args.conversationId,
       role: args.role,
-      content: args.content,
+      content,
       toolName: args.toolName,
       toolInput: args.toolInput,
       toolOutput: args.toolOutput,

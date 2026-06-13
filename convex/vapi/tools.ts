@@ -14,6 +14,22 @@ import {
 } from "../lib/publicOrderDto";
 import { buildTrackingBucketKey, checkAndIncrementRateLimit } from "../lib/rateLimit";
 import { incrementDailyAnalytics } from "./analyticsHelpers";
+import { aggregateTopProducts } from "../lib/dashboardAggregates";
+import {
+  calculateAverageRating,
+  calculateRatingDistribution,
+  getApprovedReviewsForProduct,
+  sortReviews,
+} from "../lib/reviews";
+import {
+  ABOUT_SUMMARY,
+  FAQ_ITEMS,
+  HOW_TO_BUY_STEPS,
+  PAYMENT_METHODS,
+  STORE_PAGE_URLS,
+  SUPPORT_CHANNELS,
+  TRACKING_GUIDE,
+} from "../lib/storeGuideContent";
 import {
   assertReviewEligibility,
   validateRating,
@@ -146,6 +162,56 @@ function isValidEmail(email: string) {
   return EMAIL_PATTERN.test(email) && email.length <= 254;
 }
 
+async function loadProductHighlightPoints(
+  ctx: QueryCtx,
+  productId: Id<"products">
+): Promise<{ highlightPoints: string[]; reviewSummary: string | null }> {
+  const insights = await ctx.db
+    .query("productReviewInsights")
+    .withIndex("by_product", (q) => q.eq("productId", productId))
+    .unique();
+
+  if (!insights) {
+    return { highlightPoints: [], reviewSummary: null };
+  }
+
+  const topicLabels = insights.topics.map((topic) => topic.name);
+  const highlightPoints = [
+    ...(insights.summary ? [insights.summary] : []),
+    ...topicLabels,
+  ];
+
+  return {
+    highlightPoints,
+    reviewSummary: insights.summary || null,
+  };
+}
+
+const vapiProductDetailValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  description: v.string(),
+  company: v.string(),
+  price: v.number(),
+  finalPrice: v.number(),
+  discountPercent: v.number(),
+  currency: v.string(),
+  rating: v.number(),
+  reviewsCount: v.number(),
+  shippingInfo: v.string(),
+  stock: v.number(),
+  inStock: v.boolean(),
+  colors: v.array(v.string()),
+  sku: v.union(v.string(), v.null()),
+  featured: v.boolean(),
+  highlightPoints: v.array(v.string()),
+  reviewSummary: v.union(v.string(), v.null()),
+  howToBuy: v.array(v.string()),
+  addToCartUrl: v.string(),
+  url: v.string(),
+  category: v.union(v.string(), v.null()),
+});
+
 export const searchProducts = internalQuery({
   args: {
     query: v.optional(v.string()),
@@ -188,31 +254,257 @@ export const searchProducts = internalQuery({
 
 export const getProductDetails = internalQuery({
   args: { productId: v.string() },
-  returns: v.union(
-    v.object({
-      id: v.string(),
-      name: v.string(),
-      description: v.string(),
-      company: v.string(),
-      price: v.number(),
-      finalPrice: v.number(),
-      discountPercent: v.number(),
-      currency: v.string(),
-      rating: v.number(),
-      reviewsCount: v.number(),
-      shippingInfo: v.string(),
-      stock: v.number(),
-      inStock: v.boolean(),
-      url: v.string(),
-      category: v.union(v.string(), v.null()),
-    }),
-    v.null()
-  ),
+  returns: v.union(vapiProductDetailValidator, v.null()),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId as Id<"products">);
     if (!product || !isProductActive(product)) return null;
-    return toVapiProductDetail(await enrichProduct(ctx, product));
+    const enriched = await enrichProduct(ctx, product);
+    const { highlightPoints, reviewSummary } = await loadProductHighlightPoints(
+      ctx,
+      product._id
+    );
+    return toVapiProductDetail(enriched, { highlightPoints, reviewSummary });
   },
+});
+
+export const getProductReviews = internalQuery({
+  args: {
+    productId: v.string(),
+    limit: v.optional(v.number()),
+    sort: v.optional(
+      v.union(
+        v.literal("recent"),
+        v.literal("highest"),
+        v.literal("lowest"),
+        v.literal("helpful")
+      )
+    ),
+  },
+  returns: v.object({
+    productId: v.string(),
+    productName: v.string(),
+    averageRating: v.number(),
+    totalReviews: v.number(),
+    ratingDistribution: v.array(
+      v.object({
+        stars: v.number(),
+        count: v.number(),
+        percent: v.number(),
+      })
+    ),
+    reviews: v.array(
+      v.object({
+        customerName: v.string(),
+        rating: v.number(),
+        title: v.string(),
+        content: v.string(),
+        helpfulCount: v.number(),
+        isVerifiedPurchase: v.boolean(),
+        createdAt: v.number(),
+        adminReply: v.union(v.string(), v.null()),
+        tags: v.array(v.string()),
+      })
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const productId = args.productId as Id<"products">;
+    const product = await ctx.db.get(productId);
+    if (!product || !isProductActive(product)) {
+      return {
+        productId: args.productId,
+        productName: "Unknown product",
+        averageRating: 0,
+        totalReviews: 0,
+        ratingDistribution: [],
+        reviews: [],
+      };
+    }
+
+    const limit = Math.min(Math.max(args.limit ?? 8, 1), 15);
+    const approved = await getApprovedReviewsForProduct(ctx, productId);
+    const sorted = sortReviews(approved, args.sort ?? "recent").slice(0, limit);
+
+    return {
+      productId: product._id,
+      productName: product.name,
+      averageRating: calculateAverageRating(approved),
+      totalReviews: approved.length,
+      ratingDistribution: calculateRatingDistribution(approved).map((row) => ({
+        stars: row.stars,
+        count: row.count,
+        percent: row.percent,
+      })),
+      reviews: sorted.map((review) => ({
+        customerName: review.customerName,
+        rating: review.rating,
+        title: review.title,
+        content: review.content,
+        helpfulCount: review.helpfulCount,
+        isVerifiedPurchase: review.isVerifiedPurchase,
+        createdAt: review.createdAt,
+        adminReply: review.adminReplyPublished ?? null,
+        tags: review.aiTags ?? [],
+      })),
+    };
+  },
+});
+
+export const getBestSellers = internalQuery({
+  args: { limit: v.optional(v.number()) },
+  returns: v.object({
+    products: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        finalPrice: v.number(),
+        discountPercent: v.number(),
+        rating: v.number(),
+        reviewsCount: v.number(),
+        stock: v.number(),
+        inStock: v.boolean(),
+        url: v.string(),
+      })
+    ),
+    note: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 8, 1), 12);
+    const orders = await ctx.db.query("orders").collect();
+    const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
+    const topSales = await aggregateTopProducts(ctx, paidOrders, limit);
+
+    let products = await loadActiveProducts(ctx);
+
+    if (topSales.length > 0) {
+      const ranked = await Promise.all(
+        topSales.map(async (entry) => ctx.db.get(entry.productId))
+      );
+      products = ranked.filter(
+        (product): product is NonNullable<typeof product> =>
+          product !== null && isProductActive(product)
+      );
+    } else {
+      products = products
+        .sort((a, b) => b.reviews - a.reviews || b.stars - a.stars)
+        .slice(0, limit);
+    }
+
+    const enriched = await enrichProducts(ctx, products.slice(0, limit));
+    const note =
+      topSales.length > 0
+        ? "Ranked by paid order volume."
+        : "Ranked by customer ratings and review count.";
+
+    return {
+      products: enriched.map((product) => {
+        const summary = toVapiProductSummary(product, { includeStock: true });
+        return {
+          id: summary.id,
+          name: summary.name,
+          finalPrice: summary.finalPrice,
+          discountPercent: summary.discountPercent,
+          rating: summary.rating,
+          reviewsCount: summary.reviewsCount,
+          stock: summary.stock ?? product.stock,
+          inStock: summary.inStock,
+          url: summary.url,
+        };
+      }),
+      note,
+    };
+  },
+});
+
+export const getPaymentMethods = internalQuery({
+  args: {},
+  returns: v.object({
+    methods: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        description: v.string(),
+        brands: v.optional(v.array(v.string())),
+      })
+    ),
+    securityNote: v.string(),
+  }),
+  handler: async () => ({
+    methods: PAYMENT_METHODS.map((method) => ({
+      id: method.id,
+      name: method.name,
+      description: method.description,
+      brands:
+        method.id === "stripe"
+          ? [...PAYMENT_METHODS[0].brands]
+          : undefined,
+    })),
+    securityNote:
+      "Card payments are processed securely through Stripe. We never store your full card details.",
+  }),
+});
+
+export const getShoppingGuide = internalQuery({
+  args: { topic: v.optional(v.string()) },
+  returns: v.object({
+    pages: v.object({
+      home: v.string(),
+      products: v.string(),
+      about: v.string(),
+      contact: v.string(),
+      trackOrder: v.string(),
+    }),
+    about: v.object({
+      title: v.string(),
+      story: v.string(),
+      highlights: v.array(v.string()),
+      whyShop: v.array(v.string()),
+    }),
+    howToBuy: v.array(v.string()),
+    paymentMethods: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        description: v.string(),
+      })
+    ),
+    tracking: v.object({
+      pageUrl: v.string(),
+      methods: v.array(v.string()),
+      steps: v.array(v.string()),
+    }),
+    support: v.array(
+      v.object({
+        channel: v.string(),
+        description: v.string(),
+      })
+    ),
+    faq: v.array(
+      v.object({
+        question: v.string(),
+        answer: v.string(),
+      })
+    ),
+  }),
+  handler: async () => ({
+    pages: STORE_PAGE_URLS,
+    about: ABOUT_SUMMARY,
+    howToBuy: [...HOW_TO_BUY_STEPS],
+    paymentMethods: PAYMENT_METHODS.map(({ id, name, description }) => ({
+      id,
+      name,
+      description,
+    })),
+    tracking: {
+      pageUrl: TRACKING_GUIDE.pageUrl,
+      methods: [...TRACKING_GUIDE.methods],
+      steps: [...TRACKING_GUIDE.steps],
+    },
+    support: SUPPORT_CHANNELS.map(({ channel, description }) => ({
+      channel,
+      description,
+    })),
+    faq: FAQ_ITEMS.map(({ question, answer }) => ({ question, answer })),
+  }),
 });
 
 export const recommendProducts = internalQuery({
@@ -389,6 +681,19 @@ export const getStoreInfo = internalQuery({
     phone: v.string(),
     email: v.string(),
     businessHours: v.string(),
+    pages: v.object({
+      home: v.string(),
+      products: v.string(),
+      about: v.string(),
+      contact: v.string(),
+      trackOrder: v.string(),
+    }),
+    supportChannels: v.array(
+      v.object({
+        channel: v.string(),
+        description: v.string(),
+      })
+    ),
     stats: v.object({
       productsAvailable: v.number(),
       ordersProcessed: v.number(),
@@ -422,6 +727,11 @@ export const getStoreInfo = internalQuery({
       phone,
       email,
       businessHours,
+      pages: STORE_PAGE_URLS,
+      supportChannels: SUPPORT_CHANNELS.map(({ channel, description }) => ({
+        channel,
+        description,
+      })),
       stats: {
         productsAvailable: products.length,
         ordersProcessed: processed.length,
@@ -619,6 +929,13 @@ export const getKnowledgeBase = internalQuery({
       email: v.string(),
       businessHours: v.string(),
     }),
+    pages: v.object({
+      about: v.string(),
+      contact: v.string(),
+      trackOrder: v.string(),
+    }),
+    howToBuy: v.array(v.string()),
+    paymentMethods: v.array(v.string()),
   }),
   handler: async (ctx) => {
     const [shippingPolicy, returnPolicy, address, phone, email, businessHours] =
@@ -635,6 +952,13 @@ export const getKnowledgeBase = internalQuery({
       shippingPolicy,
       returnPolicy,
       storeInfo: { address, phone, email, businessHours },
+      pages: {
+        about: STORE_PAGE_URLS.about,
+        contact: STORE_PAGE_URLS.contact,
+        trackOrder: STORE_PAGE_URLS.trackOrder,
+      },
+      howToBuy: [...HOW_TO_BUY_STEPS],
+      paymentMethods: PAYMENT_METHODS.map((method) => method.name),
     };
   },
 });

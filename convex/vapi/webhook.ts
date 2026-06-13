@@ -16,12 +16,14 @@ type ToolCall = {
 type VapiWebhookBody = {
   message?: {
     type?: string;
+    role?: string;
+    transcript?: string;
+    transcriptType?: string;
     call?: {
       id?: string;
       type?: string;
     };
     toolCallList?: ToolCall[];
-    transcript?: string;
     summary?: string;
     endedReason?: string;
     artifact?: {
@@ -112,6 +114,29 @@ async function executeTool(
     case "getProductDetails":
       return await ctx.runQuery(internal.vapi.tools.getProductDetails, {
         productId: String(parameters.productId ?? parameters.id ?? ""),
+      });
+    case "getProductReviews":
+      return await ctx.runQuery(internal.vapi.tools.getProductReviews, {
+        productId: String(parameters.productId ?? parameters.id ?? ""),
+        limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
+        sort:
+          parameters.sort === "recent" ||
+          parameters.sort === "highest" ||
+          parameters.sort === "lowest" ||
+          parameters.sort === "helpful"
+            ? parameters.sort
+            : undefined,
+      });
+    case "getBestSellers":
+      return await ctx.runQuery(internal.vapi.tools.getBestSellers, {
+        limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
+      });
+    case "getPaymentMethods":
+      return await ctx.runQuery(internal.vapi.tools.getPaymentMethods, {});
+    case "getShoppingGuide":
+      return await ctx.runQuery(internal.vapi.tools.getShoppingGuide, {
+        topic:
+          typeof parameters.topic === "string" ? parameters.topic : undefined,
       });
     case "recommendProducts":
       return await ctx.runQuery(internal.vapi.tools.recommendProducts, {
@@ -209,17 +234,54 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
 
   let conversationId: Id<"vapiConversations"> | undefined;
 
-  if (
+  const shouldTrackConversation =
     message.type === "tool-calls" ||
     message.type === "end-of-call-report" ||
-    message.type === "status-update"
-  ) {
-    conversationId = await ctx.runMutation(internal.vapi.logging.upsertConversation, {
+    message.type === "status-update" ||
+    message.type === "transcript";
+
+  if (shouldTrackConversation) {
+    const upsert = await ctx.runMutation(internal.vapi.logging.upsertConversation, {
       vapiCallId: callId,
       channel,
       summary: message.summary,
       ended: message.type === "end-of-call-report",
     });
+    conversationId = upsert.conversationId;
+
+    if (upsert.isNew) {
+      await ctx.runMutation(internal.vapi.logging.appendLog, {
+        conversationId,
+        role: "system",
+        content:
+          channel === "voice"
+            ? "Voice session started."
+            : "Chat session started.",
+      });
+    }
+  }
+
+  if (
+    message.type === "transcript" &&
+    conversationId &&
+    message.transcript?.trim() &&
+    message.transcriptType !== "partial"
+  ) {
+    const role =
+      message.role === "user"
+        ? ("user" as const)
+        : message.role === "assistant"
+          ? ("assistant" as const)
+          : null;
+
+    if (role) {
+      await ctx.runMutation(internal.vapi.logging.appendLog, {
+        conversationId,
+        role,
+        content: message.transcript.trim(),
+        dedupe: true,
+      });
+    }
   }
 
   if (message.type === "tool-calls" && message.toolCallList?.length) {
@@ -276,14 +338,23 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
         conversationId,
         role,
         content,
+        dedupe: true,
       });
     }
 
     if (message.summary) {
       await ctx.runMutation(internal.vapi.logging.appendLog, {
         conversationId,
-        role: "assistant",
-        content: `Call summary: ${message.summary}`,
+        role: "system",
+        content: `Session ended. Summary: ${message.summary}`,
+        dedupe: true,
+      });
+    } else if (message.endedReason) {
+      await ctx.runMutation(internal.vapi.logging.appendLog, {
+        conversationId,
+        role: "system",
+        content: `Session ended (${message.endedReason}).`,
+        dedupe: true,
       });
     }
   }

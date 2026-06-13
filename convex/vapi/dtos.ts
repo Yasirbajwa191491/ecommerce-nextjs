@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { ProductWithCategory } from "../lib/products";
 import { calculateFinalPrice } from "../lib/pricing";
 import { getSiteUrl } from "../lib/siteUrl";
+import { HOW_TO_BUY_STEPS } from "../lib/storeGuideContent";
 import type { PublicOrderDetail, PublicOrderSummary } from "../lib/publicOrderDto";
 
 export type VapiProductSummary = {
@@ -16,6 +17,8 @@ export type VapiProductSummary = {
   category: string | null;
   url: string;
   inStock: boolean;
+  stock?: number;
+  colors?: string[];
 };
 
 export type VapiProductDetail = VapiProductSummary & {
@@ -23,6 +26,13 @@ export type VapiProductDetail = VapiProductSummary & {
   company: string;
   shippingInfo: string;
   stock: number;
+  colors: string[];
+  sku: string | null;
+  featured: boolean;
+  highlightPoints: string[];
+  reviewSummary: string | null;
+  howToBuy: string[];
+  addToCartUrl: string;
 };
 
 function buildProductUrl(productId: Id<"products">): string {
@@ -41,11 +51,12 @@ function shippingInfo(product: Doc<"products">): string {
 }
 
 export function toVapiProductSummary(
-  product: ProductWithCategory
+  product: ProductWithCategory,
+  options?: { includeStock?: boolean }
 ): VapiProductSummary {
   const discountPercent = product.discountPercent ?? 0;
   const finalPrice = calculateFinalPrice(product.price, discountPercent);
-  return {
+  const summary: VapiProductSummary = {
     id: product._id,
     name: product.name,
     price: product.price,
@@ -58,17 +69,36 @@ export function toVapiProductSummary(
     url: buildProductUrl(product._id),
     inStock: product.stock > 0,
   };
+
+  if (options?.includeStock) {
+    summary.stock = product.stock;
+    summary.colors = product.colors;
+  }
+
+  return summary;
 }
 
 export function toVapiProductDetail(
-  product: ProductWithCategory
+  product: ProductWithCategory,
+  extras?: {
+    highlightPoints?: string[];
+    reviewSummary?: string | null;
+  }
 ): VapiProductDetail {
+  const summary = toVapiProductSummary(product, { includeStock: true });
   return {
-    ...toVapiProductSummary(product),
+    ...summary,
+    stock: product.stock,
+    colors: product.colors,
     description: product.description,
     company: product.company,
     shippingInfo: shippingInfo(product),
-    stock: product.stock,
+    sku: product.sku ?? null,
+    featured: product.featured,
+    highlightPoints: extras?.highlightPoints ?? [],
+    reviewSummary: extras?.reviewSummary ?? null,
+    howToBuy: [...HOW_TO_BUY_STEPS],
+    addToCartUrl: summary.url,
   };
 }
 
@@ -114,5 +144,6 @@ export function toVapiOrderDetail(order: PublicOrderDetail) {
       description: entry.description,
       createdAt: entry.createdAt,
     })),
+    trackingUrl: `${getSiteUrl().replace(/\/$/, "")}/track-order`,
   };
 }

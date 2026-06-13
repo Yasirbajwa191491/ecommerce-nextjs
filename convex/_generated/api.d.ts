@@ -61,6 +61,7 @@ import type * as lib_reviewAggregates from "../lib/reviewAggregates.js";
 import type * as lib_reviews from "../lib/reviews.js";
 import type * as lib_settingsHelpers from "../lib/settingsHelpers.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
+import type * as lib_storeGuideContent from "../lib/storeGuideContent.js";
 import type * as lib_subscriberTokens from "../lib/subscriberTokens.js";
 import type * as migrations from "../migrations.js";
 import type * as orderTracking from "../orderTracking.js";
@@ -147,6 +148,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reviews": typeof lib_reviews;
   "lib/settingsHelpers": typeof lib_settingsHelpers;
   "lib/siteUrl": typeof lib_siteUrl;
+  "lib/storeGuideContent": typeof lib_storeGuideContent;
   "lib/subscriberTokens": typeof lib_subscriberTokens;
   migrations: typeof migrations;
   orderTracking: typeof orderTracking;

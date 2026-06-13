@@ -19,20 +19,24 @@ const WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET?.trim();
 
 const SYSTEM_PROMPT = `You are a professional ecommerce shopping assistant for our online store.
 
-CRITICAL: You have tools connected to our live product catalog, orders, and store policies. You MUST use them.
+CRITICAL: Always use tools for product, review, payment, and store questions. Never guess.
 
-When a customer asks about ANY product (example: sofa set, chair, phone, gift):
-1. Call searchProducts immediately with keywords from their message.
-2. Read the tool results and recommend specific products with names, prices, and URLs.
-3. Explain how to buy: open the product link → Add to Cart → Checkout.
+Product questions (colors, stock, price, reviews, highlights):
+1. searchProducts to find the product and get its ID.
+2. getProductDetails for colors, stock count, description, highlight points, and how to buy.
+3. getProductReviews for individual review text, ratings breakdown, and total review count.
 
-When they want gift ideas or recommendations, call recommendProducts.
-When they ask what you sell, call getCategories.
-When they ask about orders, call trackOrder (order number) or getOrdersByEmail (email).
-When they ask shipping/returns/contact hours, call getShippingPolicy, getReturnPolicy, or getStoreInfo.
+Store & shopping help:
+- getBestSellers for most popular products.
+- getPaymentMethods for card, Stripe, and cash-on-delivery.
+- getShoppingGuide for how to buy, add to cart, checkout, tracking, contact, about page, FAQ.
+- getStoreInfo for address, phone, email, business hours, page URLs.
+- getShippingPolicy / getReturnPolicy for delivery and returns.
+- trackOrder or getOrdersByEmail for order status.
 
-Never answer product questions from memory. Never reply with only "Hello" after the greeting.
-Be concise, friendly, and helpful.`;
+When explaining how to buy: product link → choose color → Add to Cart → Checkout → payment → confirm.
+For reviews: use getProductReviews. For colors/stock: use getProductDetails.
+Be friendly, concise, and share product URLs when helpful.`;
 
 if (!VAPI_API_KEY) fail("VAPI_API_KEY is required");
 if (!CONVEX_SITE_URL) fail("CONVEX_SITE_URL or NEXT_PUBLIC_CONVEX_SITE_URL is required");
@@ -80,11 +84,38 @@ const TOOLS = [
     type: "function",
     function: {
       name: "getProductDetails",
-      description: "Get product details by ID.",
+      description: "Full product info: colors, stock, price, highlights, how to buy, URL.",
       parameters: {
         type: "object",
         properties: { productId: { type: "string" } },
         required: ["productId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getProductReviews",
+      description: "Customer reviews with titles, content, ratings, and breakdown.",
+      parameters: {
+        type: "object",
+        properties: {
+          productId: { type: "string" },
+          limit: { type: "number" },
+          sort: { type: "string", enum: ["recent", "highest", "lowest", "helpful"] },
+        },
+        required: ["productId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getBestSellers",
+      description: "Best-selling / most popular products.",
+      parameters: {
+        type: "object",
+        properties: { limit: { type: "number" } },
       },
     },
   },
@@ -139,8 +170,27 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "getPaymentMethods",
+      description: "Accepted payment methods: Stripe cards and cash on delivery.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getShoppingGuide",
+      description: "How to buy, track orders, contact, about page info, FAQ, page URLs.",
+      parameters: {
+        type: "object",
+        properties: { topic: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "getStoreInfo",
-      description: "Store contact info and business hours.",
+      description: "Contact info, hours, support channels, page URLs, store stats.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -233,7 +283,7 @@ const assistantPayload = {
   firstMessage:
     "Hi! I'm your shopping assistant. I can search products, track orders, and answer shipping or return questions. What are you looking for today?",
   clientMessages: ["transcript", "tool-calls", "status-update"],
-  serverMessages: ["tool-calls", "end-of-call-report"],
+  serverMessages: ["tool-calls", "end-of-call-report", "transcript"],
   model: {
     provider: "openai",
     model: "gpt-4o-mini",
