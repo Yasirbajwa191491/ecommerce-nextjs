@@ -14,6 +14,8 @@ export const SYSTEM_SETTING_KEYS = [
   "email_from",
   "business_hours",
   "low_stock_threshold",
+  "shipping_policy",
+  "return_policy",
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -21,6 +23,8 @@ export const PUBLIC_SETTING_KEYS = [
   "phone",
   "email",
   "business_hours",
+  "shipping_policy",
+  "return_policy",
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
@@ -59,6 +63,18 @@ export const SYSTEM_DEFAULTS: {
     key: "low_stock_threshold",
     name: "Low Stock Threshold",
     value: "2",
+  },
+  {
+    key: "shipping_policy",
+    name: "Shipping Policy",
+    value:
+      "Select products include free shipping — look for the free shipping badge on product pages. Products with shipping fees display the cost clearly on the product detail page. Shipping costs are calculated and shown in your cart and checkout summary before you pay. Once your order ships, you receive status updates through our order tracking system.",
+  },
+  {
+    key: "return_policy",
+    name: "Return Policy",
+    value:
+      "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. Refunds are processed to your original payment method after we receive and inspect the returned item.",
   },
 ];
 

@@ -7,6 +7,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 import { slugify } from "./lib/products";
+import { isProductActive } from "./lib/productActive";
 
 function normalizeCategoryName(name: string): string {
   return name.trim().toLowerCase();
@@ -64,6 +65,40 @@ export const listActive = query({
       .withIndex("by_active_sort", (q) => q.eq("active", true))
       .collect();
     return categories.sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+});
+
+/** Active categories with live product counts for homepage showcase. */
+export const listWithProductCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const categories = await ctx.db
+      .query("productCategories")
+      .withIndex("by_active_sort", (q) => q.eq("active", true))
+      .collect();
+
+    const sortedCategories = categories.sort((a, b) => a.sortOrder - b.sortOrder);
+    const results = await Promise.all(
+      sortedCategories.map(async (category) => {
+        const products = await ctx.db
+          .query("products")
+          .withIndex("by_category_id", (q) => q.eq("categoryId", category._id))
+          .collect();
+        const activeProducts = products.filter(isProductActive);
+        const sampleImageUrl = activeProducts[0]?.image[0]?.url ?? null;
+
+        return {
+          _id: category._id,
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          productCount: activeProducts.length,
+          sampleImageUrl,
+        };
+      })
+    );
+
+    return results.filter((category) => category.productCount > 0);
   },
 });
 

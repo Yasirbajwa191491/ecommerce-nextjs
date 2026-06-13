@@ -355,4 +355,74 @@ export default defineSchema({
   })
     .index("by_event_id", ["eventId"])
     .index("by_order_id", ["orderId"]),
+
+  vapiConversations: defineTable({
+    vapiCallId: v.string(),
+    channel: v.union(v.literal("voice"), v.literal("chat")),
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+    customerEmail: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    metadata: v.optional(v.string()),
+  })
+    .index("by_vapi_call_id", ["vapiCallId"])
+    .index("by_started_at", ["startedAt"]),
+
+  vapiConversationLogs: defineTable({
+    conversationId: v.id("vapiConversations"),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
+    content: v.string(),
+    toolName: v.optional(v.string()),
+    toolInput: v.optional(v.string()),
+    toolOutput: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_tool_name", ["toolName", "createdAt"]),
+
+  vapiLeads: defineTable({
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    message: v.string(),
+    source: v.string(),
+    status: v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("converted")
+    ),
+    conversationId: v.optional(v.id("vapiConversations")),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status", "createdAt"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_email", ["email"]),
+
+  vapiSupportTickets: defineTable({
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    subject: v.string(),
+    conversationTranscript: v.string(),
+    conversationId: v.optional(v.id("vapiConversations")),
+    status: v.union(
+      v.literal("open"),
+      v.literal("in_progress"),
+      v.literal("resolved")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status", "createdAt"])
+    .index("by_created_at", ["createdAt"]),
+
+  vapiAnalyticsDaily: defineTable({
+    dateKey: v.string(),
+    conversations: v.number(),
+    productSearches: v.number(),
+    orderTrackingRequests: v.number(),
+    leadsCaptured: v.number(),
+    humanEscalations: v.number(),
+  }).index("by_dateKey", ["dateKey"]),
 });

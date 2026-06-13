@@ -10,6 +10,7 @@ import {
 } from "react-icons/fa6";
 import { FooterNewsletter } from "@/components/layout/footer-newsletter";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { StoreLogoLink } from "@/components/layout/store-logo-link";
 import { NAV_LINKS, STORE_NAME } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -86,23 +87,18 @@ export default function Footer() {
   return (
     <footer className="mt-auto border-t border-white/10 bg-[#0a1435] text-white">
       <div
-        className="mx-auto w-full max-w-[1600px] py-10 sm:py-12 lg:py-14"
+        className="mx-auto w-full max-w-[1600px] py-12 sm:py-14 lg:py-16"
         style={FOOTER_GUTTER}
       >
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-8 md:gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-10 md:gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-12">
           <div className="min-w-0 sm:col-span-2 lg:col-span-4">
-            <Link
-              href="/home"
-              className="text-lg font-bold tracking-tight text-white transition-opacity hover:opacity-90 sm:text-xl"
-            >
-              {STORE_NAME}
-            </Link>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-white/65 sm:mt-4">
+            <StoreLogoLink className="text-lg text-white hover:opacity-90 sm:text-xl" />
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/65 sm:mt-5">
               Quality products across every category — electronics, furniture,
               kitchen, office, and more. Shop with confidence and fast delivery.
             </p>
 
-            <div className="mt-5 space-y-2.5 text-sm text-white/70 sm:mt-6 sm:space-y-3">
+            <div className="mt-6 space-y-3 text-sm text-white/70 sm:mt-7 sm:space-y-3.5">
               <p className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-[#a89cff]" />
                 <span className="min-w-0 break-words">{address}</span>

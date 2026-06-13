@@ -309,7 +309,10 @@ export default function AdminSettingsPage() {
               description={
                 editing?.key === "email_from"
                   ? 'Saved to Convex as RESEND_FROM_EMAIL. Example: Ecommerce Store <you@yourdomain.com>'
-                  : undefined
+                  : editing?.key === "shipping_policy" ||
+                      editing?.key === "return_policy"
+                    ? "Used by the AI assistant and storefront FAQ. Plain text or markdown."
+                    : undefined
               }
               required
             >

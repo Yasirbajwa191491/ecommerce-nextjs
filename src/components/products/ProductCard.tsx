@@ -7,6 +7,7 @@ import { ProductImageFrame } from "@/components/products/product-image-frame";
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
+import { ProductStockBadge } from "@/components/products/product-stock-badge";
 import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
 
 type ProductCardProps = Product & {
@@ -61,6 +62,7 @@ export default function ProductCard({
               className="mt-0.5"
               compact
             />
+            <ProductStockBadge stock={product.stock} variant="compact" />
           </div>
 
           <div className="flex shrink-0 flex-col justify-center gap-2 border-t border-border/50 pt-3 sm:w-36 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right md:w-40">
@@ -128,6 +130,9 @@ export default function ProductCard({
           reviewCount={product.reviews}
           compact
         />
+        <div className="flex flex-wrap items-center gap-2">
+          <ProductStockBadge stock={product.stock} variant="compact" />
+        </div>
         <div className="mt-auto border-t border-border/50 pt-2.5">
           <ProductPrice
             price={product.price}

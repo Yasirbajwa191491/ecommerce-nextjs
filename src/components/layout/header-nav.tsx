@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_LINKS } from "@/lib/site";
+import { HOME_PATH, NAV_LINKS } from "@/lib/site";
 
 const NAV_ICONS: Record<(typeof NAV_LINKS)[number]["label"], LucideIcon> = {
   Home,
@@ -30,8 +30,8 @@ type HeaderNavProps = {
 };
 
 function isNavActive(pathname: string, href: string) {
-  if (href === "/home") {
-    return pathname === "/home" || pathname === "/";
+  if (href === HOME_PATH) {
+    return pathname === HOME_PATH || pathname === "/";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

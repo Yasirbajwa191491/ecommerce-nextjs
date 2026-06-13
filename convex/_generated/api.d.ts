@@ -79,6 +79,13 @@ import type * as stripe from "../stripe.js";
 import type * as stripeWebhookNode from "../stripeWebhookNode.js";
 import type * as stripeWebhooks from "../stripeWebhooks.js";
 import type * as subscribers from "../subscribers.js";
+import type * as vapi_admin from "../vapi/admin.js";
+import type * as vapi_analyticsHelpers from "../vapi/analyticsHelpers.js";
+import type * as vapi_assistantConfig from "../vapi/assistantConfig.js";
+import type * as vapi_dtos from "../vapi/dtos.js";
+import type * as vapi_logging from "../vapi/logging.js";
+import type * as vapi_tools from "../vapi/tools.js";
+import type * as vapi_webhook from "../vapi/webhook.js";
 
 import type {
   ApiFromModules,
@@ -158,6 +165,13 @@ declare const fullApi: ApiFromModules<{
   stripeWebhookNode: typeof stripeWebhookNode;
   stripeWebhooks: typeof stripeWebhooks;
   subscribers: typeof subscribers;
+  "vapi/admin": typeof vapi_admin;
+  "vapi/analyticsHelpers": typeof vapi_analyticsHelpers;
+  "vapi/assistantConfig": typeof vapi_assistantConfig;
+  "vapi/dtos": typeof vapi_dtos;
+  "vapi/logging": typeof vapi_logging;
+  "vapi/tools": typeof vapi_tools;
+  "vapi/webhook": typeof vapi_webhook;
 }>;
 
 /**

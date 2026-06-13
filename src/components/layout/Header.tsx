@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { STORE_NAME } from "@/lib/site";
+import { StoreLogoLink } from "@/components/layout/store-logo-link";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { HeaderNav } from "./header-nav";
@@ -31,7 +30,7 @@ export default function Header() {
   ) : null;
 
   const desktopSearch = searchReady && isLg ? (
-    <HeaderSearch className="w-full max-w-xl" />
+    <HeaderSearch className="w-full max-w-2xl xl:max-w-3xl" />
   ) : null;
 
   useEffect(() => {
@@ -58,12 +57,10 @@ export default function Header() {
         className="mx-auto grid h-[4.25rem] w-full max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 max-lg:grid sm:gap-x-4 md:h-[4.5rem] md:gap-x-6 lg:!hidden"
         style={gutterStyle}
       >
-        <Link
-          href="/home"
-          className="max-w-[7.5rem] justify-self-start truncate text-sm font-bold tracking-tight text-[#6254f3] sm:max-w-none sm:text-base md:text-lg"
-        >
-          {STORE_NAME}
-        </Link>
+        <StoreLogoLink
+          onNavigate={() => setMobileOpen(false)}
+          className="max-w-[7.5rem] justify-self-start truncate text-sm sm:max-w-none sm:text-base md:text-lg"
+        />
 
         <div className="flex min-w-0 w-full justify-center px-1 sm:px-2 md:max-w-xl">
           {mobileSearch}
@@ -88,14 +85,9 @@ export default function Header() {
         className="mx-auto hidden h-20 w-full max-w-[1600px] items-center gap-8 lg:flex"
         style={gutterStyle}
       >
-        <Link
-          href="/home"
-          className="shrink-0 text-xl font-bold tracking-tight text-[#6254f3] transition-opacity duration-200 hover:opacity-90"
-        >
-          {STORE_NAME}
-        </Link>
+        <StoreLogoLink className="shrink-0 text-xl" />
 
-        <div className="flex min-w-0 flex-1 justify-center px-6">
+        <div className="flex min-w-0 flex-1 justify-center px-4 xl:px-8">
           {desktopSearch}
         </div>
 

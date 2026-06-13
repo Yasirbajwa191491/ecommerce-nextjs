@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  Bot,
   FolderTree,
   LayoutDashboard,
   LogOut,
@@ -44,6 +45,7 @@ const NAV = [
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
   { href: "/admin/email-marketing", label: "Email Marketing", icon: Mail },
   { href: "/admin/contact-messages", label: "Contact", icon: MessageSquare },
+  { href: "/admin/ai-assistant", label: "AI Assistant", icon: Bot },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/users", label: "Users", icon: Users },
 ];

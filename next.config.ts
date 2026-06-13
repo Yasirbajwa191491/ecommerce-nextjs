@@ -5,6 +5,7 @@ const siteUrl = resolveSiteUrl();
 const convexSiteUrl = resolveConvexSiteUrl();
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@vapi-ai/web", "@daily-co/daily-js"],
   env: {
     SITE_URL: siteUrl,
     NEXT_PUBLIC_SITE_URL: siteUrl,

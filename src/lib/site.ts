@@ -1,5 +1,8 @@
 export const STORE_NAME = "Ecommerce Store";
 
+/** Canonical storefront homepage path. */
+export const HOME_PATH = "/home" as const;
+
 export const CONTACT_INFO = {
   address: "DHA Phase 6 Lahore, Pakistan, 54000",
   phone: "+1 (800) 555-0199",
@@ -9,7 +12,7 @@ export const CONTACT_INFO = {
 } as const;
 
 export const NAV_LINKS = [
-  { href: "/home", label: "Home" },
+  { href: HOME_PATH, label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },

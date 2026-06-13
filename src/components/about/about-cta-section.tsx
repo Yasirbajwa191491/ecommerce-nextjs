@@ -30,7 +30,7 @@ export function AboutCtaSection() {
         <div className={`mt-8 ${BUTTON_ROW_CLASS} justify-center`}>
           <Button
             render={<Link href="/products" />}
-            className={`${PRIMARY_BUTTON_CLASS} !text-white`}
+            className={`${PRIMARY_BUTTON_CLASS}`}
           >
             Shop Products
             <ArrowRight className="size-4" />

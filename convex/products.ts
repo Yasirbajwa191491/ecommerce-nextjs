@@ -14,6 +14,7 @@ import {
 import { isProductActive } from "./lib/productActive";
 import { paginateArray } from "./lib/pagination";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
+import { aggregateTopProducts } from "./lib/dashboardAggregates";
 import { productImageValidator } from "./schema";
 import {
   calculateFinalPrice,
@@ -327,6 +328,84 @@ export const featured = query({
       .collect();
     const activeFeatured = products.filter(isProductActive).sort(bySortOrder).slice(0, 6);
     return await enrichProducts(ctx, activeFeatured);
+  },
+});
+
+/** Best sellers by paid order volume; falls back to highest-rated products. */
+export const bestSellers = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 12, 1), 24);
+    const orders = await ctx.db.query("orders").collect();
+    const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
+    const topSales = await aggregateTopProducts(ctx, paidOrders, limit);
+
+    if (topSales.length > 0) {
+      const products = await Promise.all(
+        topSales.map(async (entry) => {
+          const product = await ctx.db.get(entry.productId);
+          if (!product || !isProductActive(product)) return null;
+          return product;
+        })
+      );
+      const active = products.filter(
+        (product): product is NonNullable<typeof product> => product !== null
+      );
+      if (active.length > 0) {
+        return await enrichProducts(ctx, active);
+      }
+    }
+
+    const fallback = (await loadActiveProducts(ctx))
+      .sort((a, b) => b.reviews - a.reviews || b.stars - a.stars)
+      .slice(0, limit);
+    return await enrichProducts(ctx, fallback);
+  },
+});
+
+/** Latest active products by creation time. */
+export const newArrivals = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 12, 1), 24);
+    const products = (await loadActiveProducts(ctx))
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, limit);
+    return await enrichProducts(ctx, products);
+  },
+});
+
+/** Lightweight product search suggestions for header autocomplete. */
+export const searchSuggestions = query({
+  args: {
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const term = args.query.trim().toLowerCase();
+    if (term.length < 2) return [];
+
+    const limit = Math.min(Math.max(args.limit ?? 6, 1), 10);
+    const products = await loadActiveProducts(ctx);
+    const matches = products
+      .filter(
+        (product) =>
+          product.name.toLowerCase().includes(term) ||
+          product.company.toLowerCase().includes(term)
+      )
+      .slice(0, limit);
+
+    const enriched = await enrichProducts(ctx, matches);
+    return enriched.map((product) => ({
+      _id: product._id,
+      name: product.name,
+      company: product.company,
+      imageUrl: product.image[0]?.url ?? "",
+      price: product.price,
+      discountPercent: product.discountPercent ?? 0,
+      currency: product.currency ?? "USD",
+      categoryName: product.category?.name ?? "Product",
+    }));
   },
 });
 

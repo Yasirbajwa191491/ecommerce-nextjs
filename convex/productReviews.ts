@@ -75,6 +75,29 @@ async function lookupOrderByNumber(
   return order;
 }
 
+/** Latest approved reviews across the store for homepage testimonials. */
+export const listHomepageTestimonials = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(publicReviewValidator),
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 8, 1), 20);
+    const reviews = await ctx.db
+      .query("productReviews")
+      .withIndex("by_approval_created", (q) => q.eq("isApproved", true))
+      .order("desc")
+      .take(limit);
+
+    return await Promise.all(
+      reviews.map(async (review) =>
+        toPublicReview(
+          review,
+          await resolveReviewImageUrls(ctx, review.imageStorageIds)
+        )
+      )
+    );
+  },
+});
+
 export const getProductReviewSummary = query({
   args: { productId: v.id("products") },
   returns: v.object({

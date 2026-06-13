@@ -27,6 +27,7 @@ export default function ProductCatalog() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get("search") ?? "";
+  const categorySlug = searchParams.get("category") ?? "";
 
   const [categoryId, setCategoryId] = useState<
     Id<"productCategories"> | "all"
@@ -45,6 +46,14 @@ export default function ProductCatalog() {
 
   const categories = useQuery(api.productCategories.listActive);
   const priceBounds = useQuery(api.products.getPublicPriceBounds);
+
+  useEffect(() => {
+    if (!categorySlug || !categories?.length) return;
+    const match = categories.find((category) => category.slug === categorySlug);
+    if (match) {
+      setCategoryId(match._id);
+    }
+  }, [categorySlug, categories]);
 
   useEffect(() => {
     if (!priceBounds) return;
