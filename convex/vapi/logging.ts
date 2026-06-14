@@ -9,7 +9,9 @@ export const incrementAnalytics = internalMutation({
       v.literal("productSearches"),
       v.literal("orderTrackingRequests"),
       v.literal("leadsCaptured"),
-      v.literal("humanEscalations")
+      v.literal("humanEscalations"),
+      v.literal("cartAdds"),
+      v.literal("checkoutStarts")
     ),
     amount: v.optional(v.number()),
   },

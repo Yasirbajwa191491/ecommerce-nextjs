@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Bot,
   MessageSquare,
@@ -15,23 +15,39 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useVapiAssistant } from "@/hooks/use-vapi-assistant";
+import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
 import { VapiChatPanel } from "@/components/vapi/vapi-chat-panel";
+import { VapiActivityPanel } from "@/components/vapi/vapi-activity-panel";
+import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-banner";
 import { isVapiConfigured } from "@/lib/vapi-config";
 
 export function VapiAssistantWidget() {
   const configured = isVapiConfigured();
+  const { syncToolResult } = useVapiCartSync();
+
+  const onToolComplete = useCallback(
+    (event: { toolName: string; parameters: Record<string, unknown>; result?: unknown }) => {
+      void syncToolResult(event.toolName, event.parameters, event.result);
+    },
+    [syncToolResult]
+  );
+
   const {
     state,
     isConnected,
     transcript,
+    activitySteps,
     error,
     startVoiceCall,
     stopCall,
     sendMessage,
-  } = useVapiAssistant();
+  } = useVapiAssistant({ onToolComplete });
 
   const [open, setOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
+
+  const shoppingActive =
+    isConnected || state === "processing" || activitySteps.length > 0;
 
   if (!configured) {
     if (process.env.NODE_ENV === "development") {
@@ -51,6 +67,8 @@ export function VapiAssistantWidget() {
 
   return (
     <>
+      <VapiLiveShoppingBanner steps={activitySteps} isActive={shoppingActive} />
+
       <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-3">
         {!open ? (
           <div className="flex items-center gap-2">
@@ -86,6 +104,8 @@ export function VapiAssistantWidget() {
       >
         <SheetContent
           side="right"
+          showCloseButton={false}
+          overlayBlur={false}
           className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
         >
           <SheetHeader className="border-b px-4 py-4 text-left">
@@ -115,6 +135,12 @@ export function VapiAssistantWidget() {
           </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col px-4 py-4">
+            {activitySteps.length > 0 ? (
+              <div className="mb-3">
+                <VapiActivityPanel steps={activitySteps} compact />
+              </div>
+            ) : null}
+
             <VapiChatPanel transcript={transcript} state={state} error={error} />
 
             <div className="mt-4 space-y-3 border-t pt-4">
@@ -144,8 +170,8 @@ export function VapiAssistantWidget() {
                   type="button"
                   variant="outline"
                   className={cn(isConnected && "border-primary text-primary")}
-                  disabled={!isConnected && state !== "idle"}
-                  aria-label="Chat mode active"
+                  disabled={state === "processing"}
+                  aria-label="Chat mode — type a message below"
                 >
                   <MessageSquare className="size-4" />
                 </Button>

@@ -7,7 +7,9 @@ export async function incrementDailyAnalytics(
     | "productSearches"
     | "orderTrackingRequests"
     | "leadsCaptured"
-    | "humanEscalations",
+    | "humanEscalations"
+    | "cartAdds"
+    | "checkoutStarts",
   amount = 1
 ) {
   const dateKey = new Date().toISOString().slice(0, 10);
@@ -17,8 +19,9 @@ export async function incrementDailyAnalytics(
     .unique();
 
   if (existing) {
+    const current = (existing[field] as number | undefined) ?? 0;
     await ctx.db.patch(existing._id, {
-      [field]: existing[field] + amount,
+      [field]: current + amount,
     });
     return;
   }
@@ -30,5 +33,7 @@ export async function incrementDailyAnalytics(
     orderTrackingRequests: field === "orderTrackingRequests" ? amount : 0,
     leadsCaptured: field === "leadsCaptured" ? amount : 0,
     humanEscalations: field === "humanEscalations" ? amount : 0,
+    cartAdds: field === "cartAdds" ? amount : 0,
+    checkoutStarts: field === "checkoutStarts" ? amount : 0,
   });
 }

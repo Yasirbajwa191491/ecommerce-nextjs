@@ -198,8 +198,10 @@ async function executeTool(
       await ctx.runMutation(internal.vapi.logging.incrementAnalytics, {
         field: "productSearches",
       });
-      return await ctx.runQuery(internal.vapi.tools.searchProducts, {
-        query: typeof parameters.query === "string" ? parameters.query : undefined,
+      const query =
+        typeof parameters.query === "string" ? parameters.query : undefined;
+      const searchArgs = {
+        query,
         categoryName:
           typeof parameters.categoryName === "string"
             ? parameters.categoryName
@@ -213,7 +215,33 @@ async function executeTool(
               ? parameters.maxBudget
               : undefined,
         limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
-      });
+      };
+
+      const result = await ctx.runQuery(
+        internal.vapi.tools.searchProducts,
+        searchArgs
+      );
+
+      if (result.count === 0 && query?.trim()) {
+        const hybrid = await ctx.runAction(
+          internal.vapi.voiceSearchActions.searchProductsHybrid,
+          {
+            query: query.trim(),
+            budget: searchArgs.maxPrice,
+            limit: searchArgs.limit,
+          }
+        );
+
+        if (hybrid.totalCount > 0) {
+          return {
+            products: hybrid.products,
+            count: hybrid.totalCount,
+            searchMethod: "hybrid" as const,
+          };
+        }
+      }
+
+      return result;
     }
     case "getProductDetails":
       return await ctx.runQuery(internal.vapi.tools.getProductDetails, {
@@ -304,9 +332,116 @@ async function executeTool(
         ),
         conversationId,
       });
+    case "searchProductsHybrid": {
+      await ctx.runMutation(internal.vapi.logging.incrementAnalytics, {
+        field: "productSearches",
+      });
+      return await ctx.runAction(internal.vapi.voiceSearchActions.searchProductsHybrid, {
+        query: String(parameters.query ?? ""),
+        budget:
+          typeof parameters.budget === "number"
+            ? parameters.budget
+            : typeof parameters.maxPrice === "number"
+              ? parameters.maxPrice
+              : undefined,
+        limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
+      });
+    }
+    case "buildProductBundle": {
+      await ctx.runMutation(internal.vapi.logging.incrementAnalytics, {
+        field: "productSearches",
+      });
+      return await ctx.runAction(internal.vapi.voiceSearchActions.buildProductBundle, {
+        query: String(parameters.query ?? ""),
+        budget:
+          typeof parameters.budget === "number"
+            ? parameters.budget
+            : typeof parameters.maxBudget === "number"
+              ? parameters.maxBudget
+              : undefined,
+      });
+    }
+    case "addToCart": {
+      if (!conversationId) {
+        return { error: "Voice cart session not ready. Please try again." };
+      }
+      if (Array.isArray(parameters.productIds)) {
+        const productIds = parameters.productIds.map((id) => String(id));
+        return await ctx.runMutation(internal.vapi.shoppingTools.addMultipleToCart, {
+          conversationId,
+          productIds: productIds as Id<"products">[],
+        });
+      }
+      return await ctx.runMutation(internal.vapi.shoppingTools.addToCart, {
+        conversationId,
+        productId: String(parameters.productId ?? parameters.id ?? "") as Id<"products">,
+        color: typeof parameters.color === "string" ? parameters.color : undefined,
+        quantity:
+          typeof parameters.quantity === "number" ? parameters.quantity : undefined,
+      });
+    }
+    case "getCart": {
+      if (!conversationId) {
+        return { error: "Voice cart session not ready. Please try again." };
+      }
+      return await ctx.runQuery(internal.vapi.shoppingTools.getCart, {
+        conversationId,
+      });
+    }
+    case "removeFromCart": {
+      if (!conversationId) {
+        return { error: "Voice cart session not ready. Please try again." };
+      }
+      return await ctx.runMutation(internal.vapi.shoppingTools.removeFromCart, {
+        conversationId,
+        productId:
+          typeof parameters.productId === "string"
+            ? (parameters.productId as Id<"products">)
+            : undefined,
+        color: typeof parameters.color === "string" ? parameters.color : undefined,
+        clearAll: parameters.clearAll === true,
+      });
+    }
+    case "createCheckoutSession": {
+      if (!conversationId) {
+        return { error: "Voice cart session not ready. Please try again." };
+      }
+      return await ctx.runAction(internal.vapi.shoppingCheckoutActions.createCheckoutSession, {
+        conversationId,
+        customer: parseVoiceCustomer(parameters),
+        idempotencyKey: buildVoiceIdempotencyKey(conversationId),
+      });
+    }
+    case "createCashOrder": {
+      if (!conversationId) {
+        return { error: "Voice cart session not ready. Please try again." };
+      }
+      return await ctx.runMutation(internal.vapi.shoppingTools.createCashOrder, {
+        conversationId,
+        customer: parseVoiceCustomer(parameters),
+        idempotencyKey: buildVoiceIdempotencyKey(conversationId),
+      });
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
+}
+
+function parseVoiceCustomer(parameters: Record<string, unknown>) {
+  return {
+    fullName: String(parameters.fullName ?? parameters.name ?? ""),
+    email: String(parameters.email ?? ""),
+    phone: String(parameters.phone ?? ""),
+    address: String(parameters.address ?? ""),
+    notes:
+      typeof parameters.notes === "string" ? parameters.notes : undefined,
+    termsAccepted: parameters.termsAccepted !== false,
+    privacyAccepted: parameters.privacyAccepted !== false,
+  };
+}
+
+function buildVoiceIdempotencyKey(conversationId: Id<"vapiConversations">) {
+  return `vapi-${conversationId}-${Date.now()}`;
 }
 
 export const vapiWebhook = httpAction(async (ctx, request) => {

@@ -189,6 +189,37 @@ export const createCashOrder = mutation({
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
+    return await createCashOrderHandler(ctx, args);
+  },
+});
+
+export const createCashOrderInternal = internalMutation({
+  args: {
+    lines: v.array(cartLineValidator),
+    customer: customerInfoValidator,
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await createCashOrderHandler(ctx, args);
+  },
+});
+
+async function createCashOrderHandler(
+  ctx: MutationCtx,
+  args: {
+    lines: Array<{ productId: Id<"products">; color: string; quantity: number }>;
+    customer: {
+      fullName: string;
+      email: string;
+      phone: string;
+      address: string;
+      notes?: string;
+      termsAccepted: boolean;
+      privacyAccepted: boolean;
+    };
+    idempotencyKey: string;
+  }
+) {
     await assertUniqueIdempotencyKey(ctx, args.idempotencyKey);
     validateCartLines(args.lines);
     validateCustomerFields(args.customer);
@@ -237,6 +268,20 @@ export const createCashOrder = mutation({
       orderId,
       orderNumber: (await ctx.db.get(orderId))!.orderNumber,
     };
+}
+
+export const getOrderTotalsInternal = internalQuery({
+  args: { orderId: v.id("orders") },
+  returns: v.object({
+    total: v.number(),
+    currency: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new ConvexError("Order not found");
+    }
+    return { total: order.total, currency: order.currency };
   },
 });
 

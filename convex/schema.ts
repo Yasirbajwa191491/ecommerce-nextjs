@@ -466,6 +466,18 @@ export default defineSchema({
     .index("by_status", ["status", "createdAt"])
     .index("by_created_at", ["createdAt"]),
 
+  vapiVoiceCarts: defineTable({
+    conversationId: v.id("vapiConversations"),
+    items: v.array(
+      v.object({
+        productId: v.id("products"),
+        color: v.string(),
+        quantity: v.number(),
+      })
+    ),
+    updatedAt: v.number(),
+  }).index("by_conversation", ["conversationId"]),
+
   vapiAnalyticsDaily: defineTable({
     dateKey: v.string(),
     conversations: v.number(),
@@ -473,6 +485,8 @@ export default defineSchema({
     orderTrackingRequests: v.number(),
     leadsCaptured: v.number(),
     humanEscalations: v.number(),
+    cartAdds: v.optional(v.number()),
+    checkoutStarts: v.optional(v.number()),
   }).index("by_dateKey", ["dateKey"]),
 
   review_calls: defineTable({

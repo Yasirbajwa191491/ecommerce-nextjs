@@ -1,4 +1,8 @@
 import { calculateFinalPrice } from "../pricing";
+import {
+  fuzzyTermMatchesText,
+  normalizeMatchText,
+} from "./productTextMatch";
 
 export type SearchProductCandidate = {
   _id: string;
@@ -55,21 +59,12 @@ export function computeKeywordScore(
 
   let matched = 0;
   for (const term of queryTerms) {
-    if (term.length >= 2 && haystack.includes(term)) {
+    if (term.length >= 2 && fuzzyTermMatchesText(haystack, term)) {
       matched += 1;
     }
   }
 
   return matched / queryTerms.length;
-}
-
-export function normalizeMatchText(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /** Higher rank = stronger exact/text match; sorted before hybrid score. */
@@ -90,11 +85,16 @@ export function computeExactMatchRank(
 
   const queryTerms = normalizedQuery.split(" ").filter((term) => term.length >= 2);
   if (queryTerms.length > 0) {
-    if (queryTerms.every((term) => normalizedName.includes(term))) return 70;
+    if (
+      queryTerms.every((term) => fuzzyTermMatchesText(normalizedName, term))
+    ) {
+      return 70;
+    }
     if (
       queryTerms.every(
         (term) =>
-          normalizedName.includes(term) || normalizedCompany.includes(term)
+          fuzzyTermMatchesText(normalizedName, term) ||
+          fuzzyTermMatchesText(normalizedCompany, term)
       )
     ) {
       return 50;

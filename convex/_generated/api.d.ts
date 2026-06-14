@@ -65,6 +65,7 @@ import type * as lib_reviewCallErrors from "../lib/reviewCallErrors.js";
 import type * as lib_reviewCallValidators from "../lib/reviewCallValidators.js";
 import type * as lib_reviews from "../lib/reviews.js";
 import type * as lib_search_hybridRank from "../lib/search/hybridRank.js";
+import type * as lib_search_productTextMatch from "../lib/search/productTextMatch.js";
 import type * as lib_search_queryParser from "../lib/search/queryParser.js";
 import type * as lib_settingsHelpers from "../lib/settingsHelpers.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
@@ -99,10 +100,14 @@ import type * as subscribers from "../subscribers.js";
 import type * as vapi_admin from "../vapi/admin.js";
 import type * as vapi_analyticsHelpers from "../vapi/analyticsHelpers.js";
 import type * as vapi_assistantConfig from "../vapi/assistantConfig.js";
+import type * as vapi_bundleBuilder from "../vapi/bundleBuilder.js";
 import type * as vapi_dtos from "../vapi/dtos.js";
 import type * as vapi_logging from "../vapi/logging.js";
 import type * as vapi_reviewCallTools from "../vapi/reviewCallTools.js";
+import type * as vapi_shoppingCheckoutActions from "../vapi/shoppingCheckoutActions.js";
+import type * as vapi_shoppingTools from "../vapi/shoppingTools.js";
 import type * as vapi_tools from "../vapi/tools.js";
+import type * as vapi_voiceSearchActions from "../vapi/voiceSearchActions.js";
 import type * as vapi_webhook from "../vapi/webhook.js";
 
 import type {
@@ -169,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reviewCallValidators": typeof lib_reviewCallValidators;
   "lib/reviews": typeof lib_reviews;
   "lib/search/hybridRank": typeof lib_search_hybridRank;
+  "lib/search/productTextMatch": typeof lib_search_productTextMatch;
   "lib/search/queryParser": typeof lib_search_queryParser;
   "lib/settingsHelpers": typeof lib_settingsHelpers;
   "lib/siteUrl": typeof lib_siteUrl;
@@ -203,10 +209,14 @@ declare const fullApi: ApiFromModules<{
   "vapi/admin": typeof vapi_admin;
   "vapi/analyticsHelpers": typeof vapi_analyticsHelpers;
   "vapi/assistantConfig": typeof vapi_assistantConfig;
+  "vapi/bundleBuilder": typeof vapi_bundleBuilder;
   "vapi/dtos": typeof vapi_dtos;
   "vapi/logging": typeof vapi_logging;
   "vapi/reviewCallTools": typeof vapi_reviewCallTools;
+  "vapi/shoppingCheckoutActions": typeof vapi_shoppingCheckoutActions;
+  "vapi/shoppingTools": typeof vapi_shoppingTools;
   "vapi/tools": typeof vapi_tools;
+  "vapi/voiceSearchActions": typeof vapi_voiceSearchActions;
   "vapi/webhook": typeof vapi_webhook;
 }>;
 

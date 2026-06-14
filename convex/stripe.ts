@@ -1,7 +1,8 @@
 "use node";
 
 import Stripe from "stripe";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { ConvexError, v } from "convex/values";
 import {
@@ -92,6 +93,62 @@ export const createCheckoutSession = action({
     orderId: Id<"orders">;
     orderNumber: string;
   }> => {
+    return await createCheckoutSessionHandler(ctx, args);
+  },
+});
+
+export const createCheckoutSessionForVoice = internalAction({
+  args: {
+    lines: v.array(cartLineValidator),
+    customer: customerInfoValidator,
+    idempotencyKey: v.string(),
+  },
+  returns: v.object({
+    url: v.string(),
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    total: v.number(),
+    currency: v.string(),
+  }),
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    url: string;
+    orderId: Id<"orders">;
+    orderNumber: string;
+    total: number;
+    currency: string;
+  }> => {
+    const session = await createCheckoutSessionHandler(ctx, args);
+    const order: { total: number; currency: string } = await ctx.runQuery(
+      internal.orders.getOrderTotalsInternal,
+      { orderId: session.orderId }
+    );
+    return {
+      ...session,
+      total: order.total,
+      currency: order.currency,
+    };
+  },
+});
+
+async function createCheckoutSessionHandler(
+  ctx: ActionCtx,
+  args: {
+    lines: Array<{ productId: Id<"products">; color: string; quantity: number }>;
+    customer: {
+      fullName: string;
+      email: string;
+      phone: string;
+      address: string;
+      notes?: string;
+      termsAccepted: boolean;
+      privacyAccepted: boolean;
+    };
+    idempotencyKey: string;
+  }
+): Promise<{ url: string; orderId: Id<"orders">; orderNumber: string }> {
     const { orderId, orderNumber, priced } = await ctx.runMutation(
       internal.orders.createPendingStripeOrder,
       args
@@ -132,5 +189,4 @@ export const createCheckoutSession = action({
       orderId,
       orderNumber,
     };
-  },
-});
+}

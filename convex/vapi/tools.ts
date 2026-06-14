@@ -6,6 +6,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { isProductActive } from "../lib/productActive";
 import { enrichProduct, enrichProducts } from "../lib/products";
 import { calculateFinalPrice } from "../lib/pricing";
+import { rankProductsByTextMatch } from "../lib/search/productTextMatch";
 import { getOrderStatusLogsForPublic } from "../lib/orderLogs";
 import {
   normalizeEmail,
@@ -96,13 +97,7 @@ function filterProducts(
   }
 
   if (args.query?.trim()) {
-    const term = args.query.trim().toLowerCase();
-    filtered = filtered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(term) ||
-        p.company.toLowerCase().includes(term) ||
-        p.description.toLowerCase().includes(term)
-    );
+    filtered = rankProductsByTextMatch(filtered, args.query);
   }
 
   if (args.maxPrice !== undefined) {
@@ -113,12 +108,10 @@ function filterProducts(
   }
 
   if (args.preference?.trim()) {
-    const pref = args.preference.trim().toLowerCase();
-    filtered = filtered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(pref) ||
-        p.description.toLowerCase().includes(pref)
-    );
+    const prefMatches = rankProductsByTextMatch(filtered, args.preference);
+    if (prefMatches.length > 0) {
+      filtered = prefMatches;
+    }
   }
 
   return filtered.sort(
