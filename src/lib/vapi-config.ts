@@ -41,6 +41,7 @@ import {
   isStructuredToolMessage,
   isValidStripeCheckoutUrl,
 } from "./vapi-display-normalize";
+import { formatCurrencyAmount } from "./currencies";
 
 function extractOpenAiContent(content: unknown): string | null {
   if (typeof content === "string") {
@@ -113,7 +114,8 @@ function parseToolResultPayload(result: unknown): ToolResultPayload | null {
 
 function formatMoney(currency: unknown, amount: unknown): string | null {
   if (typeof amount !== "number") return null;
-  return `${String(currency ?? "USD")} ${amount.toFixed(2)}`;
+  const code = String(currency ?? "USD").toUpperCase();
+  return formatCurrencyAmount(amount, code);
 }
 
 function formatProductSummary(payload: ToolResultPayload): {
@@ -299,6 +301,7 @@ export function looksLikeSpelledOutIdentifier(text: string): boolean {
   return (
     /\bo\s+r\s+d\b/.test(normalized) ||
     /\bord\s+dash\b/.test(normalized) ||
+    /\bord\s*minus\b/.test(normalized) ||
     /\bzero\s+zero\s+two\s+six\b/.test(normalized) ||
     /\b(one|two|three|four|five|six|seven|eight|nine)\s+(one|two|three|four|five|six|seven|eight|nine)\s+(one|two|three|four|five|six|seven|eight|nine)\b/.test(
       normalized

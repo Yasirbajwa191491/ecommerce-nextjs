@@ -1,4 +1,5 @@
 import { isValidStripeCheckoutUrl } from "@/lib/vapi-config";
+import { formatCurrencyAmount } from "@/lib/currencies";
 
 export type VapiActivityStatus = "active" | "complete" | "error";
 
@@ -382,7 +383,7 @@ export function finalizeActivityStep(
         title: "Bundle ready",
         detail:
           payload && typeof payload.total === "number"
-            ? `Total: ${String(payload.currency ?? "USD")} ${payload.total.toFixed(2)}`
+            ? `Total: ${formatCurrencyAmount(payload.total, String(payload.currency ?? "USD"))}`
             : step.detail,
       };
     case "addToCart":
