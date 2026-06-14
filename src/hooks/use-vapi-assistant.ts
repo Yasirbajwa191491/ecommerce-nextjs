@@ -16,7 +16,6 @@ import {
   getVapiAssistantId,
   getVapiPublicKey,
   looksLikeSpelledOutIdentifier,
-  looksLikeVoiceSpacingArtifact,
   normalizeAssistantDisplayText,
   isStructuredToolMessage,
   type VapiAssistantState,
@@ -73,6 +72,13 @@ function upsertAssistantTurnEntry(
     last?.role === "assistant" &&
     (assistantTurn === undefined || last.assistantTurn === assistantTurn)
   ) {
+    if (isStructuredToolMessage(last.text)) {
+      return [
+        ...prev,
+        createEntry("assistant", normalized, { assistantTurn, linkUrl }),
+      ];
+    }
+
     return [
       ...prev.slice(0, -1),
       {
@@ -90,19 +96,6 @@ function upsertAssistantTurnEntry(
   ];
 }
 
-function stripTrailingNonStructuredAssistant(
-  prev: VapiTranscriptEntry[]
-): VapiTranscriptEntry[] {
-  const next = [...prev];
-  while (next.length > 0) {
-    const last = next[next.length - 1];
-    if (last?.role !== "assistant") break;
-    if (isStructuredToolMessage(last.text)) break;
-    next.pop();
-  }
-  return next;
-}
-
 function appendToolResultEntry(
   prev: VapiTranscriptEntry[],
   toolName: string,
@@ -111,19 +104,17 @@ function appendToolResultEntry(
   const formatted = formatToolResultForDisplay(toolName, result);
   if (!formatted) return prev;
 
-  const base = stripTrailingNonStructuredAssistant(prev);
-
-  const last = base[base.length - 1];
+  const last = prev[prev.length - 1];
   if (
     last?.role === "assistant" &&
     last.text === formatted.text &&
     last.linkUrl === formatted.linkUrl
   ) {
-    return base;
+    return prev;
   }
 
   return [
-    ...base,
+    ...prev,
     createEntry("assistant", formatted.text, { linkUrl: formatted.linkUrl }),
   ];
 }
@@ -346,15 +337,19 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
             const transcriptText = message.transcript.trim();
             if (
               role === "assistant" &&
-              (looksLikeSpelledOutIdentifier(transcriptText) ||
-                looksLikeVoiceSpacingArtifact(transcriptText))
+              looksLikeSpelledOutIdentifier(transcriptText)
             ) {
               return;
             }
 
             setTranscript((prev) => [
               ...prev,
-              createEntry(role, transcriptText),
+              createEntry(
+                role,
+                role === "assistant"
+                  ? normalizeAssistantDisplayText(transcriptText)
+                  : transcriptText
+              ),
             ]);
           }
 
@@ -362,33 +357,18 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
             messageType === "assistant.speechStarted" &&
             typeof message.text === "string"
           ) {
-            if (isConnectedRef.current) {
-              return;
-            }
-
             const assistantTurn =
               typeof message.turn === "number" ? message.turn : undefined;
-            setTranscript((prev) => {
-              const last = prev[prev.length - 1];
-              if (
-                last?.role === "assistant" &&
-                isStructuredToolMessage(last.text)
-              ) {
-                return prev;
-              }
-              return upsertAssistantTurnEntry(
+            setTranscript((prev) =>
+              upsertAssistantTurnEntry(
                 prev,
                 message.text as string,
                 assistantTurn
-              );
-            });
+              )
+            );
           }
 
           if (messageType === "conversation-update") {
-            if (isConnectedRef.current) {
-              return;
-            }
-
             const assistantText = extractLatestAssistantText(
               message.messagesOpenAIFormatted ?? message.messages
             );
