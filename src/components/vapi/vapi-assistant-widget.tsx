@@ -42,6 +42,7 @@ export function VapiAssistantWidget() {
     activitySteps,
     stripeCheckoutUrl: clientCheckoutUrl,
     vapiCallId,
+    confirmedOrderNumber,
     error,
     startVoiceCall,
     stopCall,
@@ -189,6 +190,7 @@ export function VapiAssistantWidget() {
               error={error}
               stripeCheckoutUrl={stripeCheckoutUrl}
               checkoutOrderNumber={checkoutOrderNumber}
+              confirmedOrderNumber={confirmedOrderNumber}
               awaitingCheckoutLink={
                 needsCheckoutLookup && !stripeCheckoutUrl
               }

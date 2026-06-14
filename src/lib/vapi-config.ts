@@ -29,11 +29,13 @@ export {
   collapseVoiceSpacingArtifacts,
   extractCheckoutUrl,
   extractOrderNumber,
+  isOrderConfirmationSpeech,
   isStructuredToolMessage,
   isValidStripeCheckoutUrl,
   looksLikeVoiceSpacingArtifact,
   normalizeAssistantDisplayText,
   normalizeOrderNumbersInText,
+  replaceWithAuthoritativeOrderNumber,
 } from "./vapi-display-normalize";
 
 import {

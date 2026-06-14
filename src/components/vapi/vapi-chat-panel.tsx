@@ -21,6 +21,7 @@ type VapiChatPanelProps = {
   error: string | null;
   stripeCheckoutUrl?: string | null;
   checkoutOrderNumber?: string;
+  confirmedOrderNumber?: string;
   awaitingCheckoutLink?: boolean;
 };
 
@@ -43,6 +44,7 @@ export function VapiChatPanel({
   error,
   stripeCheckoutUrl,
   checkoutOrderNumber,
+  confirmedOrderNumber,
   awaitingCheckoutLink = false,
 }: VapiChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,10 @@ export function VapiChatPanel({
             transcript.map((entry) => {
               const displayText =
                 entry.role === "assistant"
-                  ? normalizeAssistantDisplayText(entry.text)
+                  ? normalizeAssistantDisplayText(
+                      entry.text,
+                      confirmedOrderNumber ?? checkoutOrderNumber
+                    )
                   : entry.text;
               const mentionsCheckout =
                 entry.role === "assistant" && isCheckoutRelatedMessage(displayText);
@@ -92,7 +97,9 @@ export function VapiChatPanel({
               const productUrl =
                 entry.linkUrl?.startsWith("/product/") ? entry.linkUrl : undefined;
               const orderNumber =
-                checkoutOrderNumber ?? extractOrderNumber(displayText);
+                confirmedOrderNumber ??
+                checkoutOrderNumber ??
+                extractOrderNumber(displayText);
 
               return (
                 <div
@@ -131,7 +138,7 @@ export function VapiChatPanel({
       {globalCheckoutUrl ? (
         <StripeCheckoutCta
           checkoutUrl={globalCheckoutUrl}
-          orderNumber={checkoutOrderNumber}
+          orderNumber={confirmedOrderNumber ?? checkoutOrderNumber}
           className="mt-3 shrink-0"
         />
       ) : awaitingCheckoutLink ? (

@@ -17,6 +17,7 @@ import {
   getVapiAssistantId,
   getVapiPublicKey,
   isCheckoutRelatedMessage,
+  isOrderConfirmationSpeech,
   looksLikeSpelledOutIdentifier,
   normalizeAssistantDisplayText,
   isStructuredToolMessage,
@@ -49,9 +50,10 @@ function upsertAssistantTurnEntry(
   prev: VapiTranscriptEntry[],
   text: string,
   assistantTurn?: number,
-  linkUrl?: string
+  linkUrl?: string,
+  authoritativeOrderNumber?: string
 ): VapiTranscriptEntry[] {
-  const normalized = normalizeAssistantDisplayText(text);
+  const normalized = normalizeAssistantDisplayText(text, authoritativeOrderNumber);
   if (!normalized) return prev;
 
   if (assistantTurn !== undefined) {
@@ -75,6 +77,9 @@ function upsertAssistantTurnEntry(
     (assistantTurn === undefined || last.assistantTurn === assistantTurn)
   ) {
     if (isStructuredToolMessage(last.text)) {
+      if (isOrderConfirmationSpeech(normalized)) {
+        return prev;
+      }
       return [
         ...prev,
         createEntry("assistant", normalized, { assistantTurn, linkUrl }),
@@ -96,6 +101,23 @@ function upsertAssistantTurnEntry(
     ...prev,
     createEntry("assistant", normalized, { assistantTurn, linkUrl }),
   ];
+}
+
+function extractOrderNumberFromToolResult(result: unknown): string | undefined {
+  if (typeof result !== "object" || result === null) {
+    if (typeof result === "string") {
+      try {
+        const parsed: unknown = JSON.parse(result);
+        return extractOrderNumberFromToolResult(parsed);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
+  const payload = result as Record<string, unknown>;
+  return typeof payload.orderNumber === "string" ? payload.orderNumber : undefined;
 }
 
 function appendToolResultEntry(
@@ -230,6 +252,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const mountedRef = useRef(true);
   const pendingToolsRef = useRef<Map<string, VapiToolEvent>>(new Map());
   const vapiCallIdRef = useRef<string | null>(null);
+  const confirmedOrderNumberRef = useRef<string | undefined>(undefined);
   const onToolStartRef = useRef(options?.onToolStart);
   const onToolCompleteRef = useRef(options?.onToolComplete);
 
@@ -244,6 +267,9 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     null
   );
   const [vapiCallId, setVapiCallId] = useState<string | null>(null);
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<string | undefined>(
+    undefined
+  );
   const [error, setError] = useState<string | null>(null);
 
   const handleToolStart = useCallback((events: VapiToolEvent[]) => {
@@ -326,6 +352,23 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
           next = appendToolResultEntry(next, merged.toolName, merged.result);
         }
       }
+
+      const orderNumber = mergedEvents
+        .map((event) => extractOrderNumberFromToolResult(event.result))
+        .find(Boolean);
+
+      if (orderNumber) {
+        next = next.map((entry) => {
+          if (entry.role !== "assistant") return entry;
+          if (isStructuredToolMessage(entry.text)) return entry;
+          if (!isOrderConfirmationSpeech(entry.text)) return entry;
+          return {
+            ...entry,
+            text: normalizeAssistantDisplayText(entry.text, orderNumber),
+          };
+        });
+      }
+
       return next;
     });
 
@@ -334,6 +377,17 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
       if (checkoutUrl) {
         setStripeCheckoutUrl(checkoutUrl);
       }
+
+      const orderNumber = extractOrderNumberFromToolResult(merged.result);
+      if (
+        orderNumber &&
+        (merged.toolName === "createCashOrder" ||
+          merged.toolName === "createCheckoutSession")
+      ) {
+        confirmedOrderNumberRef.current = orderNumber;
+        setConfirmedOrderNumber(orderNumber);
+      }
+
       pendingToolsRef.current.delete(merged.toolCallId);
       onToolCompleteRef.current?.(merged);
     }
@@ -435,7 +489,10 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
               createEntry(
                 role,
                 role === "assistant"
-                  ? normalizeAssistantDisplayText(transcriptText)
+                  ? normalizeAssistantDisplayText(
+                      transcriptText,
+                      confirmedOrderNumberRef.current
+                    )
                   : transcriptText
               ),
             ]);
@@ -451,7 +508,9 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
               upsertAssistantTurnEntry(
                 prev,
                 message.text as string,
-                assistantTurn
+                assistantTurn,
+                undefined,
+                confirmedOrderNumberRef.current
               )
             );
           }
@@ -462,7 +521,13 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
             );
             if (assistantText) {
               setTranscript((prev) =>
-                upsertAssistantTurnEntry(prev, assistantText)
+                upsertAssistantTurnEntry(
+                  prev,
+                  assistantText,
+                  undefined,
+                  undefined,
+                  confirmedOrderNumberRef.current
+                )
               );
             }
           }
@@ -563,7 +628,10 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     }
 
     if (data.reply) {
-      const normalized = normalizeAssistantDisplayText(data.reply);
+      const normalized = normalizeAssistantDisplayText(
+        data.reply,
+        confirmedOrderNumberRef.current
+      );
       const linkUrl = extractCheckoutUrl(normalized);
       setTranscript((prev) => [
         ...prev,
@@ -676,7 +744,9 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     setActivitySteps([]);
     setStripeCheckoutUrl(null);
     setVapiCallId(null);
+    setConfirmedOrderNumber(undefined);
     vapiCallIdRef.current = null;
+    confirmedOrderNumberRef.current = undefined;
     pendingToolsRef.current.clear();
     textChatIdRef.current = null;
   }, []);
@@ -689,6 +759,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     activitySteps,
     stripeCheckoutUrl,
     vapiCallId,
+    confirmedOrderNumber,
     error,
     startVoiceCall,
     stopCall,

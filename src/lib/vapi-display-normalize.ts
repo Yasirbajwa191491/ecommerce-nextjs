@@ -101,12 +101,26 @@ function splitSpokenWordFromSuffix(token: string): { digits: string; rest: strin
   return null;
 }
 
+const SPOKEN_NUMBER_WORD =
+  /\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/i;
+
+function looksLikeSpokenOrderSuffix(raw: string): boolean {
+  return SPOKEN_NUMBER_WORD.test(raw);
+}
+
+function collapseSuffixTokenRun(tokens: string[]): string {
+  return tokens
+    .map((token) => token.replace(/\s+/g, ""))
+    .join("")
+    .toUpperCase();
+}
+
 function normalizeOrderSuffixWithSpokenNumbers(rawSuffix: string): string {
   const trimmed = rawSuffix.trim();
   if (!trimmed) return trimmed;
 
   const compact = trimmed.replace(/\s+/g, "");
-  if (/^[A-Z0-9]{6}$/i.test(compact)) {
+  if (/^[A-Z0-9]{6}$/i.test(compact) && !looksLikeSpokenOrderSuffix(trimmed)) {
     return compact.toUpperCase();
   }
 
@@ -146,7 +160,7 @@ function normalizeOrderSuffixWithSpokenNumbers(rawSuffix: string): string {
       continue;
     }
 
-    return `${digitParts.join("")}${tokens.slice(i).join("").toUpperCase()}`;
+    return `${digitParts.join("")}${collapseSuffixTokenRun(tokens.slice(i))}`;
   }
 
   return digitParts.join("").toUpperCase();
@@ -182,7 +196,12 @@ function normalizeTtsOrderArtifacts(text: string): string {
       const trimmed = rawSuffix.trim();
       const compact = trimmed.replace(/\s+/g, "").toUpperCase();
       const validPrefix = compact.match(/^[A-Z0-9]{6}/)?.[0];
-      if (validPrefix && !/(?:MINUS|SEVENTY|SIXTY|FORTY|TWENTY|THIRTY|EIGHTY|NINETY)/.test(trimmed.toUpperCase())) {
+      const hasSpokenWords = looksLikeSpokenOrderSuffix(trimmed);
+      if (
+        validPrefix &&
+        !hasSpokenWords &&
+        !/(?:MINUS|SEVENTY|SIXTY|FORTY|TWENTY|THIRTY|EIGHTY|NINETY)/.test(trimmed.toUpperCase())
+      ) {
         return `ORD-${date}-${validPrefix}`;
       }
 
@@ -520,6 +539,38 @@ export function isStructuredToolMessage(text: string): boolean {
   return markers.some((marker) => text.includes(marker));
 }
 
-export function normalizeAssistantDisplayText(text: string): string {
-  return collapseVoiceSpacingArtifacts(text);
+export function isOrderConfirmationSpeech(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("order confirmed") ||
+    (lower.includes("order number") && /\bord-/i.test(text))
+  );
+}
+
+/** Replace garbled TTS order numbers with the authoritative value from tool results. */
+export function replaceWithAuthoritativeOrderNumber(
+  text: string,
+  orderNumber: string | undefined
+): string {
+  if (!orderNumber || !/\bord-/i.test(text)) return text;
+
+  let out = text;
+  out = out.replace(
+    /\b(?:your\s+)?order\s+number\s+is\s+ORD-[A-Z0-9\s-]+/gi,
+    `Your order number is ${orderNumber}`
+  );
+  out = out.replace(
+    /\bOrder\s+number:\s*ORD-[A-Z0-9\s-]+/gi,
+    `Order number: ${orderNumber}`
+  );
+  out = out.replace(/\bORD-\d{8}-[A-Z0-9]+/gi, orderNumber);
+  return out;
+}
+
+export function normalizeAssistantDisplayText(
+  text: string,
+  authoritativeOrderNumber?: string
+): string {
+  const normalized = collapseVoiceSpacingArtifacts(text);
+  return replaceWithAuthoritativeOrderNumber(normalized, authoritativeOrderNumber);
 }
