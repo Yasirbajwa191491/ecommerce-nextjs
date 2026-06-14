@@ -19,6 +19,7 @@ export type RankedCandidate = SearchProductCandidate & {
   hybridScore: number;
   semanticScore: number;
   keywordScore: number;
+  exactMatchRank: number;
 };
 
 const WEIGHTS = {
@@ -62,6 +63,47 @@ export function computeKeywordScore(
   return matched / queryTerms.length;
 }
 
+export function normalizeMatchText(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Higher rank = stronger exact/text match; sorted before hybrid score. */
+export function computeExactMatchRank(
+  product: SearchProductCandidate,
+  query: string
+): number {
+  const normalizedQuery = normalizeMatchText(query);
+  if (!normalizedQuery) return 0;
+
+  const normalizedName = normalizeMatchText(product.name);
+  const normalizedCompany = normalizeMatchText(product.company);
+
+  if (normalizedName === normalizedQuery) return 100;
+  if (normalizedName.includes(normalizedQuery)) return 90;
+  if (normalizedCompany === normalizedQuery) return 85;
+  if (normalizedCompany.includes(normalizedQuery)) return 75;
+
+  const queryTerms = normalizedQuery.split(" ").filter((term) => term.length >= 2);
+  if (queryTerms.length > 0) {
+    if (queryTerms.every((term) => normalizedName.includes(term))) return 70;
+    if (
+      queryTerms.every(
+        (term) =>
+          normalizedName.includes(term) || normalizedCompany.includes(term)
+      )
+    ) {
+      return 50;
+    }
+  }
+
+  return 0;
+}
+
 export function computeHybridScore(
   product: SearchProductCandidate,
   options: {
@@ -99,13 +141,15 @@ export function rankSearchCandidates(
     string,
     SearchProductCandidate & { semanticScore: number; keywordScore: number }
   >,
-  options: { categoryHint?: string; maxReviews: number }
+  options: { categoryHint?: string; maxReviews: number; query: string }
 ): RankedCandidate[] {
   const ranked: RankedCandidate[] = [];
 
   for (const candidate of candidates.values()) {
+    const exactMatchRank = computeExactMatchRank(candidate, options.query);
     ranked.push({
       ...candidate,
+      exactMatchRank,
       hybridScore: computeHybridScore(candidate, {
         semanticScore: candidate.semanticScore,
         keywordScore: candidate.keywordScore,
@@ -115,7 +159,11 @@ export function rankSearchCandidates(
     });
   }
 
-  ranked.sort((a, b) => b.hybridScore - a.hybridScore);
+  ranked.sort((a, b) => {
+    const exactDiff = b.exactMatchRank - a.exactMatchRank;
+    if (exactDiff !== 0) return exactDiff;
+    return b.hybridScore - a.hybridScore;
+  });
   return ranked;
 }
 

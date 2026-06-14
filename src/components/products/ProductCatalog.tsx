@@ -178,10 +178,21 @@ export default function ProductCatalog() {
       priceRange: activePriceRange,
       priceFilterReady,
     });
+    if (sort === "default") {
+      const rankById = new Map(
+        hybridProductIds.map((id, index) => [id, index])
+      );
+      return [...filtered].sort(
+        (a, b) =>
+          (rankById.get(a._id) ?? Number.MAX_SAFE_INTEGER) -
+          (rankById.get(b._id) ?? Number.MAX_SAFE_INTEGER)
+      );
+    }
     return sortProductsClient(filtered, sort);
   }, [
     isHybridSearch,
     hybridFullProducts,
+    hybridProductIds,
     categoryId,
     activePriceRange,
     priceFilterReady,

@@ -199,6 +199,7 @@ export const searchHybrid = action({
     let ranked = rankSearchCandidates(candidateMap, {
       categoryHint: parsed.categoryHint,
       maxReviews,
+      query: parsed.embeddingQuery,
     });
 
     ranked = ranked.filter(
@@ -227,6 +228,7 @@ export const searchHybrid = action({
       ranked = rankSearchCandidates(fallbackMap, {
         categoryHint: parsed.categoryHint,
         maxReviews,
+        query: parsed.embeddingQuery,
       });
     }
 
@@ -318,6 +320,7 @@ export const getSimilarProducts = action({
     const ranked = rankSearchCandidates(candidateMap, {
       categoryHint: sourceProduct?.categoryName,
       maxReviews,
+      query: sourceProduct?.name ?? "",
     }).slice(0, limit);
 
     return (await ctx.runQuery(
