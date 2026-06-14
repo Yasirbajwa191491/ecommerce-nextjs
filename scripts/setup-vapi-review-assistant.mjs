@@ -4,17 +4,49 @@
  *
  * Usage:
  *   VAPI_API_KEY=... CONVEX_SITE_URL=https://xxx.convex.site node scripts/setup-vapi-review-assistant.mjs
+ *   node scripts/setup-vapi-review-assistant.mjs --prod
  *
  * Optional:
- *   VAPI_REVIEW_ASSISTANT_ID=...  (update existing assistant)
+ *   VAPI_REVIEW_ASSISTANT_ID=...  (update existing assistant; dev)
+ *   VAPI_PROD_REVIEW_ASSISTANT_ID=...  (update existing assistant; --prod)
  *   VAPI_WEBHOOK_SECRET=... (must match Convex env)
  */
 
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+const IS_PROD = process.argv.includes("--prod");
+const PRODUCTION_CONVEX_SITE_URL = "https://hip-salamander-864.convex.site";
+
+function loadEnvLocal({ skipReviewAssistantId = false } = {}) {
+  const envPath = resolve(process.cwd(), ".env.local");
+  if (!existsSync(envPath)) return;
+
+  const content = readFileSync(envPath, "utf8");
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const separator = trimmed.indexOf("=");
+    if (separator <= 0) continue;
+    const key = trimmed.slice(0, separator).trim();
+    const value = trimmed.slice(separator + 1).trim();
+    if (skipReviewAssistantId && key === "VAPI_REVIEW_ASSISTANT_ID") continue;
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadEnvLocal({ skipReviewAssistantId: IS_PROD });
+
 const VAPI_API_KEY = process.env.VAPI_API_KEY?.trim();
-const CONVEX_SITE_URL =
-  process.env.CONVEX_SITE_URL?.trim() ||
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
-const EXISTING_ASSISTANT_ID = process.env.VAPI_REVIEW_ASSISTANT_ID?.trim();
+const CONVEX_SITE_URL = IS_PROD
+  ? (process.env.CONVEX_SITE_URL?.trim() || PRODUCTION_CONVEX_SITE_URL)
+  : (process.env.CONVEX_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim());
+const EXISTING_ASSISTANT_ID = IS_PROD
+  ? process.env.VAPI_PROD_REVIEW_ASSISTANT_ID?.trim()
+  : process.env.VAPI_REVIEW_ASSISTANT_ID?.trim();
 const WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET?.trim();
 
 const SYSTEM_PROMPT = `You are a friendly ecommerce review collection assistant calling customers after successful delivery.
@@ -166,17 +198,27 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("\nProduct Review Collector assistant provisioned successfully.\n");
-  console.log(`Assistant ID: ${data.id ?? EXISTING_ASSISTANT_ID}`);
+  const assistantId = data.id ?? EXISTING_ASSISTANT_ID;
+  const target = IS_PROD ? "production" : "development";
+
+  console.log(`\nProduct Review Collector assistant provisioned successfully (${target}).\n`);
+  console.log(`Assistant ID: ${assistantId}`);
   console.log(`Webhook URL:  ${webhookUrl}`);
   console.log(`Tools added:  ${TOOLS.length}`);
   console.log("\nIMPORTANT: Click Publish in Vapi dashboard if changes don't apply immediately.");
-  console.log("\nSet on Convex:");
-  console.log(
-    `npx convex env set VAPI_REVIEW_ASSISTANT_ID ${data.id ?? EXISTING_ASSISTANT_ID}`
-  );
-  console.log("npx convex env set VAPI_WEBHOOK_SECRET <your-secret>");
-  console.log("npx convex env set VAPI_PHONE_NUMBER_ID <phone-number-id>");
+
+  if (IS_PROD) {
+    console.log("\nSet on Convex Production:");
+    console.log(`npx convex env set VAPI_REVIEW_ASSISTANT_ID ${assistantId} --prod`);
+    console.log("npx convex env set VAPI_PHONE_NUMBER_ID <phone-number-id> --prod");
+    console.log("\nOptional — store prod review assistant id for future updates:");
+    console.log(`VAPI_PROD_REVIEW_ASSISTANT_ID=${assistantId}`);
+  } else {
+    console.log("\nSet on Convex:");
+    console.log(`npx convex env set VAPI_REVIEW_ASSISTANT_ID ${assistantId}`);
+    console.log("npx convex env set VAPI_WEBHOOK_SECRET <your-secret>");
+    console.log("npx convex env set VAPI_PHONE_NUMBER_ID <phone-number-id>");
+  }
 }
 
 main().catch((error) => {

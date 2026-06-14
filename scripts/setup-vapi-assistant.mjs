@@ -4,16 +4,21 @@
  *
  * Usage:
  *   VAPI_API_KEY=... CONVEX_SITE_URL=https://xxx.convex.site node scripts/setup-vapi-assistant.mjs
+ *   node scripts/setup-vapi-assistant.mjs --prod
  *
  * Optional:
- *   VAPI_ASSISTANT_ID=...  (update existing assistant)
+ *   VAPI_ASSISTANT_ID=...  (update existing assistant; dev)
+ *   VAPI_PROD_ASSISTANT_ID=...  (update existing assistant; --prod)
  *   VAPI_WEBHOOK_SECRET=... (must match Convex env)
  */
 
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-function loadEnvLocal() {
+const IS_PROD = process.argv.includes("--prod");
+const PRODUCTION_CONVEX_SITE_URL = "https://hip-salamander-864.convex.site";
+
+function loadEnvLocal({ skipAssistantIds = false } = {}) {
   const envPath = resolve(process.cwd(), ".env.local");
   if (!existsSync(envPath)) return;
 
@@ -25,21 +30,26 @@ function loadEnvLocal() {
     if (separator <= 0) continue;
     const key = trimmed.slice(0, separator).trim();
     const value = trimmed.slice(separator + 1).trim();
+    if (skipAssistantIds && (key === "VAPI_ASSISTANT_ID" || key === "NEXT_PUBLIC_VAPI_ASSISTANT_ID")) {
+      continue;
+    }
     if (!process.env[key]) {
       process.env[key] = value;
     }
   }
 }
 
-loadEnvLocal();
+loadEnvLocal({ skipAssistantIds: IS_PROD });
 
 const VAPI_API_KEY = process.env.VAPI_API_KEY?.trim();
-const CONVEX_SITE_URL =
-  process.env.CONVEX_SITE_URL?.trim() ||
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
-const EXISTING_ASSISTANT_ID =
-  process.env.VAPI_ASSISTANT_ID?.trim() ||
-  process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID?.trim();
+const CONVEX_SITE_URL = IS_PROD
+  ? (process.env.CONVEX_SITE_URL?.trim() || PRODUCTION_CONVEX_SITE_URL)
+  : (process.env.CONVEX_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim());
+const EXISTING_ASSISTANT_ID = IS_PROD
+  ? process.env.VAPI_PROD_ASSISTANT_ID?.trim()
+  : (process.env.VAPI_ASSISTANT_ID?.trim() ||
+    process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID?.trim());
 const WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET?.trim();
 
 const SYSTEM_PROMPT = `You are a professional ecommerce shopping assistant for our online store.
@@ -462,15 +472,28 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("\nStore Shopping Assistant provisioned successfully.\n");
-  console.log(`Assistant ID: ${data.id ?? EXISTING_ASSISTANT_ID}`);
+  const assistantId = data.id ?? EXISTING_ASSISTANT_ID;
+  const target = IS_PROD ? "production" : "development";
+
+  console.log(`\nStore Shopping Assistant provisioned successfully (${target}).\n`);
+  console.log(`Assistant ID: ${assistantId}`);
   console.log(`Webhook URL:  ${webhookUrl}`);
   console.log(`Tools added:  ${TOOLS.length}`);
   console.log("\nIMPORTANT: Click Publish in Vapi dashboard if changes don't apply immediately.");
-  console.log("\nAdd to .env.local:");
-  console.log(`NEXT_PUBLIC_VAPI_ASSISTANT_ID=${data.id ?? EXISTING_ASSISTANT_ID}`);
-  console.log("\nSet on Convex (must match Vapi HTTP header x-vapi-secret):");
-  console.log("npx convex env set VAPI_WEBHOOK_SECRET <your-secret>");
+
+  if (IS_PROD) {
+    console.log("\nAdd to Vercel Production env:");
+    console.log(`NEXT_PUBLIC_VAPI_ASSISTANT_ID=${assistantId}`);
+    console.log("NEXT_PUBLIC_CONVEX_URL=https://hip-salamander-864.convex.cloud");
+    console.log("NEXT_PUBLIC_CONVEX_SITE_URL=https://hip-salamander-864.convex.site");
+    console.log("\nOptional — store prod assistant id for future updates:");
+    console.log(`VAPI_PROD_ASSISTANT_ID=${assistantId}`);
+  } else {
+    console.log("\nAdd to .env.local:");
+    console.log(`NEXT_PUBLIC_VAPI_ASSISTANT_ID=${assistantId}`);
+    console.log("\nSet on Convex (must match Vapi HTTP header x-vapi-secret):");
+    console.log("npx convex env set VAPI_WEBHOOK_SECRET <your-secret>");
+  }
 }
 
 main().catch((error) => {
