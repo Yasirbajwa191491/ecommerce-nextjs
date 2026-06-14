@@ -49,7 +49,16 @@ export function VapiLiveShoppingBanner({
           {current.detail ? (
             <p className="truncate text-xs text-muted-foreground">{current.detail}</p>
           ) : null}
-          {current.href && current.href.startsWith("/") ? (
+          {current.href && current.href.startsWith("http") ? (
+            <a
+              href={current.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-xs font-medium text-primary underline underline-offset-2"
+            >
+              Open secure Stripe checkout
+            </a>
+          ) : current.href && current.href.startsWith("/") ? (
             <Link
               href={current.href}
               className="mt-1 inline-block text-xs font-medium text-primary underline underline-offset-2"

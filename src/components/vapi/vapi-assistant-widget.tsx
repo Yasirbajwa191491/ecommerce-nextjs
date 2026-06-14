@@ -19,6 +19,7 @@ import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
 import { VapiChatPanel } from "@/components/vapi/vapi-chat-panel";
 import { VapiActivityPanel } from "@/components/vapi/vapi-activity-panel";
 import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-banner";
+import { getStripeCheckoutUrlFromSteps } from "@/lib/vapi-activity";
 import { isVapiConfigured } from "@/lib/vapi-config";
 
 export function VapiAssistantWidget() {
@@ -48,6 +49,8 @@ export function VapiAssistantWidget() {
 
   const shoppingActive =
     isConnected || state === "processing" || activitySteps.length > 0;
+
+  const stripeCheckoutUrl = getStripeCheckoutUrlFromSteps(activitySteps);
 
   if (!configured) {
     if (process.env.NODE_ENV === "development") {
@@ -141,7 +144,12 @@ export function VapiAssistantWidget() {
               </div>
             ) : null}
 
-            <VapiChatPanel transcript={transcript} state={state} error={error} />
+            <VapiChatPanel
+              transcript={transcript}
+              state={state}
+              error={error}
+              stripeCheckoutUrl={stripeCheckoutUrl}
+            />
 
             <div className="mt-4 space-y-3 border-t pt-4">
               <div className="flex gap-2">

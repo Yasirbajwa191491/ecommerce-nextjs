@@ -1,3 +1,5 @@
+import { isValidStripeCheckoutUrl } from "@/lib/vapi-config";
+
 export type VapiActivityStatus = "active" | "complete" | "error";
 
 export type VapiActivityStep = {
@@ -107,28 +109,108 @@ export function extractToolCallsFromMessage(
 export function extractToolResultsFromMessage(
   message: Record<string, unknown>
 ): VapiToolEvent[] {
-  const rawList = message.toolCallResultList ?? message.results;
-  if (!Array.isArray(rawList)) return [];
-
   const events: VapiToolEvent[] = [];
+  const seen = new Set<string>();
 
-  for (const item of rawList) {
-    if (typeof item !== "object" || item === null) continue;
-    const record = item as Record<string, unknown>;
-
-    const toolCallId = String(record.toolCallId ?? record.id ?? `${Date.now()}-${events.length}`);
-    const toolName = String(record.name ?? record.toolName ?? "unknown");
-    const result = record.result ?? record.output ?? null;
-
+  const push = (toolCallId: string, toolName: string, result: unknown) => {
+    if (result === undefined || result === null) return;
+    if (seen.has(toolCallId)) return;
+    seen.add(toolCallId);
     events.push({
       toolCallId,
       toolName,
       parameters: {},
       result,
     });
+  };
+
+  const rawList = message.toolCallResultList ?? message.results;
+  if (Array.isArray(rawList)) {
+    for (const item of rawList) {
+      if (typeof item !== "object" || item === null) continue;
+      const record = item as Record<string, unknown>;
+      const nestedToolCall =
+        typeof record.toolCall === "object" && record.toolCall !== null
+          ? (record.toolCall as Record<string, unknown>)
+          : null;
+
+      push(
+        String(record.toolCallId ?? record.id ?? nestedToolCall?.id ?? `${Date.now()}-${events.length}`),
+        String(
+          record.name ??
+            record.toolName ??
+            nestedToolCall?.name ??
+            (typeof record.function === "object" &&
+            record.function !== null &&
+            "name" in record.function
+              ? String((record.function as { name?: unknown }).name ?? "")
+              : "") ??
+            "unknown"
+        ),
+        record.result ?? record.output ?? nestedToolCall?.result ?? null
+      );
+    }
+  }
+
+  const withCalls = message.toolWithToolCallList;
+  if (Array.isArray(withCalls)) {
+    for (const item of withCalls) {
+      if (typeof item !== "object" || item === null) continue;
+      const record = item as Record<string, unknown>;
+      const nestedToolCall =
+        typeof record.toolCall === "object" && record.toolCall !== null
+          ? (record.toolCall as Record<string, unknown>)
+          : null;
+      const result = record.result ?? nestedToolCall?.result ?? record.output;
+      if (result === undefined || result === null) continue;
+
+      push(
+        String(nestedToolCall?.id ?? record.id ?? `${Date.now()}-${events.length}`),
+        String(
+          record.name ??
+            nestedToolCall?.name ??
+            (typeof record.function === "object" &&
+            record.function !== null &&
+            "name" in record.function
+              ? String((record.function as { name?: unknown }).name ?? "")
+              : "") ??
+            "unknown"
+        ),
+        result
+      );
+    }
+  }
+
+  const rootResult = message.result ?? message.output;
+  if (rootResult !== undefined && rootResult !== null) {
+    push(
+      String(message.toolCallId ?? message.id ?? `root-${Date.now()}`),
+      String(message.name ?? message.toolName ?? "unknown"),
+      rootResult
+    );
   }
 
   return events;
+}
+
+export function getStripeCheckoutUrlFromSteps(
+  steps: VapiActivityStep[]
+): string | undefined {
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    const step = steps[index];
+    if (
+      step?.toolName !== "createCheckoutSession" ||
+      step.status !== "complete" ||
+      !step.href
+    ) {
+      continue;
+    }
+    const base = step.href.split("#")[0] ?? step.href;
+    if (isValidStripeCheckoutUrl(base)) {
+      return step.href;
+    }
+  }
+  return undefined;
 }
 
 function productHref(productId: string | undefined): string | undefined {
@@ -346,7 +428,12 @@ export function finalizeActivityStep(
         detail:
           typeof payload?.message === "string" ? payload.message : step.detail,
       };
-    case "createCheckoutSession":
+    case "createCheckoutSession": {
+      const checkoutUrl =
+        typeof payload?.checkoutUrl === "string" &&
+        isValidStripeCheckoutUrl(payload.checkoutUrl)
+          ? payload.checkoutUrl
+          : undefined;
       return {
         ...step,
         status: "complete",
@@ -355,11 +442,9 @@ export function finalizeActivityStep(
           payload && typeof payload.orderNumber === "string"
             ? `Order ${payload.orderNumber}`
             : step.detail,
-        href:
-          typeof payload?.checkoutUrl === "string"
-            ? payload.checkoutUrl
-            : step.href,
+        href: checkoutUrl ?? step.href,
       };
+    }
     case "createCashOrder":
       return {
         ...step,

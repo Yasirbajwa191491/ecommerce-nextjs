@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   extractCheckoutUrl,
+  isValidStripeCheckoutUrl,
   normalizeAssistantDisplayText,
   type VapiAssistantState,
   type VapiTranscriptEntry,
@@ -14,6 +15,7 @@ type VapiChatPanelProps = {
   transcript: VapiTranscriptEntry[];
   state: VapiAssistantState;
   error: string | null;
+  stripeCheckoutUrl?: string;
 };
 
 const STATE_LABELS: Record<VapiAssistantState, string> = {
@@ -23,7 +25,12 @@ const STATE_LABELS: Record<VapiAssistantState, string> = {
   processing: "Processing…",
 };
 
-export function VapiChatPanel({ transcript, state, error }: VapiChatPanelProps) {
+export function VapiChatPanel({
+  transcript,
+  state,
+  error,
+  stripeCheckoutUrl,
+}: VapiChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,8 +67,15 @@ export function VapiChatPanel({ transcript, state, error }: VapiChatPanelProps) 
                 entry.role === "assistant"
                   ? normalizeAssistantDisplayText(entry.text)
                   : entry.text;
+              const rawCheckout =
+                entry.linkUrl ?? extractCheckoutUrl(entry.text);
+              const checkoutBase = rawCheckout?.split("#")[0];
               const checkoutUrl =
-                entry.linkUrl ?? extractCheckoutUrl(displayText);
+                rawCheckout &&
+                checkoutBase &&
+                isValidStripeCheckoutUrl(checkoutBase)
+                  ? rawCheckout
+                  : undefined;
               const productUrl =
                 entry.linkUrl?.startsWith("/product/") ? entry.linkUrl : undefined;
 
@@ -101,6 +115,27 @@ export function VapiChatPanel({ transcript, state, error }: VapiChatPanelProps) 
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
+
+      {stripeCheckoutUrl &&
+      !transcript.some(
+        (entry) => entry.linkUrl === stripeCheckoutUrl
+      ) ? (
+        <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+          <p className="text-sm font-medium text-foreground">Checkout ready</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Pay securely with Stripe — your card details stay on Stripe&apos;s
+            hosted page.
+          </p>
+          <a
+            href={stripeCheckoutUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
+          >
+            Open secure Stripe checkout
+          </a>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="mt-3 space-y-1 text-xs text-destructive" role="alert">

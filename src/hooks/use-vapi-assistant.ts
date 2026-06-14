@@ -229,19 +229,21 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const handleToolComplete = useCallback((events: VapiToolEvent[]) => {
     if (!events.length) return;
 
+    const mergedEvents = events.map((event) => {
+      const pending = pendingToolsRef.current.get(event.toolCallId);
+      return {
+        ...event,
+        toolName:
+          event.toolName !== "unknown"
+            ? event.toolName
+            : (pending?.toolName ?? event.toolName),
+        parameters: pending?.parameters ?? event.parameters,
+      };
+    });
+
     setActivitySteps((prev) => {
       let next = prev;
-      for (const event of events) {
-        const pending = pendingToolsRef.current.get(event.toolCallId);
-        const merged: VapiToolEvent = {
-          ...event,
-          toolName:
-            event.toolName !== "unknown"
-              ? event.toolName
-              : (pending?.toolName ?? event.toolName),
-          parameters: pending?.parameters ?? event.parameters,
-        };
-
+      for (const merged of mergedEvents) {
         const index = next.findIndex(
           (step) => step.toolCallId === merged.toolCallId
         );
@@ -250,17 +252,40 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
           updated[index] = finalizeActivityStep(updated[index]!, merged);
           next = updated;
         } else {
-          next = [
-            ...next,
-            finalizeActivityStep(buildActivityStepStart(merged), merged),
-          ];
+          const fallbackIndex = next.findLastIndex(
+            (step) =>
+              step.toolName === merged.toolName && step.status === "active"
+          );
+          if (fallbackIndex >= 0) {
+            const updated = [...next];
+            updated[fallbackIndex] = finalizeActivityStep(
+              updated[fallbackIndex]!,
+              merged
+            );
+            next = updated;
+          } else {
+            next = [
+              ...next,
+              finalizeActivityStep(buildActivityStepStart(merged), merged),
+            ];
+          }
         }
-
-        pendingToolsRef.current.delete(event.toolCallId);
-        onToolCompleteRef.current?.(merged);
       }
       return next;
     });
+
+    setTranscript((prev) => {
+      let next = prev;
+      for (const merged of mergedEvents) {
+        next = appendToolResultEntry(next, merged.toolName, merged.result);
+      }
+      return next;
+    });
+
+    for (const merged of mergedEvents) {
+      pendingToolsRef.current.delete(merged.toolCallId);
+      onToolCompleteRef.current?.(merged);
+    }
   }, []);
 
   useEffect(() => {
@@ -384,14 +409,6 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
             if (resultEvents.length) {
               handleToolComplete(resultEvents);
             }
-
-            setTranscript((prev) => {
-              let next = prev;
-              for (const event of resultEvents) {
-                next = appendToolResultEntry(next, event.toolName, event.result);
-              }
-              return next;
-            });
           }
 
           if (
@@ -402,6 +419,12 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
             if (startEvents.length) {
               handleToolStart(startEvents);
             }
+
+            const inlineResults = extractToolResultsFromMessage(message);
+            if (inlineResults.length) {
+              handleToolComplete(inlineResults);
+            }
+
             setState("processing");
           }
 

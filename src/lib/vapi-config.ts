@@ -28,13 +28,19 @@ export type VapiTranscriptEntry = {
 export {
   collapseVoiceSpacingArtifacts,
   extractCheckoutUrl,
+  extractOrderNumber,
   isStructuredToolMessage,
+  isValidStripeCheckoutUrl,
   looksLikeVoiceSpacingArtifact,
   normalizeAssistantDisplayText,
   normalizeOrderNumbersInText,
 } from "./vapi-display-normalize";
 
-import { extractCheckoutUrl, isStructuredToolMessage } from "./vapi-display-normalize";
+import {
+  extractCheckoutUrl,
+  isStructuredToolMessage,
+  isValidStripeCheckoutUrl,
+} from "./vapi-display-normalize";
 
 function extractOpenAiContent(content: unknown): string | null {
   if (typeof content === "string") {
@@ -139,12 +145,49 @@ function formatProductSummary(payload: ToolResultPayload): {
   return { text: lines.join("\n"), linkUrl: url };
 }
 
+function formatCheckoutSessionCard(
+  payload: ToolResultPayload
+): { text: string; linkUrl?: string } | null {
+  if (typeof payload.orderNumber !== "string") return null;
+
+  const checkoutUrl =
+    typeof payload.checkoutUrl === "string" &&
+    isValidStripeCheckoutUrl(payload.checkoutUrl.split("#")[0] ?? payload.checkoutUrl)
+      ? payload.checkoutUrl
+      : undefined;
+  const total = formatMoney(payload.currency, payload.total);
+
+  return {
+    text: [
+      "Checkout ready!",
+      `Order number: ${payload.orderNumber}`,
+      total ? `Total: ${total}` : null,
+      "Payment: Card (Stripe)",
+      checkoutUrl
+        ? "Tap the button below to pay securely on Stripe."
+        : "Stripe checkout link is unavailable. Please try checkout on the website.",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    linkUrl: checkoutUrl,
+  };
+}
+
 export function formatToolResultForDisplay(
   toolName: string,
   result: unknown
 ): { text: string; linkUrl?: string } | null {
   const payload = parseToolResultPayload(result);
   if (!payload || typeof payload.error === "string") return null;
+
+  const isCheckoutSession =
+    toolName === "createCheckoutSession" ||
+    (typeof payload.checkoutUrl === "string" &&
+      typeof payload.orderNumber === "string");
+
+  if (isCheckoutSession) {
+    return formatCheckoutSessionCard(payload);
+  }
 
   if (toolName === "getProductDetails") {
     return formatProductSummary(payload);
@@ -204,32 +247,12 @@ export function formatToolResultForDisplay(
     };
   }
 
-  if (
-    toolName === "createCheckoutSession" &&
-    typeof payload.orderNumber === "string"
-  ) {
-    const checkoutUrl =
-      typeof payload.checkoutUrl === "string" ? payload.checkoutUrl : undefined;
-    const total = formatMoney(payload.currency, payload.total);
-    return {
-      text: [
-        "Checkout ready!",
-        `Order number: ${payload.orderNumber}`,
-        total ? `Total: ${total}` : null,
-        "Payment: Card (Stripe)",
-        "Enter card details on the secure Stripe page below.",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      linkUrl: checkoutUrl,
-    };
-  }
-
   if (typeof payload.message === "string" && payload.message.trim()) {
     const message = payload.message.trim();
+    const checkoutUrl = extractCheckoutUrl(message);
     return {
       text: message,
-      linkUrl: extractCheckoutUrl(message),
+      linkUrl: checkoutUrl,
     };
   }
 

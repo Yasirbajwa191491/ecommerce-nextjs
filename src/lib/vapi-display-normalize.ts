@@ -1,20 +1,78 @@
 /** Fixes TTS spacing artifacts in chat display (URLs, IDs, order numbers, etc.). */
 
+/** ORD-YYYYMMDD-XXXXXX (6-char suffix from generateOrderNumber). */
+export const ORDER_NUMBER_REGEX = /ORD-\d{8}-[A-Z0-9]{6}/gi;
+
+export function extractOrderNumber(text: string): string | undefined {
+  const compact = text.replace(/\s+/g, "").toUpperCase();
+  const glued = compact.replace(/^(ORD-\d{8}-[A-Z0-9]{6})\.\d{1,2}$/, "$1");
+  const match = glued.match(/ORD-\d{8}-[A-Z0-9]{6}/);
+  return match?.[0];
+}
+
+export function isValidStripeCheckoutUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "checkout.stripe.com") return false;
+    return /^\/c\/pay\/cs_(test|live)_[a-zA-Z0-9]+$/.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export function normalizeOrderNumbersInText(text: string): string {
-  let out = text.replace(
-    /ORDER\s*NUMBER\s*IS\s*(ORD(?:[\s-]*[A-Z0-9]+)+)/gi,
-    (_, ord: string) => ord.replace(/\s+/g, "").toUpperCase()
-  );
+  let out = text.replace(/\s+/g, " ");
 
   out = out.replace(
-    /ORDERNUMBERIS(ORD(?:[\s-]*[A-Z0-9]+)+)/gi,
-    (_, ord: string) => `Order number: ${ord.replace(/\s+/g, "").toUpperCase()}`
+    /ORDER\s*NUMBER\s*IS\s*(ORD[\s-]*\d[\s\d-]*[\s-]*[A-Z0-9\s]+)/gi,
+    (_, raw: string) => {
+      const extracted = extractOrderNumber(raw);
+      return extracted ? `Order number: ${extracted}` : raw;
+    }
   );
 
-  out = out.replace(/\b(ORD(?:[\s-]*[A-Z0-9]+)+)/gi, (match) =>
-    match.replace(/\s+/g, "").toUpperCase()
+  out = out.replace(/ORDERNUMBERIS(ORD[\dA-Z\s-]+)/gi, (_, raw: string) => {
+    const extracted = extractOrderNumber(raw);
+    return extracted ? `Order number: ${extracted}` : raw;
+  });
+
+  // Price cents glued to suffix: ORD-20260614-LL3UQ0.00
+  out = out.replace(/ORD-\d{8}-[A-Z0-9]{6}\.\d{1,2}\b/gi, (match) => {
+    const extracted = extractOrderNumber(match);
+    return extracted ?? match.replace(/\.\d{1,2}$/, "");
+  });
+
+  // TTS glues extra words onto the suffix: ORD-20260614-VSJYWTFORTHEHPLAPTOP...
+  out = out.replace(/ORD-\d{8}-[A-Z0-9]{6}[A-Z]+/gi, (match) => {
+    const extracted = extractOrderNumber(match);
+    return extracted ?? match.slice(0, 19);
+  });
+
+  out = out.replace(
+    /\b(?:Your\s+)?Order\s+number:\s*(ORD-\d{8}-[A-Z0-9]{6})(?:\.\d{1,2})?\b/gi,
+    (_, ord: string) => `Order number: ${ord.toUpperCase()}`
   );
 
+  out = out.replace(/\bORD(?:[\s-]*\d[\s\d-]*[\s-]*[A-Z0-9\s]+)/gi, (match) => {
+    const extracted = extractOrderNumber(match);
+    return extracted ?? match.replace(/\s+/g, "").toUpperCase();
+  });
+
+  return out;
+}
+
+export function stripSpokenStripeUrlsFromText(text: string): string {
+  let out = text;
+
+  out = out.replace(
+    /https?:\/\/(?:checkout\s*\.\s*stripe\s*\.\s*com|checkout\.stripe\.com)[^\s]*/gi,
+    (match) => {
+      const compact = match.replace(/\s+/g, "");
+      return isValidStripeCheckoutUrl(compact) ? compact : "";
+    }
+  );
+
+  out = out.replace(/\s{2,}/g, " ").trim();
   return out;
 }
 
@@ -73,8 +131,9 @@ export function normalizePhoneNumbersInText(text: string): string {
 export function collapseVoiceSpacingArtifacts(text: string): string {
   let out = text.replace(/\r\n/g, "\n");
 
-  out = normalizeUrlsInText(out);
   out = normalizeOrderNumbersInText(out);
+  out = normalizeUrlsInText(out);
+  out = stripSpokenStripeUrlsFromText(out);
   out = normalizeHexColorsInText(out);
   out = normalizeEmailsInText(out);
   out = normalizePhoneNumbersInText(out);
@@ -85,8 +144,13 @@ export function collapseVoiceSpacingArtifacts(text: string): string {
 
 export function extractCheckoutUrl(text: string): string | undefined {
   const compact = text.replace(/\s+/g, "");
-  const match = compact.match(/https:\/\/checkout\.stripe\.com\/[^\s)"'\]]+/i);
-  return match?.[0];
+  const match = compact.match(
+    /https:\/\/checkout\.stripe\.com\/c\/pay\/cs_(?:test|live)_[a-zA-Z0-9]+(?:#.*)?/i
+  );
+  const candidate = match?.[0];
+  if (!candidate) return undefined;
+  const withoutHash = candidate.split("#")[0] ?? candidate;
+  return isValidStripeCheckoutUrl(withoutHash) ? withoutHash : undefined;
 }
 
 export function looksLikeVoiceSpacingArtifact(text: string): boolean {
