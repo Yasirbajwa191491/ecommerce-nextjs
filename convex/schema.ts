@@ -58,11 +58,49 @@ export default defineSchema({
     description: v.string(),
     active: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
+    embedding: v.optional(v.array(v.float64())),
+    embeddingStatus: v.optional(aiAnalysisStatusValidator),
+    embeddingContentHash: v.optional(v.string()),
+    embeddingUpdatedAt: v.optional(v.number()),
   })
     .index("by_sort_order", ["sortOrder"])
     .index("by_category_id", ["categoryId"])
     .index("by_featured", ["featured"])
-    .index("by_active_sort", ["active", "sortOrder"]),
+    .index("by_active_sort", ["active", "sortOrder"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 384,
+      filterFields: ["active"],
+    }),
+
+  productIntelligence: defineTable({
+    productId: v.id("products"),
+    summary: v.string(),
+    keywords: v.array(v.string()),
+    useCases: v.array(v.string()),
+    highlights: v.array(v.string()),
+    reviewHighlights: v.array(v.string()),
+    contentHash: v.string(),
+    generatedAt: v.number(),
+    aiStatus: productInsightsStatusValidator,
+  }).index("by_product", ["productId"]),
+
+  searchQueryEvents: defineTable({
+    queryNormalized: v.string(),
+    queryDisplay: v.string(),
+    searchedAt: v.number(),
+    resultCount: v.number(),
+    sessionId: v.optional(v.string()),
+    source: v.union(v.literal("header"), v.literal("catalog")),
+  })
+    .index("by_searched_at", ["searchedAt"])
+    .index("by_query_normalized_time", ["queryNormalized", "searchedAt"]),
+
+  searchEmbeddingCache: defineTable({
+    queryNormalized: v.string(),
+    embedding: v.array(v.float64()),
+    createdAt: v.number(),
+  }).index("by_query_normalized", ["queryNormalized"]),
 
   subscribers: defineTable({
     email: v.string(),

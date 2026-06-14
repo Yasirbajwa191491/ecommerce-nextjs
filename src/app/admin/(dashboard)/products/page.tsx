@@ -155,6 +155,18 @@ export default function AdminProductsPage() {
   const remove = useMutation(api.products.remove);
   const restore = useMutation(api.products.restore);
   const reorder = useMutation(api.products.reorder);
+  const scheduleEmbeddingBackfill = useMutation(api.productAi.scheduleBackfill);
+
+  const handleEmbeddingBackfill = async () => {
+    try {
+      await scheduleEmbeddingBackfill({});
+      toastSuccess("Product AI embedding backfill scheduled.");
+    } catch (error) {
+      toastError(
+        error instanceof Error ? error.message : "Failed to schedule backfill"
+      );
+    }
+  };
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -526,6 +538,18 @@ export default function AdminProductsPage() {
       <AdminPageHeader
         title="Products"
         description="Manage your store catalog."
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void handleEmbeddingBackfill();
+            }}
+          >
+            Generate search embeddings
+          </Button>
+        }
       />
 
       <AdminListToolbar

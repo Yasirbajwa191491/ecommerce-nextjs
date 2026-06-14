@@ -106,6 +106,12 @@ export const regenerateProductInsights = internalAction({
         reviewCountAtGeneration: data.texts.length,
         status: "complete",
       });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.productAiActions.processProductIntelligence,
+        { productId: args.productId, force: false }
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Insights generation failed";

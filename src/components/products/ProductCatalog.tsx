@@ -6,9 +6,11 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useHybridProductSearchPaginated } from "@/hooks/use-hybrid-product-search";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import type { Product } from "@/types/product";
 import type { ProductSort } from "@/lib/shop/product-sort";
+import { calculateFinalPrice } from "@/lib/pricing";
 import { ProductCatalogFilters } from "@/components/products/product-catalog-filters";
 import { ProductCatalogMobileFilters } from "@/components/products/product-catalog-mobile-filters";
 import { ProductCatalogToolbar } from "@/components/products/product-catalog-toolbar";
@@ -19,6 +21,67 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
 
+function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
+  const sorted = [...products];
+  switch (sort) {
+    case "lowest":
+      sorted.sort(
+        (a, b) =>
+          calculateFinalPrice(a.price, a.discountPercent ?? 0) -
+          calculateFinalPrice(b.price, b.discountPercent ?? 0)
+      );
+      break;
+    case "highest":
+      sorted.sort(
+        (a, b) =>
+          calculateFinalPrice(b.price, b.discountPercent ?? 0) -
+          calculateFinalPrice(a.price, a.discountPercent ?? 0)
+      );
+      break;
+    case "a-z":
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "z-a":
+      sorted.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    default:
+      sorted.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      break;
+  }
+  return sorted;
+}
+
+function filterProductsClient(
+  products: Product[],
+  options: {
+    categoryId: Id<"productCategories"> | "all";
+    priceRange: [number, number];
+    priceFilterReady: boolean;
+  }
+): Product[] {
+  return products.filter((product) => {
+    if (
+      options.categoryId !== "all" &&
+      product.categoryId !== options.categoryId
+    ) {
+      return false;
+    }
+    if (options.priceFilterReady) {
+      const finalPrice = calculateFinalPrice(
+        product.price,
+        product.discountPercent ?? 0
+      );
+      if (
+        finalPrice < options.priceRange[0] ||
+        finalPrice > options.priceRange[1]
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 function productIds(products: Product[]) {
   return products.map((product) => product._id).join(",");
 }
@@ -28,6 +91,7 @@ export default function ProductCatalog() {
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get("search") ?? "";
   const categorySlug = searchParams.get("category") ?? "";
+  const isHybridSearch = urlSearch.trim().length > 0;
 
   const [categoryId, setCategoryId] = useState<
     Id<"productCategories"> | "all"
@@ -89,6 +153,41 @@ export default function ProductCatalog() {
     activePriceRange[1] > activePriceRange[0] &&
     activePriceRange[1] > 0;
 
+  const hybridSearch = useHybridProductSearchPaginated({
+    debouncedQuery: urlSearch,
+    limit: PAGE_SIZE,
+    source: "catalog",
+  });
+
+  const hybridProductIds = useMemo(
+    () => hybridSearch.products.map((product) => product._id as Id<"products">),
+    [hybridSearch.products]
+  );
+
+  const hybridFullProducts = useQuery(
+    api.products.listByIds,
+    isHybridSearch && hybridProductIds.length > 0
+      ? { ids: hybridProductIds }
+      : "skip"
+  );
+
+  const hybridDisplayProducts = useMemo(() => {
+    if (!isHybridSearch || !hybridFullProducts) return [] as Product[];
+    const filtered = filterProductsClient(hybridFullProducts as Product[], {
+      categoryId,
+      priceRange: activePriceRange,
+      priceFilterReady,
+    });
+    return sortProductsClient(filtered, sort);
+  }, [
+    isHybridSearch,
+    hybridFullProducts,
+    categoryId,
+    activePriceRange,
+    priceFilterReady,
+    sort,
+  ]);
+
   const filterArgs = useMemo(
     () => ({
       search: urlSearch.trim() || undefined,
@@ -108,16 +207,24 @@ export default function ProductCatalog() {
     catalogSignatureRef.current = "";
   }, [filterKey]);
 
-  const totalCount = useQuery(api.products.countPublicFiltered, filterArgs);
+  const totalCount = useQuery(
+    api.products.countPublicFiltered,
+    isHybridSearch ? "skip" : filterArgs
+  );
 
-  const firstPage = useQuery(api.products.listPublicPaginated, {
-    paginationOpts: { numItems: PAGE_SIZE, cursor: null },
-    ...filterArgs,
-  });
+  const firstPage = useQuery(
+    api.products.listPublicPaginated,
+    isHybridSearch
+      ? "skip"
+      : {
+          paginationOpts: { numItems: PAGE_SIZE, cursor: null },
+          ...filterArgs,
+        }
+  );
 
   const morePage = useQuery(
     api.products.listPublicPaginated,
-    page > 0
+    !isHybridSearch && page > 0
       ? {
           paginationOpts: {
             numItems: PAGE_SIZE,
@@ -167,31 +274,49 @@ export default function ProductCatalog() {
     });
   }, [morePage, page, firstPage]);
 
-  const isInitialLoading =
-    (categories === undefined ||
-      priceBounds === undefined ||
-      totalCount === undefined ||
-      firstPage === undefined) &&
-    allProducts.length === 0;
+  const isInitialLoading = isHybridSearch
+    ? (categories === undefined ||
+        priceBounds === undefined ||
+        hybridSearch.loading) &&
+      hybridDisplayProducts.length === 0
+    : (categories === undefined ||
+        priceBounds === undefined ||
+        totalCount === undefined ||
+        firstPage === undefined) &&
+      allProducts.length === 0;
 
-  const isRefetching =
-    firstPage === undefined && allProducts.length > 0 && !isInitialLoading;
+  const isRefetching = isHybridSearch
+    ? hybridSearch.loading && hybridDisplayProducts.length > 0
+    : firstPage === undefined && allProducts.length > 0 && !isInitialLoading;
 
-  const isLoadingMore =
-    page > 0 && morePage === undefined && allProducts.length > 0;
+  const isLoadingMore = isHybridSearch
+    ? hybridSearch.loadingMore
+    : page > 0 && morePage === undefined && allProducts.length > 0;
 
   const hasMore = useMemo(() => {
+    if (isHybridSearch) return hybridSearch.hasMore;
     if (!firstPage || isInitialLoading) return false;
     if (page === 0) return !firstPage.isDone;
     if (morePage === undefined) return true;
     return !morePage.isDone;
-  }, [firstPage, morePage, page, isInitialLoading]);
+  }, [
+    isHybridSearch,
+    hybridSearch.hasMore,
+    firstPage,
+    morePage,
+    page,
+    isInitialLoading,
+  ]);
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || loadingMoreRef.current) return;
+    if (isHybridSearch) {
+      void hybridSearch.loadMore();
+      return;
+    }
     loadingMoreRef.current = true;
     setPage((current) => current + 1);
-  }, [hasMore, isLoadingMore]);
+  }, [hasMore, isHybridSearch, isLoadingMore, hybridSearch]);
 
   useEffect(() => {
     if (isInitialLoading || isLoadingMore || loadingMoreRef.current || !hasMore) {
@@ -237,11 +362,19 @@ export default function ProductCatalog() {
     return count;
   }, [categoryId, priceBounds, priceFilterReady, priceRange]);
 
-  const showNoResults =
-    !isInitialLoading &&
-    !isRefetching &&
-    firstPage !== undefined &&
-    (totalCount ?? 0) === 0;
+  const showNoResults = isHybridSearch
+    ? !isInitialLoading &&
+      !hybridSearch.loading &&
+      hybridDisplayProducts.length === 0
+    : !isInitialLoading &&
+      !isRefetching &&
+      firstPage !== undefined &&
+      (totalCount ?? 0) === 0;
+
+  const displayProducts = isHybridSearch ? hybridDisplayProducts : allProducts;
+  const displayTotalCount = isHybridSearch
+    ? hybridSearch.totalCount
+    : (totalCount ?? 0);
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -296,13 +429,20 @@ export default function ProductCatalog() {
             />
 
             <ProductCatalogToolbar
-              totalCount={totalCount ?? 0}
+              totalCount={displayTotalCount}
               searchQuery={urlSearch.trim() || undefined}
               view={view}
               onViewChange={setView}
               sort={sort}
               onSortChange={setSort}
             />
+
+            {isHybridSearch && hybridSearch.isSimilarFallback ? (
+              <div className="mb-4 rounded-xl border border-[#6254f3]/20 bg-[#6254f3]/5 px-4 py-3 text-sm text-muted-foreground">
+                No exact matches for &ldquo;{urlSearch.trim()}&rdquo;. You may
+                be interested in these similar products.
+              </div>
+            ) : null}
 
             {isInitialLoading ? (
               <div
@@ -348,7 +488,7 @@ export default function ProductCatalog() {
                       : "flex flex-col gap-3 sm:gap-4"
                   )}
                 >
-                  {allProducts.map((product) => (
+                  {displayProducts.map((product) => (
                     <ProductCard key={product._id} {...product} view={view} />
                   ))}
                 </div>
@@ -357,7 +497,7 @@ export default function ProductCatalog() {
                   sentinelRef={sentinelRef}
                   isLoadingMore={isLoadingMore || isRefetching}
                   hasMore={hasMore}
-                  loadedCount={allProducts.length}
+                  loadedCount={displayProducts.length}
                   view={view}
                 />
               </div>

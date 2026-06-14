@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import { internal } from "./_generated/api";
 import { getAuthUserOrNull, requireAdmin } from "./lib/requireAdmin";
 import { isAdminRole, normalizeRole } from "./lib/authRoles";
 import {
@@ -308,6 +309,26 @@ export const getById = query({
   },
 });
 
+/** Public batch fetch preserving caller order (for hybrid search / similar products). */
+export const listByIds = query({
+  args: { ids: v.array(v.id("products")) },
+  handler: async (ctx, args) => {
+    const byId = new Map<
+      string,
+      Awaited<ReturnType<typeof enrichProduct>>
+    >();
+    for (const id of args.ids) {
+      const product = await ctx.db.get(id);
+      if (product && isProductActive(product)) {
+        byId.set(id, await enrichProduct(ctx, product));
+      }
+    }
+    return args.ids
+      .map((id) => byId.get(id))
+      .filter((p): p is NonNullable<typeof p> => p !== undefined);
+  },
+});
+
 export const listTakenNames = query({
   args: { excludeId: v.optional(v.id("products")) },
   handler: async (ctx, args) => {
@@ -446,6 +467,12 @@ export const create = mutation({
       createdAt: now,
     });
 
+    await ctx.scheduler.runAfter(
+      0,
+      internal.productAiActions.processProductIntelligence,
+      { productId, force: false }
+    );
+
     return productId;
   },
 });
@@ -482,6 +509,12 @@ export const update = mutation({
       relatedProductId: id,
       createdAt: now,
     });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.productAiActions.processProductIntelligence,
+      { productId: id, force: false }
+    );
 
     return id;
   },

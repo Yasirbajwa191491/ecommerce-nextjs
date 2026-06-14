@@ -17,6 +17,7 @@ import { ProductDiscountBadge } from "@/components/products/product-discount-bad
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
 import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
 import { ProductReviewSection } from "@/components/reviews/product-review-section";
+import { SimilarProductsSection } from "@/components/products/similar-products-section";
 import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
 import AddToCart from "@/components/products/AddToCart";
 import { Badge } from "@/components/ui/badge";
@@ -258,6 +259,11 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
       </div>
 
       <ProductReviewSection
+        productId={singleProduct._id}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
+
+      <SimilarProductsSection
         productId={singleProduct._id}
         className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
       />
