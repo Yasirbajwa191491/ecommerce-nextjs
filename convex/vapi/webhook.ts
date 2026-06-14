@@ -637,6 +637,16 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
         results.push(
           toolResult(toolCall.id, { error: errorMessage })
         );
+        if (conversationId) {
+          await ctx.runMutation(internal.vapi.logging.appendLog, {
+            conversationId,
+            role: "tool",
+            content: `${toolName} failed: ${errorMessage}`,
+            toolName,
+            toolInput: JSON.stringify(parameters),
+            toolOutput: JSON.stringify({ error: errorMessage }),
+          });
+        }
       }
     }
 

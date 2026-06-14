@@ -150,10 +150,17 @@ function formatCheckoutSessionCard(
 ): { text: string; linkUrl?: string } | null {
   if (typeof payload.orderNumber !== "string") return null;
 
-  const checkoutUrl =
-    typeof payload.checkoutUrl === "string" &&
-    isValidStripeCheckoutUrl(payload.checkoutUrl.split("#")[0] ?? payload.checkoutUrl)
+  const rawUrl =
+    typeof payload.checkoutUrl === "string"
       ? payload.checkoutUrl
+      : typeof payload.url === "string"
+        ? payload.url
+        : undefined;
+
+  const checkoutUrl =
+    rawUrl &&
+    isValidStripeCheckoutUrl(rawUrl.split("#")[0] ?? rawUrl)
+      ? rawUrl
       : undefined;
   const total = formatMoney(payload.currency, payload.total);
 
@@ -164,13 +171,41 @@ function formatCheckoutSessionCard(
       total ? `Total: ${total}` : null,
       "Payment: Card (Stripe)",
       checkoutUrl
-        ? "Tap the button below to pay securely on Stripe."
+        ? "Use the button below to pay securely on Stripe."
         : "Stripe checkout link is unavailable. Please try checkout on the website.",
     ]
       .filter(Boolean)
       .join("\n"),
     linkUrl: checkoutUrl,
   };
+}
+
+export function extractCheckoutUrlFromToolResult(
+  result: unknown
+): string | undefined {
+  const payload = parseToolResultPayload(result);
+  if (!payload || typeof payload.error === "string") return undefined;
+
+  const rawUrl =
+    typeof payload.checkoutUrl === "string"
+      ? payload.checkoutUrl
+      : typeof payload.url === "string"
+        ? payload.url
+        : undefined;
+
+  if (!rawUrl) return undefined;
+  const base = rawUrl.split("#")[0] ?? rawUrl;
+  return isValidStripeCheckoutUrl(base) ? rawUrl : undefined;
+}
+
+export function isCheckoutRelatedMessage(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("checkout ready") ||
+    lower.includes("stripe button") ||
+    lower.includes("stripe checkout") ||
+    (lower.includes("stripe") && /ORD-\d{8}-[A-Z0-9]{6}/i.test(text))
+  );
 }
 
 export function formatToolResultForDisplay(

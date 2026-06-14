@@ -12,9 +12,11 @@ import {
 import {
   extractLatestAssistantText,
   extractCheckoutUrl,
+  extractCheckoutUrlFromToolResult,
   formatToolResultForDisplay,
   getVapiAssistantId,
   getVapiPublicKey,
+  isCheckoutRelatedMessage,
   looksLikeSpelledOutIdentifier,
   normalizeAssistantDisplayText,
   isStructuredToolMessage,
@@ -119,6 +121,41 @@ function appendToolResultEntry(
   ];
 }
 
+function applyCheckoutUrlToTranscript(
+  prev: VapiTranscriptEntry[],
+  checkoutUrl: string,
+  result: unknown
+): VapiTranscriptEntry[] {
+  const hasCheckoutCard = prev.some(
+    (entry) =>
+      entry.linkUrl === checkoutUrl || entry.text.startsWith("Checkout ready!")
+  );
+
+  let next = prev.map((entry) => {
+    if (entry.linkUrl || entry.role !== "assistant") return entry;
+    if (isCheckoutRelatedMessage(entry.text)) {
+      return { ...entry, linkUrl: checkoutUrl };
+    }
+    return entry;
+  });
+
+  if (!hasCheckoutCard) {
+    next = appendToolResultEntry(next, "createCheckoutSession", result);
+    if (!next.some((entry) => entry.linkUrl === checkoutUrl)) {
+      next = [
+        ...next,
+        createEntry(
+          "assistant",
+          "Checkout ready!\nUse the button below to pay securely on Stripe.",
+          { linkUrl: checkoutUrl }
+        ),
+      ];
+    }
+  }
+
+  return next;
+}
+
 function formatVapiError(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
   if (typeof err === "object" && err !== null) {
@@ -192,6 +229,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const textChatIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const pendingToolsRef = useRef<Map<string, VapiToolEvent>>(new Map());
+  const vapiCallIdRef = useRef<string | null>(null);
   const onToolStartRef = useRef(options?.onToolStart);
   const onToolCompleteRef = useRef(options?.onToolComplete);
 
@@ -202,6 +240,10 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const [transcript, setTranscript] = useState<VapiTranscriptEntry[]>([]);
   const [activitySteps, setActivitySteps] = useState<VapiActivityStep[]>([]);
+  const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(
+    null
+  );
+  const [vapiCallId, setVapiCallId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleToolStart = useCallback((events: VapiToolEvent[]) => {
@@ -277,12 +319,21 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     setTranscript((prev) => {
       let next = prev;
       for (const merged of mergedEvents) {
-        next = appendToolResultEntry(next, merged.toolName, merged.result);
+        const checkoutUrl = extractCheckoutUrlFromToolResult(merged.result);
+        if (checkoutUrl) {
+          next = applyCheckoutUrlToTranscript(next, checkoutUrl, merged.result);
+        } else {
+          next = appendToolResultEntry(next, merged.toolName, merged.result);
+        }
       }
       return next;
     });
 
     for (const merged of mergedEvents) {
+      const checkoutUrl = extractCheckoutUrlFromToolResult(merged.result);
+      if (checkoutUrl) {
+        setStripeCheckoutUrl(checkoutUrl);
+      }
       pendingToolsRef.current.delete(merged.toolCallId);
       onToolCompleteRef.current?.(merged);
     }
@@ -319,6 +370,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
           setConnected(true);
           setState("listening");
           setError(null);
+          setStripeCheckoutUrl(null);
         });
 
         vapi.on("call-end", () => {
@@ -340,6 +392,17 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
 
         vapi.on("message", (message: Record<string, unknown>) => {
           if (!mountedRef.current) return;
+
+          const callRecord =
+            typeof message.call === "object" && message.call !== null
+              ? (message.call as Record<string, unknown>)
+              : null;
+          const nextCallId =
+            callRecord?.id ?? message.callId ?? message.vapiCallId;
+          if (typeof nextCallId === "string" && nextCallId.trim()) {
+            vapiCallIdRef.current = nextCallId.trim();
+            setVapiCallId(nextCallId.trim());
+          }
 
           const messageType = String(message.type ?? "");
 
@@ -611,6 +674,9 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const clearTranscript = useCallback(() => {
     setTranscript([]);
     setActivitySteps([]);
+    setStripeCheckoutUrl(null);
+    setVapiCallId(null);
+    vapiCallIdRef.current = null;
     pendingToolsRef.current.clear();
     textChatIdRef.current = null;
   }, []);
@@ -621,6 +687,8 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     isConnected,
     transcript,
     activitySteps,
+    stripeCheckoutUrl,
+    vapiCallId,
     error,
     startVoiceCall,
     stopCall,

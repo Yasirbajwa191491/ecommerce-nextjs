@@ -409,6 +409,11 @@ export default defineSchema({
     customerPhone: v.optional(v.string()),
     summary: v.optional(v.string()),
     metadata: v.optional(v.string()),
+    pendingCheckoutUrl: v.optional(v.string()),
+    pendingOrderNumber: v.optional(v.string()),
+    pendingCheckoutTotal: v.optional(v.number()),
+    pendingCheckoutCurrency: v.optional(v.string()),
+    pendingCheckoutAt: v.optional(v.number()),
   })
     .index("by_vapi_call_id", ["vapiCallId"])
     .index("by_started_at", ["startedAt"]),

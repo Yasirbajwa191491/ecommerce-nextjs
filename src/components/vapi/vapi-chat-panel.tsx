@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { StripeCheckoutCta } from "@/components/vapi/stripe-checkout-cta";
 import {
   extractCheckoutUrl,
+  extractOrderNumber,
+  isCheckoutRelatedMessage,
   isValidStripeCheckoutUrl,
   normalizeAssistantDisplayText,
   type VapiAssistantState,
@@ -15,7 +19,9 @@ type VapiChatPanelProps = {
   transcript: VapiTranscriptEntry[];
   state: VapiAssistantState;
   error: string | null;
-  stripeCheckoutUrl?: string;
+  stripeCheckoutUrl?: string | null;
+  checkoutOrderNumber?: string;
+  awaitingCheckoutLink?: boolean;
 };
 
 const STATE_LABELS: Record<VapiAssistantState, string> = {
@@ -25,17 +31,26 @@ const STATE_LABELS: Record<VapiAssistantState, string> = {
   processing: "Processing…",
 };
 
+function resolveCheckoutUrl(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  const base = raw.split("#")[0] ?? raw;
+  return isValidStripeCheckoutUrl(base) ? raw : undefined;
+}
+
 export function VapiChatPanel({
   transcript,
   state,
   error,
   stripeCheckoutUrl,
+  checkoutOrderNumber,
+  awaitingCheckoutLink = false,
 }: VapiChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const globalCheckoutUrl = resolveCheckoutUrl(stripeCheckoutUrl);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [transcript.length, state]);
+  }, [transcript.length, state, stripeCheckoutUrl]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -54,7 +69,7 @@ export function VapiChatPanel({
         </span>
       </div>
 
-      <ScrollArea className="min-h-[220px] flex-1 pr-2">
+      <ScrollArea className="min-h-[180px] flex-1 pr-2">
         <div className="space-y-3">
           {transcript.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -67,17 +82,17 @@ export function VapiChatPanel({
                 entry.role === "assistant"
                   ? normalizeAssistantDisplayText(entry.text)
                   : entry.text;
-              const rawCheckout =
-                entry.linkUrl ?? extractCheckoutUrl(entry.text);
-              const checkoutBase = rawCheckout?.split("#")[0];
-              const checkoutUrl =
-                rawCheckout &&
-                checkoutBase &&
-                isValidStripeCheckoutUrl(checkoutBase)
-                  ? rawCheckout
-                  : undefined;
+              const mentionsCheckout =
+                entry.role === "assistant" && isCheckoutRelatedMessage(displayText);
+              const entryCheckoutUrl = resolveCheckoutUrl(
+                entry.linkUrl ??
+                  extractCheckoutUrl(entry.text) ??
+                  (mentionsCheckout ? globalCheckoutUrl : undefined)
+              );
               const productUrl =
                 entry.linkUrl?.startsWith("/product/") ? entry.linkUrl : undefined;
+              const orderNumber =
+                checkoutOrderNumber ?? extractOrderNumber(displayText);
 
               return (
                 <div
@@ -90,15 +105,12 @@ export function VapiChatPanel({
                   )}
                 >
                   <p className="whitespace-pre-wrap">{displayText}</p>
-                  {checkoutUrl ? (
-                    <a
-                      href={checkoutUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-block text-xs font-medium underline underline-offset-2"
-                    >
-                      Open secure Stripe checkout
-                    </a>
+                  {entryCheckoutUrl ? (
+                    <StripeCheckoutCta
+                      checkoutUrl={entryCheckoutUrl}
+                      orderNumber={orderNumber}
+                      compact
+                    />
                   ) : null}
                   {productUrl ? (
                     <a
@@ -116,24 +128,19 @@ export function VapiChatPanel({
         </div>
       </ScrollArea>
 
-      {stripeCheckoutUrl &&
-      !transcript.some(
-        (entry) => entry.linkUrl === stripeCheckoutUrl
-      ) ? (
-        <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
-          <p className="text-sm font-medium text-foreground">Checkout ready</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Pay securely with Stripe — your card details stay on Stripe&apos;s
-            hosted page.
-          </p>
-          <a
-            href={stripeCheckoutUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
-          >
-            Open secure Stripe checkout
-          </a>
+      {globalCheckoutUrl ? (
+        <StripeCheckoutCta
+          checkoutUrl={globalCheckoutUrl}
+          orderNumber={checkoutOrderNumber}
+          className="mt-3 shrink-0"
+        />
+      ) : awaitingCheckoutLink ? (
+        <div
+          className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-muted/40 px-3 py-3 text-xs text-muted-foreground"
+          role="status"
+        >
+          <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+          Preparing your secure Stripe checkout link…
         </div>
       ) : null}
 

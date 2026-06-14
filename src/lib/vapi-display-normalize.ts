@@ -13,8 +13,10 @@ export function extractOrderNumber(text: string): string | undefined {
 export function isValidStripeCheckoutUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname !== "checkout.stripe.com") return false;
-    return /^\/c\/pay\/cs_(test|live)_[a-zA-Z0-9]+$/.test(parsed.pathname);
+    return (
+      parsed.hostname === "checkout.stripe.com" &&
+      parsed.pathname.startsWith("/c/pay/cs_")
+    );
   } catch {
     return false;
   }
@@ -36,11 +38,23 @@ export function normalizeOrderNumbersInText(text: string): string {
     return extracted ? `Order number: ${extracted}` : raw;
   });
 
-  // Price cents glued to suffix: ORD-20260614-LL3UQ0.00
-  out = out.replace(/ORD-\d{8}-[A-Z0-9]{6}\.\d{1,2}\b/gi, (match) => {
-    const extracted = extractOrderNumber(match);
-    return extracted ?? match.replace(/\.\d{1,2}$/, "");
+  // Price cents glued with or without space: ORD-...-XXXXXX.00 or . 00
+  out = out.replace(/ORD-\d{8}-[A-Z0-9]{6}\.\s*\d{1,2}\b/gi, (match) => {
+    const extracted = extractOrderNumber(match.replace(/\s+/g, ""));
+    return extracted ?? match.replace(/\.\s*\d{1,2}$/, "");
   });
+
+  // Invalid suffix glued then cents: ORD-...-MCUSET. 00
+  out = out.replace(/\bORD-\d{8}-[A-Z0-9]{7,}\.\s*\d{1,2}\b/gi, (match) => {
+    const extracted = extractOrderNumber(match);
+    return extracted ?? match.split(".")[0] ?? match;
+  });
+
+  out = out.replace(
+    /Your checkout is ready!\s*-\s*Order number:\s*(ORD-\d{8}-[A-Z0-9]{6})/gi,
+    (_, ord: string) =>
+      `Checkout ready!\nOrder number: ${ord.toUpperCase()}`
+  );
 
   // TTS glues extra words onto the suffix: ORD-20260614-VSJYWTFORTHEHPLAPTOP...
   out = out.replace(/ORD-\d{8}-[A-Z0-9]{6}[A-Z]+/gi, (match) => {

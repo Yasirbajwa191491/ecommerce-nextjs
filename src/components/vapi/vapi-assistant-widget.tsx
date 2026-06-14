@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
 import {
   Bot,
   MessageSquare,
@@ -14,13 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { api } from "../../../convex/_generated/api";
 import { useVapiAssistant } from "@/hooks/use-vapi-assistant";
 import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
 import { VapiChatPanel } from "@/components/vapi/vapi-chat-panel";
 import { VapiActivityPanel } from "@/components/vapi/vapi-activity-panel";
 import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-banner";
 import { getStripeCheckoutUrlFromSteps } from "@/lib/vapi-activity";
-import { isVapiConfigured } from "@/lib/vapi-config";
+import { isCheckoutRelatedMessage, isVapiConfigured } from "@/lib/vapi-config";
 
 export function VapiAssistantWidget() {
   const configured = isVapiConfigured();
@@ -38,6 +40,8 @@ export function VapiAssistantWidget() {
     isConnected,
     transcript,
     activitySteps,
+    stripeCheckoutUrl: clientCheckoutUrl,
+    vapiCallId,
     error,
     startVoiceCall,
     stopCall,
@@ -47,10 +51,45 @@ export function VapiAssistantWidget() {
   const [open, setOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
 
+  const needsCheckoutLookup = useMemo(
+    () =>
+      activitySteps.some(
+        (step) =>
+          step.toolName === "createCheckoutSession" &&
+          (step.status === "active" || step.status === "complete")
+      ) ||
+      transcript.some(
+        (entry) =>
+          entry.role === "assistant" && isCheckoutRelatedMessage(entry.text)
+      ),
+    [activitySteps, transcript]
+  );
+
+  const serverCheckout = useQuery(
+    api.vapi.voiceCheckout.getPendingCheckoutByCallId,
+    vapiCallId && needsCheckoutLookup && !clientCheckoutUrl
+      ? { vapiCallId }
+      : "skip"
+  );
+
+  const latestCheckout = useQuery(
+    api.vapi.voiceCheckout.getLatestPendingCheckout,
+    needsCheckoutLookup && !clientCheckoutUrl && !serverCheckout?.checkoutUrl
+      ? {}
+      : "skip"
+  );
+
   const shoppingActive =
     isConnected || state === "processing" || activitySteps.length > 0;
 
-  const stripeCheckoutUrl = getStripeCheckoutUrlFromSteps(activitySteps);
+  const stripeCheckoutUrl =
+    clientCheckoutUrl ??
+    serverCheckout?.checkoutUrl ??
+    latestCheckout?.checkoutUrl ??
+    getStripeCheckoutUrlFromSteps(activitySteps);
+
+  const checkoutOrderNumber =
+    serverCheckout?.orderNumber ?? latestCheckout?.orderNumber;
 
   if (!configured) {
     if (process.env.NODE_ENV === "development") {
@@ -149,6 +188,10 @@ export function VapiAssistantWidget() {
               state={state}
               error={error}
               stripeCheckoutUrl={stripeCheckoutUrl}
+              checkoutOrderNumber={checkoutOrderNumber}
+              awaitingCheckoutLink={
+                needsCheckoutLookup && !stripeCheckoutUrl
+              }
             />
 
             <div className="mt-4 space-y-3 border-t pt-4">

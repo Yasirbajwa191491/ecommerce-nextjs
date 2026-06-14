@@ -114,6 +114,27 @@ export const appendLog = internalMutation({
   },
 });
 
+export const setPendingVoiceCheckout = internalMutation({
+  args: {
+    conversationId: v.id("vapiConversations"),
+    checkoutUrl: v.string(),
+    orderNumber: v.string(),
+    total: v.number(),
+    currency: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.conversationId, {
+      pendingCheckoutUrl: args.checkoutUrl,
+      pendingOrderNumber: args.orderNumber,
+      pendingCheckoutTotal: args.total,
+      pendingCheckoutCurrency: args.currency,
+      pendingCheckoutAt: Date.now(),
+    });
+    return null;
+  },
+});
+
 export const getConversationByCallId = internalQuery({
   args: { vapiCallId: v.string() },
   returns: v.union(

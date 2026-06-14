@@ -430,9 +430,15 @@ export function finalizeActivityStep(
       };
     case "createCheckoutSession": {
       const checkoutUrl =
-        typeof payload?.checkoutUrl === "string" &&
-        isValidStripeCheckoutUrl(payload.checkoutUrl)
+        typeof payload?.checkoutUrl === "string"
           ? payload.checkoutUrl
+          : typeof payload?.url === "string"
+            ? payload.url
+            : undefined;
+      const base = checkoutUrl?.split("#")[0] ?? checkoutUrl;
+      const validUrl =
+        checkoutUrl && base && isValidStripeCheckoutUrl(base)
+          ? checkoutUrl
           : undefined;
       return {
         ...step,
@@ -442,7 +448,7 @@ export function finalizeActivityStep(
           payload && typeof payload.orderNumber === "string"
             ? `Order ${payload.orderNumber}`
             : step.detail,
-        href: checkoutUrl ?? step.href,
+        href: validUrl ?? step.href,
       };
     }
     case "createCashOrder":

@@ -61,6 +61,14 @@ export const createCheckoutSession = internalAction({
       field: "checkoutStarts",
     });
 
+    await ctx.runMutation(internal.vapi.logging.setPendingVoiceCheckout, {
+      conversationId: args.conversationId,
+      checkoutUrl: session.url,
+      orderNumber: session.orderNumber,
+      total: session.total,
+      currency: session.currency,
+    });
+
     return {
       checkoutUrl: session.url,
       orderNumber: session.orderNumber,
