@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -11,6 +11,8 @@ import { EmailRichTextEditor } from "@/components/admin/email-marketing/email-ri
 import { PlaceholderReference } from "@/components/admin/email-marketing/placeholder-reference";
 import { ProductPicker } from "@/components/admin/email-marketing/product-picker";
 import { ProductPromoPreview, type PromoProduct } from "@/components/admin/email-marketing/product-promo-preview";
+import { EmailMarketingAiAssistant } from "@/components/admin/email-marketing/email-marketing-ai-assistant";
+import { EmailContentExtraFields } from "@/components/admin/email-marketing/email-content-extra-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,12 +32,26 @@ export default function CreateEmailTemplatePage() {
 
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [previewText, setPreviewText] = useState("");
+  const [ctaText, setCtaText] = useState("");
+  const [productPromoText, setProductPromoText] = useState("");
   const [status, setStatus] = useState<"draft" | "active" | "archived">("active");
   const [contentJson, setContentJson] = useState(EMPTY_TIPTAP_DOC);
   const [contentHtml, setContentHtml] = useState("");
   const [productIds, setProductIds] = useState<Id<"products">[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<PromoProduct[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const aiProducts = useQuery(
+    api.products.getPromoProductsByIds,
+    productIds.length > 0 ? { ids: productIds } : "skip"
+  );
+
+  useEffect(() => {
+    if (!aiProducts || aiProducts.length === 0) return;
+    setSelectedProducts(aiProducts);
+  }, [aiProducts]);
 
   const handleSave = async () => {
     if (!name.trim() || !subject.trim()) {
@@ -47,6 +63,10 @@ export default function CreateEmailTemplatePage() {
       const id = await create({
         name: name.trim(),
         subject: subject.trim(),
+        headline: headline.trim() || undefined,
+        previewText: previewText.trim() || undefined,
+        ctaText: ctaText.trim() || undefined,
+        productPromoText: productPromoText.trim() || undefined,
         contentJson,
         contentHtml,
         status,
@@ -68,6 +88,21 @@ export default function CreateEmailTemplatePage() {
         description="Design a reusable email template with rich content and optional product sections."
       />
 
+      <EmailMarketingAiAssistant
+        mode="template"
+        onApply={(payload) => {
+          if (payload.name) setName(payload.name);
+          setSubject(payload.subject);
+          setHeadline(payload.headline);
+          setPreviewText(payload.previewText);
+          setCtaText(payload.ctaText);
+          setProductPromoText(payload.productPromoText);
+          setContentJson(payload.contentJson);
+          setContentHtml(payload.contentHtml);
+          setProductIds(payload.productIds);
+        }}
+      />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -77,9 +112,19 @@ export default function CreateEmailTemplatePage() {
             <AdminFormField label="Template Name" required>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </AdminFormField>
-            <AdminFormField label="Email Subject" required>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </AdminFormField>
+            <EmailContentExtraFields
+              subject={subject}
+              onSubjectChange={setSubject}
+              headline={headline}
+              onHeadlineChange={setHeadline}
+              previewText={previewText}
+              onPreviewTextChange={setPreviewText}
+              ctaText={ctaText}
+              onCtaTextChange={setCtaText}
+              productPromoText={productPromoText}
+              onProductPromoTextChange={setProductPromoText}
+              campaignName={name}
+            />
             <AdminFormField label="Status">
               <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
                 <SelectTrigger>
@@ -120,20 +165,23 @@ export default function CreateEmailTemplatePage() {
                   setSelectedProducts(products);
                 }}
               />
-              <ProductPromoPreview products={selectedProducts} />
+              <ProductPromoPreview
+                products={selectedProducts.length > 0 ? selectedProducts : (aiProducts ?? [])}
+                productPromoText={productPromoText}
+                ctaText={ctaText}
+              />
             </CardContent>
           </Card>
 
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Template"}
+            </Button>
+          </div>
         </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => router.back()}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Template"}
-        </Button>
       </div>
     </div>
   );

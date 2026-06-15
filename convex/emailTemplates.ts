@@ -4,7 +4,7 @@ import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
-import { emailTemplateStatusValidator } from "./lib/emailMarketingValidators";
+import { emailTemplateStatusValidator, emailContentExtrasValidator } from "./lib/emailMarketingValidators";
 
 function filterTemplatesBySearch<
   T extends { name: string; subject: string },
@@ -92,6 +92,10 @@ export const create = mutation({
     contentHtml: v.string(),
     status: v.optional(emailTemplateStatusValidator),
     productIds: v.optional(v.array(v.id("products"))),
+    headline: emailContentExtrasValidator.headline,
+    previewText: emailContentExtrasValidator.previewText,
+    ctaText: emailContentExtrasValidator.ctaText,
+    productPromoText: emailContentExtrasValidator.productPromoText,
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
@@ -105,6 +109,10 @@ export const create = mutation({
     const id = await ctx.db.insert("emailTemplates", {
       name,
       subject,
+      headline: args.headline?.trim() || undefined,
+      previewText: args.previewText?.trim() || undefined,
+      ctaText: args.ctaText?.trim() || undefined,
+      productPromoText: args.productPromoText?.trim() || undefined,
       contentJson: args.contentJson,
       contentHtml: args.contentHtml,
       status: args.status ?? "active",
@@ -139,6 +147,10 @@ export const update = mutation({
     contentHtml: v.string(),
     status: emailTemplateStatusValidator,
     productIds: v.optional(v.array(v.id("products"))),
+    headline: emailContentExtrasValidator.headline,
+    previewText: emailContentExtrasValidator.previewText,
+    ctaText: emailContentExtrasValidator.ctaText,
+    productPromoText: emailContentExtrasValidator.productPromoText,
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
@@ -154,6 +166,10 @@ export const update = mutation({
     await ctx.db.patch(args.id, {
       name,
       subject,
+      headline: args.headline?.trim() || undefined,
+      previewText: args.previewText?.trim() || undefined,
+      ctaText: args.ctaText?.trim() || undefined,
+      productPromoText: args.productPromoText?.trim() || undefined,
       contentJson: args.contentJson,
       contentHtml: args.contentHtml,
       status: args.status,
@@ -186,6 +202,10 @@ export const duplicate = mutation({
     const id = await ctx.db.insert("emailTemplates", {
       name,
       subject: existing.subject,
+      headline: existing.headline,
+      previewText: existing.previewText,
+      ctaText: existing.ctaText,
+      productPromoText: existing.productPromoText,
       contentJson: existing.contentJson,
       contentHtml: existing.contentHtml,
       status: "draft",

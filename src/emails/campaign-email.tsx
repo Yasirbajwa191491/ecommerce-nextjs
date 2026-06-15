@@ -23,6 +23,10 @@ export type CampaignEmailProduct = {
 
 export type CampaignEmailProps = {
   subject: string;
+  previewText?: string;
+  headline?: string;
+  productPromoText?: string;
+  ctaText?: string;
   companyName: string;
   companyEmail: string;
   companyPhone: string;
@@ -34,6 +38,10 @@ export type CampaignEmailProps = {
 
 export function CampaignEmail({
   subject,
+  previewText,
+  headline,
+  productPromoText,
+  ctaText = "Shop Now",
   companyName,
   companyEmail,
   companyPhone,
@@ -45,10 +53,16 @@ export function CampaignEmail({
   return (
     <Html>
       <Head />
-      <Preview>{subject}</Preview>
+      <Preview>{previewText?.trim() || subject}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading style={logo}>{companyName}</Heading>
+
+          {headline?.trim() ? (
+            <Heading as="h2" style={emailHeadline}>
+              {headline}
+            </Heading>
+          ) : null}
 
           <Section style={contentSection}>
             <div dangerouslySetInnerHTML={{ __html: bodyHtml }} />
@@ -56,6 +70,9 @@ export function CampaignEmail({
 
           {products.length > 0 ? (
             <Section style={productsSection}>
+              {productPromoText?.trim() ? (
+                <Text style={promoText}>{productPromoText}</Text>
+              ) : null}
               <Text style={sectionTitle}>Featured Deals</Text>
               {products.map((product) => (
                 <ProductPromoCard
@@ -66,6 +83,7 @@ export function CampaignEmail({
                   discountedPrice={product.discountedPrice}
                   discountPercent={product.discountPercent}
                   shopUrl={product.shopUrl}
+                  ctaText={ctaText}
                 />
               ))}
             </Section>
@@ -104,6 +122,23 @@ const logo = {
   fontWeight: "700",
   textAlign: "center" as const,
   margin: "0 0 24px",
+};
+
+const emailHeadline = {
+  color: "#111827",
+  fontSize: "28px",
+  fontWeight: "700",
+  textAlign: "center" as const,
+  margin: "0 0 20px",
+  lineHeight: "36px",
+};
+
+const promoText = {
+  fontSize: "16px",
+  lineHeight: "26px",
+  color: "#4b5563",
+  textAlign: "center" as const,
+  margin: "0 0 20px",
 };
 
 const contentSection = {

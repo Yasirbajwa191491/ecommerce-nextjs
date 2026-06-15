@@ -22,7 +22,15 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
-export function ProductPromoPreview({ products }: { products: PromoProduct[] }) {
+export function ProductPromoPreview({
+  products,
+  productPromoText,
+  ctaText = "Shop Now",
+}: {
+  products: PromoProduct[];
+  productPromoText?: string;
+  ctaText?: string;
+}) {
   if (products.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -32,7 +40,11 @@ export function ProductPromoPreview({ products }: { products: PromoProduct[] }) 
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-4">
+      {productPromoText?.trim() ? (
+        <p className="text-center text-sm text-muted-foreground">{productPromoText}</p>
+      ) : null}
+      <div className="grid gap-4 sm:grid-cols-2">
       {products.map((product) => (
         <div
           key={product._id}
@@ -61,11 +73,12 @@ export function ProductPromoPreview({ products }: { products: PromoProduct[] }) 
               </span>
             </p>
             <Button type="button" size="sm" variant="default">
-              Shop Now
+              {ctaText}
             </Button>
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ export type ProductPromoCardProps = {
   discountedPrice: string;
   discountPercent: number;
   shopUrl: string;
+  ctaText?: string;
 };
 
 export function ProductPromoCard({
@@ -16,6 +17,7 @@ export function ProductPromoCard({
   discountedPrice,
   discountPercent,
   shopUrl,
+  ctaText = "Shop Now",
 }: ProductPromoCardProps) {
   return (
     <Section style={card}>
@@ -35,7 +37,7 @@ export function ProductPromoCard({
             <span style={salePriceStyle}> {discountedPrice}</span>
           </Text>
           <Button href={shopUrl} style={ctaButton}>
-            Shop Now
+            {ctaText}
           </Button>
         </Column>
       </Row>

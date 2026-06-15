@@ -199,9 +199,16 @@ export const getById = query({
     await requireAdmin(ctx);
     const subscriber = await ctx.db.get(args.id);
     if (!subscriber) return null;
+
+    const interestProfile = await ctx.db
+      .query("subscriberInterestProfiles")
+      .withIndex("by_subscriber", (q) => q.eq("subscriberId", args.id))
+      .unique();
+
     return {
       ...subscriber,
       status: subscriber.active ? ("subscribed" as const) : ("unsubscribed" as const),
+      interestProfile,
     };
   },
 });

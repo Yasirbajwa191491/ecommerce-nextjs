@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { format } from "date-fns";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
@@ -35,7 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Eye, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Download, Eye, RefreshCw, Trash2 } from "lucide-react";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 
 const PAGE_SIZE = 10;
@@ -47,6 +48,14 @@ export default function EmailSubscribersPage() {
   const [viewId, setViewId] = useState<Id<"subscribers"> | null>(null);
   const [removeId, setRemoveId] = useState<Id<"subscribers"> | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const segments = useQuery(api.subscriberInterests.listSegmentsWithCounts);
+  const scheduleRecompute = useMutation(api.subscriberInterests.scheduleRecomputeAll);
+  const subscriberDetail = useQuery(
+    api.subscribers.getById,
+    viewId ? { id: viewId } : "skip"
+  );
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.subscribers.listPaginated,
@@ -65,7 +74,21 @@ export default function EmailSubscribersPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const viewedSubscriber = results.find((s) => s._id === viewId);
+  const viewedSubscriber = subscriberDetail ?? results.find((s) => s._id === viewId);
+
+  const handleRefreshInterests = async () => {
+    setRefreshing(true);
+    try {
+      await scheduleRecompute({});
+      toastSuccess("Interest refresh started", {
+        description: "Segments will update as profiles are recomputed.",
+      });
+    } catch (error) {
+      toastError(error, { title: "Refresh failed" });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleRemove = async () => {
     if (!removeId) return;
@@ -112,6 +135,44 @@ export default function EmailSubscribersPage() {
         title="Subscribers"
         description="Manage newsletter subscribers, search, and export your list."
       />
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Audience Segments</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Auto-generated from order history linked by subscriber email.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshInterests}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`mr-1 size-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh Interests
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {segments === undefined
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))
+              : segments.map((segment) => (
+                  <div
+                    key={segment.key}
+                    className="rounded-lg border p-3"
+                  >
+                    <p className="font-medium">{segment.label}</p>
+                    <p className="text-2xl font-semibold">{segment.count}</p>
+                    <p className="text-xs text-muted-foreground">{segment.description}</p>
+                  </div>
+                ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <AdminListToolbar
         hideTabs
@@ -249,6 +310,32 @@ export default function EmailSubscribersPage() {
                   <dt className="text-muted-foreground">Source</dt>
                   <dd>{viewedSubscriber.source}</dd>
                 </div>
+              ) : null}
+              {subscriberDetail?.interestProfile ? (
+                <>
+                  <div>
+                    <dt className="text-muted-foreground">Orders</dt>
+                    <dd>{subscriberDetail.interestProfile.orderCount}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Total spent</dt>
+                    <dd>${subscriberDetail.interestProfile.totalSpent.toFixed(2)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Interest tags</dt>
+                    <dd className="flex flex-wrap gap-1 pt-1">
+                      {subscriberDetail.interestProfile.interestTags.length > 0 ? (
+                        subscriberDetail.interestProfile.interestTags.map((tag) => (
+                          <Badge key={tag} variant="secondary">
+                            {tag.replace(/_/g, " ")}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">None detected yet</span>
+                      )}
+                    </dd>
+                  </div>
+                </>
               ) : null}
             </dl>
           ) : (

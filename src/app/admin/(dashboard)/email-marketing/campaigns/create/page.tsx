@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../../convex/_generated/dataModel";
@@ -11,13 +11,19 @@ import { EmailRichTextEditor } from "@/components/admin/email-marketing/email-ri
 import { PlaceholderReference } from "@/components/admin/email-marketing/placeholder-reference";
 import { ProductPicker } from "@/components/admin/email-marketing/product-picker";
 import { ProductPromoPreview, type PromoProduct } from "@/components/admin/email-marketing/product-promo-preview";
-import { SubscriberPicker } from "@/components/admin/email-marketing/subscriber-picker";
 import { SendConfirmationDialog } from "@/components/admin/email-marketing/send-confirmation-dialog";
+import { EmailMarketingAiAssistant } from "@/components/admin/email-marketing/email-marketing-ai-assistant";
+import { EmailContentExtraFields } from "@/components/admin/email-marketing/email-content-extra-fields";
+import {
+  SegmentSelector,
+  audienceToCampaignSegment,
+  campaignSegmentToAudience,
+  type SegmentSelectorValue,
+} from "@/components/admin/email-marketing/segment-selector";
+import { serializeSegmentCriteria } from "@/lib/email-marketing/segment-utils";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,23 +36,72 @@ import { toastError, toastSuccess } from "@/lib/app-toast";
 
 export default function CreateEmailCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit") as Id<"emailCampaigns"> | null;
+
   const templates = useQuery(api.emailTemplates.listForSelect);
   const subscriberCounts = useQuery(api.subscribers.countByStatus);
+  const existingCampaign = useQuery(
+    api.emailCampaigns.getById,
+    editId ? { id: editId } : "skip"
+  );
 
   const create = useMutation(api.emailCampaigns.create);
+  const update = useMutation(api.emailCampaigns.update);
   const startSend = useMutation(api.emailCampaigns.startCampaignSend);
 
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [previewText, setPreviewText] = useState("");
+  const [ctaText, setCtaText] = useState("");
+  const [productPromoText, setProductPromoText] = useState("");
   const [templateId, setTemplateId] = useState<string>("none");
   const [contentJson, setContentJson] = useState(EMPTY_TIPTAP_DOC);
   const [contentHtml, setContentHtml] = useState("");
   const [productIds, setProductIds] = useState<Id<"products">[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<PromoProduct[]>([]);
-  const [sendToAll, setSendToAll] = useState(true);
-  const [selectedSubscriberIds, setSelectedSubscriberIds] = useState<Id<"subscribers">[]>([]);
+  const [audience, setAudience] = useState<SegmentSelectorValue>({
+    mode: "all",
+    segmentKeys: [],
+    selectedSubscriberIds: [],
+  });
+  const [suggestedSegmentKeys, setSuggestedSegmentKeys] = useState<string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadedEditId, setLoadedEditId] = useState<string | null>(null);
+
+  const aiProductIds =
+    productIds.length > 0 ? { ids: productIds } : ("skip" as const);
+  const aiProducts = useQuery(api.products.getPromoProductsByIds, aiProductIds);
+
+  useEffect(() => {
+    if (!aiProducts || aiProducts.length === 0) return;
+    setSelectedProducts(aiProducts);
+  }, [aiProducts]);
+
+  useEffect(() => {
+    if (!existingCampaign || !editId || loadedEditId === editId) return;
+    if (existingCampaign.status !== "draft") return;
+    setName(existingCampaign.name);
+    setSubject(existingCampaign.subject);
+    setHeadline(existingCampaign.headline ?? "");
+    setPreviewText(existingCampaign.previewText ?? "");
+    setCtaText(existingCampaign.ctaText ?? "");
+    setProductPromoText(existingCampaign.productPromoText ?? "");
+    setContentJson(existingCampaign.contentJson || EMPTY_TIPTAP_DOC);
+    setContentHtml(existingCampaign.contentHtml ?? "");
+    setProductIds(existingCampaign.productIds ?? []);
+    setTemplateId(existingCampaign.templateId ?? "none");
+    setAudience(
+      campaignSegmentToAudience(
+        existingCampaign.segmentType,
+        existingCampaign.segmentCriteria,
+        existingCampaign.selectedSubscriberIds
+      )
+    );
+    setLoadedEditId(editId);
+  }, [existingCampaign, editId, loadedEditId]);
 
   const templateDetail = useQuery(
     api.emailTemplates.getById,
@@ -54,8 +109,12 @@ export default function CreateEmailCampaignPage() {
   );
 
   useEffect(() => {
-    if (!templateDetail) return;
+    if (!templateDetail || editId) return;
     setSubject(templateDetail.subject);
+    setHeadline(templateDetail.headline ?? "");
+    setPreviewText(templateDetail.previewText ?? "");
+    setCtaText(templateDetail.ctaText ?? "");
+    setProductPromoText(templateDetail.productPromoText ?? "");
     setContentJson(templateDetail.contentJson || EMPTY_TIPTAP_DOC);
     setContentHtml(templateDetail.contentHtml);
     setProductIds(templateDetail.productIds ?? []);
@@ -69,23 +128,39 @@ export default function CreateEmailCampaignPage() {
         templateDetail?.name ??
         "Choose a template");
 
-  const segmentType = sendToAll ? ("all" as const) : ("selected" as const);
+  const segmentArgs = audienceToCampaignSegment(audience);
 
-  const recipientCount = sendToAll
-    ? (subscriberCounts?.subscribed ?? 0)
-    : selectedSubscriberIds.length;
+  const segmentRecipientCount = useQuery(
+    api.subscriberInterests.countRecipientsForSegments,
+    audience.mode === "segments" && audience.segmentKeys.length > 0
+      ? { segmentKeys: audience.segmentKeys }
+      : "skip"
+  );
+
+  const effectiveRecipientCount =
+    audience.mode === "all"
+      ? (subscriberCounts?.subscribed ?? 0)
+      : audience.mode === "segments"
+        ? (segmentRecipientCount ?? 0)
+        : audience.selectedSubscriberIds.length;
 
   const buildCampaignArgs = () => ({
     name: name.trim(),
     subject: subject.trim(),
+    headline: headline.trim() || undefined,
+    previewText: previewText.trim() || undefined,
+    ctaText: ctaText.trim() || undefined,
+    productPromoText: productPromoText.trim() || undefined,
+    suggestedSegmentKeys:
+      suggestedSegmentKeys.length > 0
+        ? serializeSegmentCriteria(suggestedSegmentKeys)
+        : undefined,
     templateId:
       templateId !== "none" ? (templateId as Id<"emailTemplates">) : undefined,
     contentJson,
     contentHtml,
     productIds: productIds.length > 0 ? productIds : undefined,
-    segmentType,
-    selectedSubscriberIds:
-      segmentType === "selected" ? selectedSubscriberIds : undefined,
+    ...segmentArgs,
   });
 
   const validate = () => {
@@ -101,11 +176,15 @@ export default function CreateEmailCampaignPage() {
       toastError("Email content is required.");
       return false;
     }
-    if (!sendToAll && selectedSubscriberIds.length === 0) {
+    if (audience.mode === "selected" && audience.selectedSubscriberIds.length === 0) {
       toastError("Select at least one subscriber.");
       return false;
     }
-    if (recipientCount === 0) {
+    if (audience.mode === "segments" && audience.segmentKeys.length === 0) {
+      toastError("Select at least one segment.");
+      return false;
+    }
+    if (effectiveRecipientCount === 0) {
       toastError("No recipients selected.");
       return false;
     }
@@ -116,9 +195,16 @@ export default function CreateEmailCampaignPage() {
     if (!validate()) return;
     setSaving(true);
     try {
-      const id = await create(buildCampaignArgs());
-      toastSuccess("Campaign saved as draft");
-      router.push(`/admin/email-marketing/campaigns/${id}`);
+      const args = buildCampaignArgs();
+      if (editId && existingCampaign?.status === "draft") {
+        await update({ id: editId, ...args });
+        toastSuccess("Campaign updated");
+        router.push(`/admin/email-marketing/campaigns/${editId}`);
+      } else {
+        const id = await create(args);
+        toastSuccess("Campaign saved as draft");
+        router.push(`/admin/email-marketing/campaigns/${id}`);
+      }
     } catch (error) {
       toastError(error, { title: "Save failed" });
     } finally {
@@ -130,10 +216,17 @@ export default function CreateEmailCampaignPage() {
     if (!validate()) return;
     setSaving(true);
     try {
-      const id = await create(buildCampaignArgs());
+      let id = editId;
+      const args = buildCampaignArgs();
+      if (editId && existingCampaign?.status === "draft") {
+        await update({ id: editId, ...args });
+      } else {
+        id = await create(args);
+      }
+      if (!id) throw new Error("Campaign ID missing");
       await startSend({ id });
       toastSuccess("Campaign sending started", {
-        description: `Queued for ${recipientCount} recipients.`,
+        description: `Queued for ${effectiveRecipientCount} recipients.`,
       });
       setConfirmOpen(false);
       router.push(`/admin/email-marketing/campaigns/${id}`);
@@ -147,8 +240,26 @@ export default function CreateEmailCampaignPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Create Campaign"
+        title={editId ? "Edit Campaign" : "Create Campaign"}
         description="Build a promotional or content-only email and send it to your subscribers."
+      />
+
+      <EmailMarketingAiAssistant
+        mode="campaign"
+        campaignName={name}
+        onApply={(payload) => {
+          if (payload.name) setName(payload.name);
+          setSubject(payload.subject);
+          setHeadline(payload.headline);
+          setPreviewText(payload.previewText);
+          setCtaText(payload.ctaText);
+          setProductPromoText(payload.productPromoText);
+          setContentJson(payload.contentJson);
+          setContentHtml(payload.contentHtml);
+          setProductIds(payload.productIds);
+          setSuggestedSegmentKeys(payload.suggestedSegmentKeys);
+          if (payload.audience) setAudience(payload.audience);
+        }}
       />
 
       <Card>
@@ -159,9 +270,21 @@ export default function CreateEmailCampaignPage() {
           <AdminFormField label="Campaign Name" required>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </AdminFormField>
-          <AdminFormField label="Email Subject" required>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </AdminFormField>
+          <div className="sm:col-span-2">
+            <EmailContentExtraFields
+              subject={subject}
+              onSubjectChange={setSubject}
+              headline={headline}
+              onHeadlineChange={setHeadline}
+              previewText={previewText}
+              onPreviewTextChange={setPreviewText}
+              ctaText={ctaText}
+              onCtaTextChange={setCtaText}
+              productPromoText={productPromoText}
+              onProductPromoTextChange={setProductPromoText}
+              campaignName={name}
+            />
+          </div>
           <AdminFormField label="Select Template" className="sm:col-span-2">
             <div className="flex flex-wrap gap-2">
               <Select
@@ -224,7 +347,11 @@ export default function CreateEmailCampaignPage() {
                   setSelectedProducts(products);
                 }}
               />
-              <ProductPromoPreview products={selectedProducts} />
+              <ProductPromoPreview
+                products={selectedProducts.length > 0 ? selectedProducts : (aiProducts ?? [])}
+                productPromoText={productPromoText}
+                ctaText={ctaText}
+              />
             </CardContent>
           </Card>
 
@@ -232,41 +359,8 @@ export default function CreateEmailCampaignPage() {
             <CardHeader>
               <CardTitle>Subscriber Selection</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="send-to-all"
-                  checked={sendToAll}
-                  onCheckedChange={(checked) => setSendToAll(checked === true)}
-                />
-                <Label htmlFor="send-to-all">Send to all subscribers</Label>
-              </div>
-
-              <AdminFormField label="Subscriber Segments">
-                <Select value="all" disabled>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Subscribers</SelectItem>
-                    <SelectItem value="new" disabled>
-                      New Subscribers (Coming soon)
-                    </SelectItem>
-                    <SelectItem value="customers" disabled>
-                      Active Customers (Coming soon)
-                    </SelectItem>
-                    <SelectItem value="custom" disabled>
-                      Custom Segments (Coming soon)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </AdminFormField>
-
-              <SubscriberPicker
-                selectedIds={selectedSubscriberIds}
-                onChange={setSelectedSubscriberIds}
-                disabled={sendToAll}
-              />
+            <CardContent>
+              <SegmentSelector value={audience} onChange={setAudience} />
             </CardContent>
           </Card>
         </div>
@@ -289,7 +383,7 @@ export default function CreateEmailCampaignPage() {
         onOpenChange={setConfirmOpen}
         campaignName={name}
         subject={subject}
-        recipientCount={recipientCount}
+        recipientCount={effectiveRecipientCount}
         productCount={productIds.length}
         onConfirm={handleSend}
         loading={saving}

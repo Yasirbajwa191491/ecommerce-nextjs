@@ -304,6 +304,12 @@ export const updateCodPaymentStatus = mutation({
       createdAt: now,
     });
 
+    if (args.paymentStatus === "paid") {
+      await ctx.scheduler.runAfter(0, internal.subscriberInterests.recomputeForEmail, {
+        email: order.customerEmail,
+      });
+    }
+
     return { success: true as const };
   },
 });

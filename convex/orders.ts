@@ -457,6 +457,10 @@ export const markOrderPaid = internalMutation({
       orderId: args.orderId,
     });
 
+    await ctx.scheduler.runAfter(0, internal.subscriberInterests.recomputeForEmail, {
+      email: order.customerEmail,
+    });
+
     return { alreadyPaid: false as const };
   },
 });

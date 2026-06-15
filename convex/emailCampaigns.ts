@@ -8,6 +8,7 @@ import { insertAdminActivityLog } from "./lib/adminActivityLogs";
 import {
   emailCampaignSegmentValidator,
   emailCampaignStatusValidator,
+  emailContentExtrasValidator,
 } from "./lib/emailMarketingValidators";
 import { enqueueCampaignRecipients, resolveCampaignRecipients } from "./lib/campaignQueue";
 
@@ -98,6 +99,14 @@ export const getDetail = query({
   },
 });
 
+const campaignContentArgs = {
+  headline: emailContentExtrasValidator.headline,
+  previewText: emailContentExtrasValidator.previewText,
+  ctaText: emailContentExtrasValidator.ctaText,
+  productPromoText: emailContentExtrasValidator.productPromoText,
+  suggestedSegmentKeys: v.optional(v.string()),
+};
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -107,7 +116,9 @@ export const create = mutation({
     contentHtml: v.optional(v.string()),
     productIds: v.optional(v.array(v.id("products"))),
     segmentType: emailCampaignSegmentValidator,
+    segmentCriteria: v.optional(v.string()),
     selectedSubscriberIds: v.optional(v.array(v.id("subscribers"))),
+    ...campaignContentArgs,
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
@@ -119,12 +130,20 @@ export const create = mutation({
 
     let contentJson = args.contentJson;
     let contentHtml = args.contentHtml;
+    let headline = args.headline?.trim() || undefined;
+    let previewText = args.previewText?.trim() || undefined;
+    let ctaText = args.ctaText?.trim() || undefined;
+    let productPromoText = args.productPromoText?.trim() || undefined;
 
     if (args.templateId) {
       const template = await ctx.db.get(args.templateId);
       if (!template) throw new ConvexError("Template not found.");
       if (!contentJson) contentJson = template.contentJson;
       if (!contentHtml) contentHtml = template.contentHtml;
+      if (!headline) headline = template.headline;
+      if (!previewText) previewText = template.previewText;
+      if (!ctaText) ctaText = template.ctaText;
+      if (!productPromoText) productPromoText = template.productPromoText;
     }
 
     if (!contentHtml?.trim()) {
@@ -137,11 +156,17 @@ export const create = mutation({
     const id = await ctx.db.insert("emailCampaigns", {
       name,
       subject,
+      headline,
+      previewText,
+      ctaText,
+      productPromoText,
+      suggestedSegmentKeys: args.suggestedSegmentKeys,
       templateId: args.templateId,
       contentJson,
       contentHtml,
       productIds,
       segmentType: args.segmentType,
+      segmentCriteria: args.segmentCriteria,
       selectedSubscriberIds: args.selectedSubscriberIds,
       status: "draft",
       recipientCount: 0,
@@ -151,6 +176,9 @@ export const create = mutation({
       emailsFailed: 0,
       emailsOpened: 0,
       emailsClicked: 0,
+      uniqueOpens: 0,
+      uniqueClicks: 0,
+      attributedRevenue: 0,
       createdByUserId: admin._id,
       createdByName: admin.name ?? admin.email,
       createdAt: now,
@@ -171,7 +199,9 @@ export const update = mutation({
     contentHtml: v.optional(v.string()),
     productIds: v.optional(v.array(v.id("products"))),
     segmentType: emailCampaignSegmentValidator,
+    segmentCriteria: v.optional(v.string()),
     selectedSubscriberIds: v.optional(v.array(v.id("subscribers"))),
+    ...campaignContentArgs,
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -194,11 +224,17 @@ export const update = mutation({
     await ctx.db.patch(args.id, {
       name,
       subject,
+      headline: args.headline?.trim() || undefined,
+      previewText: args.previewText?.trim() || undefined,
+      ctaText: args.ctaText?.trim() || undefined,
+      productPromoText: args.productPromoText?.trim() || undefined,
+      suggestedSegmentKeys: args.suggestedSegmentKeys,
       templateId: args.templateId,
       contentJson: args.contentJson,
       contentHtml: args.contentHtml,
       productIds,
       segmentType: args.segmentType,
+      segmentCriteria: args.segmentCriteria,
       selectedSubscriberIds: args.selectedSubscriberIds,
       productCount: productIds.length,
       updatedAt: Date.now(),
@@ -217,11 +253,17 @@ export const duplicate = mutation({
     const id = await ctx.db.insert("emailCampaigns", {
       name: `${existing.name} (Copy)`,
       subject: existing.subject,
+      headline: existing.headline,
+      previewText: existing.previewText,
+      ctaText: existing.ctaText,
+      productPromoText: existing.productPromoText,
+      suggestedSegmentKeys: existing.suggestedSegmentKeys,
       templateId: existing.templateId,
       contentJson: existing.contentJson,
       contentHtml: existing.contentHtml,
       productIds: existing.productIds,
       segmentType: existing.segmentType,
+      segmentCriteria: existing.segmentCriteria,
       selectedSubscriberIds: existing.selectedSubscriberIds,
       status: "draft",
       recipientCount: 0,
@@ -231,6 +273,9 @@ export const duplicate = mutation({
       emailsFailed: 0,
       emailsOpened: 0,
       emailsClicked: 0,
+      uniqueOpens: 0,
+      uniqueClicks: 0,
+      attributedRevenue: 0,
       createdByUserId: admin._id,
       createdByName: admin.name ?? admin.email,
       createdAt: now,

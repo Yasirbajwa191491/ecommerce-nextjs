@@ -14,6 +14,8 @@ import type { PromoProduct } from "./product-promo-preview";
 type ProductPickerProps = {
   selectedIds: Id<"products">[];
   onChange: (ids: Id<"products">[], products: PromoProduct[]) => void;
+  categorySlug?: string;
+  minDiscountPercent?: number;
 };
 
 function formatMoney(amount: number, currency: string) {
@@ -24,7 +26,12 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
-export function ProductPicker({ selectedIds, onChange }: ProductPickerProps) {
+export function ProductPicker({
+  selectedIds,
+  onChange,
+  categorySlug,
+  minDiscountPercent,
+}: ProductPickerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
@@ -35,7 +42,11 @@ export function ProductPicker({ selectedIds, onChange }: ProductPickerProps) {
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.products.listDiscountedPaginated,
-    { search: search || undefined },
+    {
+      search: search || undefined,
+      categorySlug: categorySlug || undefined,
+      minDiscountPercent,
+    },
     { initialNumItems: 10 }
   );
 

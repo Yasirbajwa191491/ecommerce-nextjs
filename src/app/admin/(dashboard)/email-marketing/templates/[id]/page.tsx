@@ -12,6 +12,8 @@ import { EmailPreview } from "@/components/admin/email-marketing/email-preview";
 import { PlaceholderReference } from "@/components/admin/email-marketing/placeholder-reference";
 import { ProductPicker } from "@/components/admin/email-marketing/product-picker";
 import { ProductPromoPreview, type PromoProduct } from "@/components/admin/email-marketing/product-promo-preview";
+import { EmailMarketingAiAssistant } from "@/components/admin/email-marketing/email-marketing-ai-assistant";
+import { EmailContentExtraFields } from "@/components/admin/email-marketing/email-content-extra-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +44,10 @@ export default function EmailTemplateDetailPage({
   const [editing, setEditing] = useState(searchParams.get("edit") === "1");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [previewText, setPreviewText] = useState("");
+  const [ctaText, setCtaText] = useState("");
+  const [productPromoText, setProductPromoText] = useState("");
   const [status, setStatus] = useState<"draft" | "active" | "archived">("draft");
   const [contentJson, setContentJson] = useState(EMPTY_TIPTAP_DOC);
   const [contentHtml, setContentHtml] = useState("");
@@ -49,15 +55,31 @@ export default function EmailTemplateDetailPage({
   const [selectedProducts, setSelectedProducts] = useState<PromoProduct[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const aiProducts = useQuery(
+    api.products.getPromoProductsByIds,
+    productIds.length > 0 ? { ids: productIds } : "skip"
+  );
+
   useEffect(() => {
     if (!template) return;
     setName(template.name);
     setSubject(template.subject);
+    setHeadline(template.headline ?? "");
+    setPreviewText(template.previewText ?? "");
+    setCtaText(template.ctaText ?? "");
+    setProductPromoText(template.productPromoText ?? "");
     setStatus(template.status);
     setContentJson(template.contentJson || EMPTY_TIPTAP_DOC);
     setContentHtml(template.contentHtml);
     setProductIds(template.productIds ?? []);
   }, [template]);
+
+  useEffect(() => {
+    if (!aiProducts || aiProducts.length === 0) return;
+    if (selectedProducts.length === 0 && productIds.length > 0) {
+      setSelectedProducts(aiProducts);
+    }
+  }, [aiProducts, productIds.length, selectedProducts.length]);
 
   const handleSave = async () => {
     if (!name.trim() || !subject.trim()) {
@@ -70,6 +92,10 @@ export default function EmailTemplateDetailPage({
         id: templateId,
         name: name.trim(),
         subject: subject.trim(),
+        headline: headline.trim() || undefined,
+        previewText: previewText.trim() || undefined,
+        ctaText: ctaText.trim() || undefined,
+        productPromoText: productPromoText.trim() || undefined,
         contentJson,
         contentHtml,
         status,
@@ -113,6 +139,23 @@ export default function EmailTemplateDetailPage({
         }
       />
 
+      {editing ? (
+        <EmailMarketingAiAssistant
+          mode="template"
+          onApply={(payload) => {
+            if (payload.name) setName(payload.name);
+            setSubject(payload.subject);
+            setHeadline(payload.headline);
+            setPreviewText(payload.previewText);
+            setCtaText(payload.ctaText);
+            setProductPromoText(payload.productPromoText);
+            setContentJson(payload.contentJson);
+            setContentHtml(payload.contentHtml);
+            setProductIds(payload.productIds);
+          }}
+        />
+      ) : null}
+
       <div className={editing ? "grid gap-6 lg:grid-cols-2" : "space-y-6"}>
         <Card>
           <CardHeader>
@@ -126,13 +169,32 @@ export default function EmailTemplateDetailPage({
                 disabled={!editing}
               />
             </AdminFormField>
-            <AdminFormField label="Email Subject" required>
-              <Input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                disabled={!editing}
+            {editing ? (
+              <EmailContentExtraFields
+                subject={subject}
+                onSubjectChange={setSubject}
+                headline={headline}
+                onHeadlineChange={setHeadline}
+                previewText={previewText}
+                onPreviewTextChange={setPreviewText}
+                ctaText={ctaText}
+                onCtaTextChange={setCtaText}
+                productPromoText={productPromoText}
+                onProductPromoTextChange={setProductPromoText}
+                campaignName={name}
               />
-            </AdminFormField>
+            ) : (
+              <>
+                <AdminFormField label="Email Subject">
+                  <Input value={subject} disabled />
+                </AdminFormField>
+                {template.headline ? (
+                  <AdminFormField label="Headline">
+                    <Input value={template.headline} disabled />
+                  </AdminFormField>
+                ) : null}
+              </>
+            )}
             <AdminFormField label="Status">
               <Select
                 value={status}
@@ -185,7 +247,11 @@ export default function EmailTemplateDetailPage({
                   setSelectedProducts(products);
                 }}
               />
-              <ProductPromoPreview products={selectedProducts} />
+              <ProductPromoPreview
+                products={selectedProducts.length > 0 ? selectedProducts : (aiProducts ?? [])}
+                productPromoText={productPromoText}
+                ctaText={ctaText}
+              />
             </CardContent>
           </Card>
         ) : null}

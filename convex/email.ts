@@ -381,6 +381,10 @@ export const processCampaignBatch = internalAction({
         const html = await render(
           CampaignEmail({
             subject: campaign.subject,
+            previewText: campaign.previewText,
+            headline: campaign.headline,
+            productPromoText: campaign.productPromoText,
+            ctaText: campaign.ctaText,
             companyName: STORE_NAME,
             companyEmail: branding.email,
             companyPhone: branding.phone,

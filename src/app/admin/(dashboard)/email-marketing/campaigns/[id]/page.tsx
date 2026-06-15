@@ -62,7 +62,9 @@ export default function EmailCampaignDetailPage({
       ? campaign.recipientCount
       : campaign.segmentType === "selected"
         ? (campaign.selectedSubscriberIds?.length ?? 0)
-        : (subscriberCounts?.subscribed ?? 0);
+        : campaign.segmentType === "segments"
+          ? 0
+          : (subscriberCounts?.subscribed ?? 0);
   const promoProducts = products.map((p) => ({
     _id: p._id,
     name: p.name,
@@ -84,7 +86,19 @@ export default function EmailCampaignDetailPage({
               Back
             </Button>
             {campaign.status === "draft" ? (
-              <Button onClick={() => setConfirmOpen(true)}>Send Campaign</Button>
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    router.push(
+                      `/admin/email-marketing/campaigns/create?edit=${campaignId}`
+                    )
+                  }
+                >
+                  Edit Draft
+                </Button>
+                <Button onClick={() => setConfirmOpen(true)}>Send Campaign</Button>
+              </>
             ) : null}
           </div>
         }
@@ -131,7 +145,11 @@ export default function EmailCampaignDetailPage({
             <CardTitle>Attached Products</CardTitle>
           </CardHeader>
           <CardContent>
-            <ProductPromoPreview products={promoProducts} />
+            <ProductPromoPreview
+              products={promoProducts}
+              productPromoText={campaign.productPromoText}
+              ctaText={campaign.ctaText}
+            />
           </CardContent>
         </Card>
       ) : null}

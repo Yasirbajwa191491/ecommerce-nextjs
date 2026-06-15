@@ -598,26 +598,99 @@ export const reorder = mutation({
 });
 
 function filterDiscountedProducts<
-  T extends { name: string; discountPercent?: number },
->(products: T[], search?: string) {
-  const discounted = products.filter(
-    (p) => (p.discountPercent ?? 0) > 0
-  );
+  T extends { name: string; discountPercent?: number; categoryId?: string },
+>(
+  products: T[],
+  search?: string,
+  options?: {
+    categoryId?: string;
+    minDiscountPercent?: number;
+  }
+) {
+  let discounted = products.filter((p) => (p.discountPercent ?? 0) > 0);
+
+  if (options?.minDiscountPercent !== undefined) {
+    discounted = discounted.filter(
+      (p) => (p.discountPercent ?? 0) >= options.minDiscountPercent!
+    );
+  }
+
+  if (options?.categoryId) {
+    discounted = discounted.filter((p) => p.categoryId === options.categoryId);
+  }
+
   if (!search?.trim()) return discounted;
   const term = search.trim().toLowerCase();
   return discounted.filter((p) => p.name.toLowerCase().includes(term));
 }
+
+function mapDiscountedProductPage(
+  page: Awaited<ReturnType<typeof loadActiveProducts>>
+) {
+  return page.map((p) => {
+    const discountPercent = p.discountPercent ?? 0;
+    const discountedPrice = calculateFinalPrice(p.price, discountPercent);
+    return {
+      _id: p._id,
+      name: p.name,
+      imageUrl: p.image[0]?.url ?? "",
+      price: p.price,
+      discountedPrice,
+      discountPercent,
+      currency: p.currency ?? "USD",
+    };
+  });
+}
+
+/** Admin: fetch discounted product summaries by IDs (for AI product selection). */
+export const getPromoProductsByIds = query({
+  args: { ids: v.array(v.id("products")) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const products = await Promise.all(args.ids.map((id) => ctx.db.get(id)));
+    return products
+      .filter((p): p is NonNullable<typeof p> => p !== null && isProductActive(p))
+      .map((p) => {
+        const discountPercent = p.discountPercent ?? 0;
+        return {
+          _id: p._id,
+          name: p.name,
+          imageUrl: p.image[0]?.url ?? "",
+          price: p.price,
+          discountedPrice: calculateFinalPrice(p.price, discountPercent),
+          discountPercent,
+          currency: p.currency ?? "USD",
+        };
+      });
+  },
+});
 
 /** Admin: discounted products for email campaign product picker. */
 export const listDiscountedPaginated = query({
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
+    categoryId: v.optional(v.id("productCategories")),
+    categorySlug: v.optional(v.string()),
+    minDiscountPercent: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const products = await loadActiveProducts(ctx);
-    const filtered = filterDiscountedProducts(products, args.search);
+
+    let categoryId = args.categoryId;
+    if (!categoryId && args.categorySlug) {
+      const category = await ctx.db
+        .query("productCategories")
+        .withIndex("by_slug", (q) => q.eq("slug", args.categorySlug!))
+        .unique();
+      categoryId = category?._id;
+    }
+
+    const filtered = filterDiscountedProducts(products, args.search, {
+      categoryId,
+      minDiscountPercent: args.minDiscountPercent,
+    });
     const sorted = filtered.sort(bySortOrder);
 
     const { page, isDone, continueCursor } = paginateArray(
@@ -626,19 +699,7 @@ export const listDiscountedPaginated = query({
     );
 
     return {
-      page: page.map((p) => {
-        const discountPercent = p.discountPercent ?? 0;
-        const discountedPrice = calculateFinalPrice(p.price, discountPercent);
-        return {
-          _id: p._id,
-          name: p.name,
-          imageUrl: p.image[0]?.url ?? "",
-          price: p.price,
-          discountedPrice,
-          discountPercent,
-          currency: p.currency ?? "USD",
-        };
-      }),
+      page: mapDiscountedProductPage(page),
       isDone,
       continueCursor,
     };

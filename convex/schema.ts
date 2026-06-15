@@ -124,6 +124,10 @@ export default defineSchema({
   emailTemplates: defineTable({
     name: v.string(),
     subject: v.string(),
+    headline: v.optional(v.string()),
+    previewText: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    productPromoText: v.optional(v.string()),
     contentJson: v.string(),
     contentHtml: v.string(),
     status: emailTemplateStatusValidator,
@@ -139,6 +143,11 @@ export default defineSchema({
   emailCampaigns: defineTable({
     name: v.string(),
     subject: v.string(),
+    headline: v.optional(v.string()),
+    previewText: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    productPromoText: v.optional(v.string()),
+    suggestedSegmentKeys: v.optional(v.string()),
     templateId: v.optional(v.id("emailTemplates")),
     contentJson: v.optional(v.string()),
     contentHtml: v.optional(v.string()),
@@ -157,6 +166,9 @@ export default defineSchema({
     emailsFailed: v.number(),
     emailsOpened: v.number(),
     emailsClicked: v.number(),
+    uniqueOpens: v.optional(v.number()),
+    uniqueClicks: v.optional(v.number()),
+    attributedRevenue: v.optional(v.number()),
     sentByUserId: v.optional(v.string()),
     sentByName: v.optional(v.string()),
     sendLockAt: v.optional(v.number()),
@@ -189,6 +201,18 @@ export default defineSchema({
     .index("by_campaign_id_status", ["campaignId", "status"])
     .index("by_campaign_subscriber", ["campaignId", "subscriberId"])
     .index("by_sent_at", ["sentAt"]),
+
+  subscriberInterestProfiles: defineTable({
+    subscriberId: v.id("subscribers"),
+    email: v.string(),
+    interestTags: v.array(v.string()),
+    orderCount: v.number(),
+    totalSpent: v.number(),
+    lastOrderAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_subscriber", ["subscriberId"])
+    .index("by_email", ["email"]),
 
   contactMessages: defineTable({
     name: v.string(),
