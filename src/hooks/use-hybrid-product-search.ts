@@ -13,11 +13,15 @@ export type HybridSearchProduct = {
   price: number;
   discountPercent: number;
   currency: string;
+  categoryId: string;
   categoryName: string;
   stars: number;
   reviews: number;
   featured: boolean;
   finalPrice: number;
+  stock: number;
+  shipping: boolean;
+  description: string;
 };
 
 type UseHybridProductSearchOptions = {
@@ -63,7 +67,12 @@ export function useHybridProductSearch({
     }
 
     const requestId = ++requestIdRef.current;
-    setState((prev) => ({ ...prev, loading: true }));
+    setState({
+      products: [],
+      totalCount: 0,
+      loading: true,
+      isSimilarFallback: false,
+    });
 
     void searchHybrid({
       query: trimmed,
@@ -127,6 +136,10 @@ export function useHybridProductSearchPaginated({
 
     const requestId = ++requestIdRef.current;
     setLoading(true);
+    setProducts([]);
+    setTotalCount(0);
+    setIsSimilarFallback(false);
+    setNextCursor(undefined);
 
     void searchHybrid({
       query: trimmed,

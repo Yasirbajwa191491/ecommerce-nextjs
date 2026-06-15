@@ -198,11 +198,15 @@ export const enrichProductsByIds = internalQuery({
       price: v.number(),
       discountPercent: v.number(),
       currency: v.string(),
+      categoryId: v.id("productCategories"),
       categoryName: v.string(),
       stars: v.number(),
       reviews: v.number(),
       featured: v.boolean(),
       finalPrice: v.number(),
+      stock: v.number(),
+      shipping: v.boolean(),
+      description: v.string(),
     })
   ),
   handler: async (ctx, args) => {
@@ -222,6 +226,7 @@ export const enrichProductsByIds = internalQuery({
       price: product.price,
       discountPercent: product.discountPercent ?? 0,
       currency: product.currency ?? "USD",
+      categoryId: product.categoryId,
       categoryName: product.category?.name ?? "Product",
       stars: product.stars,
       reviews: product.reviews,
@@ -230,6 +235,9 @@ export const enrichProductsByIds = internalQuery({
         product.price,
         product.discountPercent ?? 0
       ),
+      stock: product.stock,
+      shipping: product.shipping,
+      description: product.description,
     }));
   },
 });

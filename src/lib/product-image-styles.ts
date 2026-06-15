@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type ProductImageVariant = "catalog" | "detail";
+export type ProductImageVariant = "catalog" | "detail" | "list";
 
 type ProductImageClassOptions = {
   interactive?: boolean;
@@ -16,7 +16,7 @@ export function productImageClassName(
   const { interactive = false, variant = "detail" } = normalized;
 
   return cn(
-    variant === "catalog"
+    variant === "catalog" || variant === "list"
       ? "object-cover object-center"
       : "object-contain object-top",
     interactive && "transition-transform duration-500 group-hover:scale-[1.03]"

@@ -22,23 +22,32 @@ export function ProductImageFrame({
   className,
 }: ProductImageFrameProps) {
   const isCatalog = variant === "catalog";
+  const isList = variant === "list";
 
   return (
     <div
       className={cn(
-        "relative w-full shrink-0 overflow-hidden bg-white",
-        isCatalog ? "aspect-[4/3]" : "aspect-[4/5]",
+        "relative shrink-0 overflow-hidden bg-white",
+        isList
+          ? "aspect-square h-44 w-44 rounded-xl sm:h-56 sm:w-56"
+          : cn(
+              "w-full",
+              isCatalog ? "aspect-[4/3]" : "aspect-[4/5]"
+            ),
         className
       )}
     >
-      {isCatalog ? (
+      {isCatalog || isList ? (
         <Image
           src={src}
           alt={alt}
           fill
           priority={priority}
           sizes={sizes}
-          className={productImageClassName({ interactive, variant: "catalog" })}
+          className={productImageClassName({
+            interactive,
+            variant: isList ? "list" : "catalog",
+          })}
         />
       ) : (
         <div className="absolute inset-3 sm:inset-4">

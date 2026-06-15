@@ -26,7 +26,7 @@ export function ProductCatalogLoadMore({
           className={cn(
             "grid",
             view === "grid"
-              ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
+              ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-6"
               : "flex flex-col gap-3 sm:gap-4"
           )}
         >

@@ -25,11 +25,15 @@ type SearchResultItem = {
   price: number;
   discountPercent: number;
   currency: string;
+  categoryId: Id<"productCategories">;
   categoryName: string;
   stars: number;
   reviews: number;
   featured: boolean;
   finalPrice: number;
+  stock: number;
+  shipping: boolean;
+  description: string;
 };
 
 type HybridSearchResult = {
@@ -52,11 +56,15 @@ const searchResultItemValidator = v.object({
   price: v.number(),
   discountPercent: v.number(),
   currency: v.string(),
+  categoryId: v.id("productCategories"),
   categoryName: v.string(),
   stars: v.number(),
   reviews: v.number(),
   featured: v.boolean(),
   finalPrice: v.number(),
+  stock: v.number(),
+  shipping: v.boolean(),
+  description: v.string(),
 });
 
 const hybridSearchResultValidator = v.object({

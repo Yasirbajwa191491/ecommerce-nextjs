@@ -17,6 +17,7 @@ import { ProductCatalogToolbar } from "@/components/products/product-catalog-too
 import { ProductCatalogLoadMore } from "@/components/products/product-catalog-load-more";
 import ProductCard from "@/components/products/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
@@ -49,37 +50,6 @@ function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
       break;
   }
   return sorted;
-}
-
-function filterProductsClient(
-  products: Product[],
-  options: {
-    categoryId: Id<"productCategories"> | "all";
-    priceRange: [number, number];
-    priceFilterReady: boolean;
-  }
-): Product[] {
-  return products.filter((product) => {
-    if (
-      options.categoryId !== "all" &&
-      product.categoryId !== options.categoryId
-    ) {
-      return false;
-    }
-    if (options.priceFilterReady) {
-      const finalPrice = calculateFinalPrice(
-        product.price,
-        product.discountPercent ?? 0
-      );
-      if (
-        finalPrice < options.priceRange[0] ||
-        finalPrice > options.priceRange[1]
-      ) {
-        return false;
-      }
-    }
-    return true;
-  });
 }
 
 function productIds(products: Product[]) {
@@ -164,17 +134,12 @@ export default function ProductCatalog() {
     [hybridSearch.products]
   );
 
-  const hybridFullProducts = useQuery(
-    api.products.listByIds,
-    isHybridSearch && hybridProductIds.length > 0
-      ? { ids: hybridProductIds }
-      : "skip"
-  );
-
   const hybridDisplayProducts = useMemo(() => {
-    if (!isHybridSearch || !hybridFullProducts) return [] as Product[];
+    if (!isHybridSearch || hybridSearch.products.length === 0) {
+      return [] as Product[];
+    }
 
-    const products = hybridFullProducts as Product[];
+    const products = mapHybridSearchProductsToCatalog(hybridSearch.products);
     if (sort === "default") {
       const rankById = new Map(
         hybridProductIds.map((id, index) => [id, index])
@@ -186,7 +151,7 @@ export default function ProductCatalog() {
       );
     }
     return sortProductsClient(products, sort);
-  }, [isHybridSearch, hybridFullProducts, hybridProductIds, sort]);
+  }, [isHybridSearch, hybridSearch.products, hybridProductIds, sort]);
 
   const filterArgs = useMemo(
     () => ({
@@ -274,14 +239,7 @@ export default function ProductCatalog() {
     });
   }, [morePage, page, firstPage]);
 
-  const hybridProductsPending =
-    isHybridSearch &&
-    hybridProductIds.length > 0 &&
-    hybridFullProducts === undefined;
-
-  const isSearchLoading =
-    isHybridSearch &&
-    (hybridSearch.loading || hybridProductsPending);
+  const isSearchLoading = isHybridSearch && hybridSearch.loading;
 
   const isInitialLoading = isHybridSearch
     ? (categories === undefined ||
@@ -374,6 +332,7 @@ export default function ProductCatalog() {
   const showNoResults = isHybridSearch
     ? !isInitialLoading &&
       !isSearchLoading &&
+      hybridSearch.totalCount === 0 &&
       hybridDisplayProducts.length === 0
     : !isInitialLoading &&
       !isRefetching &&
@@ -382,11 +341,7 @@ export default function ProductCatalog() {
 
   const displayProducts = isHybridSearch ? hybridDisplayProducts : allProducts;
   const displayTotalCount = isHybridSearch
-    ? isSearchLoading
-      ? hybridSearch.totalCount
-      : hybridDisplayProducts.length > 0
-        ? hybridSearch.totalCount
-        : 0
+    ? hybridSearch.totalCount
     : (totalCount ?? 0);
 
   return (
@@ -463,7 +418,7 @@ export default function ProductCatalog() {
                 className={cn(
                   "grid",
                   view === "grid"
-                    ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
+                    ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-6"
                     : "flex flex-col gap-3 sm:gap-4"
                 )}
               >
@@ -498,7 +453,7 @@ export default function ProductCatalog() {
                   className={cn(
                     "grid",
                     view === "grid"
-                      ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 md:gap-6 2xl:grid-cols-3 2xl:gap-6"
+                      ? "auto-rows-fr grid-cols-1 items-stretch gap-4 sm:gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-6"
                       : "flex flex-col gap-3 sm:gap-4"
                   )}
                 >

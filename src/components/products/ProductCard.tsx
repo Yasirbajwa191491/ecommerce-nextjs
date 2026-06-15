@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { productPath } from "@/lib/product-url";
 import { Product } from "@/types/product";
+import { ProductImageGallery } from "@/components/products/product-image-gallery";
 import { ProductImageFrame } from "@/components/products/product-image-frame";
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
@@ -26,21 +27,18 @@ export default function ProductCard({
 
   if (view === "list") {
     return (
-      <Link
-        href={productPath(product._id)}
-        className="group flex items-stretch gap-4 rounded-2xl border border-border/60 bg-card p-4 transition-all duration-300 hover:border-[#6254f3]/30 hover:shadow-md sm:gap-5 sm:p-5"
-      >
-        <ProductImageFrame
-          src={imageUrl}
-          alt={imageAlt}
-          sizes="(max-width: 640px) 144px, 176px"
-          interactive
-          variant="catalog"
-          className="aspect-square w-36 shrink-0 rounded-xl sm:w-44"
+      <div className="group flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-4 transition-all duration-300 hover:border-[#6254f3]/30 hover:shadow-md sm:gap-6 sm:p-5">
+        <ProductImageGallery
+          variant="list"
+          images={product.image}
+          fallbackAlt={product.name}
         />
 
-        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+        <Link
+          href={productPath(product._id)}
+          className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6"
+        >
+          <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-2">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <span className="rounded-full bg-[#6254f3]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#6254f3] uppercase">
                 {categoryName}
@@ -60,10 +58,9 @@ export default function ProductCard({
             <ProductRatingDisplay
               rating={product.stars}
               reviewCount={product.reviews}
-              className="mt-0.5"
               compact
             />
-            <ProductStockBadge stock={product.stock} variant="compact" />
+            <ProductStockBadge stock={product.stock} variant="list" />
           </div>
 
           <div className="flex shrink-0 flex-col justify-center gap-2 border-t border-border/50 pt-3 sm:w-36 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right md:w-40">
@@ -83,8 +80,8 @@ export default function ProductCard({
               />
             </div>
           </div>
-        </div>
-      </Link>
+        </Link>
+      </div>
     );
   }
 
@@ -131,7 +128,7 @@ export default function ProductCard({
           reviewCount={product.reviews}
           compact
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-fit max-w-full flex-wrap items-start gap-2">
           <ProductStockBadge stock={product.stock} variant="compact" />
         </div>
         <div className="mt-auto border-t border-border/50 pt-2.5">
