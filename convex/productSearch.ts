@@ -16,12 +16,14 @@ import {
 import type { Id } from "./_generated/dataModel";
 
 import type { ActionCtx } from "./_generated/server";
+import { productImageValidator } from "./schema";
 
 type SearchResultItem = {
   _id: Id<"products">;
   name: string;
   company: string;
   imageUrl: string;
+  images: Array<{ url: string; alt?: string }>;
   price: number;
   discountPercent: number;
   currency: string;
@@ -53,6 +55,7 @@ const searchResultItemValidator = v.object({
   name: v.string(),
   company: v.string(),
   imageUrl: v.string(),
+  images: v.array(productImageValidator),
   price: v.number(),
   discountPercent: v.number(),
   currency: v.string(),

@@ -10,6 +10,7 @@ export type HybridSearchProduct = {
   name: string;
   company: string;
   imageUrl: string;
+  images?: Array<{ url: string; alt?: string }>;
   price: number;
   discountPercent: number;
   currency: string;

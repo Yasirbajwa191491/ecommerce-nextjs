@@ -21,7 +21,13 @@ export function mapHybridSearchProductsToCatalog(
     stock: item.stock,
     shipping: item.shipping,
     colors: [],
-    image: [{ url: item.imageUrl, alt: item.name }],
+    image:
+      item.images && item.images.length > 0
+        ? item.images.map((image) => ({
+            url: image.url,
+            alt: image.alt?.trim() || item.name,
+          }))
+        : [{ url: item.imageUrl, alt: item.name }],
     categoryId: item.categoryId as Id<"productCategories">,
     category: {
       _id: item.categoryId as Id<"productCategories">,

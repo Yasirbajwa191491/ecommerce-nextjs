@@ -3,6 +3,7 @@ import { internalMutation, internalQuery, query } from "./_generated/server";
 import { isProductActive } from "./lib/productActive";
 import { enrichProducts } from "./lib/products";
 import { calculateFinalPrice } from "./lib/pricing";
+import { productImageValidator } from "./schema";
 import type { Id } from "./_generated/dataModel";
 
 const EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -207,6 +208,7 @@ export const enrichProductsByIds = internalQuery({
       stock: v.number(),
       shipping: v.boolean(),
       description: v.string(),
+      images: v.array(productImageValidator),
     })
   ),
   handler: async (ctx, args) => {
@@ -238,6 +240,7 @@ export const enrichProductsByIds = internalQuery({
       stock: product.stock,
       shipping: product.shipping,
       description: product.description,
+      images: product.image,
     }));
   },
 });
