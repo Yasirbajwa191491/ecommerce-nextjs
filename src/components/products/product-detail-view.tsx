@@ -86,6 +86,12 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
   const inStock = singleProduct.stock > 0;
   const discountPercent = singleProduct.discountPercent ?? 0;
   const freeShipping = singleProduct.shipping === true;
+  const productHighlights =
+    singleProduct.highlights?.map((h) => h.trim()).filter(Boolean) ?? [];
+  const galleryImages = singleProduct.image.map((image) => ({
+    url: image.url,
+    alt: image.alt?.trim() || singleProduct.name,
+  }));
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
@@ -113,8 +119,8 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
 
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-16">
         <ProductImageGallery
-          images={singleProduct.image}
-          alt={singleProduct.name}
+          images={galleryImages}
+          fallbackAlt={singleProduct.name}
         />
 
         <div className="flex flex-col gap-5 lg:sticky lg:top-24 lg:gap-6">
@@ -187,8 +193,21 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
             </div>
           </div>
 
+          {productHighlights.length > 0 ? (
+            <ul className="space-y-2 text-sm text-foreground sm:text-base">
+              {productHighlights.map((highlight) => (
+                <li key={highlight} className="flex items-start gap-2">
+                  <span className="mt-0.5 text-[#6254f3]" aria-hidden>
+                    ✓
+                  </span>
+                  <span>{highlight}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {singleProduct.description ? (
-            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
               {singleProduct.description}
             </p>
           ) : null}
@@ -273,7 +292,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
             Product description
           </h2>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
             {singleProduct.description}
           </p>
         </section>

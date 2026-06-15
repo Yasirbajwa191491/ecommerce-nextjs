@@ -25,7 +25,10 @@ import {
   reviewCollectedEntryValidator,
 } from "./lib/reviewCallValidators";
 
-export const productImageValidator = v.object({ url: v.string() });
+export const productImageValidator = v.object({
+  url: v.string(),
+  alt: v.optional(v.string()),
+});
 
 export default defineSchema({
   productCategories: defineTable({
@@ -56,6 +59,10 @@ export default defineSchema({
     reviews: v.number(),
     stars: v.number(),
     description: v.string(),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    seoKeywords: v.optional(v.array(v.string())),
+    highlights: v.optional(v.array(v.string())),
     active: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
     embedding: v.optional(v.array(v.float64())),

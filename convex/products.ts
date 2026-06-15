@@ -38,6 +38,10 @@ const productFields = {
   shippingCharges: v.optional(v.number()),
   stock: v.number(),
   description: v.string(),
+  seoTitle: v.optional(v.string()),
+  seoDescription: v.optional(v.string()),
+  seoKeywords: v.optional(v.array(v.string())),
+  highlights: v.optional(v.array(v.string())),
   active: v.optional(v.boolean()),
 };
 

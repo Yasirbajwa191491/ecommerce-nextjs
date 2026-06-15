@@ -7,6 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { invalidInputClass } from "@/components/admin/admin-form-field";
@@ -17,14 +18,24 @@ import { ImagePlus, Link2, Plus, Upload, X } from "lucide-react";
 type ProductImageFieldProps = {
   imageUrls: string[];
   onChange: (urls: string[]) => void;
+  imageAlts?: string[];
+  onAltsChange?: (alts: string[]) => void;
+  productName?: string;
   error?: string;
   onBlur?: (index: number) => void;
   fieldErrors?: Record<number, string | undefined>;
 };
 
+function syncAltsToUrls(urls: string[], alts: string[] = []): string[] {
+  return urls.map((_, i) => alts[i] ?? "");
+}
+
 export function ProductImageField({
   imageUrls,
   onChange,
+  imageAlts = [],
+  onAltsChange,
+  productName = "Product",
   error,
   onBlur,
   fieldErrors = {},
@@ -34,7 +45,21 @@ export function ProductImageField({
   const generateUploadUrl = useMutation(api.products.generateImageUploadUrl);
   const resolveImageUrl = useMutation(api.products.resolveImageUrlFromStorage);
 
-  const validUrls = imageUrls.map((u) => u.trim()).filter(Boolean);
+  const validUrlEntries = imageUrls
+    .map((url, index) => ({ url: url.trim(), index }))
+    .filter((entry) => entry.url.length > 0);
+
+  const updateUrls = (nextUrls: string[]) => {
+    onChange(nextUrls);
+    onAltsChange?.(syncAltsToUrls(nextUrls, imageAlts));
+  };
+
+  const updateAlt = (index: number, value: string) => {
+    if (!onAltsChange) return;
+    const next = syncAltsToUrls(imageUrls, imageAlts);
+    next[index] = value;
+    onAltsChange(next);
+  };
 
   const uploadFiles = async (files: FileList | File[]) => {
     const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -69,8 +94,9 @@ export function ProductImageField({
         });
         uploaded.push(url);
       }
-      const merged = [...validUrls, ...uploaded];
-      onChange(merged.length ? merged : [""]);
+      const trimmed = imageUrls.map((u) => u.trim()).filter(Boolean);
+      const merged = [...trimmed, ...uploaded];
+      updateUrls(merged.length ? merged : [""]);
     } catch (e) {
       toastError(e, {
         title: "Couldn't upload image",
@@ -83,8 +109,10 @@ export function ProductImageField({
   };
 
   const removeUrl = (index: number) => {
-    const next = imageUrls.filter((_, i) => i !== index);
-    onChange(next.length ? next : [""]);
+    const nextUrls = imageUrls.filter((_, i) => i !== index);
+    const nextAlts = imageAlts.filter((_, i) => i !== index);
+    onChange(nextUrls.length ? nextUrls : [""]);
+    onAltsChange?.(nextAlts.length ? nextAlts : [""]);
   };
 
   return (
@@ -151,7 +179,7 @@ export function ProductImageField({
                 onChange={(e) => {
                   const next = [...imageUrls];
                   next[i] = e.target.value;
-                  onChange(next);
+                  updateUrls(next);
                 }}
                 onBlur={() => onBlur?.(i)}
                 aria-invalid={!!fieldErrors[i]}
@@ -173,7 +201,7 @@ export function ProductImageField({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onChange([...imageUrls, ""])}
+            onClick={() => updateUrls([...imageUrls, ""])}
           >
             <Plus className="mr-1 size-4" />
             Add image URL
@@ -181,36 +209,49 @@ export function ProductImageField({
         </TabsContent>
       </Tabs>
 
-      {validUrls.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {validUrls.map((url, i) => (
-            <div
-              key={`${url}-${i}`}
-              className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
-            >
-              <Image
-                src={url}
-                alt={`Product image ${i + 1}`}
-                fill
-                className="object-contain object-center p-1"
-                unoptimized
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="absolute top-1 right-1 size-6 opacity-0 transition-opacity group-hover:opacity-100"
-                onClick={() => {
-                  const idx = imageUrls.findIndex(
-                    (u, j) => u.trim() === url && j >= i
-                  );
-                  removeUrl(idx >= 0 ? idx : i);
-                }}
+      {validUrlEntries.length > 0 ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {validUrlEntries.map(({ url, index }) => (
+              <div
+                key={`${url}-${index}`}
+                className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
               >
-                <X className="size-3" />
-              </Button>
+                <Image
+                  src={url}
+                  alt={imageAlts[index]?.trim() || productName}
+                  fill
+                  className="object-contain object-center p-1"
+                  unoptimized
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute top-1 right-1 size-6 opacity-0 transition-opacity group-hover:opacity-100"
+                  onClick={() => removeUrl(index)}
+                >
+                  <X className="size-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {onAltsChange ? (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
+                Image alt text (accessibility & SEO)
+              </Label>
+              {validUrlEntries.map(({ url, index }) => (
+                <Input
+                  key={`alt-${url}-${index}`}
+                  value={imageAlts[index] ?? ""}
+                  placeholder={`Alt text for image ${index + 1}`}
+                  onChange={(e) => updateAlt(index, e.target.value)}
+                />
+              ))}
             </div>
-          ))}
+          ) : null}
         </div>
       ) : null}
 

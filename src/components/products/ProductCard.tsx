@@ -19,6 +19,7 @@ export default function ProductCard({
   ...product
 }: ProductCardProps) {
   const imageUrl = product.image[0]?.url ?? "/next.svg";
+  const imageAlt = product.image[0]?.alt?.trim() || product.name;
   const categoryName = product.category?.name ?? "Product";
   const discountPercent = product.discountPercent ?? 0;
   const freeShipping = product.shipping === true;
@@ -31,7 +32,7 @@ export default function ProductCard({
       >
         <ProductImageFrame
           src={imageUrl}
-          alt={product.name}
+          alt={imageAlt}
           sizes="(max-width: 640px) 112px, 128px"
           interactive
           variant="catalog"
@@ -95,7 +96,7 @@ export default function ProductCard({
       <div className="relative shrink-0">
         <ProductImageFrame
           src={imageUrl}
-          alt={product.name}
+          alt={imageAlt}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           interactive
           variant="catalog"

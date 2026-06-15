@@ -10,14 +10,18 @@ import { cn } from "@/lib/utils";
 
 type ProductImage = {
   url: string;
+  alt?: string;
 };
 
 type ProductImageGalleryProps = {
   images: ProductImage[];
-  alt: string;
+  fallbackAlt: string;
 };
 
-export function ProductImageGallery({ images, alt }: ProductImageGalleryProps) {
+export function ProductImageGallery({
+  images,
+  fallbackAlt,
+}: ProductImageGalleryProps) {
   const galleryImages =
     images.length > 0 ? images : [{ url: "/next.svg" }];
   const [activeIndex, setActiveIndex] = useState(0);
@@ -37,6 +41,7 @@ export function ProductImageGallery({ images, alt }: ProductImageGalleryProps) {
   }, [activeIndex, galleryImages.length]);
 
   const activeImage = galleryImages[activeIndex];
+  const activeAlt = activeImage.alt?.trim() || fallbackAlt;
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
@@ -59,7 +64,7 @@ export function ProductImageGallery({ images, alt }: ProductImageGalleryProps) {
               <div className="absolute inset-1.5">
                 <Image
                   src={image.url}
-                  alt=""
+                  alt={image.alt?.trim() || `View ${fallbackAlt} image ${index + 1}`}
                   fill
                   sizes="76px"
                   className={productImageClassName({ variant: "detail" })}
@@ -74,7 +79,7 @@ export function ProductImageGallery({ images, alt }: ProductImageGalleryProps) {
         <div className="relative overflow-hidden rounded-2xl border border-border/60 shadow-sm">
           <ProductImageFrame
             src={activeImage.url}
-            alt={alt}
+            alt={activeAlt}
             priority
             sizes="(max-width: 1024px) 100vw, 55vw"
             variant="detail"

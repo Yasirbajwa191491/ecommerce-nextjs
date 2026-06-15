@@ -39,6 +39,10 @@ import { AdminFormField, invalidInputClass } from "@/components/admin/admin-form
 import { ColorInput } from "@/components/admin/color-input";
 import { CurrencySelect } from "@/components/admin/currency-select";
 import { ProductImageField } from "@/components/admin/product-image-field";
+import {
+  ProductFormAiSection,
+  type ProductAiApplyPayload,
+} from "@/components/admin/product-form-ai-section";
 import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@/lib/currencies";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,9 +70,9 @@ import {
   PRODUCT_TABLE_COLUMNS,
 } from "@/lib/admin/product-table-columns";
 import { toastError, toastSuccess } from "@/lib/app-toast";
-import { validateProductForm } from "@/lib/validation/admin-forms";
+import { validateProductForm, getProductFormWarnings } from "@/lib/validation/admin-forms";
 import { cn } from "@/lib/utils";
-import { GripVertical, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import type { Product, ProductCategory } from "@/types/product";
 
 type ProductForm = {
@@ -86,6 +90,11 @@ type ProductForm = {
   shippingCharges: number;
   stock: number;
   description: string;
+  seoTitle: string;
+  seoDescription: string;
+  seoKeywords: string;
+  highlights: string[];
+  imageAlts: string[];
   active: boolean;
 };
 
@@ -104,6 +113,11 @@ const emptyForm = (): ProductForm => ({
   shippingCharges: 0,
   stock: 0,
   description: "",
+  seoTitle: "",
+  seoDescription: "",
+  seoKeywords: "",
+  highlights: [""],
+  imageAlts: [""],
   active: true,
 });
 
@@ -205,6 +219,7 @@ export default function AdminProductsPage() {
   }, [categories, editing]);
 
   const selectedCategory = categoryOptions.find((c) => c._id === form.categoryId);
+  const seoWarnings = getProductFormWarnings(form);
 
   const validate = useCallback(
     (values: ProductForm) =>
@@ -257,6 +272,9 @@ export default function AdminProductsPage() {
       currency: p.currency ?? DEFAULT_CURRENCY,
       colors: [...p.colors],
       imageUrls: p.image.length ? p.image.map((i) => i.url) : [""],
+      imageAlts: p.image.length
+        ? p.image.map((i) => i.alt ?? "")
+        : [""],
       categoryId: p.categoryId,
       featured: productFlag(p.featured),
       shipping: productFlag(p.shipping),
@@ -264,6 +282,10 @@ export default function AdminProductsPage() {
       shippingCharges: p.shippingCharges ?? 0,
       stock: p.stock,
       description: p.description,
+      seoTitle: p.seoTitle ?? "",
+      seoDescription: p.seoDescription ?? "",
+      seoKeywords: p.seoKeywords?.join(", ") ?? "",
+      highlights: p.highlights?.length ? [...p.highlights] : [""],
       active: isProductActive(p),
     });
     resetValidation();
@@ -280,26 +302,73 @@ export default function AdminProductsPage() {
     }
   }, [editParam, deepLinkProduct]);
 
-  const toPayload = (f: ProductForm) => ({
-    name: f.name.trim(),
-    company: f.company.trim(),
-    sku: f.sku.trim() || undefined,
-    price: Number(f.price),
-    currency: f.currency.trim() || DEFAULT_CURRENCY,
-    colors: f.colors.map((c) => c.trim()).filter(Boolean),
-    image: f.imageUrls
-      .map((url) => url.trim())
-      .filter(Boolean)
-      .map((url) => ({ url })),
-    categoryId: f.categoryId as Id<"productCategories">,
-    featured: f.featured,
-    shipping: f.shipping,
-    discountPercent: Number(f.discountPercent) || 0,
-    shippingCharges: f.shipping ? 0 : Number(f.shippingCharges) || 0,
-    stock: Number(f.stock),
-    description: f.description.trim(),
-    active: f.active,
-  });
+  const toPayload = (f: ProductForm) => {
+    const imagePairs = f.imageUrls
+      .map((url, i) => ({
+        url: url.trim(),
+        alt: f.imageAlts[i]?.trim() || undefined,
+      }))
+      .filter((entry) => entry.url.length > 0);
+
+    const keywords = f.seoKeywords
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    const highlights = f.highlights.map((h) => h.trim()).filter(Boolean);
+
+    return {
+      name: f.name.trim(),
+      company: f.company.trim(),
+      sku: f.sku.trim() || undefined,
+      price: Number(f.price),
+      currency: f.currency.trim() || DEFAULT_CURRENCY,
+      colors: f.colors.map((c) => c.trim()).filter(Boolean),
+      image: imagePairs.map(({ url, alt }) => ({ url, alt })),
+      categoryId: f.categoryId as Id<"productCategories">,
+      featured: f.featured,
+      shipping: f.shipping,
+      discountPercent: Number(f.discountPercent) || 0,
+      shippingCharges: f.shipping ? 0 : Number(f.shippingCharges) || 0,
+      stock: Number(f.stock),
+      description: f.description.trim(),
+      seoTitle: f.seoTitle.trim() || undefined,
+      seoDescription: f.seoDescription.trim() || undefined,
+      seoKeywords: keywords.length ? keywords : undefined,
+      highlights: highlights.length ? highlights : undefined,
+      active: f.active,
+    };
+  };
+
+  const applyAiContent = (payload: ProductAiApplyPayload) => {
+    setForm((current) => {
+      const next = { ...current };
+      if (payload.description !== undefined) {
+        next.description = payload.description;
+      }
+      if (payload.seoTitle !== undefined) {
+        next.seoTitle = payload.seoTitle;
+      }
+      if (payload.seoDescription !== undefined) {
+        next.seoDescription = payload.seoDescription;
+      }
+      if (payload.seoKeywords !== undefined) {
+        next.seoKeywords = payload.seoKeywords;
+      }
+      if (payload.highlights !== undefined) {
+        next.highlights = payload.highlights.length ? payload.highlights : [""];
+      }
+      if (payload.imageAlts !== undefined) {
+        let altIdx = 0;
+        next.imageAlts = current.imageUrls.map((url) => {
+          if (!url.trim()) return "";
+          const alt = payload.imageAlts?.[altIdx] ?? "";
+          altIdx += 1;
+          return alt;
+        });
+      }
+      return next;
+    });
+  };
 
   const handleSave = async () => {
     if (!validation.validateAll()) return;
@@ -849,8 +918,13 @@ export default function AdminProductsPage() {
             >
               <ProductImageField
                 imageUrls={form.imageUrls}
+                imageAlts={form.imageAlts}
+                productName={form.name.trim() || "Product"}
                 onChange={(imageUrls) =>
                   setForm((f) => ({ ...f, imageUrls }))
+                }
+                onAltsChange={(imageAlts) =>
+                  setForm((f) => ({ ...f, imageAlts }))
                 }
                 onBlur={(i) => validation.touch(`imageUrls.${i}`)}
                 fieldErrors={Object.fromEntries(
@@ -880,6 +954,129 @@ export default function AdminProductsPage() {
                 aria-invalid={!!validation.fieldError("description")}
                 className={invalidInputClass(validation.fieldError("description"))}
               />
+            </AdminFormField>
+
+            <ProductFormAiSection
+              context={{
+                name: form.name,
+                company: form.company,
+                categoryName: selectedCategory?.name ?? "",
+                description: form.description,
+                colors: form.colors,
+                sku: form.sku,
+                price: form.price,
+                currency: form.currency,
+                discountPercent: form.discountPercent,
+                shipping: form.shipping,
+                shippingCharges: form.shippingCharges,
+                imageUrls: form.imageUrls,
+              }}
+              fields={{
+                description: form.description,
+                seoTitle: form.seoTitle,
+                seoDescription: form.seoDescription,
+                seoKeywords: form.seoKeywords,
+                highlights: form.highlights,
+                imageAlts: form.imageAlts,
+              }}
+              onApply={applyAiContent}
+            />
+
+            <AdminFormField
+              label="Meta title"
+              htmlFor="product-seo-title"
+              description={seoWarnings.seoTitle}
+            >
+              <Input
+                id="product-seo-title"
+                value={form.seoTitle}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, seoTitle: e.target.value }))
+                }
+                placeholder="SEO page title"
+              />
+            </AdminFormField>
+
+            <AdminFormField
+              label="Meta description"
+              htmlFor="product-seo-description"
+              description={seoWarnings.seoDescription}
+            >
+              <Textarea
+                id="product-seo-description"
+                rows={2}
+                value={form.seoDescription}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, seoDescription: e.target.value }))
+                }
+                placeholder="Search engine description"
+              />
+            </AdminFormField>
+
+            <AdminFormField
+              label="SEO keywords"
+              htmlFor="product-seo-keywords"
+              description="Comma-separated keywords"
+            >
+              <Input
+                id="product-seo-keywords"
+                value={form.seoKeywords}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, seoKeywords: e.target.value }))
+                }
+                placeholder="office chair, ergonomic, lumbar support"
+              />
+            </AdminFormField>
+
+            <AdminFormField
+              label="Product highlights"
+              description="Short selling points shown on the product page"
+            >
+              <div className="space-y-2">
+                {form.highlights.map((highlight, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input
+                      value={highlight}
+                      placeholder="Premium build quality"
+                      onChange={(e) => {
+                        const next = [...form.highlights];
+                        next[i] = e.target.value;
+                        setForm((f) => ({ ...f, highlights: next }));
+                      }}
+                    />
+                    {form.highlights.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const next = form.highlights.filter((_, j) => j !== i);
+                          setForm((f) => ({
+                            ...f,
+                            highlights: next.length ? next : [""],
+                          }));
+                        }}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      highlights: [...f.highlights, ""],
+                    }))
+                  }
+                >
+                  <Plus className="mr-1 size-4" />
+                  Add highlight
+                </Button>
+              </div>
             </AdminFormField>
 
             <div className="grid gap-4 sm:grid-cols-2">

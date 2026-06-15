@@ -70,10 +70,33 @@ export type ProductFormValues = {
   categoryId: string;
   stock: number;
   description: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
   shipping?: boolean;
   discountPercent?: number;
   shippingCharges?: number;
 };
+
+export type ProductFormWarnings = Partial<
+  Record<"seoTitle" | "seoDescription", string>
+>;
+
+export function getProductFormWarnings(
+  values: Pick<ProductFormValues, "seoTitle" | "seoDescription">
+): ProductFormWarnings {
+  const warnings: ProductFormWarnings = {};
+  const titleLen = values.seoTitle?.trim().length ?? 0;
+  const descLen = values.seoDescription?.trim().length ?? 0;
+  if (titleLen > 70) {
+    warnings.seoTitle = "SEO titles over 70 characters may be truncated in search results";
+  }
+  if (descLen > 160) {
+    warnings.seoDescription =
+      "Meta descriptions over 160 characters may be truncated in search results";
+  }
+  return warnings;
+}
 
 export function validateProductForm(
   values: ProductFormValues,
