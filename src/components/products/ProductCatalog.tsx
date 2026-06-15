@@ -173,31 +173,20 @@ export default function ProductCatalog() {
 
   const hybridDisplayProducts = useMemo(() => {
     if (!isHybridSearch || !hybridFullProducts) return [] as Product[];
-    const filtered = filterProductsClient(hybridFullProducts as Product[], {
-      categoryId,
-      priceRange: activePriceRange,
-      priceFilterReady,
-    });
+
+    const products = hybridFullProducts as Product[];
     if (sort === "default") {
       const rankById = new Map(
         hybridProductIds.map((id, index) => [id, index])
       );
-      return [...filtered].sort(
+      return [...products].sort(
         (a, b) =>
           (rankById.get(a._id) ?? Number.MAX_SAFE_INTEGER) -
           (rankById.get(b._id) ?? Number.MAX_SAFE_INTEGER)
       );
     }
-    return sortProductsClient(filtered, sort);
-  }, [
-    isHybridSearch,
-    hybridFullProducts,
-    hybridProductIds,
-    categoryId,
-    activePriceRange,
-    priceFilterReady,
-    sort,
-  ]);
+    return sortProductsClient(products, sort);
+  }, [isHybridSearch, hybridFullProducts, hybridProductIds, sort]);
 
   const filterArgs = useMemo(
     () => ({
@@ -285,10 +274,19 @@ export default function ProductCatalog() {
     });
   }, [morePage, page, firstPage]);
 
+  const hybridProductsPending =
+    isHybridSearch &&
+    hybridProductIds.length > 0 &&
+    hybridFullProducts === undefined;
+
+  const isSearchLoading =
+    isHybridSearch &&
+    (hybridSearch.loading || hybridProductsPending);
+
   const isInitialLoading = isHybridSearch
     ? (categories === undefined ||
         priceBounds === undefined ||
-        hybridSearch.loading) &&
+        isSearchLoading) &&
       hybridDisplayProducts.length === 0
     : (categories === undefined ||
         priceBounds === undefined ||
@@ -297,7 +295,7 @@ export default function ProductCatalog() {
       allProducts.length === 0;
 
   const isRefetching = isHybridSearch
-    ? hybridSearch.loading && hybridDisplayProducts.length > 0
+    ? isSearchLoading && hybridDisplayProducts.length > 0
     : firstPage === undefined && allProducts.length > 0 && !isInitialLoading;
 
   const isLoadingMore = isHybridSearch
@@ -375,7 +373,7 @@ export default function ProductCatalog() {
 
   const showNoResults = isHybridSearch
     ? !isInitialLoading &&
-      !hybridSearch.loading &&
+      !isSearchLoading &&
       hybridDisplayProducts.length === 0
     : !isInitialLoading &&
       !isRefetching &&
@@ -384,7 +382,11 @@ export default function ProductCatalog() {
 
   const displayProducts = isHybridSearch ? hybridDisplayProducts : allProducts;
   const displayTotalCount = isHybridSearch
-    ? hybridSearch.totalCount
+    ? isSearchLoading
+      ? hybridSearch.totalCount
+      : hybridDisplayProducts.length > 0
+        ? hybridSearch.totalCount
+        : 0
     : (totalCount ?? 0);
 
   return (
@@ -442,6 +444,7 @@ export default function ProductCatalog() {
             <ProductCatalogToolbar
               totalCount={displayTotalCount}
               searchQuery={urlSearch.trim() || undefined}
+              isSearching={isSearchLoading}
               view={view}
               onViewChange={setView}
               sort={sort}

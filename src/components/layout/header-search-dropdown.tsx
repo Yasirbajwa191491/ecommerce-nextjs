@@ -176,16 +176,9 @@ export function HeaderSearchDropdown({
       className="absolute top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xl"
     >
       {loading && products.length === 0 ? (
-        <div className="space-y-1 px-3 py-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="flex items-center gap-3 py-2">
-              <Skeleton className="size-11 rounded-lg" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin text-[#6254f3]" />
+          Searching…
         </div>
       ) : products.length === 0 && !loading ? (
         <p className="px-4 py-3 text-sm text-muted-foreground">

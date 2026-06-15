@@ -33,10 +33,10 @@ export default function ProductCard({
         <ProductImageFrame
           src={imageUrl}
           alt={imageAlt}
-          sizes="(max-width: 640px) 112px, 128px"
+          sizes="(max-width: 640px) 144px, 176px"
           interactive
           variant="catalog"
-          className="w-28 rounded-xl sm:w-32"
+          className="aspect-square w-36 shrink-0 rounded-xl sm:w-44"
         />
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
