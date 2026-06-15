@@ -15,6 +15,16 @@ function getStripe(): Stripe {
   return new Stripe(key);
 }
 
+async function resolveMetadataOrderId(
+  ctx: GenericActionCtx<DataModel>,
+  metadataOrderId: string | undefined
+): Promise<Id<"orders"> | null> {
+  if (!metadataOrderId?.trim()) return null;
+  return await ctx.runQuery(internal.orders.tryGetOrderByIdString, {
+    id: metadataOrderId.trim(),
+  });
+}
+
 async function resolveOrderId(
   ctx: GenericActionCtx<DataModel>,
   event: Stripe.Event
@@ -24,15 +34,15 @@ async function resolveOrderId(
     event.type === "checkout.session.expired"
   ) {
     const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId as Id<"orders"> | undefined;
-    if (orderId) return orderId;
 
     if (session.id) {
       const order = await ctx.runQuery(internal.orders.getOrderByStripeSession, {
         stripeSessionId: session.id,
       });
-      return order?._id ?? null;
+      if (order) return order._id;
     }
+
+    return await resolveMetadataOrderId(ctx, session.metadata?.orderId);
   }
 
   if (
@@ -40,15 +50,15 @@ async function resolveOrderId(
     event.type === "payment_intent.payment_failed"
   ) {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    const orderId = paymentIntent.metadata?.orderId as Id<"orders"> | undefined;
-    if (orderId) return orderId;
 
     if (paymentIntent.id) {
       const order = await ctx.runQuery(internal.orders.getOrderByPaymentIntent, {
         stripePaymentIntentId: paymentIntent.id,
       });
-      return order?._id ?? null;
+      if (order) return order._id;
     }
+
+    return await resolveMetadataOrderId(ctx, paymentIntent.metadata?.orderId);
   }
 
   if (event.type === "charge.refunded") {
@@ -61,7 +71,7 @@ async function resolveOrderId(
       const order = await ctx.runQuery(internal.orders.getOrderByPaymentIntent, {
         stripePaymentIntentId: paymentIntentId,
       });
-      return order?._id ?? null;
+      if (order) return order._id;
     }
   }
 
@@ -135,9 +145,7 @@ export const processWebhook = internalAction({
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const resolvedOrderId =
-          orderId ??
-          ((session.metadata?.orderId as Id<"orders"> | undefined) ?? null);
+        const resolvedOrderId = orderId;
         if (resolvedOrderId && session.payment_status === "paid") {
           const paymentIntentId =
             typeof session.payment_intent === "string"
@@ -158,9 +166,7 @@ export const processWebhook = internalAction({
       }
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const resolvedOrderId =
-          orderId ??
-          ((paymentIntent.metadata?.orderId as Id<"orders"> | undefined) ?? null);
+        const resolvedOrderId = orderId;
         if (resolvedOrderId) {
           const stripeTransactionId =
             typeof paymentIntent.latest_charge === "string"
@@ -176,9 +182,7 @@ export const processWebhook = internalAction({
       }
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const resolvedOrderId =
-          orderId ??
-          ((paymentIntent.metadata?.orderId as Id<"orders"> | undefined) ?? null);
+        const resolvedOrderId = orderId;
         if (resolvedOrderId) {
           await ctx.runMutation(internal.orders.markOrderFailed, {
             orderId: resolvedOrderId,
@@ -190,9 +194,7 @@ export const processWebhook = internalAction({
       }
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const resolvedOrderId =
-          orderId ??
-          ((session.metadata?.orderId as Id<"orders"> | undefined) ?? null);
+        const resolvedOrderId = orderId;
         if (resolvedOrderId) {
           await ctx.runMutation(internal.orders.markOrderFailed, {
             orderId: resolvedOrderId,

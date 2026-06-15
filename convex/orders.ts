@@ -182,6 +182,23 @@ export const getOrderByPaymentIntent = internalQuery({
   },
 });
 
+/** Validate an untrusted ID string is a real orders document (e.g. Stripe metadata). */
+export const tryGetOrderByIdString = internalQuery({
+  args: { id: v.optional(v.string()) },
+  returns: v.union(v.id("orders"), v.null()),
+  handler: async (ctx, args) => {
+    const raw = args.id?.trim();
+    if (!raw) return null;
+    try {
+      const order = await ctx.db.get(raw as Id<"orders">);
+      if (!order || !("orderNumber" in order)) return null;
+      return order._id;
+    } catch {
+      return null;
+    }
+  },
+});
+
 export const createCashOrder = mutation({
   args: {
     lines: v.array(cartLineValidator),
