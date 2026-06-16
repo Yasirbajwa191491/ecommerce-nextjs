@@ -151,7 +151,13 @@ export function audienceToCampaignSegment(value: SegmentSelectorValue): {
 }
 
 export function campaignSegmentToAudience(
-  segmentType: "all" | "selected" | "segments",
+  segmentType:
+    | "all"
+    | "selected"
+    | "segments"
+    | "new_subscribers"
+    | "active_customers"
+    | "custom",
   segmentCriteria?: string,
   selectedSubscriberIds?: Id<"subscribers">[]
 ): SegmentSelectorValue {
