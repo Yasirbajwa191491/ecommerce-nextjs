@@ -1,5 +1,6 @@
 "use client";
 
+import { AboutBrandsSection } from "@/components/about/about-brands-section";
 import { AboutContactSection } from "@/components/about/about-contact-section";
 import { AboutCtaSection } from "@/components/about/about-cta-section";
 import {
@@ -29,6 +30,7 @@ export function AboutPageView() {
       <AboutTrackingSection />
       <AboutSupportSection />
       <AboutStatsSection />
+      <AboutBrandsSection />
       <AboutFaqSection />
       <AboutContactSection />
       <AboutCtaSection />

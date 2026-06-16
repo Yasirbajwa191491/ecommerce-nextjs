@@ -367,6 +367,12 @@ export const FAQ_ITEMS: AboutFaqItem[] = [
   },
 ];
 
+export const ABOUT_BRANDS = {
+  title: "Popular Brands",
+  description:
+    "Shop trusted names from our live catalog — every brand is sourced from products in our store.",
+} as const;
+
 export const STATS_LABELS = [
   { key: "productsAvailable" as const, label: "Products Available" },
   { key: "ordersProcessed" as const, label: "Orders Processed" },

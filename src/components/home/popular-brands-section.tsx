@@ -1,23 +1,23 @@
 "use client";
 
+import Link from "next/link";
+import { useQuery } from "convex/react";
 import { Award } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
 import { SectionHeader } from "@/components/home/section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
-import { PLACEHOLDER_BRANDS } from "@/lib/home-content";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
 
-type PopularBrandsSectionProps = {
-  brands?: typeof PLACEHOLDER_BRANDS;
-};
+const BRAND_SKELETON_COUNT = 6;
 
-/**
- * Future-ready brand showcase. Pass `brands` from admin settings when available.
- */
-export function PopularBrandsSection({
-  brands = PLACEHOLDER_BRANDS,
-}: PopularBrandsSectionProps) {
-  if (brands.length === 0) return null;
+export function PopularBrandsSection() {
+  const brands = useQuery(api.products.listBrands, { limit: 12 });
+
+  if (brands !== undefined && brands.length === 0) {
+    return null;
+  }
 
   return (
     <section className="border-y border-border/60 bg-muted/20 py-10 sm:py-12">
@@ -33,23 +33,35 @@ export function PopularBrandsSection({
           />
         </ScrollReveal>
 
-        <StaggerGroup className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:mt-10">
-          {brands.map((brand, index) => (
-            <StaggerItem key={brand.slug} index={index} variant="scale" staggerMs={70}>
-              <div
-                className={cn(
-                  "flex h-14 min-w-[7rem] items-center justify-center rounded-xl border border-border/60 bg-card px-5",
-                  "text-sm font-bold tracking-wide text-muted-foreground",
-                  "transition-[transform,box-shadow,border-color,color] duration-500",
-                  "hover:-translate-y-1 hover:border-[#6254f3]/35 hover:text-[#6254f3] hover:shadow-md"
-                )}
-                aria-label={`${brand.name} brand`}
-              >
-                {brand.name}
-              </div>
-            </StaggerItem>
-          ))}
-        </StaggerGroup>
+        {brands === undefined ? (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:mt-10">
+            {Array.from({ length: BRAND_SKELETON_COUNT }, (_, index) => (
+              <Skeleton
+                key={`brand-skeleton-${index}`}
+                className="h-14 min-w-28 rounded-xl"
+              />
+            ))}
+          </div>
+        ) : (
+          <StaggerGroup className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:mt-10">
+            {brands.map((brand, index) => (
+              <StaggerItem key={brand.slug} index={index} variant="scale" staggerMs={70}>
+                <Link
+                  href={`/products?search=${encodeURIComponent(brand.name)}`}
+                  className={cn(
+                    "flex h-14 min-w-28 items-center justify-center rounded-xl border border-border/60 bg-card px-5",
+                    "text-sm font-bold tracking-wide text-muted-foreground",
+                    "transition-[transform,box-shadow,border-color,color] duration-500",
+                    "hover:-translate-y-1 hover:border-[#6254f3]/35 hover:text-[#6254f3] hover:shadow-md"
+                  )}
+                  aria-label={`Shop ${brand.name} products`}
+                >
+                  {brand.name}
+                </Link>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
+        )}
       </div>
     </section>
   );

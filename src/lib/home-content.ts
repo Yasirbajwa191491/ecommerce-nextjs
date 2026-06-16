@@ -101,21 +101,6 @@ export const CATEGORY_IMAGE_FALLBACKS: Record<string, string> = {
 export const DEFAULT_CATEGORY_IMAGE =
   "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80";
 
-/** Placeholder brand logos — future: load from admin settings / CMS. */
-export type BrandPlaceholder = {
-  name: string;
-  slug: string;
-};
-
-export const PLACEHOLDER_BRANDS: BrandPlaceholder[] = [
-  { name: "IKEA", slug: "ikea" },
-  { name: "Home Centre", slug: "home-centre" },
-  { name: "ErgoSeat", slug: "ergoseat" },
-  { name: "Lux Lighting", slug: "lux-lighting" },
-  { name: "WoodCraft", slug: "woodcraft" },
-  { name: "TechPro", slug: "techpro" },
-];
-
 export const CONVERSION_TRUST_STRIP = [
   { icon: ShieldCheck, label: "Secure Checkout" },
   { icon: CreditCard, label: "Stripe Payments" },

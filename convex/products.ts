@@ -11,6 +11,7 @@ import {
   enrichProduct,
   enrichProducts,
   normalizeProductName,
+  slugify,
 } from "./lib/products";
 import { isProductActive } from "./lib/productActive";
 import { paginateArray } from "./lib/pagination";
@@ -211,6 +212,50 @@ async function isRequestAdmin(ctx: Parameters<typeof getAuthUserOrNull>[0]) {
   if (!user || user.banned) return false;
   return isAdminRole(normalizeRole(user.role));
 }
+
+/** Distinct brand names from active products (company field), ranked by catalog size. */
+export const listBrands = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      name: v.string(),
+      slug: v.string(),
+      productCount: v.number(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 12, 1), 24);
+    const products = await loadActiveProducts(ctx);
+    const brandCounts = new Map<string, { name: string; productCount: number }>();
+
+    for (const product of products) {
+      const name = product.company.trim();
+      if (!name) continue;
+
+      const key = name.toLowerCase();
+      const existing = brandCounts.get(key);
+      if (existing) {
+        existing.productCount += 1;
+      } else {
+        brandCounts.set(key, { name, productCount: 1 });
+      }
+    }
+
+    return Array.from(brandCounts.values())
+      .sort(
+        (a, b) =>
+          b.productCount - a.productCount || a.name.localeCompare(b.name)
+      )
+      .slice(0, limit)
+      .map((brand) => ({
+        name: brand.name,
+        slug: slugify(brand.name),
+        productCount: brand.productCount,
+      }));
+  },
+});
 
 /** Public catalog — capped list with category join (max 100). */
 export const list = query({
