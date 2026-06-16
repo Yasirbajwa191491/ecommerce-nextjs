@@ -525,6 +525,52 @@ export default defineSchema({
     checkoutStarts: v.optional(v.number()),
   }).index("by_dateKey", ["dateKey"]),
 
+  aiCopilotConversations: defineTable({
+    adminUserId: v.string(),
+    title: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_admin_updated", ["adminUserId", "updatedAt"])
+    .index("by_admin_created", ["adminUserId", "createdAt"]),
+
+  aiCopilotMessages: defineTable({
+    conversationId: v.id("aiCopilotConversations"),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    response: v.optional(
+      v.object({
+        summary: v.string(),
+        keyFindings: v.array(v.string()),
+        recommendations: v.array(v.string()),
+        dataSourcesUsed: v.array(v.string()),
+        followUpQuestions: v.array(v.string()),
+      })
+    ),
+    createdAt: v.number(),
+  }).index("by_conversation_created", ["conversationId", "createdAt"]),
+
+  aiCopilotSavedInsights: defineTable({
+    adminUserId: v.string(),
+    question: v.string(),
+    response: v.object({
+      summary: v.string(),
+      keyFindings: v.array(v.string()),
+      recommendations: v.array(v.string()),
+      dataSourcesUsed: v.array(v.string()),
+      followUpQuestions: v.array(v.string()),
+    }),
+    conversationId: v.optional(v.id("aiCopilotConversations")),
+    messageId: v.optional(v.id("aiCopilotMessages")),
+    createdAt: v.number(),
+  }).index("by_admin_created", ["adminUserId", "createdAt"]),
+
+  aiCopilotAnalyticsCache: defineTable({
+    cacheKey: v.string(),
+    payload: v.string(),
+    expiresAt: v.number(),
+  }).index("by_cache_key", ["cacheKey"]),
+
   review_calls: defineTable({
     orderId: v.id("orders"),
     customerName: v.string(),
