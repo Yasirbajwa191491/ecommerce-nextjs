@@ -71,8 +71,9 @@ export const WHY_CHOOSE_US_FEATURES: TrustFeature[] = [
     icon: Sparkles,
   },
   {
-    title: "Customer Support",
-    description: "Responsive support team for orders, payments, and delivery.",
+    title: "AI + Human Support",
+    description:
+      "AI voice assistant captures user info and creates support requests, backed by our responsive team.",
     icon: Headphones,
   },
 ];
@@ -119,5 +120,5 @@ export const CONVERSION_TRUST_STRIP = [
   { icon: ShieldCheck, label: "Secure Checkout" },
   { icon: CreditCard, label: "Stripe Payments" },
   { icon: Package, label: "Order Tracking" },
-  { icon: Headphones, label: "Customer Support" },
+  { icon: Headphones, label: "AI Voice Support" },
 ] as const;

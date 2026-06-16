@@ -16,6 +16,7 @@ import { OrderProgressTimeline } from "@/components/orders/order-progress-timeli
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  ABOUT_AI_FEATURES,
   ABOUT_STORY,
   HOW_IT_WORKS_STEPS,
   PAYMENT_BRANDS,
@@ -147,6 +148,39 @@ export function AboutWhyShopSection() {
             <CardContent className="flex flex-col items-center p-3 text-center sm:p-4 md:p-5">
               <span className="flex size-9 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3] sm:size-10 md:size-12">
                 <Icon className="size-4 sm:size-5 md:size-6" />
+              </span>
+              <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm md:text-base">
+                {title}
+              </h3>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:mt-2 sm:text-xs md:text-sm md:leading-relaxed">
+                {description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </SectionShell>
+  );
+}
+
+export function AboutAiFeaturesSection() {
+  return (
+    <SectionShell className="bg-background">
+      <AboutSectionHeader
+        badge="AI Features"
+        badgeIcon={Sparkles}
+        title="AI-Powered Shopping & Operations"
+        description="We combine ecommerce fundamentals with practical AI tooling for smarter search, communication, and catalog management."
+      />
+      <div className={ABOUT_CARD_GRID_CLASS}>
+        {ABOUT_AI_FEATURES.map(({ title, description, icon: Icon }) => (
+          <Card
+            key={title}
+            className="border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md"
+          >
+            <CardContent className="flex flex-col p-3 sm:p-4 md:p-5">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-[#6254f3]/10 text-[#6254f3] sm:size-9 sm:rounded-xl md:size-10">
+                <Icon className="size-4 sm:size-5" />
               </span>
               <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm md:text-base">
                 {title}
@@ -304,7 +338,7 @@ export function AboutSupportSection() {
         badge="Support"
         badgeIcon={Headphones}
         title="Customer Support"
-        description="Our team is ready to help with orders, payments, products, and delivery updates."
+        description="Get help through AI voice assistance and our support team for orders, payments, products, and delivery updates."
       />
       <div className={ABOUT_CARD_GRID_CLASS}>
         {SUPPORT_CHANNELS.map(({ title, description, icon: Icon }) => (

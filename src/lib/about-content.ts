@@ -47,7 +47,7 @@ export const ABOUT_HERO = {
   badge: "About",
   title: "Making Online Shopping Simple and Reliable",
   description:
-    "Browse curated products, place orders securely, track deliveries in real time, and get support whenever you need it — all in one seamless shopping experience.",
+    "Browse curated products, use AI-powered discovery and support, place orders securely, track deliveries in real time, and stay connected across voice and SMS in one seamless shopping experience.",
   image: {
     src: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80",
     alt: "Customer shopping online with a laptop and credit card",
@@ -64,10 +64,14 @@ export const ABOUT_STORY = {
   paragraphs: [
     "We started with a simple idea: online shopping should feel effortless from the first click to delivery at your door. Our store brings together furniture, electronics, and lifestyle essentials in one place — curated for quality and everyday value.",
     "Every product in our catalog is managed with care. We focus on accurate descriptions, transparent pricing, and reliable fulfillment so you always know what to expect.",
-    "Customer satisfaction is at the heart of everything we do. Whether you are placing your first order or your tenth, our team is committed to making your experience smooth, secure, and enjoyable.",
+    "As we have grown, we have added practical AI capabilities across discovery, communication, and catalog operations to make shopping faster and smarter for both customers and store teams.",
+    "Customer satisfaction is at the heart of everything we do. Whether you are placing your first order or your tenth, our team is committed to making your experience smooth, secure, intelligent, and enjoyable.",
   ],
   highlights: [
     "Curated product catalog with real-time availability",
+    "AI-powered semantic search and voice shopping assistance",
+    "Smart review insights and AI-assisted product content generation",
+    "Integrated SMS and outbound call workflows for faster communication",
     "Secure checkout with multiple payment options",
     "Dedicated support for orders, payments, and delivery",
   ],
@@ -147,6 +151,51 @@ export const WHY_SHOP_FEATURES: AboutFeature[] = [
   {
     title: "Transparent Pricing",
     description: "Clear product pricing, discounts, and shipping costs upfront.",
+    icon: Tag,
+  },
+  {
+    title: "AI-Powered Experience",
+    description:
+      "From semantic search to smart support automation, AI helps you find products and get answers faster.",
+    icon: Sparkles,
+  },
+];
+
+export const ABOUT_AI_FEATURES: AboutFeature[] = [
+  {
+    title: "Semantic Product Search",
+    description:
+      "Natural-language semantic search understands shopper intent and returns more relevant product results.",
+    icon: Search,
+  },
+  {
+    title: "AI Voice Assistant",
+    description:
+      "Voice-first assistance helps customers discover products, navigate choices, and get instant shopping guidance.",
+    icon: MessageSquare,
+  },
+  {
+    title: "AI Outbound Calls",
+    description:
+      "Automated outbound calls support important updates, reminders, and customer communication workflows.",
+    icon: Phone,
+  },
+  {
+    title: "Review Intelligence",
+    description:
+      "AI review analysis highlights trends, sentiment, and product quality signals for better buying decisions.",
+    icon: Sparkles,
+  },
+  {
+    title: "SMS Configuration",
+    description:
+      "Configurable SMS channels keep customers informed with timely notifications and transactional updates.",
+    icon: MessageSquare,
+  },
+  {
+    title: "AI Content Generation",
+    description:
+      "While adding products, AI helps generate cleaner descriptions and content that improves catalog quality.",
     icon: Tag,
   },
 ];
@@ -240,6 +289,12 @@ export const TRACKING_METHODS = [
 
 export const SUPPORT_CHANNELS: AboutInfoCard[] = [
   {
+    title: "AI Voice Assistant Support",
+    description:
+      "Our AI voice assistant can collect user details and submit support requests for faster escalation.",
+    icon: Sparkles,
+  },
+  {
     title: "Email Support",
     description: "Reach us by email for order updates, product questions, and more.",
     icon: Mail,
@@ -261,9 +316,15 @@ export const SUPPORT_TOPICS = [
   "Payments and billing",
   "Product questions",
   "Delivery and shipping updates",
+  "AI voice-assisted support request creation",
 ] as const;
 
 export const FAQ_ITEMS: AboutFaqItem[] = [
+  {
+    question: "What AI-powered features are available in the store?",
+    answer:
+      "Our platform includes semantic product search, an AI voice assistant, AI-enabled outbound calling workflows, review analysis, SMS communication configuration, and AI-assisted content generation while adding products.",
+  },
   {
     question: "How do I place an order?",
     answer:

@@ -1,5 +1,6 @@
 "use client";
 
+import { AboutStorySection } from "@/components/about/about-education-sections";
 import { HomeHeroSection } from "@/components/home/home-hero-section";
 import { ShopByCategorySection } from "@/components/home/shop-by-category-section";
 import { FeaturedProductsSection } from "@/components/home/featured-products-section";
@@ -38,6 +39,7 @@ export function HomePageView() {
     <>
       <HomeHeroSection />
       <ShopByCategorySection />
+      <AboutStorySection />
       <FeaturedProductsSection />
       <PromoBannerSection />
       <BestSellersSection />

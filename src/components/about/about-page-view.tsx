@@ -3,6 +3,7 @@
 import { AboutContactSection } from "@/components/about/about-contact-section";
 import { AboutCtaSection } from "@/components/about/about-cta-section";
 import {
+  AboutAiFeaturesSection,
   AboutHowItWorksSection,
   AboutPaymentSection,
   AboutShippingSection,
@@ -22,6 +23,7 @@ export function AboutPageView() {
       <AboutStorySection />
       <AboutHowItWorksSection />
       <AboutWhyShopSection />
+      <AboutAiFeaturesSection />
       <AboutPaymentSection />
       <AboutShippingSection />
       <AboutTrackingSection />
