@@ -17,6 +17,9 @@ node_modules/
 .next/
 out/
 
+#posts
+/posts/*
+
 # production
 build/
 dist/
