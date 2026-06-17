@@ -43,6 +43,7 @@ import {
   ProductFormAiSection,
   type ProductAiApplyPayload,
 } from "@/components/admin/product-form-ai-section";
+import { ProductFormAiPricingSection } from "@/components/admin/product-form-ai-pricing-section";
 import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@/lib/currencies";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -1132,6 +1133,29 @@ export default function AdminProductsPage() {
                 </AdminFormField>
               ) : null}
             </div>
+
+            <ProductFormAiPricingSection
+              context={{
+                productId: editing?._id,
+                name: form.name,
+                company: form.company,
+                categoryName: selectedCategory?.name ?? "",
+                categoryId: (form.categoryId || undefined) as
+                  | Id<"productCategories">
+                  | undefined,
+                description: form.description,
+                highlights: form.highlights,
+                price: form.price,
+                currency: form.currency,
+                discountPercent: form.discountPercent,
+                stock: form.stock,
+                stars: editing?.stars,
+                reviews: editing?.reviews,
+              }}
+              onApplyPrice={(price) =>
+                setForm((f) => ({ ...f, price }))
+              }
+            />
 
             {editing ? (
               <AdminProductReviewInsights productId={editing._id} />

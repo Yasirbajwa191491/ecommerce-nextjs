@@ -556,7 +556,8 @@ export default defineSchema({
                 v.literal("marketing"),
                 v.literal("search"),
                 v.literal("risk"),
-                v.literal("opportunity")
+                v.literal("opportunity"),
+                v.literal("pricing")
               ),
               title: v.string(),
               subtitle: v.optional(v.string()),
@@ -612,7 +613,8 @@ export default defineSchema({
               v.literal("marketing"),
               v.literal("search"),
               v.literal("risk"),
-              v.literal("opportunity")
+              v.literal("opportunity"),
+              v.literal("pricing")
             ),
             title: v.string(),
             subtitle: v.optional(v.string()),
@@ -654,6 +656,33 @@ export default defineSchema({
     payload: v.string(),
     expiresAt: v.number(),
   }).index("by_cache_key", ["cacheKey"]),
+
+  aiPricingRecommendations: defineTable({
+    productId: v.optional(v.id("products")),
+    adminUserId: v.string(),
+    productName: v.string(),
+    currentPrice: v.number(),
+    suggestedPrice: v.number(),
+    minRecommendedPrice: v.number(),
+    maxRecommendedPrice: v.number(),
+    confidence: v.number(),
+    healthStatus: v.union(
+      v.literal("optimal"),
+      v.literal("underpriced"),
+      v.literal("overpriced")
+    ),
+    reasoning: v.array(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("applied"),
+      v.literal("dismissed")
+    ),
+    source: v.union(v.literal("product_form"), v.literal("copilot")),
+    currency: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_product_created", ["productId", "createdAt"])
+    .index("by_admin_created", ["adminUserId", "createdAt"]),
 
   review_calls: defineTable({
     orderId: v.id("orders"),

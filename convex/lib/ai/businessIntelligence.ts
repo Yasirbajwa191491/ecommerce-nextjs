@@ -1022,6 +1022,13 @@ export async function buildBusinessContext(
           "productOpportunities",
           await getProductOpportunities(ctx, referenceNow),
         ] as const;
+      case "pricing": {
+        const { getPricingInsights } = await import("./pricingInsights");
+        return [
+          "pricingInsights",
+          await getPricingInsights(ctx, referenceNow),
+        ] as const;
+      }
     }
   });
 
@@ -1074,7 +1081,12 @@ export async function buildBusinessContext(
   }
 
   const revenue = context.revenue as
-    | { totalRevenue?: number; currency?: string }
+    | {
+        totalRevenue?: number;
+        currency?: string;
+        averageOrderValue?: number;
+        totalCustomers?: number;
+      }
     | undefined;
   const salesTrends = context.salesTrends as
     | { revenueSeries?: Array<{ value: number }>; ordersSeries?: Array<{ value: number }> }
@@ -1106,7 +1118,124 @@ export async function buildBusinessContext(
       ),
       factors: ["Order growth", "Category growth", "Historical trends"],
     };
+
+    const forecastNextQuarter = Math.max(
+      0,
+      Math.round(forecastNextMonth * 3 * (1 + growthRate * 0.15))
+    );
+
+    const categories = context.categories as
+      | {
+          categories?: Array<{
+            categoryName: string;
+            revenueGrowthPercent: number | null;
+            revenue: number;
+            unitsSold: number;
+          }>;
+        }
+      | undefined;
+    const trendingProducts = context.trendingProducts as
+      | {
+          topProductsThisMonth?: Array<{
+            productId: string;
+            productName: string;
+            unitsSold: number;
+            revenue: number;
+            unitsGrowthPercent?: number | null;
+          }>;
+        }
+      | undefined;
+    const orders = context.orders as
+      | { thisMonth?: { totalOrders?: number } }
+      | undefined;
+
+    const revenueForecast = context.revenueForecast as {
+      confidence: number;
+    };
+    context.salesForecastExtended = {
+      currentMonthRevenue: revenue.totalRevenue ?? 0,
+      forecastNextMonth,
+      forecastNextQuarter,
+      confidence: revenueForecast.confidence,
+      currency: revenue.currency ?? "USD",
+      averageOrderValue: revenue.averageOrderValue ?? 0,
+      totalCustomers: revenue.totalCustomers ?? 0,
+      growthRatePercent: Math.round(growthRate * 100),
+    };
+
+    context.forecastNextQuarter = {
+      estimate: forecastNextQuarter,
+      currency: revenue.currency ?? "USD",
+      confidence: revenueForecast.confidence,
+      basedOnGrowthRate: Math.round(growthRate * 100),
+    };
+
+    context.categoryGrowthForecast = {
+      topGrowers: (categories?.categories ?? []).slice(0, 5).map((c) => ({
+        categoryName: c.categoryName,
+        revenueGrowthPercent: c.revenueGrowthPercent,
+        projectedRevenueNextMonth: Math.round(
+          c.revenue * (1 + (c.revenueGrowthPercent ?? 0) / 100)
+        ),
+      })),
+    };
+
+    context.topProductsForecast = {
+      expectedTopSellers: (trendingProducts?.topProductsThisMonth ?? [])
+        .slice(0, 5)
+        .map((p) => ({
+          productId: p.productId,
+          name: p.productName,
+          unitsSold: p.unitsSold,
+          revenue: p.revenue,
+          unitsGrowthPercent: p.unitsGrowthPercent ?? null,
+        })),
+    };
+
+    context.customerGrowthForecast = {
+      totalCustomers: revenue.totalCustomers ?? 0,
+      ordersThisMonth: orders?.thisMonth?.totalOrders ?? 0,
+    };
+
+    context.aovTrend = {
+      averageOrderValue: revenue.averageOrderValue ?? 0,
+      currency: revenue.currency ?? "USD",
+    };
   }
+
+  const productOpportunities = context.productOpportunities as
+    | {
+        highVisibilityLowSales?: unknown[];
+      }
+    | undefined;
+  if (productOpportunities) {
+    context.conversionSignals = {
+      highVisibilityLowSales: productOpportunities.highVisibilityLowSales ?? [],
+    };
+  }
+
+  if (context.inventoryForecast) {
+    context.inventoryRequirements = {
+      period: "30d",
+      items: (
+        (context.inventoryForecast as { forecast?: unknown[] }).forecast ?? []
+      ).slice(0, 10),
+      stockoutRisks: context.stockoutRisks ?? [],
+      overstocked: context.overstockedProducts ?? [],
+    };
+  }
+
+  context.growthOpportunities = {
+    promotionCandidates:
+      ((context.promotionRecommendations as { candidates?: unknown[] } | undefined)
+        ?.candidates?.length ?? 0),
+    searchDemandGaps:
+      ((context.search as { zeroResultQueries?: unknown[] } | undefined)
+        ?.zeroResultQueries?.length ?? 0),
+    categoryGrowers:
+      ((context.categoryGrowthForecast as { topGrowers?: unknown[] } | undefined)
+        ?.topGrowers?.length ?? 0),
+  };
 
   const reviews = context.reviews as
     | { topTags?: Array<{ tag: string; count: number }>; averageMonthRating?: number }

@@ -197,6 +197,22 @@ const INTENT_RULES: IntentRule[] = [
       /conversion/,
       /cart add/,
       /visibility/,
+      /growth opportunit/,
+    ],
+  },
+  {
+    intent: "pricing",
+    patterns: [
+      /underpriced/,
+      /overpriced/,
+      /pricing opportunit/,
+      /analyze (product )?pricing/,
+      /dynamic pric/,
+      /price optim/,
+      /should (receive|get) discounts?/,
+      /increase price/,
+      /which products.*(discount|price)/,
+      /show pricing/,
     ],
   },
 ];
@@ -235,6 +251,14 @@ const INTENT_DATA_SOURCES: Record<CopilotIntent, string[]> = {
     "Search Analytics",
     "Reviews",
     "Inventory",
+  ],
+  pricing: [
+    "Products",
+    "Orders",
+    "Order Items",
+    "Reviews",
+    "Inventory",
+    "Pricing Analytics",
   ],
 };
 
@@ -294,6 +318,43 @@ export function routeCopilotQuestion(question: string): CopilotIntent[] {
 
   if (/risk|opportunit|aware of/.test(normalized)) {
     matched.add("product_opportunities");
+  }
+
+  if (/next quarter|quarter revenue/.test(normalized)) {
+    matched.add("revenue");
+    matched.add("sales_trends");
+    matched.add("categories");
+  }
+
+  if (/30 days?|next 30/.test(normalized)) {
+    matched.add("sales_trends");
+    matched.add("inventory");
+  }
+
+  if (/inventory requirements?|forecast inventory/.test(normalized)) {
+    matched.add("inventory");
+    matched.add("sales_trends");
+  }
+
+  if (/growth opportunit/.test(normalized)) {
+    matched.add("product_opportunities");
+    matched.add("promotion_recommendations");
+    matched.add("categories");
+  }
+
+  if (/expected to sell|sell most/.test(normalized)) {
+    matched.add("trending_products");
+    matched.add("sales_trends");
+  }
+
+  if (/categories will grow|categories.*grow/.test(normalized)) {
+    matched.add("categories");
+    matched.add("sales_trends");
+  }
+
+  if (/current growth continues|growth continues/.test(normalized)) {
+    matched.add("revenue");
+    matched.add("sales_trends");
   }
 
   return [...matched];

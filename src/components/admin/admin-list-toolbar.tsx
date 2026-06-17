@@ -2,9 +2,9 @@
 
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, ListOrdered, Search } from "lucide-react";
+import { Check, ListOrdered } from "lucide-react";
+import { AdminSearchInput } from "@/components/admin/admin-search-input";
 
 type StatusTab = "active" | "inactive";
 
@@ -63,15 +63,13 @@ export function AdminListToolbar({
   const hasFiltersOrSort = Boolean(filters || sortControl);
 
   const searchInput = (
-    <div className="relative min-w-0 w-full sm:min-w-40 sm:w-52 sm:flex-none">
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder={searchPlaceholder}
-        className="h-9 pl-8"
-      />
-    </div>
+    <AdminSearchInput
+      value={search}
+      onChange={onSearchChange}
+      placeholder={searchPlaceholder}
+      className="sm:min-w-40 sm:w-52 sm:flex-none"
+      showClear={false}
+    />
   );
 
   const actionButtons = (

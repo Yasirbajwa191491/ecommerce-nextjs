@@ -23,7 +23,8 @@ export type InsightCardType =
   | "marketing"
   | "search"
   | "risk"
-  | "opportunity";
+  | "opportunity"
+  | "pricing";
 
 export type InsightCard = {
   type: InsightCardType;

@@ -29,6 +29,31 @@ export const checkCopilotRateLimit = internalMutation({
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+const PRODUCT_PRICING_MAX_REQUESTS = 10;
+const PRODUCT_PRICING_WINDOW_MS = 15 * 60 * 1000;
+
+export const checkProductPricingRateLimit = internalMutation({
+  args: { adminUserId: v.string() },
+  returns: v.union(
+    v.object({ allowed: v.literal(true) }),
+    v.object({ allowed: v.literal(false), retryAfterMs: v.number() })
+  ),
+  handler: async (ctx, args) => {
+    const result = await checkAndIncrementRateLimit(
+      ctx,
+      `ai-product-pricing:${args.adminUserId}`,
+      {
+        maxAttempts: PRODUCT_PRICING_MAX_REQUESTS,
+        windowMs: PRODUCT_PRICING_WINDOW_MS,
+      }
+    );
+    if (result.allowed) {
+      return { allowed: true as const };
+    }
+    return { allowed: false as const, retryAfterMs: result.retryAfterMs };
+  },
+});
+
 export const setAnalyticsCache = internalMutation({
   args: {
     cacheKey: v.string(),

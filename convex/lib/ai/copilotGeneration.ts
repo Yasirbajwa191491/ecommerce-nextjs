@@ -34,14 +34,18 @@ Rules:
 - For order questions, use orders.thisMonth or orders.thisWeek with statusBreakdown and recentOrders.
 - storeSnapshot is always available — use it for quick follow-up answers when detailed intent data is sparse.
 - Answer every part of multi-part questions using all relevant sections in the structured data.
-- Use precomputed forecast/risk blocks (inventoryForecast, revenueForecast, businessRisks, businessOpportunities) when available.
+- Use precomputed forecast/risk blocks (inventoryForecast, revenueForecast, salesForecastExtended, forecastNextQuarter, categoryGrowthForecast, topProductsForecast, customerGrowthForecast, aovTrend, conversionSignals, inventoryRequirements, growthOpportunities, businessRisks, businessOpportunities) when available.
+- For pricing questions, use pricingInsights (storeHealthScore, underpriced, overpriced, discountCandidates, increaseCandidates) — never invent prices.
+- Structure keyFindings with clear sections when relevant: Revenue Forecast, Growth Forecast, Risk Alerts, Opportunities, Pricing Insights.
 - For category campaign requests (Furniture, Jewelry, Electronics), prioritize categoryCampaignSuggestions when present.
 - If data is limited, explicitly mention the limitation rather than guessing.
+- Pricing recommendations are advisory only — never imply prices were automatically changed.
 
 Preferred response templates:
 - Inventory Forecast: product, current stock, average daily sales, estimated stockout, recommendation, reason.
 - Promotion Recommendation: recommended product, reasons, suggested action.
-- Sales Forecast: current month revenue, forecast next month, confidence, factors.`;
+- Sales Forecast: current month revenue, forecast next month, forecast next quarter, confidence, factors.
+- Pricing Insight: product name, current price, suggested price, confidence %, reason (velocity, reviews, stock).`;
 
 type RawCopilotResponse = {
   summary?: string;
