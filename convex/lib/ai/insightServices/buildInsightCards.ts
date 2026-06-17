@@ -101,6 +101,8 @@ export function buildInsightCards(args: {
             ?.zeroResultQueries?.length ?? 0),
         aov: (context.aovTrend as { averageOrderValue?: number } | undefined)
           ?.averageOrderValue,
+        aovCurrency: (context.aovTrend as { currency?: string } | undefined)
+          ?.currency,
         customerCount: (
           context.customerGrowthForecast as { totalCustomers?: number } | undefined
         )?.totalCustomers,

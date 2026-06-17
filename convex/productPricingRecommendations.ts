@@ -6,11 +6,11 @@ import {
   query,
 } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
+import { paginateArray } from "./lib/pagination";
 import { requireAdmin } from "./lib/requireAdmin";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
 import {
   pricingHealthStatusValidator,
-  pricingRecommendationDocValidator,
   productPricingResultValidator,
 } from "./lib/ai/productPricingTypes";
 
@@ -83,18 +83,14 @@ export const listByProduct = query({
     productId: v.id("products"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.object({
-    page: v.array(pricingRecommendationDocValidator),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db
+    const recommendations = await ctx.db
       .query("aiPricingRecommendations")
       .withIndex("by_product_created", (q) => q.eq("productId", args.productId))
       .order("desc")
-      .paginate(args.paginationOpts);
+      .collect();
+    return paginateArray(recommendations, args.paginationOpts);
   },
 });
 
@@ -102,20 +98,16 @@ export const listRecent = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.object({
-    page: v.array(pricingRecommendationDocValidator),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    return await ctx.db
+    const recommendations = await ctx.db
       .query("aiPricingRecommendations")
       .withIndex("by_admin_created", (q) =>
         q.eq("adminUserId", admin._id)
       )
       .order("desc")
-      .paginate(args.paginationOpts);
+      .collect();
+    return paginateArray(recommendations, args.paginationOpts);
   },
 });
 

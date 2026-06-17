@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -30,11 +31,28 @@ function statusBadge(status: "pending" | "applied" | "dismissed") {
 export function ProductPricingHistoryPanel({
   productId,
 }: ProductPricingHistoryPanelProps) {
+  const [open, setOpen] = useState(false);
   const { results, status } = usePaginatedQuery(
     api.productPricingRecommendations.listByProduct,
-    { productId },
+    open ? { productId } : "skip",
     { initialNumItems: 5 }
   );
+
+  if (!open) {
+    return (
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger
+          className="flex h-auto w-full items-center justify-between rounded-md py-1 text-sm font-medium hover:bg-muted/50"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <History className="size-3.5" />
+            Past recommendations
+          </span>
+          <ChevronDown className="size-4" />
+        </CollapsibleTrigger>
+      </Collapsible>
+    );
+  }
 
   if (status === "LoadingFirstPage") {
     return (
@@ -43,11 +61,28 @@ export function ProductPricingHistoryPanel({
   }
 
   if (!results || results.length === 0) {
-    return null;
+    return (
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger
+          className="flex h-auto w-full items-center justify-between rounded-md py-1 text-sm font-medium hover:bg-muted/50"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <History className="size-3.5" />
+            Past recommendations
+          </span>
+          <ChevronDown className="size-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">
+          <p className="text-xs text-muted-foreground">
+            No AI pricing recommendations yet for this product.
+          </p>
+        </CollapsibleContent>
+      </Collapsible>
+    );
   }
 
   return (
-    <Collapsible>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
         className="flex h-auto w-full items-center justify-between rounded-md py-1 text-sm font-medium hover:bg-muted/50"
       >

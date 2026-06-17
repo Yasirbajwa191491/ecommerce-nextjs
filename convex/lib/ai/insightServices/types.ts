@@ -43,13 +43,15 @@ export function formatNumber(value: number): string {
 }
 
 export function formatCurrency(value: number, currency = "USD"): string {
+  const safe = Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(safe);
 }
 
 export function formatPercent(value: number): string {
-  return `${Math.round(value)}%`;
+  const safe = Number.isFinite(value) ? value : 0;
+  return `${Math.round(safe)}%`;
 }

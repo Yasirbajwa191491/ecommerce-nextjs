@@ -116,11 +116,11 @@ export async function getRevenueStats(ctx: QueryCtx, referenceNow: number) {
   return {
     period: "month",
     currency: kpis.currency,
-    totalRevenue: kpis.totalRevenue,
-    totalOrders: kpis.totalOrders,
-    paidOrders: kpis.paidOrders,
-    averageOrderValue: kpis.averageOrderValue,
-    totalCustomers: kpis.totalCustomers,
+    totalRevenue: kpis.totalRevenue.value,
+    totalOrders: kpis.totalOrders.value,
+    paidOrders: kpis.paidOrders.value,
+    averageOrderValue: kpis.averageOrderValue.value,
+    totalCustomers: kpis.totalCustomers.value,
     bestSalesDayThisWeek: bestDay,
   };
 }

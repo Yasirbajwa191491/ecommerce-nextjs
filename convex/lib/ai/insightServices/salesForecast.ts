@@ -49,6 +49,10 @@ function computeGrowthRate(revenueSeries: TrendPoint[]): number {
   return previous > 0 ? (latest - previous) / previous : 0;
 }
 
+function safeNumber(value: number | undefined): number {
+  return value !== undefined && Number.isFinite(value) ? value : 0;
+}
+
 function computeConfidence(ordersSeries: TrendPoint[]): number {
   const orderVolatility =
     ordersSeries.length >= 2
@@ -67,18 +71,23 @@ export function computeRevenueForecastCard(
 ): InsightCard[] {
   if (!revenue) return [];
   const currency = revenue.currency ?? extended?.currency ?? "USD";
-  const currentRevenue = revenue.totalRevenue ?? extended?.currentMonthRevenue ?? 0;
+  const currentRevenue = safeNumber(
+    revenue.totalRevenue ?? extended?.currentMonthRevenue
+  );
   const revenueSeries = trends?.revenueSeries ?? [];
   const ordersSeries = trends?.ordersSeries ?? [];
   const growthRate = computeGrowthRate(revenueSeries);
-  const forecastNextMonth =
+  const forecastNextMonth = safeNumber(
     extended?.forecastNextMonth ??
-    Math.max(0, Math.round(currentRevenue * (1 + growthRate * 0.6)));
-  const forecastNextQuarter =
+      Math.max(0, Math.round(currentRevenue * (1 + growthRate * 0.6)))
+  );
+  const forecastNextQuarter = safeNumber(
     extended?.forecastNextQuarter ??
-    Math.max(0, Math.round(forecastNextMonth * 3 * (1 + growthRate * 0.15)));
-  const confidence =
-    extended?.confidence ?? computeConfidence(ordersSeries);
+      Math.max(0, Math.round(forecastNextMonth * 3 * (1 + growthRate * 0.15)))
+  );
+  const confidence = safeNumber(
+    extended?.confidence ?? computeConfidence(ordersSeries)
+  );
 
   return [
     {
@@ -249,6 +258,7 @@ export function computeRiskForecastCards(args: {
   decliningProductCount?: number;
   zeroResultSearchCount?: number;
   aov?: number;
+  aovCurrency?: string;
   customerCount?: number;
 }): InsightCard[] {
   const cards: InsightCard[] = [];
@@ -276,8 +286,13 @@ export function computeRiskForecastCards(args: {
         label: "Zero-Result Searches",
         value: formatNumber(args.zeroResultSearchCount ?? 0),
       },
-      ...(args.aov
-        ? [{ label: "Average Order Value", value: formatCurrency(args.aov) }]
+      ...(args.aov !== undefined && Number.isFinite(args.aov) && args.aov > 0
+        ? [
+            {
+              label: "Average Order Value",
+              value: formatCurrency(args.aov, args.aovCurrency ?? "USD"),
+            },
+          ]
         : []),
     ],
     badges: [
