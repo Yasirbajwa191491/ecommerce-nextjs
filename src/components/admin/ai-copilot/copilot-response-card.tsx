@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark, MessageCircleQuestion } from "lucide-react";
+import { Bookmark, Check, MessageCircleQuestion } from "lucide-react";
 import type { CopilotResponseView } from "@/lib/ai-copilot-content";
+import { CopilotInsightCards } from "./copilot-insight-cards";
 
 type CopilotResponseCardProps = {
   response: CopilotResponseView;
@@ -43,6 +44,10 @@ export function CopilotResponseCard({
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
+        {response.insightCards && response.insightCards.length > 0 ? (
+          <CopilotInsightCards cards={response.insightCards} />
+        ) : null}
+
         {response.keyFindings.length > 0 ? (
           <section>
             <h4 className="mb-2 text-sm font-semibold text-foreground">
@@ -82,7 +87,8 @@ export function CopilotResponseCard({
             </h4>
             <div className="flex flex-wrap gap-2">
               {response.dataSourcesUsed.map((source) => (
-                <Badge key={source} variant="secondary">
+                <Badge key={source} variant="secondary" className="gap-1.5">
+                  <Check className="size-3" />
                   {source}
                 </Badge>
               ))}

@@ -545,6 +545,48 @@ export default defineSchema({
         recommendations: v.array(v.string()),
         dataSourcesUsed: v.array(v.string()),
         followUpQuestions: v.array(v.string()),
+        insightCards: v.optional(
+          v.array(
+            v.object({
+              type: v.union(
+                v.literal("inventory"),
+                v.literal("promotion"),
+                v.literal("forecast"),
+                v.literal("sentiment"),
+                v.literal("marketing"),
+                v.literal("search"),
+                v.literal("risk"),
+                v.literal("opportunity")
+              ),
+              title: v.string(),
+              subtitle: v.optional(v.string()),
+              productId: v.optional(v.id("products")),
+              productName: v.optional(v.string()),
+              metrics: v.array(
+                v.object({
+                  label: v.string(),
+                  value: v.string(),
+                  trend: v.optional(
+                    v.union(v.literal("up"), v.literal("down"), v.literal("flat"))
+                  ),
+                })
+              ),
+              badges: v.array(
+                v.object({
+                  label: v.string(),
+                  tone: v.union(
+                    v.literal("info"),
+                    v.literal("positive"),
+                    v.literal("warning"),
+                    v.literal("risk")
+                  ),
+                })
+              ),
+              recommendation: v.optional(v.string()),
+              reason: v.optional(v.string()),
+            })
+          )
+        ),
       })
     ),
     createdAt: v.number(),
@@ -559,6 +601,48 @@ export default defineSchema({
       recommendations: v.array(v.string()),
       dataSourcesUsed: v.array(v.string()),
       followUpQuestions: v.array(v.string()),
+      insightCards: v.optional(
+        v.array(
+          v.object({
+            type: v.union(
+              v.literal("inventory"),
+              v.literal("promotion"),
+              v.literal("forecast"),
+              v.literal("sentiment"),
+              v.literal("marketing"),
+              v.literal("search"),
+              v.literal("risk"),
+              v.literal("opportunity")
+            ),
+            title: v.string(),
+            subtitle: v.optional(v.string()),
+            productId: v.optional(v.id("products")),
+            productName: v.optional(v.string()),
+            metrics: v.array(
+              v.object({
+                label: v.string(),
+                value: v.string(),
+                trend: v.optional(
+                  v.union(v.literal("up"), v.literal("down"), v.literal("flat"))
+                ),
+              })
+            ),
+            badges: v.array(
+              v.object({
+                label: v.string(),
+                tone: v.union(
+                  v.literal("info"),
+                  v.literal("positive"),
+                  v.literal("warning"),
+                  v.literal("risk")
+                ),
+              })
+            ),
+            recommendation: v.optional(v.string()),
+            reason: v.optional(v.string()),
+          })
+        )
+      ),
     }),
     conversationId: v.optional(v.id("aiCopilotConversations")),
     messageId: v.optional(v.id("aiCopilotMessages")),

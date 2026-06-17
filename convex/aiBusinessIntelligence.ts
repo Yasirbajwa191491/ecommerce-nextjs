@@ -8,10 +8,16 @@ export const getBusinessContext = internalQuery({
   args: {
     intents: v.array(copilotIntentValidator),
     referenceNow: v.number(),
+    question: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    return await buildBusinessContext(ctx, args.intents, args.referenceNow);
+    return await buildBusinessContext(
+      ctx,
+      args.intents,
+      args.referenceNow,
+      args.question
+    );
   },
 });
 

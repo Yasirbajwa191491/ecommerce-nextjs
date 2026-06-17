@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Id } from "../../_generated/dataModel";
 
 export const copilotIntentValidator = v.union(
   v.literal("overview"),
@@ -41,6 +42,48 @@ export const copilotResponseValidator = v.object({
   recommendations: v.array(v.string()),
   dataSourcesUsed: v.array(v.string()),
   followUpQuestions: v.array(v.string()),
+  insightCards: v.optional(
+    v.array(
+      v.object({
+        type: v.union(
+          v.literal("inventory"),
+          v.literal("promotion"),
+          v.literal("forecast"),
+          v.literal("sentiment"),
+          v.literal("marketing"),
+          v.literal("search"),
+          v.literal("risk"),
+          v.literal("opportunity")
+        ),
+        title: v.string(),
+        subtitle: v.optional(v.string()),
+        productId: v.optional(v.id("products")),
+        productName: v.optional(v.string()),
+        metrics: v.array(
+          v.object({
+            label: v.string(),
+            value: v.string(),
+            trend: v.optional(
+              v.union(v.literal("up"), v.literal("down"), v.literal("flat"))
+            ),
+          })
+        ),
+        badges: v.array(
+          v.object({
+            label: v.string(),
+            tone: v.union(
+              v.literal("info"),
+              v.literal("positive"),
+              v.literal("warning"),
+              v.literal("risk")
+            ),
+          })
+        ),
+        recommendation: v.optional(v.string()),
+        reason: v.optional(v.string()),
+      })
+    )
+  ),
 });
 
 export type CopilotResponse = {
@@ -49,19 +92,32 @@ export type CopilotResponse = {
   recommendations: string[];
   dataSourcesUsed: string[];
   followUpQuestions: string[];
+  insightCards?: Array<{
+    type:
+      | "inventory"
+      | "promotion"
+      | "forecast"
+      | "sentiment"
+      | "marketing"
+      | "search"
+      | "risk"
+      | "opportunity";
+    title: string;
+    subtitle?: string;
+    productId?: Id<"products">;
+    productName?: string;
+    metrics: Array<{
+      label: string;
+      value: string;
+      trend?: "up" | "down" | "flat";
+    }>;
+    badges: Array<{
+      label: string;
+      tone: "info" | "positive" | "warning" | "risk";
+    }>;
+    recommendation?: string;
+    reason?: string;
+  }>;
 };
-
-export const SUGGESTED_COPILOT_QUESTIONS = [
-  "What happened this week?",
-  "Which products are trending?",
-  "Which products are losing sales?",
-  "What should I promote?",
-  "What products need restocking?",
-  "Summarize customer reviews.",
-  "Show revenue insights.",
-  "Which categories are growing fastest?",
-  "What should I email customers?",
-  "Which products have high views but low sales?",
-] as const;
 
 export const MAX_COPILOT_QUESTION_LENGTH = 2000;

@@ -958,77 +958,226 @@ export async function getOverviewSnapshot(
 export async function buildBusinessContext(
   ctx: QueryCtx,
   intents: CopilotIntent[],
-  referenceNow: number
+  referenceNow: number,
+  question?: string
 ) {
   const context: Record<string, unknown> = {
     storeSnapshot: await getStoreSnapshot(ctx, referenceNow),
   };
   const uniqueIntents = [...new Set(intents)];
 
-  for (const intent of uniqueIntents) {
+  const loaders = uniqueIntents.map(async (intent) => {
     switch (intent) {
       case "overview":
-        context.overview = await getOverviewSnapshot(ctx, referenceNow);
-        break;
+        return ["overview", await getOverviewSnapshot(ctx, referenceNow)] as const;
       case "revenue":
-        context.revenue = await getRevenueStats(ctx, referenceNow);
-        break;
+        return ["revenue", await getRevenueStats(ctx, referenceNow)] as const;
       case "sales_trends":
-        context.salesTrends = await getSalesTrends(ctx, referenceNow);
-        break;
+        return ["salesTrends", await getSalesTrends(ctx, referenceNow)] as const;
       case "trending_products":
-        context.trendingProducts = await getTrendingProducts(
-          ctx,
-          referenceNow
-        );
-        break;
+        return [
+          "trendingProducts",
+          await getTrendingProducts(ctx, referenceNow),
+        ] as const;
       case "low_performing_products":
-        context.lowPerformingProducts = await getLowPerformingProducts(
-          ctx,
-          referenceNow
-        );
-        break;
+        return [
+          "lowPerformingProducts",
+          await getLowPerformingProducts(ctx, referenceNow),
+        ] as const;
       case "promotion_recommendations":
-        context.promotionRecommendations = await getPromotionCandidates(
-          ctx,
-          referenceNow
-        );
-        break;
+        return [
+          "promotionRecommendations",
+          await getPromotionCandidates(ctx, referenceNow),
+        ] as const;
       case "inventory":
-        context.inventory = await getInventoryInsights(ctx, referenceNow);
-        break;
+        return ["inventory", await getInventoryInsights(ctx, referenceNow)] as const;
       case "products":
-        context.products = await getProductCatalogInsights(ctx);
-        break;
+        return ["products", await getProductCatalogInsights(ctx)] as const;
       case "orders":
-        context.orders = await getOrderInsights(ctx, referenceNow);
-        break;
+        return ["orders", await getOrderInsights(ctx, referenceNow)] as const;
       case "reviews":
-        context.reviews = await getReviewInsights(ctx, referenceNow);
-        break;
+        return ["reviews", await getReviewInsights(ctx, referenceNow)] as const;
       case "search":
-        context.search = await getSearchInsights(ctx, referenceNow);
-        break;
+        return ["search", await getSearchInsights(ctx, referenceNow)] as const;
       case "email_marketing":
-        context.emailMarketing = {
-          subscribers: await getSubscriberInsights(ctx),
-          campaigns: await getCampaignInsights(ctx),
-        };
-        break;
+        return [
+          "emailMarketing",
+          {
+            subscribers: await getSubscriberInsights(ctx),
+            campaigns: await getCampaignInsights(ctx),
+          },
+        ] as const;
       case "categories":
-        context.categories = await getCategoryPerformance(ctx, referenceNow);
-        break;
+        return [
+          "categories",
+          await getCategoryPerformance(ctx, referenceNow),
+        ] as const;
       case "discounts":
-        context.discounts = await getDiscountPerformance(ctx, referenceNow);
-        break;
+        return [
+          "discounts",
+          await getDiscountPerformance(ctx, referenceNow),
+        ] as const;
       case "product_opportunities":
-        context.productOpportunities = await getProductOpportunities(
-          ctx,
-          referenceNow
-        );
-        break;
+        return [
+          "productOpportunities",
+          await getProductOpportunities(ctx, referenceNow),
+        ] as const;
     }
+  });
+
+  const resolved = await Promise.all(loaders);
+  for (const entry of resolved) {
+    if (!entry) continue;
+    context[entry[0]] = entry[1];
   }
+
+  const inventory = context.inventory as
+    | {
+        reorderCandidates?: Array<{
+          productId: string;
+          name: string;
+          stock: number;
+          dailyVelocity: number;
+          daysOfCover: number;
+          monthlyUnitsSold: number;
+        }>;
+        lowStock?: unknown[];
+      }
+    | undefined;
+  if (inventory) {
+    const forecast30d = (inventory.reorderCandidates ?? []).slice(0, 10).map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      projectedStock: Math.round(item.stock - item.dailyVelocity * 30),
+      stockoutInDays: item.daysOfCover,
+      reorderUnits: Math.max(0, Math.ceil(item.dailyVelocity * 30 - item.stock)),
+      dailyVelocity: item.dailyVelocity,
+      monthlyUnitsSold: item.monthlyUnitsSold,
+    }));
+
+    const overstockedProducts = (inventory.reorderCandidates ?? [])
+      .filter((item) => item.daysOfCover > 90 || item.stock > item.monthlyUnitsSold * 2)
+      .slice(0, 10)
+      .map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        stock: item.stock,
+        daysOfCover: item.daysOfCover,
+      }));
+
+    context.inventoryForecast = {
+      period: "30d",
+      forecast: forecast30d,
+    };
+    context.stockoutRisks = forecast30d.filter((item) => item.stockoutInDays <= 14);
+    context.overstockedProducts = overstockedProducts;
+  }
+
+  const revenue = context.revenue as
+    | { totalRevenue?: number; currency?: string }
+    | undefined;
+  const salesTrends = context.salesTrends as
+    | { revenueSeries?: Array<{ value: number }>; ordersSeries?: Array<{ value: number }> }
+    | undefined;
+  if (revenue) {
+    const latest = salesTrends?.revenueSeries?.at(-1)?.value ?? 0;
+    const previous = salesTrends?.revenueSeries?.at(-2)?.value ?? 0;
+    const growthRate = previous > 0 ? (latest - previous) / previous : 0;
+    const forecastNextMonth = Math.max(
+      0,
+      Math.round((revenue.totalRevenue ?? 0) * (1 + growthRate * 0.6))
+    );
+    context.revenueForecast = {
+      currentMonthRevenue: revenue.totalRevenue ?? 0,
+      forecastNextMonth,
+      currency: revenue.currency ?? "USD",
+      confidence: Math.max(
+        55,
+        Math.min(
+          92,
+          Math.round(
+            85 -
+              Math.abs(
+                (salesTrends?.ordersSeries?.at(-1)?.value ?? 0) -
+                  (salesTrends?.ordersSeries?.at(-2)?.value ?? 0)
+              )
+          )
+        )
+      ),
+      factors: ["Order growth", "Category growth", "Historical trends"],
+    };
+  }
+
+  const reviews = context.reviews as
+    | { topTags?: Array<{ tag: string; count: number }>; averageMonthRating?: number }
+    | undefined;
+  if (reviews) {
+    const topTags = reviews.topTags ?? [];
+    context.complaintThemes = topTags
+      .filter((item) =>
+        /(late|delay|quality|damaged|poor|broken|size|fit|refund|price)/i.test(
+          item.tag
+        )
+      )
+      .slice(0, 5);
+    context.praiseThemes = topTags
+      .filter((item) =>
+        /(quality|comfortable|beautiful|fast|value|design|durable|premium)/i.test(
+          item.tag
+        )
+      )
+      .slice(0, 5);
+    context.productSentiment = {
+      averageRating: reviews.averageMonthRating ?? 0,
+      topTags,
+    };
+  }
+
+  const questionLower = question?.toLowerCase() ?? "";
+  const emailMarketing = context.emailMarketing as
+    | {
+        subscribers?: {
+          segmentCounts?: Record<string, number>;
+          totalActiveSubscribers?: number;
+        };
+      }
+    | undefined;
+  if (emailMarketing?.subscribers) {
+    const suggestedCategory = questionLower.includes("furniture")
+      ? "Furniture"
+      : questionLower.includes("jewelry") || questionLower.includes("jewellery")
+        ? "Jewelry"
+        : questionLower.includes("electronics")
+          ? "Electronics"
+          : null;
+    context.subscriberPromotionTargets = emailMarketing.subscribers.segmentCounts ?? {};
+    context.categoryCampaignSuggestions = suggestedCategory
+      ? {
+          category: suggestedCategory,
+          action: `Run a focused ${suggestedCategory} campaign this week.`,
+          audience: "High value and repeat buyers",
+        }
+      : null;
+  }
+
+  context.businessRisks = {
+    lowStockCount: inventory?.lowStock?.length ?? 0,
+    decliningProductCount:
+      ((context.lowPerformingProducts as { products?: unknown[] } | undefined)?.products
+        ?.length ?? 0),
+    zeroResultSearchCount:
+      ((context.search as { zeroResultQueries?: unknown[] } | undefined)
+        ?.zeroResultQueries?.length ?? 0),
+  };
+
+  context.businessOpportunities = {
+    promotionCandidates:
+      ((context.promotionRecommendations as { candidates?: unknown[] } | undefined)
+        ?.candidates?.length ?? 0),
+    searchDemandGaps:
+      ((context.search as { zeroResultQueries?: unknown[] } | undefined)
+        ?.zeroResultQueries?.length ?? 0),
+  };
 
   return context;
 }

@@ -13,6 +13,10 @@ const INTENT_RULES: IntentRule[] = [
       /business (update|summary|overview)/,
       /how (is|are) (things|business|store)/,
       /this week/,
+      /this month/,
+      /business risks?/,
+      /biggest opportunities?/,
+      /aware of/,
     ],
   },
   {
@@ -23,11 +27,22 @@ const INTENT_RULES: IntentRule[] = [
       /best sales day/,
       /compare.*month/,
       /how much (did we|have we) (sell|made|earn)/,
+      /forecast/,
+      /next month/,
+      /project(ed)?/,
     ],
   },
   {
     intent: "sales_trends",
-    patterns: [/sales trend/, /order trend/, /growth trend/],
+    patterns: [
+      /sales trend/,
+      /order trend/,
+      /growth trend/,
+      /momentum/,
+      /growing fastest/,
+      /losing momentum/,
+      /forecast/,
+    ],
   },
   {
     intent: "trending_products",
@@ -45,6 +60,7 @@ const INTENT_RULES: IntentRule[] = [
       /what product/,
       /highest sales/,
       /most (sold|popular)/,
+      /growing fastest/,
     ],
   },
   {
@@ -55,6 +71,8 @@ const INTENT_RULES: IntentRule[] = [
       /underperform/,
       /low performing/,
       /slowing down/,
+      /losing momentum/,
+      /declining products?/,
     ],
   },
   {
@@ -65,6 +83,10 @@ const INTENT_RULES: IntentRule[] = [
       /promotion/,
       /marketing focus/,
       /what to feature/,
+      /deserve promotion/,
+      /should (receive|get) additional discounts?/,
+      /should not be promoted/,
+      /already sell well/,
     ],
   },
   {
@@ -84,6 +106,12 @@ const INTENT_RULES: IntentRule[] = [
       /stock level/,
       /need restocking/,
       /how much (stock|inventory)/,
+      /run out of stock/,
+      /run out soon/,
+      /30 days?/,
+      /inventory risks?/,
+      /forecast inventory/,
+      /excess inventory/,
     ],
   },
   {
@@ -122,6 +150,9 @@ const INTENT_RULES: IntentRule[] = [
       /complaint/,
       /what do customers like/,
       /sentiment/,
+      /love most/,
+      /complaining about/,
+      /need improvement/,
     ],
   },
   {
@@ -131,6 +162,8 @@ const INTENT_RULES: IntentRule[] = [
       /customers (are )?looking for/,
       /no results/,
       /search demand/,
+      /new products should we add/,
+      /no matching products?/,
     ],
   },
   {
@@ -141,6 +174,11 @@ const INTENT_RULES: IntentRule[] = [
       /campaign/,
       /subscribers/,
       /what should i email/,
+      /which subscribers should receive promotions?/,
+      /suggest a campaign/,
+      /furniture/,
+      /jewelry|jewellery/,
+      /electronics/,
     ],
   },
   {
@@ -165,18 +203,19 @@ const INTENT_RULES: IntentRule[] = [
 
 const INTENT_DATA_SOURCES: Record<CopilotIntent, string[]> = {
   overview: ["Orders", "Products", "Reviews", "Subscribers"],
-  revenue: ["Orders"],
-  sales_trends: ["Orders"],
-  trending_products: ["Orders", "Products", "Search Analytics", "Reviews"],
-  low_performing_products: ["Orders", "Products", "Search Analytics"],
+  revenue: ["Orders", "Order Items"],
+  sales_trends: ["Orders", "Order Items", "Revenue Analytics"],
+  trending_products: ["Orders", "Order Items", "Products", "Search Analytics", "Reviews"],
+  low_performing_products: ["Orders", "Order Items", "Products", "Search Analytics"],
   promotion_recommendations: [
     "Products",
     "Orders",
+    "Order Items",
     "Discounts",
     "Reviews",
     "Inventory",
   ],
-  inventory: ["Products", "Orders", "Inventory"],
+  inventory: ["Products", "Orders", "Order Items", "Inventory"],
   products: ["Products", "Categories", "Inventory"],
   orders: ["Orders", "Customers"],
   reviews: ["Reviews"],
@@ -188,10 +227,11 @@ const INTENT_DATA_SOURCES: Record<CopilotIntent, string[]> = {
     "Discounts",
   ],
   categories: ["Orders", "Categories"],
-  discounts: ["Products", "Orders", "Discounts"],
+  discounts: ["Products", "Orders", "Order Items", "Discounts"],
   product_opportunities: [
     "Products",
     "Orders",
+    "Order Items",
     "Search Analytics",
     "Reviews",
     "Inventory",
@@ -222,6 +262,9 @@ export function routeCopilotQuestion(question: string): CopilotIntent[] {
 
   if (matched.has("inventory")) {
     matched.add("products");
+    if (/forecast|30 day|run out|stockout|momentum/.test(normalized)) {
+      matched.add("sales_trends");
+    }
   }
 
   if (matched.has("trending_products")) {
@@ -241,6 +284,16 @@ export function routeCopilotQuestion(question: string): CopilotIntent[] {
 
   if (matched.has("overview")) {
     matched.add("sales_trends");
+    matched.add("orders");
+  }
+
+  if (/(furniture|jewelry|jewellery|electronics)/.test(normalized)) {
+    matched.add("email_marketing");
+    matched.add("categories");
+  }
+
+  if (/risk|opportunit|aware of/.test(normalized)) {
+    matched.add("product_opportunities");
   }
 
   return [...matched];

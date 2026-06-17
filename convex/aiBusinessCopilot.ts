@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { routeCopilotQuestion } from "./lib/ai/copilotRouter";
 import { generateCopilotInsight } from "./lib/ai/copilotGeneration";
+import { buildInsightCards } from "./lib/ai/insightServices/buildInsightCards";
 import {
   copilotResponseValidator,
   MAX_COPILOT_QUESTION_LENGTH,
@@ -78,7 +79,7 @@ export const askCopilot = action({
 
     const businessData = await ctx.runQuery(
       internal.aiBusinessIntelligence.getBusinessContext,
-      { intents, referenceNow }
+      { intents, referenceNow, question }
     );
 
     await ctx.runMutation(internal.aiCopilotRateLimit.setAnalyticsCache, {
@@ -92,6 +93,18 @@ export const askCopilot = action({
       intents,
       businessData,
     });
+    const insightCards = buildInsightCards({
+      intents,
+      businessData,
+      question,
+    }).map((card) => ({
+      ...card,
+      productId: card.productId as Id<"products"> | undefined,
+    }));
+    const responseWithCards: CopilotResponse = {
+      ...response,
+      insightCards,
+    };
 
     const conversationId =
       args.conversationId ??
@@ -106,12 +119,12 @@ export const askCopilot = action({
         conversationId,
         adminUserId: session.adminUserId,
         question,
-        response,
+          response: responseWithCards,
       }
     );
 
     return {
-      response,
+      response: responseWithCards,
       conversationId,
       messageId: assistantMessageId,
       intents: intents.map(String),

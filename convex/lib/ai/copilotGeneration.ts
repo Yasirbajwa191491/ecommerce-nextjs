@@ -15,7 +15,8 @@ JSON schema:
   "keyFindings": ["bullet point", ...],
   "recommendations": ["actionable step", ...],
   "dataSourcesUsed": ["Orders", "Products", ...],
-  "followUpQuestions": ["question?", ...]
+  "followUpQuestions": ["question?", ...],
+  "insightCards": []
 }
 
 Rules:
@@ -32,7 +33,15 @@ Rules:
 - For "highest stock", "most stock", or "top stock" questions, list products from highestStockProducts sorted by stock descending.
 - For order questions, use orders.thisMonth or orders.thisWeek with statusBreakdown and recentOrders.
 - storeSnapshot is always available — use it for quick follow-up answers when detailed intent data is sparse.
-- Answer every part of multi-part questions using all relevant sections in the structured data.`;
+- Answer every part of multi-part questions using all relevant sections in the structured data.
+- Use precomputed forecast/risk blocks (inventoryForecast, revenueForecast, businessRisks, businessOpportunities) when available.
+- For category campaign requests (Furniture, Jewelry, Electronics), prioritize categoryCampaignSuggestions when present.
+- If data is limited, explicitly mention the limitation rather than guessing.
+
+Preferred response templates:
+- Inventory Forecast: product, current stock, average daily sales, estimated stockout, recommendation, reason.
+- Promotion Recommendation: recommended product, reasons, suggested action.
+- Sales Forecast: current month revenue, forecast next month, confidence, factors.`;
 
 type RawCopilotResponse = {
   summary?: string;
@@ -40,6 +49,7 @@ type RawCopilotResponse = {
   recommendations?: string[];
   dataSourcesUsed?: string[];
   followUpQuestions?: string[];
+  insightCards?: CopilotResponse["insightCards"];
 };
 
 function normalizeResponse(
@@ -67,6 +77,9 @@ function normalizeResponse(
           "Would you like more detail on revenue trends?",
           "Would you like product promotion recommendations?",
         ],
+    insightCards: Array.isArray(raw?.insightCards)
+      ? raw.insightCards.slice(0, 12)
+      : undefined,
   };
 }
 
