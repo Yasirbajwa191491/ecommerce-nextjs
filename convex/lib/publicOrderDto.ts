@@ -16,6 +16,10 @@ export type PublicOrderSummary = {
   total: number;
   discountTotal: number;
   shipping: number;
+  deliveryCharge?: number;
+  deliveryMethod?: string;
+  deliveryMethodLabel?: string;
+  deliveryEstimate?: string;
   currency: string;
   createdAt: number;
   updatedAt: number;
@@ -63,6 +67,10 @@ export function toPublicOrderSummary(
     total: order.total,
     discountTotal: normalizeOrderDiscountTotal(order, items),
     shipping: order.shipping,
+    deliveryCharge: order.deliveryCharge,
+    deliveryMethod: order.deliveryMethod,
+    deliveryMethodLabel: order.deliveryMethodLabel,
+    deliveryEstimate: order.deliveryEstimate,
     currency: order.currency,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,

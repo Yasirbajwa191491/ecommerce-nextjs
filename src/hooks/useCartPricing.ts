@@ -33,13 +33,28 @@ export function toCartPricedLine(item: PricedCartItem): CartPricedLine {
   };
 }
 
-export function useCartPricing(cart: CartItem[]) {
+export function useCartPricing(
+  cart: CartItem[],
+  deliveryMethod?: string
+) {
   const now = useStableNow();
   const lines = useMemo(() => cartItemsToCheckoutLines(cart), [cart]);
 
   const result = useQuery(
     api.orders.validateCartForCheckout,
-    cart.length > 0 ? { lines, now } : "skip"
+    cart.length > 0
+      ? {
+          lines,
+          now,
+          deliveryMethod: deliveryMethod as
+            | "standard"
+            | "express"
+            | "same_day"
+            | "next_day"
+            | "pickup"
+            | undefined,
+        }
+      : "skip"
   );
 
   const priced = result?.status === "ok" ? result : undefined;

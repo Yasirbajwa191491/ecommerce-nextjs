@@ -13,6 +13,10 @@ import {
   invalidInputClass,
 } from "@/components/admin/admin-form-field";
 import { PaymentMethodSelector } from "@/components/checkout/payment-method-selector";
+import {
+  DeliveryMethodSelector,
+  type DeliveryMethodOption,
+} from "@/components/checkout/delivery-method-selector";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,6 +46,11 @@ import {
 
 type CheckoutFormProps = {
   initialValues?: Partial<CheckoutFormValues>;
+  deliveryMethods?: DeliveryMethodOption[];
+  deliveryMethod?: string;
+  onDeliveryMethodChange?: (method: string) => void;
+  pricingLoading?: boolean;
+  currency?: string;
 };
 
 const emptyForm = (): CheckoutFormValues => ({
@@ -55,7 +64,14 @@ const emptyForm = (): CheckoutFormValues => ({
   privacyAccepted: false,
 });
 
-export function CheckoutForm({ initialValues }: CheckoutFormProps) {
+export function CheckoutForm({
+  initialValues,
+  deliveryMethods = [],
+  deliveryMethod = "standard",
+  onDeliveryMethodChange,
+  pricingLoading = false,
+  currency = "USD",
+}: CheckoutFormProps) {
   const router = useRouter();
   const { cart } = useCartContext();
   const [form, setForm] = useState<CheckoutFormValues>({
@@ -132,6 +148,12 @@ export function CheckoutForm({ initialValues }: CheckoutFormProps) {
         lines: cartLines,
         customer: customerPayload,
         idempotencyKey: idempotencyKeyRef.current,
+        deliveryMethod: deliveryMethod as
+          | "standard"
+          | "express"
+          | "same_day"
+          | "next_day"
+          | "pickup",
       };
 
       if (form.paymentMethod === "cod") {
@@ -289,6 +311,16 @@ export function CheckoutForm({ initialValues }: CheckoutFormProps) {
               )}
             />
           </AdminFormField>
+
+          {deliveryMethods.length > 0 ? (
+            <DeliveryMethodSelector
+              methods={deliveryMethods}
+              value={deliveryMethod}
+              onChange={(method) => onDeliveryMethodChange?.(method)}
+              currency={currency}
+              disabled={submitting || pricingLoading}
+            />
+          ) : null}
 
           <PaymentMethodSelector
             value={form.paymentMethod}

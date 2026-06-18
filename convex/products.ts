@@ -25,6 +25,25 @@ import {
   validateProductDiscountPercent,
 } from "./lib/pricing";
 import { scheduleProductIntelligenceIfNeeded } from "./lib/ai/scheduleProductIntelligence";
+import {
+  deliveryOptionValidator,
+  getDefaultDeliveryOptions,
+  normalizeDeliveryOptions,
+  type DeliveryOption,
+  type WarrantyDuration,
+  type WarrantyType,
+  warrantyDurationValidator,
+  warrantyTypeValidator,
+} from "./lib/productValidators";
+import {
+  buildPromotionIndex,
+  computeFilterFacets,
+  filterCatalogProducts,
+  promotionFilterSlugValidator,
+  sortCatalogProducts,
+  type PublicFilterArgs,
+} from "./lib/catalogFilters";
+import { COLOR_FAMILY_HEX } from "./lib/colorFamilies";
 
 const productFields = {
   name: v.string(),
@@ -47,6 +66,11 @@ const productFields = {
   seoKeywords: v.optional(v.array(v.string())),
   highlights: v.optional(v.array(v.string())),
   active: v.optional(v.boolean()),
+  warrantyAvailable: v.optional(v.boolean()),
+  warrantyDuration: v.optional(warrantyDurationValidator),
+  warrantyType: v.optional(warrantyTypeValidator),
+  warrantyDetails: v.optional(v.string()),
+  deliveryOptions: v.optional(v.array(deliveryOptionValidator)),
 };
 
 function normalizeProductPricingFields(args: {
@@ -60,6 +84,33 @@ function normalizeProductPricingFields(args: {
     args.shippingCharges
   );
   return { discountPercent, shippingCharges };
+}
+
+function normalizeProductExtendedFields(args: {
+  shipping: boolean;
+  discountPercent?: number;
+  shippingCharges?: number;
+  warrantyAvailable?: boolean;
+  warrantyDuration?: WarrantyDuration;
+  warrantyType?: WarrantyType;
+  warrantyDetails?: string;
+  deliveryOptions?: DeliveryOption[];
+}) {
+  const pricing = normalizeProductPricingFields(args);
+  const deliveryOptions = normalizeDeliveryOptions(args.deliveryOptions);
+  const warrantyAvailable = args.warrantyAvailable === true;
+
+  return {
+    ...pricing,
+    warrantyAvailable,
+    warrantyDuration: warrantyAvailable ? args.warrantyDuration : undefined,
+    warrantyType: warrantyAvailable ? args.warrantyType : undefined,
+    warrantyDetails:
+      warrantyAvailable && args.warrantyDetails?.trim()
+        ? args.warrantyDetails.trim()
+        : undefined,
+    deliveryOptions,
+  };
 }
 
 const bySortOrder = (
@@ -171,7 +222,12 @@ const publicFilterArgs = {
   categoryId: v.optional(v.id("productCategories")),
   minPrice: v.optional(v.number()),
   maxPrice: v.optional(v.number()),
+  brands: v.optional(v.array(v.string())),
+  colors: v.optional(v.array(v.string())),
+  minRating: v.optional(v.number()),
+  promotions: v.optional(v.array(promotionFilterSlugValidator)),
   sort: sortValidator,
+  now: v.number(),
 };
 
 async function loadActiveProducts(ctx: QueryCtx) {
@@ -179,35 +235,33 @@ async function loadActiveProducts(ctx: QueryCtx) {
   return products.filter(isProductActive);
 }
 
-function applyPublicFilters<
+async function loadActivePromotions(ctx: QueryCtx) {
+  return await ctx.db
+    .query("productPromotions")
+    .withIndex("by_status", (q) => q.eq("status", "active"))
+    .collect();
+}
+
+async function applyPublicFilters<
   T extends {
+    _id: import("./_generated/dataModel").Id<"products">;
     name: string;
     company: string;
     price: number;
+    discountPercent?: number | null;
+    colors: string[];
     stock: number;
     stars: number;
-    categoryId: string;
+    reviews: number;
+    categoryId: import("./_generated/dataModel").Id<"productCategories">;
     active?: boolean | null;
     sortOrder?: number | null;
   },
->(
-  products: T[],
-  args: {
-    search?: string;
-    categoryId?: string;
-    minPrice?: number;
-    maxPrice?: number;
-    sort?: ProductSort;
-  }
-) {
-  const filtered = filterProducts(products, {
-    active: true,
-    search: args.search,
-    categoryId: args.categoryId,
-    minPrice: args.minPrice,
-    maxPrice: args.maxPrice,
-  });
-  return sortProducts(filtered, args.sort ?? "default");
+>(ctx: QueryCtx, products: T[], args: PublicFilterArgs & { now: number }) {
+  const promotions = await loadActivePromotions(ctx);
+  const promotionIndex = buildPromotionIndex(products, promotions, args.now);
+  const filtered = filterCatalogProducts(products, args, promotionIndex);
+  return sortCatalogProducts(filtered, args.sort ?? "default");
 }
 
 async function isRequestAdmin(ctx: Parameters<typeof getAuthUserOrNull>[0]) {
@@ -291,7 +345,63 @@ export const countPublicFiltered = query({
   args: publicFilterArgs,
   handler: async (ctx, args) => {
     const products = await loadActiveProducts(ctx);
-    return applyPublicFilters(products, args).length;
+    const filtered = await applyPublicFilters(ctx, products, args);
+    return filtered.length;
+  },
+});
+
+/** Faceted filter counts for catalog sidebar. */
+export const getPublicFilterFacets = query({
+  args: {
+    search: v.optional(v.string()),
+    categoryId: v.optional(v.id("productCategories")),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    brands: v.optional(v.array(v.string())),
+    colors: v.optional(v.array(v.string())),
+    minRating: v.optional(v.number()),
+    promotions: v.optional(v.array(promotionFilterSlugValidator)),
+    now: v.number(),
+  },
+  returns: v.object({
+    brands: v.array(
+      v.object({ name: v.string(), slug: v.string(), count: v.number() })
+    ),
+    colorFamilies: v.array(
+      v.object({
+        name: v.string(),
+        slug: v.string(),
+        hex: v.optional(v.string()),
+        count: v.number(),
+      })
+    ),
+    promotions: v.array(
+      v.object({
+        slug: promotionFilterSlugValidator,
+        label: v.string(),
+        count: v.number(),
+      })
+    ),
+    ratingBuckets: v.array(
+      v.object({
+        minRating: v.number(),
+        label: v.string(),
+        count: v.number(),
+      })
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const products = await loadActiveProducts(ctx);
+    const promotions = await loadActivePromotions(ctx);
+    const promotionIndex = buildPromotionIndex(products, promotions, args.now);
+    const facets = computeFilterFacets(products, promotionIndex, args);
+    return {
+      ...facets,
+      colorFamilies: facets.colorFamilies.map((color) => ({
+        ...color,
+        hex: COLOR_FAMILY_HEX[color.name],
+      })),
+    };
   },
 });
 
@@ -303,7 +413,7 @@ export const listPublicPaginated = query({
   },
   handler: async (ctx, args) => {
     const products = await loadActiveProducts(ctx);
-    const filtered = applyPublicFilters(products, args);
+    const filtered = await applyPublicFilters(ctx, products, args);
     const { page, isDone, continueCursor } = paginateArray(
       filtered,
       args.paginationOpts
@@ -491,7 +601,7 @@ export const create = mutation({
       throw new Error("Category not found");
     }
     await assertUniqueProductName(ctx, args.name);
-    const pricing = normalizeProductPricingFields(args);
+    const extended = normalizeProductExtendedFields(args);
     const activeProducts = await ctx.db.query("products").collect();
     const maxSortOrder = activeProducts
       .filter(isProductActive)
@@ -499,8 +609,13 @@ export const create = mutation({
     const nextSortOrder = maxSortOrder + 1;
     const productId = await ctx.db.insert("products", {
       ...args,
-      discountPercent: pricing.discountPercent,
-      shippingCharges: pricing.shippingCharges,
+      discountPercent: extended.discountPercent,
+      shippingCharges: extended.shippingCharges,
+      warrantyAvailable: extended.warrantyAvailable,
+      warrantyDuration: extended.warrantyDuration,
+      warrantyType: extended.warrantyType,
+      warrantyDetails: extended.warrantyDetails,
+      deliveryOptions: extended.deliveryOptions,
       active: args.active ?? true,
       sortOrder: nextSortOrder,
       stars: 0,
@@ -544,11 +659,16 @@ export const update = mutation({
       throw new Error("Category not found");
     }
     await assertUniqueProductName(ctx, data.name, id);
-    const pricing = normalizeProductPricingFields(data);
+    const extended = normalizeProductExtendedFields(data);
     await ctx.db.patch(id, {
       ...data,
-      discountPercent: pricing.discountPercent,
-      shippingCharges: pricing.shippingCharges,
+      discountPercent: extended.discountPercent,
+      shippingCharges: extended.shippingCharges,
+      warrantyAvailable: extended.warrantyAvailable,
+      warrantyDuration: extended.warrantyDuration,
+      warrantyType: extended.warrantyType,
+      warrantyDetails: extended.warrantyDetails,
+      deliveryOptions: extended.deliveryOptions,
       active: data.active ?? true,
     });
 

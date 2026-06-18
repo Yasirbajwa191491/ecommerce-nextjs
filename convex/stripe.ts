@@ -9,6 +9,7 @@ import {
   cartLineValidator,
   customerInfoValidator,
 } from "./lib/checkoutValidation";
+import { deliveryMethodTypeValidator } from "./lib/checkoutPricing";
 import type { Id } from "./_generated/dataModel";
 import type { PricedLineItem } from "./lib/orderPricing";
 import { getSiteUrl } from "./lib/siteUrl";
@@ -27,6 +28,8 @@ function buildStripeLineItems(
   priced: {
     currency: string;
     shipping: number;
+    deliveryCharge?: number;
+    deliveryMethodLabel?: string;
     items: PricedLineItem[];
   }
 ): Stripe.Checkout.SessionCreateParams.LineItem[] {
@@ -62,6 +65,20 @@ function buildStripeLineItems(
     });
   }
 
+  if ((priced.deliveryCharge ?? 0) > 0) {
+    lineItems.push({
+      price_data: {
+        currency: priced.currency.toLowerCase(),
+        unit_amount: Math.round((priced.deliveryCharge ?? 0) * 100),
+        product_data: {
+          name: priced.deliveryMethodLabel ?? "Delivery",
+          description: "Delivery charges",
+        },
+      },
+      quantity: 1,
+    });
+  }
+
   return lineItems;
 }
 
@@ -87,6 +104,7 @@ export const createCheckoutSession = action({
     lines: v.array(cartLineValidator),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   handler: async (ctx, args): Promise<{
     url: string;
@@ -102,6 +120,7 @@ export const createCheckoutSessionForVoice = internalAction({
     lines: v.array(cartLineValidator),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   returns: v.object({
     url: v.string(),
@@ -147,6 +166,7 @@ async function createCheckoutSessionHandler(
       privacyAccepted: boolean;
     };
     idempotencyKey: string;
+    deliveryMethod?: import("./lib/productValidators").DeliveryMethodType;
   }
 ): Promise<{ url: string; orderId: Id<"orders">; orderNumber: string }> {
     const { orderId, orderNumber, priced } = await ctx.runMutation(

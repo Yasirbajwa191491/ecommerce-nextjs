@@ -246,6 +246,7 @@ async function executeTool(
     case "getProductDetails":
       return await ctx.runQuery(internal.vapi.tools.getProductDetails, {
         productId: String(parameters.productId ?? parameters.id ?? ""),
+        now: Date.now(),
       });
     case "getProductReviews":
       return await ctx.runQuery(internal.vapi.tools.getProductReviews, {
@@ -386,8 +387,19 @@ async function executeTool(
       }
       return await ctx.runQuery(internal.vapi.shoppingTools.getCart, {
         conversationId,
+        now: Date.now(),
       });
     }
+    case "getActivePromotions":
+      return await ctx.runQuery(internal.vapi.promotionTools.getActivePromotions, {
+        now: Date.now(),
+        limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
+      });
+    case "getPromotionsForProduct":
+      return await ctx.runQuery(internal.vapi.promotionTools.getPromotionsForProduct, {
+        productId: String(parameters.productId ?? parameters.id ?? "") as Id<"products">,
+        now: Date.now(),
+      });
     case "removeFromCart": {
       if (!conversationId) {
         return { error: "Voice cart session not ready. Please try again." };

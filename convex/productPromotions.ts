@@ -5,9 +5,12 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 import { enrichProduct, enrichProducts } from "./lib/products";
-import { getPrimaryImageUrl } from "./lib/productImages";
 import { isPromotionActive } from "./lib/promotions/isActive";
 import { getActivePromotionsForProduct } from "./lib/promotions/evaluate";
+import {
+  enrichPromotionForStorefront,
+  resolveGetProductId,
+} from "./lib/promotions/storefrontEnrich";
 import {
   promotionStatusValidator,
   promotionTypeValidator,
@@ -57,51 +60,6 @@ function validatePromotionInput(args: {
   if (args.getProductId && args.getProductId === args.buyProductId && args.type === "cross_product") {
     throw new Error("Cross-product promotions require different products");
   }
-}
-
-function resolveGetProductId(
-  type: Doc<"productPromotions">["type"],
-  buyProductId: Id<"products">,
-  getProductId?: Id<"products">
-): Id<"products"> | undefined {
-  if (type === "bogo") return buyProductId;
-  return getProductId;
-}
-
-async function enrichPromotionForStorefront(
-  ctx: { db: { get: (id: Id<"products">) => Promise<Doc<"products"> | null> } },
-  promotion: Doc<"productPromotions">,
-  now: number
-) {
-  const buyProduct = await ctx.db.get(promotion.buyProductId);
-  const getProductId = resolveGetProductId(
-    promotion.type,
-    promotion.buyProductId,
-    promotion.getProductId
-  );
-  const getProduct = getProductId ? await ctx.db.get(getProductId) : null;
-
-  return {
-    _id: promotion._id,
-    type: promotion.type,
-    typeLabel: promotionTypeLabel(promotion.type),
-    name: promotion.name,
-    description: promotion.description ?? "",
-    promotionMessage: promotion.promotionMessage ?? "",
-    bannerText: promotion.bannerText ?? "",
-    buyProductId: promotion.buyProductId,
-    buyProductName: buyProduct?.name ?? "Product",
-    buyProductImageUrl: buyProduct ? getPrimaryImageUrl(buyProduct) : "",
-    buyProductSlug: buyProduct?._id,
-    getProductId: getProductId,
-    getProductName: getProduct?.name ?? "",
-    getProductImageUrl: getProduct ? getPrimaryImageUrl(getProduct) : "",
-    buyQuantity: promotion.buyQuantity,
-    getQuantity: promotion.getQuantity,
-    startAt: promotion.startAt,
-    endAt: promotion.endAt,
-    isActive: isPromotionActive(promotion, now),
-  };
 }
 
 export const listPaginated = query({

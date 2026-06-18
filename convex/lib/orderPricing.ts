@@ -54,7 +54,8 @@ type DbCtx = QueryCtx | MutationCtx;
 
 export async function priceCartLines(
   ctx: DbCtx,
-  lines: CartLineInput[]
+  lines: CartLineInput[],
+  includeProductShipping = true
 ): Promise<OrderTotals> {
   if (!lines.length) {
     throw new Error("Your cart is empty");
@@ -111,12 +112,14 @@ export async function priceCartLines(
       freeShipping: true,
     });
 
-    const lineShippingTotal = allocateProductShipping(
-      line.productId,
-      shippingCharges,
-      freeShipping,
-      shippingAllocatedForProduct
-    );
+    const lineShippingTotal = includeProductShipping
+      ? allocateProductShipping(
+          line.productId,
+          shippingCharges,
+          freeShipping,
+          shippingAllocatedForProduct
+        )
+      : 0;
 
     pricedLines.push({
       productId: line.productId,

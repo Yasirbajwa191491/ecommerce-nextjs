@@ -16,6 +16,7 @@ import type { Doc } from "../../../../../convex/_generated/dataModel";
 import FormatPrice from "@/helpers/FormatPrice";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
 import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
+import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 import { OrderItemPricing } from "@/components/orders/order-item-pricing";
 import { OrderPromotionsSummary } from "@/components/orders/order-promotions-summary";
 import { normalizeOrderItemLike } from "@/lib/order-item-display";
@@ -188,6 +189,11 @@ function CheckoutSuccessContent() {
                               currency={order.currency}
                             />
                           </div>
+                          {item.warrantySummary ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Warranty: {item.warrantySummary}
+                            </p>
+                          ) : null}
                         </div>
                         <span className="font-semibold tabular-nums">
                           <FormatPrice
@@ -211,10 +217,19 @@ function CheckoutSuccessContent() {
                 currency={order.currency}
               />
 
+              <OrderDeliverySummary
+                deliveryMethodLabel={order.deliveryMethodLabel}
+                deliveryEstimate={order.deliveryEstimate}
+                deliveryCharge={order.deliveryCharge}
+                shipping={order.shipping}
+              />
+
               <OrderSummaryBreakdown
                 subtotal={order.subtotal}
                 discountTotal={order.discountTotal ?? 0}
                 shipping={order.shipping}
+                deliveryCharge={order.deliveryCharge ?? 0}
+                deliveryMethodLabel={order.deliveryMethodLabel}
                 tax={order.tax}
                 total={order.total}
                 currency={order.currency}

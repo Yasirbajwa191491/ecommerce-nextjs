@@ -13,6 +13,13 @@ import {
 import { ProductCatalogFilters } from "@/components/products/product-catalog-filters";
 import { cn } from "@/lib/utils";
 
+type FacetData = {
+  brands: Array<{ name: string; slug: string; count: number }>;
+  colorFamilies: Array<{ name: string; slug: string; hex?: string; count: number }>;
+  promotions: Array<{ slug: string; label: string; count: number }>;
+  ratingBuckets: Array<{ minRating: number; label: string; count: number }>;
+};
+
 type ProductCatalogMobileFiltersProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,6 +29,15 @@ type ProductCatalogMobileFiltersProps = {
   priceBounds: { minPrice: number; maxPrice: number };
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
+  facets?: FacetData;
+  selectedBrandSlugs: string[];
+  selectedColorSlugs: string[];
+  selectedPromotionSlugs: string[];
+  selectedMinRating?: number;
+  onToggleBrand: (slug: string) => void;
+  onToggleColor: (slug: string) => void;
+  onTogglePromotion: (slug: string) => void;
+  onSelectRating: (minRating: number | undefined) => void;
   onClear: () => void;
   activeFilterCount: number;
 };
@@ -35,6 +51,15 @@ export function ProductCatalogMobileFilters({
   priceBounds,
   priceRange,
   onPriceRangeChange,
+  facets,
+  selectedBrandSlugs,
+  selectedColorSlugs,
+  selectedPromotionSlugs,
+  selectedMinRating,
+  onToggleBrand,
+  onToggleColor,
+  onTogglePromotion,
+  onSelectRating,
   onClear,
   activeFilterCount,
 }: ProductCatalogMobileFiltersProps) {
@@ -109,6 +134,15 @@ export function ProductCatalogMobileFilters({
               priceBounds={priceBounds}
               priceRange={priceRange}
               onPriceRangeChange={onPriceRangeChange}
+              facets={facets}
+              selectedBrandSlugs={selectedBrandSlugs}
+              selectedColorSlugs={selectedColorSlugs}
+              selectedPromotionSlugs={selectedPromotionSlugs}
+              selectedMinRating={selectedMinRating}
+              onToggleBrand={onToggleBrand}
+              onToggleColor={onToggleColor}
+              onTogglePromotion={onTogglePromotion}
+              onSelectRating={onSelectRating}
               onClear={() => {
                 onClear();
                 onOpenChange(false);

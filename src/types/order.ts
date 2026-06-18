@@ -28,6 +28,10 @@ export type Order = {
   discountTotal?: number;
   tax: number;
   shipping: number;
+  deliveryCharge?: number;
+  deliveryMethod?: string;
+  deliveryMethodLabel?: string;
+  deliveryEstimate?: string;
   total: number;
   currency: string;
   stripeSessionId?: string;
@@ -57,6 +61,7 @@ export type OrderItem = {
   finalUnitPrice?: number;
   shippingCharge?: number;
   lineShippingTotal?: number;
+  warrantySummary?: string;
 };
 
 export type PublicOrderItem = {
@@ -77,6 +82,7 @@ export type PublicOrderItem = {
   shippingCharge: number;
   lineShippingTotal: number;
   isPromotionGift?: boolean;
+  warrantySummary?: string;
 };
 
 export type PublicOrderPromotion = {
@@ -94,6 +100,10 @@ export type PublicOrderSummary = {
   total: number;
   discountTotal: number;
   shipping: number;
+  deliveryCharge?: number;
+  deliveryMethod?: string;
+  deliveryMethodLabel?: string;
+  deliveryEstimate?: string;
   currency: string;
   createdAt: number;
   updatedAt: number;

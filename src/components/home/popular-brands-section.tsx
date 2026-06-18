@@ -47,7 +47,7 @@ export function PopularBrandsSection() {
             {brands.map((brand, index) => (
               <StaggerItem key={brand.slug} index={index} variant="scale" staggerMs={70}>
                 <Link
-                  href={`/products?search=${encodeURIComponent(brand.name)}`}
+                  href={`/products?brand=${encodeURIComponent(brand.slug)}`}
                   className={cn(
                     "flex h-14 min-w-28 items-center justify-center rounded-xl border border-border/60 bg-card px-5",
                     "text-sm font-bold tracking-wide text-muted-foreground",

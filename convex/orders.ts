@@ -13,8 +13,10 @@ import {
   validateCustomerFields,
 } from "./lib/checkoutValidation";
 import { generateOrderNumber } from "./lib/orderNumbers";
-import { priceCheckoutCart } from "./lib/checkoutPricing";
+import { priceCheckoutCart, deliveryMethodTypeValidator } from "./lib/checkoutPricing";
 import type { PricedLineItem } from "./lib/orderPricing";
+import { formatWarrantySummary } from "./lib/productValidators";
+import type { DeliveryMethodType } from "./lib/productValidators";
 import {
   decrementStock,
   getOrderStockLines,
@@ -47,6 +49,11 @@ async function insertOrderLineItems(
   items: PricedLineItem[]
 ) {
   for (const item of items) {
+    const product = await ctx.db.get(item.productId);
+    const warrantySummary = product
+      ? formatWarrantySummary(product)
+      : undefined;
+
     await ctx.db.insert("orderItems", {
       orderId,
       productId: item.productId,
@@ -67,6 +74,7 @@ async function insertOrderLineItems(
       lineShippingTotal: item.lineShippingTotal,
       isPromotionGift: item.isPromotionGift,
       promotionId: item.promotionId,
+      warrantySummary,
     });
   }
 }
@@ -148,11 +156,17 @@ export const validateCartForCheckout = query({
   args: {
     lines: v.array(cartLineValidator),
     now: v.number(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   handler: async (ctx, args) => {
     validateCartLines(args.lines);
     try {
-      const priced = await priceCheckoutCart(ctx, args.lines, args.now);
+      const priced = await priceCheckoutCart(
+        ctx,
+        args.lines,
+        args.now,
+        args.deliveryMethod
+      );
       return { status: "ok" as const, ...priced };
     } catch (error) {
       return {
@@ -243,6 +257,7 @@ export const createCashOrder = mutation({
     lines: v.array(cartLineValidator),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   handler: async (ctx, args) => {
     return await createCashOrderHandler(ctx, args);
@@ -254,6 +269,7 @@ export const createCashOrderInternal = internalMutation({
     lines: v.array(cartLineValidator),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   handler: async (ctx, args) => {
     return await createCashOrderHandler(ctx, args);
@@ -274,6 +290,7 @@ async function createCashOrderHandler(
       privacyAccepted: boolean;
     };
     idempotencyKey: string;
+    deliveryMethod?: DeliveryMethodType;
   }
 ) {
     await assertUniqueIdempotencyKey(ctx, args.idempotencyKey);
@@ -281,7 +298,12 @@ async function createCashOrderHandler(
     validateCustomerFields(args.customer);
 
     const now = Date.now();
-    const priced = await priceCheckoutCart(ctx, args.lines, now);
+    const priced = await priceCheckoutCart(
+      ctx,
+      args.lines,
+      now,
+      args.deliveryMethod
+    );
     await decrementStock(
       ctx,
       priced.items.map((item) => ({
@@ -306,6 +328,10 @@ async function createCashOrderHandler(
       discountTotal: priced.discountTotal,
       tax: priced.tax,
       shipping: priced.shipping,
+      deliveryMethod: priced.deliveryMethod,
+      deliveryMethodLabel: priced.deliveryMethodLabel,
+      deliveryCharge: priced.deliveryCharge,
+      deliveryEstimate: priced.deliveryEstimate,
       total: priced.total,
       currency: priced.currency,
       idempotencyKey: args.idempotencyKey,
@@ -361,6 +387,7 @@ export const createPendingStripeOrder = internalMutation({
     lines: v.array(cartLineValidator),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   handler: async (ctx, args) => {
     await assertUniqueIdempotencyKey(ctx, args.idempotencyKey);
@@ -368,7 +395,12 @@ export const createPendingStripeOrder = internalMutation({
     validateCustomerFields(args.customer);
 
     const now = Date.now();
-    const priced = await priceCheckoutCart(ctx, args.lines, now);
+    const priced = await priceCheckoutCart(
+      ctx,
+      args.lines,
+      now,
+      args.deliveryMethod
+    );
     await decrementStock(
       ctx,
       priced.items.map((item) => ({
@@ -393,6 +425,10 @@ export const createPendingStripeOrder = internalMutation({
       discountTotal: priced.discountTotal,
       tax: priced.tax,
       shipping: priced.shipping,
+      deliveryMethod: priced.deliveryMethod,
+      deliveryMethodLabel: priced.deliveryMethodLabel,
+      deliveryCharge: priced.deliveryCharge,
+      deliveryEstimate: priced.deliveryEstimate,
       total: priced.total,
       currency: priced.currency,
       idempotencyKey: args.idempotencyKey,

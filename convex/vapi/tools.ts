@@ -44,6 +44,7 @@ import {
   toVapiProductDetail,
   toVapiProductSummary,
 } from "./dtos";
+import { vapiPromotionSummaryValidator, loadProductPromotionSummaries } from "./promotionTools";
 
 const TRACKING_NOT_FOUND =
   "We couldn't find any orders matching your details.";
@@ -207,6 +208,7 @@ const vapiProductDetailValidator = v.object({
   addToCartUrl: v.string(),
   url: v.string(),
   category: v.union(v.string(), v.null()),
+  promotions: v.array(vapiPromotionSummaryValidator),
 });
 
 export const searchProducts = internalQuery({
@@ -250,7 +252,10 @@ export const searchProducts = internalQuery({
 });
 
 export const getProductDetails = internalQuery({
-  args: { productId: v.string() },
+  args: {
+    productId: v.string(),
+    now: v.number(),
+  },
   returns: v.union(vapiProductDetailValidator, v.null()),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId as Id<"products">);
@@ -260,7 +265,15 @@ export const getProductDetails = internalQuery({
       ctx,
       product._id
     );
-    return toVapiProductDetail(enriched, { highlightPoints, reviewSummary });
+    const promotions = await loadProductPromotionSummaries(
+      ctx,
+      product._id,
+      args.now
+    );
+    return {
+      ...toVapiProductDetail(enriched, { highlightPoints, reviewSummary }),
+      promotions,
+    };
   },
 });
 

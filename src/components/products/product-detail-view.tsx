@@ -19,6 +19,9 @@ import { ProductImageGallery } from "@/components/products/product-image-gallery
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
+import { ProductWarrantyBadge } from "@/components/products/product-warranty-badge";
+import { ProductDeliveryOptions } from "@/components/products/product-delivery-options";
+import { getWarrantyLabel } from "@/lib/product-display-helpers";
 import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
 import { ProductReviewSection } from "@/components/reviews/product-review-section";
 import { SimilarProductsSection } from "@/components/products/similar-products-section";
@@ -33,12 +36,6 @@ import { cn } from "@/lib/utils";
 type ProductDetailViewProps = {
   params: Promise<{ id: string }>;
 };
-
-const trustItems = [
-  { icon: RefreshCw, label: "30-day returns" },
-  { icon: Package, label: "Secure packaging" },
-  { icon: ShieldCheck, label: "2-year warranty" },
-] as const;
 
 function ProductDetailSkeleton() {
   return (
@@ -68,6 +65,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
   const highlightedPromo = useQuery(
     api.productPromotions.getStorefrontById,
     promoId ? { id: promoId, now } : "skip"
+  );
+  const activePromotions = useQuery(
+    api.productPromotions.getActiveForProduct,
+    id ? { productId: id as Id<"products">, now } : "skip"
   );
 
   useEffect(() => {
@@ -111,6 +112,16 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
     url: image.url,
     alt: image.alt?.trim() || singleProduct.name,
   }));
+  const warrantyLabel = getWarrantyLabel(singleProduct);
+  const trustItems = [
+    { icon: RefreshCw, label: "30-day returns" },
+    { icon: Package, label: "Secure packaging" },
+    ...(warrantyLabel
+      ? [{ icon: ShieldCheck, label: warrantyLabel } as const]
+      : []),
+  ];
+  const storefrontPromotions =
+    activePromotions?.filter((promo) => !promoId || promo._id !== promoId) ?? [];
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
@@ -176,6 +187,19 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
             />
           ) : null}
 
+          {storefrontPromotions.length > 0 ? (
+            <div className="space-y-2">
+              {storefrontPromotions.map((promotion) => (
+                <PromotionOfferBanner
+                  key={promotion._id}
+                  promotion={promotion}
+                  variant="compact"
+                  now={now}
+                />
+              ))}
+            </div>
+          ) : null}
+
           <div>
             <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
               {singleProduct.company}
@@ -238,6 +262,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
               {singleProduct.description}
             </p>
           ) : null}
+
+          <ProductWarrantyBadge product={singleProduct} showDetails />
+
+          <ProductDeliveryOptions product={singleProduct} />
 
           <dl className="grid gap-3 rounded-2xl border border-border/60 bg-card p-4 text-sm sm:grid-cols-2 sm:p-5">
             <div>

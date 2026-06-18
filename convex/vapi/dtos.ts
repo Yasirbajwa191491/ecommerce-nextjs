@@ -131,6 +131,13 @@ export function toVapiOrderDetail(order: PublicOrderDetail) {
       name: item.productName,
       quantity: item.quantity,
       lineTotal: item.lineTotal,
+      isPromotionGift: item.isPromotionGift ?? false,
+    })),
+    promotions: order.promotions.map((promo) => ({
+      name: promo.promotionName,
+      description: promo.promotionDescription ?? null,
+      freeQuantity: promo.freeQuantity,
+      savingsAmount: promo.savingsAmount,
     })),
     latestUpdate: latestUpdate
       ? {

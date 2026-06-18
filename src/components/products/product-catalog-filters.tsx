@@ -13,6 +13,16 @@ import {
   formatCompactPrice,
 } from "@/lib/shop/price-ticks";
 import { cn } from "@/lib/utils";
+import { FilterCheckboxList } from "@/components/products/catalog-filter-sections/filter-checkbox-list";
+import { ColorFamilyFilterSection } from "@/components/products/catalog-filter-sections/color-family-filter-section";
+import { RatingFilterSection } from "@/components/products/catalog-filter-sections/rating-filter-section";
+
+type FacetData = {
+  brands: Array<{ name: string; slug: string; count: number }>;
+  colorFamilies: Array<{ name: string; slug: string; hex?: string; count: number }>;
+  promotions: Array<{ slug: string; label: string; count: number }>;
+  ratingBuckets: Array<{ minRating: number; label: string; count: number }>;
+};
 
 type ProductCatalogFiltersProps = {
   categories: ProductCategory[];
@@ -21,6 +31,15 @@ type ProductCatalogFiltersProps = {
   priceBounds: { minPrice: number; maxPrice: number };
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
+  facets?: FacetData;
+  selectedBrandSlugs: string[];
+  selectedColorSlugs: string[];
+  selectedPromotionSlugs: string[];
+  selectedMinRating?: number;
+  onToggleBrand: (slug: string) => void;
+  onToggleColor: (slug: string) => void;
+  onTogglePromotion: (slug: string) => void;
+  onSelectRating: (minRating: number | undefined) => void;
   onClear: () => void;
   className?: string;
   showHeader?: boolean;
@@ -33,6 +52,15 @@ export function ProductCatalogFilters({
   priceBounds,
   priceRange,
   onPriceRangeChange,
+  facets,
+  selectedBrandSlugs,
+  selectedColorSlugs,
+  selectedPromotionSlugs,
+  selectedMinRating,
+  onToggleBrand,
+  onToggleColor,
+  onTogglePromotion,
+  onSelectRating,
   onClear,
   className,
   showHeader = true,
@@ -88,6 +116,45 @@ export function ProductCatalogFilters({
           ))}
         </div>
       </div>
+
+      {facets ? (
+        <>
+          <Separator />
+          <FilterCheckboxList
+            title="Brand"
+            items={facets.brands.map((brand) => ({
+              id: brand.slug,
+              label: brand.name,
+              count: brand.count,
+            }))}
+            selected={selectedBrandSlugs}
+            onToggle={onToggleBrand}
+          />
+          <Separator />
+          <FilterCheckboxList
+            title="Promotions"
+            items={facets.promotions.map((promotion) => ({
+              id: promotion.slug,
+              label: promotion.label,
+              count: promotion.count,
+            }))}
+            selected={selectedPromotionSlugs}
+            onToggle={onTogglePromotion}
+          />
+          <Separator />
+          <RatingFilterSection
+            buckets={facets.ratingBuckets}
+            selected={selectedMinRating}
+            onSelect={onSelectRating}
+          />
+          <Separator />
+          <ColorFamilyFilterSection
+            colors={facets.colorFamilies}
+            selected={selectedColorSlugs}
+            onToggle={onToggleColor}
+          />
+        </>
+      ) : null}
 
       <Separator />
 
@@ -162,9 +229,7 @@ function CategoryOption({
         )}
         aria-hidden
       />
-      <span className="min-w-0 flex-1 truncate">
-        {label}
-      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </button>
   );
 }

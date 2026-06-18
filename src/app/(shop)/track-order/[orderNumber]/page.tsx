@@ -26,6 +26,7 @@ import { formatCurrencyAmount } from "@/lib/currencies";
 import type { PublicOrderItem } from "@/types/order";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
 import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
+import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 import { OrderItemPricing } from "@/components/orders/order-item-pricing";
 import { OrderPromotionsSummary } from "@/components/orders/order-promotions-summary";
 import { Badge } from "@/components/ui/badge";
@@ -215,6 +216,11 @@ function TrackOrderDetailContent() {
                   {item.sku ? <span>SKU {item.sku}</span> : null}
                   {item.size ? <span>Size {item.size}</span> : null}
                 </div>
+                {item.warrantySummary ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Warranty: {item.warrantySummary}
+                  </p>
+                ) : null}
                 <div className="mt-2 hidden sm:block">
                   <OrderItemPricing item={item} currency={order.currency} />
                 </div>
@@ -237,10 +243,19 @@ function TrackOrderDetailContent() {
             currency={order.currency}
             className="mt-2"
           />
+          <OrderDeliverySummary
+            deliveryMethodLabel={order.deliveryMethodLabel}
+            deliveryEstimate={order.deliveryEstimate}
+            deliveryCharge={order.deliveryCharge}
+            shipping={order.shipping}
+            className="mt-4"
+          />
           <OrderSummaryBreakdown
             subtotal={order.subtotal}
             discountTotal={order.discountTotal}
             shipping={order.shipping}
+            deliveryCharge={order.deliveryCharge}
+            deliveryMethodLabel={order.deliveryMethodLabel}
             tax={order.tax}
             total={order.total}
             currency={order.currency}

@@ -24,6 +24,12 @@ import {
   reviewCallStatusValidator,
   reviewCollectedEntryValidator,
 } from "./lib/reviewCallValidators";
+import {
+  deliveryMethodTypeValidator,
+  deliveryOptionValidator,
+  warrantyDurationValidator,
+  warrantyTypeValidator,
+} from "./lib/productValidators";
 
 export const productImageValidator = v.object({
   url: v.string(),
@@ -70,6 +76,11 @@ export default defineSchema({
     embeddingStatus: v.optional(aiAnalysisStatusValidator),
     embeddingContentHash: v.optional(v.string()),
     embeddingUpdatedAt: v.optional(v.number()),
+    warrantyAvailable: v.optional(v.boolean()),
+    warrantyDuration: v.optional(warrantyDurationValidator),
+    warrantyType: v.optional(warrantyTypeValidator),
+    warrantyDetails: v.optional(v.string()),
+    deliveryOptions: v.optional(v.array(deliveryOptionValidator)),
   })
     .index("by_sort_order", ["sortOrder"])
     .index("by_category_id", ["categoryId"])
@@ -257,6 +268,10 @@ export default defineSchema({
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
     reviewInvitationSentAt: v.optional(v.number()),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+    deliveryMethodLabel: v.optional(v.string()),
+    deliveryCharge: v.optional(v.number()),
+    deliveryEstimate: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -288,6 +303,7 @@ export default defineSchema({
     lineShippingTotal: v.optional(v.number()),
     isPromotionGift: v.optional(v.boolean()),
     promotionId: v.optional(v.id("productPromotions")),
+    warrantySummary: v.optional(v.string()),
   })
     .index("by_order_id", ["orderId"])
     .index("by_product_id", ["productId"]),

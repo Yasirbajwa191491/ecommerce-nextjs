@@ -14,11 +14,14 @@ import {
 } from "@/components/admin/product-form-ai-section";
 import { ProductFormAiPricingSection } from "@/components/admin/product-form-ai-pricing-section";
 import { ProductFormPromotionsSection } from "@/components/admin/product-form/product-form-promotions-section";
+import { ProductFormWarrantySection } from "@/components/admin/product-form/product-form-warranty-section";
+import { ProductFormDeliverySection } from "@/components/admin/product-form/product-form-delivery-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -101,6 +104,21 @@ export function ProductFormFields({
 
   return (
     <>
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="pricing">Pricing</TabsTrigger>
+          <TabsTrigger value="shipping">Shipping</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery</TabsTrigger>
+          <TabsTrigger value="warranty">Warranty</TabsTrigger>
+          <TabsTrigger value="promotions">Promotions</TabsTrigger>
+          <TabsTrigger value="seo">SEO</TabsTrigger>
+          <TabsTrigger value="ai">AI Tools</TabsTrigger>
+          <TabsTrigger value="images">Images</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Basic information</CardTitle>
@@ -226,25 +244,6 @@ export function ProductFormFields({
                 className={invalidInputClass(validation.fieldError("currency"))}
               />
             </AdminFormField>
-            <AdminFormField
-              label="Stock"
-              htmlFor="product-stock"
-              error={validation.fieldError("stock")}
-              required
-            >
-              <Input
-                id="product-stock"
-                type="number"
-                min={0}
-                value={form.stock}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, stock: Number(e.target.value) }))
-                }
-                onBlur={() => validation.touch("stock")}
-                aria-invalid={!!validation.fieldError("stock")}
-                className={invalidInputClass(validation.fieldError("stock"))}
-              />
-            </AdminFormField>
           </div>
 
           <AdminFormField
@@ -282,7 +281,9 @@ export function ProductFormFields({
           </AdminFormField>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="images">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Images</CardTitle>
@@ -321,7 +322,9 @@ export function ProductFormFields({
           </AdminFormField>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="ai">
       <ProductFormAiSection
         context={{
           name: form.name,
@@ -347,7 +350,9 @@ export function ProductFormFields({
         }}
         onApply={onApplyAiContent}
       />
+        </TabsContent>
 
+        <TabsContent value="seo">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">SEO</CardTitle>
@@ -446,61 +451,37 @@ export function ProductFormFields({
           </AdminFormField>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="pricing">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Pricing & shipping</CardTitle>
+          <CardTitle className="text-base">Pricing & discounts</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <AdminFormField
-              label="Discount percentage (0–100)"
-              htmlFor="product-discount"
-              error={validation.fieldError("discountPercent")}
-            >
-              <Input
-                id="product-discount"
-                type="number"
-                min={0}
-                max={100}
-                step="1"
-                value={form.discountPercent}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    discountPercent: Number(e.target.value),
-                  }))
-                }
-                onBlur={() => validation.touch("discountPercent")}
-                aria-invalid={!!validation.fieldError("discountPercent")}
-                className={invalidInputClass(validation.fieldError("discountPercent"))}
-              />
-            </AdminFormField>
-            {!form.shipping ? (
-              <AdminFormField
-                label="Shipping charges"
-                htmlFor="product-shipping-charges"
-                error={validation.fieldError("shippingCharges")}
-              >
-                <Input
-                  id="product-shipping-charges"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.shippingCharges}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      shippingCharges: Number(e.target.value),
-                    }))
-                  }
-                  onBlur={() => validation.touch("shippingCharges")}
-                  aria-invalid={!!validation.fieldError("shippingCharges")}
-                  className={invalidInputClass(validation.fieldError("shippingCharges"))}
-                />
-              </AdminFormField>
-            ) : null}
-          </div>
+          <AdminFormField
+            label="Discount percentage (0–100)"
+            htmlFor="product-discount"
+            error={validation.fieldError("discountPercent")}
+          >
+            <Input
+              id="product-discount"
+              type="number"
+              min={0}
+              max={100}
+              step="1"
+              value={form.discountPercent}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  discountPercent: Number(e.target.value),
+                }))
+              }
+              onBlur={() => validation.touch("discountPercent")}
+              aria-invalid={!!validation.fieldError("discountPercent")}
+              className={invalidInputClass(validation.fieldError("discountPercent"))}
+            />
+          </AdminFormField>
 
           <ProductFormAiPricingSection
             context={{
@@ -524,10 +505,144 @@ export function ProductFormFields({
           />
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="shipping">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Shipping</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 p-4">
+            <Label htmlFor="product-shipping-tab">Free shipping</Label>
+            <Switch
+              id="product-shipping-tab"
+              checked={form.shipping === true}
+              onCheckedChange={(shipping) =>
+                setForm((f) => ({
+                  ...f,
+                  shipping: shipping === true,
+                  shippingCharges: shipping === true ? 0 : f.shippingCharges,
+                }))
+              }
+            />
+          </div>
+          {!form.shipping ? (
+            <AdminFormField
+              label="Shipping charges"
+              htmlFor="product-shipping-charges"
+              error={validation.fieldError("shippingCharges")}
+            >
+              <Input
+                id="product-shipping-charges"
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.shippingCharges}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    shippingCharges: Number(e.target.value),
+                  }))
+                }
+                onBlur={() => validation.touch("shippingCharges")}
+                aria-invalid={!!validation.fieldError("shippingCharges")}
+                className={invalidInputClass(validation.fieldError("shippingCharges"))}
+              />
+            </AdminFormField>
+          ) : null}
+        </CardContent>
+      </Card>
+        </TabsContent>
+
+        <TabsContent value="delivery">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Delivery options</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProductFormDeliverySection form={form} setForm={setForm} />
+        </CardContent>
+      </Card>
+        </TabsContent>
+
+        <TabsContent value="warranty">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Warranty information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProductFormWarrantySection form={form} setForm={setForm} />
+        </CardContent>
+      </Card>
+        </TabsContent>
+
+        <TabsContent value="promotions">
       <ProductFormPromotionsSection productId={product?._id} />
+        </TabsContent>
 
+        <TabsContent value="inventory">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Inventory & visibility</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <AdminFormField
+              label="Price"
+              htmlFor="product-price-inventory"
+              error={validation.fieldError("price")}
+              required
+            >
+              <Input
+                id="product-price-inventory"
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.price}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, price: Number(e.target.value) }))
+                }
+                onBlur={() => validation.touch("price")}
+              />
+            </AdminFormField>
+            <AdminFormField
+              label="Currency"
+              error={validation.fieldError("currency")}
+              required
+            >
+              <CurrencySelect
+                value={form.currency}
+                onChange={(currency) => {
+                  setForm((f) => ({ ...f, currency }));
+                  validation.touch("currency");
+                }}
+              />
+            </AdminFormField>
+            <AdminFormField
+              label="Stock"
+              htmlFor="product-stock-inventory"
+              error={validation.fieldError("stock")}
+              required
+            >
+              <Input
+                id="product-stock-inventory"
+                type="number"
+                min={0}
+                value={form.stock}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, stock: Number(e.target.value) }))
+                }
+                onBlur={() => validation.touch("stock")}
+              />
+            </AdminFormField>
+          </div>
+          {flagsSidebar}
+        </CardContent>
+      </Card>
       {product ? <AdminProductReviewInsights productId={product._id} /> : null}
+        </TabsContent>
+      </Tabs>
 
       <div className="lg:hidden">{flagsSidebar}</div>
     </>

@@ -6,11 +6,23 @@ CRITICAL: Always use tools for product, review, payment, and store questions. Ne
 
 Every active product in the store catalog is searchable via tools. If a customer names a product, ALWAYS call searchProducts (or searchProductsHybrid) before saying it is unavailable.
 
-Product questions (colors, stock, price, reviews, highlights):
+Product questions (colors, stock, price, reviews, highlights, promotions):
 1. searchProducts with the product keywords only (e.g. "pink vanila perfume" — not the full sentence). Handles typos like vanilla/vanila.
 2. If searchProducts returns no results, call searchProductsHybrid with the same keywords.
-3. getProductDetails for colors, stock count, description, highlight points, and how to buy.
+3. getProductDetails for colors, stock count, description, highlight points, active promotions, and how to buy.
 4. getProductReviews for individual review text, ratings breakdown, and total review count.
+5. getPromotionsForProduct when the customer asks about deals, offers, BOGO, or free gifts for a specific product.
+6. getActivePromotions when the customer asks what promotions are running store-wide.
+
+Promotions (IMPORTANT — same rules as the website):
+- Promotions include Buy One Get One, Buy X Get Y, free gifts, and cross-product deals.
+- When describing a promotion, read the offerLine, buyQuantity, getQuantity, and endsLabel from tool results.
+- Tell customers how many items they need to qualify (e.g. "Buy 2 Savage to get 1 Pink Vanila free").
+- After addToCart or when reviewing the cart, call getCart — it applies promotions the same way as the website checkout.
+- getCart returns giftItems (free promotional items), promotions (applied deals), promotionSavingsTotal, and promotionSummary.
+- Mention free gift items and savings when promotions apply. Example: "You qualify for 1 free Pink Vanila — total savings USD 26.69."
+- If the cart is close to qualifying, suggest adding the required quantity.
+- Orders placed via createCashOrder or createCheckoutSession automatically apply promotions — read promotionSummary from the tool result after checkout.
 
 Smart search & bundles:
 - searchProductsHybrid for natural-language queries with budget or constraints (e.g. "ergonomic chair under $200").
@@ -18,15 +30,15 @@ Smart search & bundles:
 - After buildProductBundle, explain each item, why you picked it, and the total. Ask before adding to cart.
 
 Voice shopping actions:
-- addToCart: add product(s) to the voice cart. Use productId from search/bundle results. Ask color if multiple colors exist.
-- getCart: read current cart items and total before checkout.
+- addToCart: add product(s) to the voice cart. Use productId from search/bundle results. Ask color if multiple colors exist. The tool response includes promotionHint — ALWAYS read and share it when present (upsell to qualifying quantity or confirm free gift applied).
+- getCart: read current cart items, free gift items, promotion savings, and total before checkout.
 - removeFromCart: remove an item or clearAll.
 - createCheckoutSession: card payment via Stripe — only after customer confirms Stripe/card payment.
 - createCashOrder: cash on delivery — only after customer confirms COD payment.
 - ALWAYS confirm before addToCart or checkout.
 
 CHECKOUT FLOW (REQUIRED — follow in order):
-1. getCart and tell the customer the cart total.
+1. getCart and tell the customer the cart total, any free gift items, and promotion savings from promotionSummary.
 2. Ask which payment method they want: "Cash on delivery" OR "Card via Stripe".
 3. Wait for the customer to choose and confirm the payment method explicitly. Example: "You chose card via Stripe — I'll collect your shipping details next. Correct?"
 4. Do NOT collect name, email, phone, or address until payment method is confirmed.
@@ -82,9 +94,38 @@ export const VAPI_TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "getActivePromotions",
+      description:
+        "List all currently active store promotions with offer details, qualifying quantities, and end dates.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max results (default 10)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getPromotionsForProduct",
+      description:
+        "Get active promotions for a specific product (BOGO, buy X get Y, free gifts, cross-product deals). Use when customer asks about deals on a product.",
+      parameters: {
+        type: "object",
+        properties: {
+          productId: { type: "string", description: "Product ID from searchProducts" },
+        },
+        required: ["productId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "getProductDetails",
       description:
-        "Full product info: colors, stock count, price, description, highlight points, how to buy, and product URL. Requires product ID from searchProducts.",
+        "Full product info: colors, stock count, price, description, highlight points, active promotions, how to buy, and product URL. Requires product ID from searchProducts.",
       parameters: {
         type: "object",
         properties: {
@@ -322,7 +363,7 @@ export const VAPI_TOOL_DEFINITIONS = [
     function: {
       name: "addToCart",
       description:
-        "Add product(s) to the voice shopping cart. Pass productId for one item or productIds array for a bundle.",
+        "Add product(s) to the voice shopping cart. Returns promotionHint when the product has active deals — always mention this to the customer (e.g. suggest adding more quantity to qualify for Buy 2 Get 1 Free).",
       parameters: {
         type: "object",
         properties: {
@@ -342,7 +383,8 @@ export const VAPI_TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "getCart",
-      description: "Get current voice cart items, subtotal, and total.",
+      description:
+        "Get current voice cart: paid items, free gift items from promotions, subtotal, promotion savings, and total. Promotions are applied the same as the website.",
       parameters: { type: "object", properties: {} },
     },
   },

@@ -47,6 +47,7 @@ import type { OrderStatus, PaymentStatus } from "@/types/order";
 import { ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReviewCollectionPanel } from "@/components/admin/review-collection-panel";
+import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 
 const ORDER_STATUSES: OrderStatus[] = [
   "pending",
@@ -292,10 +293,34 @@ export default function AdminOrderDetailPage() {
               <span className="text-muted-foreground">Shipping</span>
               <span>{formatCurrencyAmount(order.shipping, order.currency)}</span>
             </div>
+            {(order.deliveryCharge ?? 0) > 0 ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">
+                  {order.deliveryMethodLabel ?? "Delivery"}
+                </span>
+                <span>
+                  {formatCurrencyAmount(order.deliveryCharge ?? 0, order.currency)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-4 border-t pt-3 font-semibold">
               <span>Grand total</span>
               <span>{formatCurrencyAmount(order.total, order.currency)}</span>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Delivery</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OrderDeliverySummary
+              deliveryMethodLabel={order.deliveryMethodLabel}
+              deliveryEstimate={order.deliveryEstimate}
+              deliveryCharge={order.deliveryCharge}
+              shipping={order.shipping}
+            />
           </CardContent>
         </Card>
 
@@ -348,6 +373,7 @@ export default function AdminOrderDetailPage() {
                 <TableHead>Discount</TableHead>
                 <TableHead>Final</TableHead>
                 <TableHead>Shipping</TableHead>
+                <TableHead>Warranty</TableHead>
                 <TableHead>Line total</TableHead>
                 {order.status === "delivered" ? (
                   <TableHead>Review</TableHead>
@@ -414,6 +440,9 @@ export default function AdminOrderDetailPage() {
                         )
                       : "—"}
                   </TableCell>
+                  <TableCell className="max-w-[12rem] text-xs text-muted-foreground">
+                    {item.warrantySummary ?? "—"}
+                  </TableCell>
                   <TableCell>
                     {formatCurrencyAmount(item.lineTotal, order.currency)}
                   </TableCell>
@@ -473,6 +502,16 @@ export default function AdminOrderDetailPage() {
               <span className="text-muted-foreground">Shipping</span>
               <span>{formatCurrencyAmount(order.shipping, order.currency)}</span>
             </div>
+            {(order.deliveryCharge ?? 0) > 0 ? (
+              <div className="flex w-full max-w-xs justify-between">
+                <span className="text-muted-foreground">
+                  {order.deliveryMethodLabel ?? "Delivery"}
+                </span>
+                <span>
+                  {formatCurrencyAmount(order.deliveryCharge ?? 0, order.currency)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex w-full max-w-xs justify-between font-semibold">
               <span>Grand total</span>
               <span>{formatCurrencyAmount(order.total, order.currency)}</span>

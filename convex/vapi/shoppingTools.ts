@@ -7,7 +7,17 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { enrichProduct } from "../lib/products";
-import { priceCartLines } from "../lib/orderPricing";
+import { priceCheckoutCart } from "../lib/checkoutPricing";
+import { mergeCartLines, quantityByProduct, resolveProductColor } from "../lib/cartLines";
+import {
+  formatAddToCartPromotionHint,
+  formatAppliedPromotionSummary,
+} from "../lib/promotions/offerCopy";
+import { appliedPromotionSummaryValidator } from "../lib/promotions/types";
+import {
+  loadProductPromotionSummaries,
+  vapiPromotionSummaryValidator,
+} from "./promotionTools";
 import {
   cartLineValidator,
   customerInfoValidator,
@@ -24,6 +34,14 @@ const voiceCartItemValidator = v.object({
   name: v.string(),
   finalPrice: v.number(),
   lineTotal: v.number(),
+});
+
+const voiceCartGiftItemValidator = v.object({
+  productId: v.id("products"),
+  color: v.string(),
+  quantity: v.number(),
+  name: v.string(),
+  promotionName: v.string(),
 });
 
 type CartLine = {
@@ -71,9 +89,7 @@ async function resolveDefaultColor(
 
   const trimmed = color?.trim();
   if (trimmed) {
-    const match = product.colors.find(
-      (c) => c.toLowerCase() === trimmed.toLowerCase()
-    );
+    const match = resolveProductColor(product.colors, trimmed);
     if (!match) {
       throw new ConvexError(
         `Color "${trimmed}" is not available. Available colors: ${product.colors.join(", ")}`
@@ -99,6 +115,69 @@ async function clearCartItems(
   }
 }
 
+async function buildPromotionFeedbackForCart(
+  ctx: MutationCtx,
+  productId: Id<"products">,
+  productName: string,
+  cartItems: CartLine[]
+) {
+  const now = Date.now();
+  const promotions = await loadProductPromotionSummaries(ctx, productId, now);
+  const buyPromotions = promotions.filter((p) => p.buyProductId === productId);
+
+  if (buyPromotions.length === 0) {
+    return {
+      promotionHint: "",
+      promotionApplied: false,
+      promotions: promotions,
+      appliedPromotions: [] as Array<{
+        promotionId: Id<"productPromotions">;
+        promotionType: "bogo" | "buy_x_get_y" | "free_gift" | "cross_product";
+        promotionName: string;
+        promotionDescription?: string;
+        buyProductId: Id<"products">;
+        getProductId?: Id<"products">;
+        freeQuantity: number;
+        savingsAmount: number;
+      }>,
+    };
+  }
+
+  const priced = await priceCheckoutCart(ctx, cartItems, now);
+  const appliedForProduct = priced.promotionSummaries.filter(
+    (p) => p.buyProductId === productId
+  );
+  const qtyMap = quantityByProduct(mergeCartLines(cartItems));
+  const cartBuyQuantity = qtyMap.get(productId) ?? 0;
+  const primary = buyPromotions[0]!;
+
+  const promotionHint = formatAddToCartPromotionHint(
+    {
+      productName,
+      offerLine: primary.offerLine,
+      promotionName: primary.name,
+      buyQuantity: primary.buyQuantity,
+      getProductName: primary.getProductName,
+      getQuantity: primary.getQuantity,
+      endsLabel: primary.endsLabel,
+      cartBuyQuantity,
+    },
+    {
+      qualified: appliedForProduct.length > 0,
+      freeQuantity: appliedForProduct[0]?.freeQuantity,
+      savingsAmount: appliedForProduct[0]?.savingsAmount,
+      currency: priced.currency,
+    }
+  );
+
+  return {
+    promotionHint,
+    promotionApplied: appliedForProduct.length > 0,
+    promotions,
+    appliedPromotions: appliedForProduct,
+  };
+}
+
 export const addToCart = internalMutation({
   args: {
     conversationId: v.id("vapiConversations"),
@@ -114,6 +193,10 @@ export const addToCart = internalMutation({
     productId: v.id("products"),
     color: v.string(),
     quantity: v.number(),
+    promotionHint: v.string(),
+    promotionApplied: v.boolean(),
+    promotions: v.array(vapiPromotionSummaryValidator),
+    appliedPromotions: v.array(appliedPromotionSummaryValidator),
   }),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
@@ -168,14 +251,35 @@ export const addToCart = internalMutation({
     await ctx.db.patch(cart._id, { items, updatedAt: Date.now() });
     await incrementDailyAnalytics(ctx, "cartAdds");
 
+    const cartItemCount = items.reduce((sum, line) => sum + line.quantity, 0);
+    const lineQty =
+      existingIndex >= 0
+        ? items[existingIndex]!.quantity
+        : quantity;
+    const promotionFeedback = await buildPromotionFeedbackForCart(
+      ctx,
+      args.productId,
+      product.name,
+      items
+    );
+
+    const baseMessage = `Added ${quantity} ${product.name} (${resolvedColor}) to your cart. You now have ${lineQty} in your cart (${cartItemCount} item${cartItemCount === 1 ? "" : "s"} total).`;
+    const message = promotionFeedback.promotionHint
+      ? `${baseMessage}\n\n${promotionFeedback.promotionHint}`
+      : baseMessage;
+
     return {
       success: true,
-      message: `Added ${quantity} ${product.name} (${resolvedColor}) to your cart.`,
-      cartItemCount: items.reduce((sum, line) => sum + line.quantity, 0),
+      message,
+      cartItemCount,
       productName: product.name,
       productId: args.productId,
       color: resolvedColor,
       quantity,
+      promotionHint: promotionFeedback.promotionHint,
+      promotionApplied: promotionFeedback.promotionApplied,
+      promotions: promotionFeedback.promotions,
+      appliedPromotions: promotionFeedback.appliedPromotions,
     };
   },
 });
@@ -255,14 +359,20 @@ export const addMultipleToCart = internalMutation({
 export const getCart = internalQuery({
   args: {
     conversationId: v.id("vapiConversations"),
+    now: v.number(),
   },
   returns: v.object({
     items: v.array(voiceCartItemValidator),
+    giftItems: v.array(voiceCartGiftItemValidator),
     itemCount: v.number(),
     subtotal: v.number(),
+    discountTotal: v.number(),
+    promotionSavingsTotal: v.number(),
     total: v.number(),
     currency: v.string(),
     isEmpty: v.boolean(),
+    promotions: v.array(appliedPromotionSummaryValidator),
+    promotionSummary: v.string(),
   }),
   handler: async (ctx, args) => {
     const cart = await getCartDoc(ctx, args.conversationId);
@@ -270,18 +380,26 @@ export const getCart = internalQuery({
     if (!cart || cart.items.length === 0) {
       return {
         items: [],
+        giftItems: [],
         itemCount: 0,
         subtotal: 0,
+        discountTotal: 0,
+        promotionSavingsTotal: 0,
         total: 0,
         currency: "USD",
         isEmpty: true,
+        promotions: [],
+        promotionSummary: "",
       };
     }
 
     try {
       validateCartLines(cart.items);
-      const priced = await priceCartLines(ctx, cart.items);
-      const items = priced.items.map((line) => ({
+      const priced = await priceCheckoutCart(ctx, cart.items, args.now);
+      const paidLines = priced.items.filter((line) => !line.isPromotionGift);
+      const giftLines = priced.items.filter((line) => line.isPromotionGift);
+
+      const items = paidLines.map((line) => ({
         productId: line.productId,
         color: line.color,
         quantity: line.quantity,
@@ -290,13 +408,31 @@ export const getCart = internalQuery({
         lineTotal: line.lineTotal,
       }));
 
+      const giftItems = giftLines.map((line) => ({
+        productId: line.productId,
+        color: line.color,
+        quantity: line.quantity,
+        name: line.productName,
+        promotionName: line.promotionName ?? "Promotion",
+      }));
+
+      const promotionSummary = formatAppliedPromotionSummary(
+        priced.promotionSummaries,
+        priced.currency
+      );
+
       return {
         items,
+        giftItems,
         itemCount: items.reduce((sum, line) => sum + line.quantity, 0),
         subtotal: priced.subtotal,
+        discountTotal: priced.discountTotal,
+        promotionSavingsTotal: priced.promotionSavingsTotal,
         total: priced.total,
         currency: priced.currency,
         isEmpty: false,
+        promotions: priced.promotionSummaries,
+        promotionSummary,
       };
     } catch (error) {
       throw new ConvexError(
@@ -409,14 +545,10 @@ export const createCashOrder = internalMutation({
     currency: v.string(),
     paymentMethod: v.literal("cod"),
     message: v.string(),
+    promotions: v.array(appliedPromotionSummaryValidator),
+    promotionSummary: v.string(),
   }),
-  handler: async (ctx, args): Promise<{
-    orderNumber: string;
-    total: number;
-    currency: string;
-    paymentMethod: "cod";
-    message: string;
-  }> => {
+  handler: async (ctx, args) => {
     const cart = await getCartDoc(ctx, args.conversationId);
     const lines = cart?.items ?? [];
     validateCartLines(lines);
@@ -437,12 +569,39 @@ export const createCashOrder = internalMutation({
       throw new ConvexError("Order was created but could not be loaded");
     }
 
+    const orderPromotions = await ctx.db
+      .query("orderPromotions")
+      .withIndex("by_order_id", (q) => q.eq("orderId", result.orderId))
+      .collect();
+
+    const promotions = orderPromotions.map((promo) => ({
+      promotionId: promo.promotionId,
+      promotionType: promo.promotionType,
+      promotionName: promo.promotionName,
+      promotionDescription: promo.promotionDescription,
+      buyProductId: promo.buyProductId,
+      getProductId: promo.getProductId,
+      freeQuantity: promo.freeQuantity,
+      savingsAmount: promo.savingsAmount,
+    }));
+
+    const promotionSummary = formatAppliedPromotionSummary(
+      promotions,
+      order.currency
+    );
+
+    const promotionMessage = promotionSummary
+      ? `\nPromotions applied:\n${promotionSummary}`
+      : "";
+
     return {
       orderNumber: result.orderNumber,
       total: order.total,
       currency: order.currency,
       paymentMethod: "cod" as const,
-      message: `Order confirmed!\nOrder number: ${result.orderNumber}\nTotal: ${order.currency} ${order.total.toFixed(2)}\nPayment: Cash on delivery\nPay when your order arrives.`,
+      message: `Order confirmed!\nOrder number: ${result.orderNumber}\nTotal: ${order.currency} ${order.total.toFixed(2)}${promotionMessage}\nPayment: Cash on delivery\nPay when your order arrives.`,
+      promotions,
+      promotionSummary,
     };
   },
 });

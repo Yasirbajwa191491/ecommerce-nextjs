@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useHybridProductSearchPaginated } from "@/hooks/use-hybrid-product-search";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useCatalogFilters } from "@/hooks/use-catalog-filters";
 import type { Product } from "@/types/product";
 import type { ProductSort } from "@/lib/shop/product-sort";
 import { calculateFinalPrice } from "@/lib/pricing";
@@ -15,10 +14,12 @@ import { ProductCatalogFilters } from "@/components/products/product-catalog-fil
 import { ProductCatalogMobileFilters } from "@/components/products/product-catalog-mobile-filters";
 import { ProductCatalogToolbar } from "@/components/products/product-catalog-toolbar";
 import { ProductCatalogLoadMore } from "@/components/products/product-catalog-load-more";
+import { CatalogActiveFilters } from "@/components/products/catalog-active-filters";
 import ProductCard from "@/components/products/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
+import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
@@ -60,52 +61,81 @@ function productListFingerprint(products: Product[]) {
 }
 
 export default function ProductCatalog() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const urlSearch = searchParams.get("search") ?? "";
-  const categorySlug = searchParams.get("category") ?? "";
+  const categories = useQuery(api.productCategories.listActive);
+  const priceBounds = useQuery(api.products.getPublicPriceBounds);
+
+  const {
+    filters,
+    categoryId,
+    sort,
+    now,
+    setCategoryId,
+    setSort,
+    toggleBrand,
+    toggleColor,
+    togglePromotion,
+    setMinRating,
+    setPriceRange: setPriceRangeInUrl,
+    clearPriceRange,
+    clearAllFilters,
+  } = useCatalogFilters(categories);
+
+  const urlSearch = filters.search;
   const isHybridSearch = urlSearch.trim().length > 0;
 
-  const [categoryId, setCategoryId] = useState<
-    Id<"productCategories"> | "all"
-  >("all");
-  const [sort, setSort] = useState<ProductSort>("default");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(0);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const loadingMoreRef = useRef(false);
   const catalogSignatureRef = useRef("");
   const applyPriceImmediatelyRef = useRef(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+  const [priceRange, setPriceRangeLocal] = useState<[number, number]>([0, 0]);
   const debouncedPriceRange = useDebouncedValue(priceRange, 400);
   const [priceInitialized, setPriceInitialized] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const categories = useQuery(api.productCategories.listActive);
-  const priceBounds = useQuery(api.products.getPublicPriceBounds);
+  const facetArgs = useMemo(
+    () => ({
+      search: urlSearch.trim() || undefined,
+      categoryId: categoryId === "all" ? undefined : categoryId,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      brands: filters.brandSlugs.length ? filters.brandSlugs : undefined,
+      colors: filters.colorSlugs.length ? filters.colorSlugs : undefined,
+      minRating: filters.minRating,
+      promotions: filters.promotionSlugs.length
+        ? (filters.promotionSlugs as Array<
+            | "on_sale"
+            | "discounted"
+            | "bogo"
+            | "free_gift"
+            | "buy_x_get_y"
+            | "limited_time"
+          >)
+        : undefined,
+      now,
+    }),
+    [urlSearch, categoryId, filters, now]
+  );
 
-  useEffect(() => {
-    if (!categorySlug || !categories?.length) return;
-    const match = categories.find((category) => category.slug === categorySlug);
-    if (match) {
-      setCategoryId(match._id);
-    }
-  }, [categorySlug, categories]);
+  const facets = useQuery(api.products.getPublicFilterFacets, facetArgs);
 
   useEffect(() => {
     if (!priceBounds) return;
 
     if (!priceInitialized) {
-      setPriceRange([priceBounds.minPrice, priceBounds.maxPrice]);
+      const min = filters.minPrice ?? priceBounds.minPrice;
+      const max = filters.maxPrice ?? priceBounds.maxPrice;
+      setPriceRangeLocal([min, max]);
       setPriceInitialized(true);
       return;
     }
 
-    setPriceRange((current) => [
+    setPriceRangeLocal((current) => [
       Math.min(current[0], priceBounds.minPrice),
       Math.max(current[1], priceBounds.maxPrice),
     ]);
-  }, [priceBounds, priceInitialized]);
+  }, [priceBounds, priceInitialized, filters.minPrice, filters.maxPrice]);
 
   useEffect(() => {
     if (
@@ -125,6 +155,37 @@ export default function ProductCatalog() {
     priceInitialized &&
     activePriceRange[1] > activePriceRange[0] &&
     activePriceRange[1] > 0;
+
+  useEffect(() => {
+    if (!priceFilterReady || !priceBounds) return;
+    const isDefaultRange =
+      activePriceRange[0] === priceBounds.minPrice &&
+      activePriceRange[1] === priceBounds.maxPrice;
+    if (isDefaultRange) {
+      if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+        clearPriceRange();
+      }
+      return;
+    }
+    if (
+      filters.minPrice !== activePriceRange[0] ||
+      filters.maxPrice !== activePriceRange[1]
+    ) {
+      setPriceRangeInUrl(activePriceRange[0], activePriceRange[1]);
+    }
+  }, [
+    activePriceRange,
+    priceFilterReady,
+    priceBounds,
+    filters.minPrice,
+    filters.maxPrice,
+    setPriceRangeInUrl,
+    clearPriceRange,
+  ]);
+
+  const handlePriceRangeChange = (range: [number, number]) => {
+    setPriceRangeLocal(range);
+  };
 
   const hybridSearch = useHybridProductSearchPaginated({
     debouncedQuery: urlSearch,
@@ -160,11 +221,37 @@ export default function ProductCatalog() {
     () => ({
       search: urlSearch.trim() || undefined,
       categoryId: categoryId === "all" ? undefined : categoryId,
-      minPrice: priceFilterReady ? activePriceRange[0] : undefined,
-      maxPrice: priceFilterReady ? activePriceRange[1] : undefined,
+      minPrice:
+        filters.minPrice ??
+        (priceFilterReady ? activePriceRange[0] : undefined),
+      maxPrice:
+        filters.maxPrice ??
+        (priceFilterReady ? activePriceRange[1] : undefined),
+      brands: filters.brandSlugs.length ? filters.brandSlugs : undefined,
+      colors: filters.colorSlugs.length ? filters.colorSlugs : undefined,
+      minRating: filters.minRating,
+      promotions: filters.promotionSlugs.length
+        ? (filters.promotionSlugs as Array<
+            | "on_sale"
+            | "discounted"
+            | "bogo"
+            | "free_gift"
+            | "buy_x_get_y"
+            | "limited_time"
+          >)
+        : undefined,
       sort,
+      now,
     }),
-    [urlSearch, categoryId, activePriceRange, priceFilterReady, sort]
+    [
+      urlSearch,
+      categoryId,
+      activePriceRange,
+      priceFilterReady,
+      filters,
+      sort,
+      now,
+    ]
   );
 
   const filterKey = useMemo(() => JSON.stringify(filterArgs), [filterArgs]);
@@ -306,36 +393,48 @@ export default function ProductCatalog() {
   });
 
   const handleClear = () => {
-    setCategoryId("all");
-    setSort("default");
+    clearAllFilters();
     setPage(0);
     loadingMoreRef.current = false;
 
     if (priceBounds) {
       applyPriceImmediatelyRef.current = true;
-      setPriceRange([priceBounds.minPrice, priceBounds.maxPrice]);
-    }
-
-    if (urlSearch.trim()) {
-      router.replace("/products");
+      setPriceRangeLocal([priceBounds.minPrice, priceBounds.maxPrice]);
     }
   };
 
   const bounds = priceBounds ?? { minPrice: 0, maxPrice: 0 };
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (categoryId !== "all") count += 1;
-    if (
-      priceBounds &&
-      priceFilterReady &&
-      (priceRange[0] > priceBounds.minPrice ||
-        priceRange[1] < priceBounds.maxPrice)
-    ) {
-      count += 1;
+  const categoryName =
+    categoryId === "all"
+      ? undefined
+      : categories?.find((category) => category._id === categoryId)?.name;
+
+  const brandLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const brand of facets?.brands ?? []) {
+      map[brand.slug] = brand.name;
     }
-    return count;
-  }, [categoryId, priceBounds, priceFilterReady, priceRange]);
+    return map;
+  }, [facets?.brands]);
+
+  const colorLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const color of facets?.colorFamilies ?? []) {
+      map[color.slug] = color.name;
+    }
+    return map;
+  }, [facets?.colorFamilies]);
+
+  const promotionLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const promotion of facets?.promotions ?? []) {
+      map[promotion.slug] = promotion.label;
+    }
+    return map;
+  }, [facets?.promotions]);
+
+  const activeFilterCount = countActiveCatalogFilters(filters);
 
   const showNoResults = isHybridSearch
     ? !isInitialLoading &&
@@ -385,7 +484,16 @@ export default function ProductCatalog() {
             onCategoryChange={setCategoryId}
             priceBounds={bounds}
             priceRange={priceRange}
-            onPriceRangeChange={setPriceRange}
+            onPriceRangeChange={handlePriceRangeChange}
+            facets={facets}
+            selectedBrandSlugs={filters.brandSlugs}
+            selectedColorSlugs={filters.colorSlugs}
+            selectedPromotionSlugs={filters.promotionSlugs}
+            selectedMinRating={filters.minRating}
+            onToggleBrand={toggleBrand}
+            onToggleColor={toggleColor}
+            onTogglePromotion={togglePromotion}
+            onSelectRating={setMinRating}
             onClear={handleClear}
             className="hidden md:sticky md:top-24 md:z-10 md:block md:self-start md:max-h-[calc(100vh-11rem)] md:overflow-y-auto md:overscroll-contain"
           />
@@ -399,10 +507,36 @@ export default function ProductCatalog() {
               onCategoryChange={setCategoryId}
               priceBounds={bounds}
               priceRange={priceRange}
-              onPriceRangeChange={setPriceRange}
+              onPriceRangeChange={handlePriceRangeChange}
+              facets={facets}
+              selectedBrandSlugs={filters.brandSlugs}
+              selectedColorSlugs={filters.colorSlugs}
+              selectedPromotionSlugs={filters.promotionSlugs}
+              selectedMinRating={filters.minRating}
+              onToggleBrand={toggleBrand}
+              onToggleColor={toggleColor}
+              onTogglePromotion={togglePromotion}
+              onSelectRating={setMinRating}
               onClear={handleClear}
               activeFilterCount={activeFilterCount}
             />
+
+            <div className="mb-4">
+              <CatalogActiveFilters
+                filters={filters}
+                categoryName={categoryName}
+                brandLabels={brandLabels}
+                colorLabels={colorLabels}
+                promotionLabels={promotionLabels}
+                onClearAll={handleClear}
+                onRemoveCategory={() => setCategoryId("all")}
+                onToggleBrand={toggleBrand}
+                onToggleColor={toggleColor}
+                onTogglePromotion={togglePromotion}
+                onClearRating={() => setMinRating(undefined)}
+                onClearPrice={clearPriceRange}
+              />
+            </div>
 
             <ProductCatalogToolbar
               totalCount={displayTotalCount}
@@ -411,7 +545,7 @@ export default function ProductCatalog() {
               view={view}
               onViewChange={setView}
               sort={sort}
-              onSortChange={setSort}
+              onSortChange={(value: ProductSort) => setSort(value)}
             />
 
             {isHybridSearch && hybridSearch.isSimilarFallback ? (

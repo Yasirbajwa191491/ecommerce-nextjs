@@ -18,6 +18,7 @@ export type NormalizedOrderItem = {
   shippingCharge: number;
   lineShippingTotal: number;
   isPromotionGift?: boolean;
+  warrantySummary?: string;
 };
 
 export function normalizeOrderItem(item: Doc<"orderItems">): NormalizedOrderItem {
@@ -49,6 +50,7 @@ export function normalizeOrderItem(item: Doc<"orderItems">): NormalizedOrderItem
     shippingCharge,
     lineShippingTotal,
     isPromotionGift: item.isPromotionGift,
+    warrantySummary: item.warrantySummary,
   };
 }
 

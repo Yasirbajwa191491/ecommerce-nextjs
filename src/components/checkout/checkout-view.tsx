@@ -13,10 +13,23 @@ import { PromotionAppliedSection } from "@/components/promotions/promotion-appli
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
 
+type DeliveryMethodType =
+  | "standard"
+  | "express"
+  | "same_day"
+  | "next_day"
+  | "pickup";
+
 export function CheckoutView() {
   const router = useRouter();
   const { cart } = useCartContext();
-  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(cart);
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    DeliveryMethodType | undefined
+  >(undefined);
+  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(
+    cart,
+    deliveryMethod
+  );
   const [customerPrefill, setCustomerPrefill] = useState<
     ReturnType<typeof loadCheckoutCustomer>
   >(null);
@@ -40,6 +53,13 @@ export function CheckoutView() {
   useEffect(() => {
     setCustomerPrefill(loadCheckoutCustomer());
   }, []);
+
+  useEffect(() => {
+    if (deliveryMethod || !priced?.deliveryMethod) return;
+    setDeliveryMethod(priced.deliveryMethod as DeliveryMethodType);
+  }, [deliveryMethod, priced?.deliveryMethod]);
+
+  const availableDeliveryMethods = priced?.availableDeliveryMethods ?? [];
 
   const initialFormValues = useMemo(
     () =>
@@ -129,6 +149,8 @@ export function CheckoutView() {
               discountTotal={priced?.discountTotal ?? 0}
               tax={priced?.tax ?? 0}
               shipping={priced?.shipping ?? 0}
+              deliveryCharge={priced?.deliveryCharge ?? 0}
+              deliveryMethodLabel={priced?.deliveryMethodLabel}
               total={priced?.total ?? 0}
               currency={priced?.currency}
               isLoading={isLoading}
@@ -137,7 +159,16 @@ export function CheckoutView() {
           </div>
 
           <aside className="min-w-0">
-            <CheckoutForm initialValues={initialFormValues} />
+            <CheckoutForm
+              initialValues={initialFormValues}
+              deliveryMethods={availableDeliveryMethods}
+              deliveryMethod={deliveryMethod ?? priced?.deliveryMethod ?? "standard"}
+              onDeliveryMethodChange={(method) =>
+                setDeliveryMethod(method as DeliveryMethodType)
+              }
+              pricingLoading={isLoading}
+              currency={priced?.currency}
+            />
           </aside>
         </div>
       </section>

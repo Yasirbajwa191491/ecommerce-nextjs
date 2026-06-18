@@ -27,6 +27,8 @@ type CheckoutOrderSummaryProps = {
   discountTotal?: number;
   tax?: number;
   shipping?: number;
+  deliveryCharge?: number;
+  deliveryMethodLabel?: string;
   total: number;
   currency?: string;
   isLoading?: boolean;
@@ -40,6 +42,8 @@ export function CheckoutOrderSummary({
   discountTotal = 0,
   tax = 0,
   shipping = 0,
+  deliveryCharge = 0,
+  deliveryMethodLabel,
   total,
   currency,
   isLoading = false,
@@ -120,6 +124,8 @@ export function CheckoutOrderSummary({
               subtotal={subtotal}
               discountTotal={discountTotal}
               shipping={shipping}
+              deliveryCharge={deliveryCharge}
+              deliveryMethodLabel={deliveryMethodLabel}
               tax={tax}
               total={total}
               currency={currency}

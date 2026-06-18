@@ -10,6 +10,8 @@ type OrderSummaryBreakdownProps = {
   tax?: number;
   total: number;
   currency?: string;
+  deliveryCharge?: number;
+  deliveryMethodLabel?: string;
   className?: string;
   showProductsLabel?: boolean;
 };
@@ -18,6 +20,8 @@ export function OrderSummaryBreakdown({
   subtotal,
   discountTotal = 0,
   shipping = 0,
+  deliveryCharge = 0,
+  deliveryMethodLabel,
   tax = 0,
   total,
   currency,
@@ -57,6 +61,16 @@ export function OrderSummaryBreakdown({
           )}
         </span>
       </div>
+      {deliveryCharge > 0 ? (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            {deliveryMethodLabel ?? "Delivery"}
+          </span>
+          <span className="font-semibold tabular-nums text-foreground">
+            <FormatPrice price={deliveryCharge} currency={currency} />
+          </span>
+        </div>
+      ) : null}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Tax</span>
         <span className="font-semibold tabular-nums text-foreground">

@@ -100,7 +100,17 @@ export function useVapiCartSync() {
           ]);
 
           if (typeof payload.productName === "string") {
-            toast.success(`Added ${payload.productName} to your cart`);
+            if (
+              typeof payload.promotionHint === "string" &&
+              payload.promotionHint.length > 0
+            ) {
+              toast.success(`Added ${payload.productName} to your cart`, {
+                description: payload.promotionHint,
+                duration: 8000,
+              });
+            } else {
+              toast.success(`Added ${payload.productName} to your cart`);
+            }
           }
           break;
         }

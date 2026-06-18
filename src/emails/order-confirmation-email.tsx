@@ -22,6 +22,7 @@ export type OrderConfirmationItem = {
   lineTotal: number;
   currency: string;
   imageUrl: string;
+  warrantySummary?: string;
 };
 
 export type OrderConfirmationEmailProps = {
@@ -31,8 +32,12 @@ export type OrderConfirmationEmailProps = {
   paymentMethod: "cod" | "stripe";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   subtotal: number;
+  discountTotal?: number;
   tax: number;
   shipping: number;
+  deliveryCharge?: number;
+  deliveryMethodLabel?: string;
+  deliveryEstimate?: string;
   total: number;
   currency: string;
   customerAddress: string;

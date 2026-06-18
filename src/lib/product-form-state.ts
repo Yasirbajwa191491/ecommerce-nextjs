@@ -1,6 +1,13 @@
 import type { Id } from "../../convex/_generated/dataModel";
 import { DEFAULT_CURRENCY } from "@/lib/currencies";
 import type { Product } from "@/types/product";
+import {
+  DEFAULT_DELIVERY_OPTIONS,
+  normalizeDeliveryOptionsForm,
+  type DeliveryOptionForm,
+  type WarrantyDurationForm,
+  type WarrantyTypeForm,
+} from "@/lib/delivery-form-defaults";
 
 export type ProductForm = {
   name: string;
@@ -24,6 +31,11 @@ export type ProductForm = {
   seoKeywords: string;
   highlights: string[];
   active: boolean;
+  warrantyAvailable: boolean;
+  warrantyDuration: WarrantyDurationForm;
+  warrantyType: WarrantyTypeForm;
+  warrantyDetails: string;
+  deliveryOptions: DeliveryOptionForm[];
 };
 
 export function emptyForm(): ProductForm {
@@ -49,6 +61,11 @@ export function emptyForm(): ProductForm {
     seoKeywords: "",
     highlights: [""],
     active: true,
+    warrantyAvailable: false,
+    warrantyDuration: "",
+    warrantyType: "",
+    warrantyDetails: "",
+    deliveryOptions: DEFAULT_DELIVERY_OPTIONS.map((option) => ({ ...option })),
   };
 }
 
@@ -95,6 +112,11 @@ export function productToForm(product: Product): ProductForm {
     seoKeywords: product.seoKeywords?.join(", ") ?? "",
     highlights: product.highlights?.length ? [...product.highlights] : [""],
     active: isProductActive(product),
+    warrantyAvailable: product.warrantyAvailable === true,
+    warrantyDuration: product.warrantyDuration ?? "",
+    warrantyType: product.warrantyType ?? "",
+    warrantyDetails: product.warrantyDetails ?? "",
+    deliveryOptions: normalizeDeliveryOptionsForm(product.deliveryOptions),
   };
 }
 
@@ -172,5 +194,17 @@ export function formToPayload(form: ProductForm) {
     seoKeywords: keywords.length ? keywords : undefined,
     highlights: highlights.length ? highlights : undefined,
     active: form.active,
+    warrantyAvailable: form.warrantyAvailable,
+    warrantyDuration: form.warrantyAvailable && form.warrantyDuration
+      ? form.warrantyDuration
+      : undefined,
+    warrantyType: form.warrantyAvailable && form.warrantyType
+      ? form.warrantyType
+      : undefined,
+    warrantyDetails:
+      form.warrantyAvailable && form.warrantyDetails.trim()
+        ? form.warrantyDetails.trim()
+        : undefined,
+    deliveryOptions: normalizeDeliveryOptionsForm(form.deliveryOptions),
   };
 }
