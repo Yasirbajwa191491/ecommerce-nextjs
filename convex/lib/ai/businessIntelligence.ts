@@ -23,6 +23,11 @@ import { getLowStockThresholdValue } from "../settingsHelpers";
 import { isProductActive } from "../productActive";
 import { calculateFinalPrice } from "../pricing";
 import { BEHAVIORAL_SEGMENT_KEYS } from "../emailSegments";
+import {
+  formatWarrantySummary,
+  normalizeDeliveryOptions,
+  type DeliveryMethodType,
+} from "../productValidators";
 import type { CopilotIntent } from "./copilotTypes";
 
 const PRODUCT_LIMIT = 10;
@@ -282,6 +287,8 @@ function mapStockProduct(
   product: Doc<"products">,
   categoryName?: string
 ) {
+  const deliveryOptions = normalizeDeliveryOptions(product.deliveryOptions);
+  const enabledDelivery = deliveryOptions.filter((option) => option.enabled);
   return {
     productId: product._id,
     name: product.name,
@@ -293,6 +300,10 @@ function mapStockProduct(
     stars: product.stars,
     reviews: product.reviews,
     featured: product.featured,
+    warrantyAvailable: product.warrantyAvailable === true,
+    warrantySummary: formatWarrantySummary(product),
+    freeShipping: product.shipping === true,
+    enabledDeliveryMethods: enabledDelivery.map((option) => option.type),
   };
 }
 
@@ -417,6 +428,90 @@ export async function getInventoryInsights(
   };
 }
 
+export async function getWarrantyProducts(ctx: QueryCtx) {
+  const { activeProducts, categoryMap } =
+    await loadActiveProductsWithCategories(ctx);
+
+  const withWarranty = activeProducts.filter(
+    (product) => product.warrantyAvailable === true
+  );
+
+  const byDuration = new Map<string, number>();
+  for (const product of withWarranty) {
+    const key = product.warrantyDuration ?? "unspecified";
+    byDuration.set(key, (byDuration.get(key) ?? 0) + 1);
+  }
+
+  return {
+    totalWithWarranty: withWarranty.length,
+    totalActiveProducts: activeProducts.length,
+    durationBreakdown: [...byDuration.entries()].map(([duration, count]) => ({
+      duration,
+      count,
+    })),
+    products: withWarranty.slice(0, PRODUCT_LIMIT).map((product) => ({
+      productId: product._id,
+      name: product.name,
+      categoryName: categoryMap.get(product.categoryId)?.name ?? "Unknown",
+      warrantySummary: formatWarrantySummary(product),
+      stars: product.stars,
+      discountPercent: product.discountPercent ?? 0,
+    })),
+  };
+}
+
+export async function getDeliveryInsights(ctx: QueryCtx) {
+  const { activeProducts } = await loadActiveProductsWithCategories(ctx);
+
+  const methodCounts: Record<DeliveryMethodType, number> = {
+    standard: 0,
+    express: 0,
+    same_day: 0,
+    next_day: 0,
+    pickup: 0,
+  };
+  let freeShippingCount = 0;
+
+  for (const product of activeProducts) {
+    if (product.shipping === true) {
+      freeShippingCount += 1;
+    }
+    const options = normalizeDeliveryOptions(product.deliveryOptions);
+    for (const option of options) {
+      if (option.enabled) {
+        methodCounts[option.type] += 1;
+      }
+    }
+  }
+
+  const expressEnabled = activeProducts
+    .filter((product) =>
+      normalizeDeliveryOptions(product.deliveryOptions).some(
+        (option) =>
+          option.enabled &&
+          (option.type === "express" ||
+            option.type === "same_day" ||
+            option.type === "next_day")
+      )
+    )
+    .slice(0, PRODUCT_LIMIT)
+    .map((product) => ({
+      productId: product._id,
+      name: product.name,
+      freeShipping: product.shipping === true,
+      enabledDeliveryMethods: normalizeDeliveryOptions(product.deliveryOptions)
+        .filter((option) => option.enabled)
+        .map((option) => option.type),
+    }));
+
+  return {
+    freeShippingCount,
+    totalActiveProducts: activeProducts.length,
+    methodCounts,
+    expressEnabledProducts: expressEnabled,
+  };
+}
+
 export async function getProductCatalogInsights(ctx: QueryCtx) {
   const { products, categories, activeProducts, categoryMap } =
     await loadActiveProductsWithCategories(ctx);
@@ -462,6 +557,11 @@ export async function getProductCatalogInsights(ctx: QueryCtx) {
   );
   const totalStockUnits = activeProducts.reduce((sum, p) => sum + p.stock, 0);
 
+  const [warrantyProducts, deliveryInsights] = await Promise.all([
+    getWarrantyProducts(ctx),
+    getDeliveryInsights(ctx),
+  ]);
+
   return {
     summary: {
       totalProducts: products.length,
@@ -483,6 +583,8 @@ export async function getProductCatalogInsights(ctx: QueryCtx) {
     lowestStockProducts,
     featuredProducts,
     productsByCategory,
+    warrantyProducts,
+    deliveryInsights,
   };
 }
 
@@ -839,12 +941,24 @@ export async function getPromotionCandidates(ctx: QueryCtx, referenceNow: number
       const highStock = product.stock > 10;
       const goodRating = product.stars >= 4;
       const moderateSales = sale.unitsSold > 0 && sale.unitsSold < 20;
+      const hasWarranty = product.warrantyAvailable === true;
+      const hasExpressDelivery = normalizeDeliveryOptions(
+        product.deliveryOptions
+      ).some(
+        (option) =>
+          option.enabled &&
+          (option.type === "express" || option.type === "same_day")
+      );
+      const freeShipping = product.shipping === true;
 
       const score =
         (goodRating ? 2 : 0) +
         (highStock ? 1 : 0) +
         (moderateSales ? 2 : 0) +
         (product.featured ? 1 : 0) +
+        (hasWarranty ? 1 : 0) +
+        (hasExpressDelivery ? 1 : 0) +
+        (freeShipping ? 1 : 0) +
         (hasDiscount ? -1 : 1);
 
       return {
@@ -857,11 +971,17 @@ export async function getPromotionCandidates(ctx: QueryCtx, referenceNow: number
         unitsSold: sale.unitsSold,
         revenue: sale.revenue,
         promotionScore: score,
+        warrantySummary: formatWarrantySummary(product),
+        freeShipping,
+        hasExpressDelivery,
         reasons: [
           goodRating ? "Strong ratings" : null,
           highStock ? "Healthy inventory" : null,
           moderateSales ? "Room to grow sales" : null,
           !hasDiscount ? "No active discount" : null,
+          hasWarranty ? "Warranty included" : null,
+          freeShipping ? "Free standard shipping" : null,
+          hasExpressDelivery ? "Express delivery available" : null,
         ].filter((r): r is string => Boolean(r)),
       };
     })
@@ -1016,7 +1136,14 @@ export async function buildBusinessContext(
       case "inventory":
         return ["inventory", await getInventoryInsights(ctx, referenceNow)] as const;
       case "products":
-        return ["products", await getProductCatalogInsights(ctx)] as const;
+        return [
+          "products",
+          {
+            catalog: await getProductCatalogInsights(ctx),
+            warranty: await getWarrantyProducts(ctx),
+            delivery: await getDeliveryInsights(ctx),
+          },
+        ] as const;
       case "orders":
         return ["orders", await getOrderInsights(ctx, referenceNow)] as const;
       case "reviews":

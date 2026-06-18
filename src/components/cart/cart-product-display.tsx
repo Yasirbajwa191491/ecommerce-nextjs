@@ -4,15 +4,31 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { CartItem as CartItemType } from "@/reducer/cartReducer";
 
-export function ColorSwatch({ color }: { color: string }) {
+export function ColorSwatch({
+  color,
+  showLabel = true,
+  label = "Selected color",
+}: {
+  color: string;
+  showLabel?: boolean;
+  label?: string;
+}) {
+  const dot = (
+    <span
+      aria-hidden={showLabel ? true : undefined}
+      className="size-4 shrink-0 rounded-full border border-white/80 shadow-sm ring-1 ring-border/60"
+      style={{ backgroundColor: color }}
+    />
+  );
+
+  if (!showLabel) {
+    return dot;
+  }
+
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-2.5 py-1">
-      <span
-        aria-hidden
-        className="size-4 shrink-0 rounded-full border border-white/80 shadow-sm ring-1 ring-border/60"
-        style={{ backgroundColor: color }}
-      />
-      <span className="text-xs font-medium text-foreground">Selected color</span>
+      {dot}
+      <span className="text-xs font-medium text-foreground">{label}</span>
     </span>
   );
 }

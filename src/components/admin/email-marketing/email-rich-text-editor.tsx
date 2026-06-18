@@ -26,19 +26,23 @@ type EmailRichTextEditorProps = {
   contentJson: string;
   onChange: (contentJson: string, contentHtml: string) => void;
   className?: string;
+  contentClassName?: string;
+  placeholder?: string;
 };
 
 export function EmailRichTextEditor({
   contentJson,
   onChange,
   className,
+  contentClassName,
+  placeholder = "Write your email content...",
 }: EmailRichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false }),
       Image,
-      Placeholder.configure({ placeholder: "Write your email content..." }),
+      Placeholder.configure({ placeholder }),
     ],
     content: contentJson ? JSON.parse(contentJson) : JSON.parse(EMPTY_TIPTAP_DOC),
     immediatelyRender: false,
@@ -48,8 +52,7 @@ export function EmailRichTextEditor({
     },
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm max-w-none min-h-[240px] px-4 py-3 focus:outline-none",
+        class: "rich-text-content rich-text-editor px-4 py-3 focus:outline-none",
       },
     },
   });
@@ -152,11 +155,24 @@ export function EmailRichTextEditor({
         <ToolbarButton onClick={addImage} label="Image">
           <ImageIcon className="size-4" />
         </ToolbarButton>
-        <Button type="button" variant="outline" size="sm" onClick={addCtaButton}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={addCtaButton}
+        >
           Add Button
         </Button>
       </div>
-      <EditorContent editor={editor} />
+      <div
+        className={cn(
+          "min-h-[12rem] max-h-[min(55vh,26rem)] overflow-y-auto overscroll-contain",
+          contentClassName
+        )}
+      >
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }
@@ -177,6 +193,7 @@ function ToolbarButton({
       type="button"
       variant={active ? "secondary" : "ghost"}
       size="icon-sm"
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       aria-label={label}
     >

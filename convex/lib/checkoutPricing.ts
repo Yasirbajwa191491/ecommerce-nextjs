@@ -80,6 +80,7 @@ export async function priceCheckoutCart(
       (method) => method.type === "standard"
     );
     if (standardOption) {
+      shipping = standardOption.charge;
       deliveryEstimate = standardOption.estimate;
     }
   } else {

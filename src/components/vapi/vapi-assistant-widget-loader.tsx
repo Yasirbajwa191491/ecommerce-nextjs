@@ -1,7 +1,11 @@
 "use client";
 
-import { VapiAssistantWidget } from "@/components/vapi/vapi-assistant-widget";
+import dynamic from "next/dynamic";
 
-export function VapiAssistantWidgetLoader() {
-  return <VapiAssistantWidget />;
-}
+export const VapiAssistantWidgetLoader = dynamic(
+  () =>
+    import("@/components/vapi/vapi-assistant-widget").then((mod) => ({
+      default: mod.VapiAssistantWidget,
+    })),
+  { ssr: false }
+);

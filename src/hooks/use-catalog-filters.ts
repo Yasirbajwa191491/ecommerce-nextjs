@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../convex/_generated/dataModel";
 import type { ProductCategory } from "@/types/product";
 import type { ProductSort } from "@/lib/shop/product-sort";
 import {

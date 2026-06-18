@@ -178,6 +178,65 @@ export const validateCartForCheckout = query({
   },
 });
 
+/** Restore inventory when a customer abandons Stripe checkout from the cancel URL. */
+export const acknowledgeStripeCheckoutCancelled = mutation({
+  args: { orderNumber: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const orderNumber = args.orderNumber.trim();
+    if (!orderNumber) return null;
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", orderNumber))
+      .unique();
+
+    if (
+      !order ||
+      order.paymentMethod !== "stripe" ||
+      order.paymentStatus !== "pending" ||
+      order.status !== "pending"
+    ) {
+      return null;
+    }
+
+    const stockLines = await getOrderStockLines(ctx, order._id);
+    await restoreStock(ctx, stockLines);
+
+    const now = Date.now();
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+
+    await ctx.db.patch(order._id, {
+      status: "cancelled",
+      paymentStatus: "failed",
+      updatedAt: now,
+    });
+
+    await insertPaymentLog(ctx, {
+      orderId: order._id,
+      event: "payment_failed",
+      description: "Stripe checkout cancelled by customer",
+      previousPaymentStatus,
+      newPaymentStatus: "failed",
+      actorType: "system",
+      createdAt: now,
+    });
+
+    await insertOrderStatusLog(ctx, {
+      orderId: order._id,
+      event: "order_status_updated",
+      description: "Order cancelled after payment was abandoned",
+      previousStatus,
+      newStatus: "cancelled",
+      actorType: "customer",
+      createdAt: now,
+    });
+
+    return null;
+  },
+});
+
 export const getOrderByNumber = query({
   args: {
     orderNumber: v.string(),

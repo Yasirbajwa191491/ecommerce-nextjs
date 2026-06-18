@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useHybridProductSearchPaginated } from "@/hooks/use-hybrid-product-search";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
@@ -23,6 +25,13 @@ import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
+
+type CatalogFilterFacets = FunctionReturnType<
+  typeof api.products.getPublicFilterFacets
+>;
+
+/** Persists facet sidebar data across remounts so Brand/Promotions don't flash away. */
+let catalogFacetsCache: CatalogFilterFacets | undefined;
 
 function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
   const sorted = [...products];
@@ -94,6 +103,11 @@ export default function ProductCatalog() {
   const [priceInitialized, setPriceInitialized] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
+  const facetNow = useMemo(
+    () => Math.floor(now / 60_000) * 60_000,
+    [now]
+  );
+
   const facetArgs = useMemo(
     () => ({
       search: urlSearch.trim() || undefined,
@@ -113,12 +127,16 @@ export default function ProductCatalog() {
             | "limited_time"
           >)
         : undefined,
-      now,
+      now: facetNow,
     }),
-    [urlSearch, categoryId, filters, now]
+    [urlSearch, categoryId, filters, facetNow]
   );
 
-  const facets = useQuery(api.products.getPublicFilterFacets, facetArgs);
+  const facetsQuery = useQuery(api.products.getPublicFilterFacets, facetArgs);
+  if (facetsQuery !== undefined) {
+    catalogFacetsCache = facetsQuery;
+  }
+  const facets = facetsQuery ?? catalogFacetsCache;
 
   useEffect(() => {
     if (!priceBounds) return;

@@ -348,7 +348,7 @@ export function CheckoutForm({
               />
               <span className="text-sm leading-relaxed text-foreground">
                 I agree to the{" "}
-                <Link href="/terms" className="font-medium text-[#6254f3] hover:underline">
+                <Link href="/terms?from=checkout" className="font-medium text-[#6254f3] hover:underline">
                   Terms & Conditions
                 </Link>
               </span>
@@ -374,7 +374,7 @@ export function CheckoutForm({
               />
               <span className="text-sm leading-relaxed text-foreground">
                 I agree to the{" "}
-                <Link href="/privacy" className="font-medium text-[#6254f3] hover:underline">
+                <Link href="/privacy?from=checkout" className="font-medium text-[#6254f3] hover:underline">
                   Privacy Policy
                 </Link>
               </span>

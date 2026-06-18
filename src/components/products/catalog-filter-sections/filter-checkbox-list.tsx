@@ -2,6 +2,10 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  FILTER_OPTION_LIST_CLASS,
+  FilterSidebarSection,
+} from "@/components/products/catalog-filter-sections/filter-sidebar-section";
 import { cn } from "@/lib/utils";
 
 type FilterCheckboxListProps = {
@@ -10,6 +14,8 @@ type FilterCheckboxListProps = {
   selected: string[];
   onToggle: (id: string) => void;
   className?: string;
+  /** Wrap in a spaced sidebar section with divider */
+  section?: boolean;
 };
 
 export function FilterCheckboxList({
@@ -18,35 +24,48 @@ export function FilterCheckboxList({
   selected,
   onToggle,
   className,
+  section = false,
 }: FilterCheckboxListProps) {
   if (items.length === 0) return null;
+
+  const content = (
+    <div className={FILTER_OPTION_LIST_CLASS}>
+      {items.map((item) => {
+        const checked = selected.includes(item.id.toLowerCase());
+        return (
+          <div key={item.id} className="flex items-center gap-2.5">
+            <Checkbox
+              id={`filter-${title}-${item.id}`}
+              checked={checked}
+              onCheckedChange={() => onToggle(item.id)}
+            />
+            <Label
+              htmlFor={`filter-${title}-${item.id}`}
+              className="flex flex-1 cursor-pointer items-center justify-between text-sm font-normal"
+            >
+              <span>{item.label}</span>
+              <span className="text-xs text-muted-foreground">({item.count})</span>
+            </Label>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  if (section) {
+    return (
+      <FilterSidebarSection title={title} className={className}>
+        {content}
+      </FilterSidebarSection>
+    );
+  }
 
   return (
     <div className={cn("space-y-3 lg:space-y-4", className)}>
       <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         {title}
       </p>
-      <div className="flex flex-col gap-2">
-        {items.map((item) => {
-          const checked = selected.includes(item.id.toLowerCase());
-          return (
-            <div key={item.id} className="flex items-center gap-2.5">
-              <Checkbox
-                id={`filter-${title}-${item.id}`}
-                checked={checked}
-                onCheckedChange={() => onToggle(item.id)}
-              />
-              <Label
-                htmlFor={`filter-${title}-${item.id}`}
-                className="flex flex-1 cursor-pointer items-center justify-between text-sm font-normal"
-              >
-                <span>{item.label}</span>
-                <span className="text-xs text-muted-foreground">({item.count})</span>
-              </Label>
-            </div>
-          );
-        })}
-      </div>
+      {content}
     </div>
   );
 }

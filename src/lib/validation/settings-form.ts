@@ -2,6 +2,7 @@ import {
   normalizeSettingName,
   settingKeyFromName,
 } from "@/lib/setting-key";
+import { isRichTextSettingKey } from "@/lib/legal-content";
 import {
   validateMaxLength,
   validateMinLength,
@@ -65,6 +66,20 @@ export function validateSettingForm(
   if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;
+  } else if (isRichTextSettingKey(options?.settingKey)) {
+    const valueRequired = validateRequired(values.value, "Content");
+    if (valueRequired) {
+      errors.value = valueRequired;
+    } else {
+      try {
+        const parsed = JSON.parse(values.value) as { type?: string };
+        if (parsed.type !== "doc") {
+          errors.value = "Content must be valid rich text";
+        }
+      } catch {
+        errors.value = "Content must be valid rich text";
+      }
+    }
   } else {
     const valueRequired = validateRequired(values.value, "Setting value");
     if (valueRequired) errors.value = valueRequired;

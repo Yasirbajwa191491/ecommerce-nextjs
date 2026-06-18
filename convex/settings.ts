@@ -16,6 +16,8 @@ export const SYSTEM_SETTING_KEYS = [
   "low_stock_threshold",
   "shipping_policy",
   "return_policy",
+  "terms_conditions",
+  "privacy_policy",
   "sms_order_confirmation_enabled",
   "review_call_auto_enabled",
   "review_call_auto_delay_days",
@@ -28,6 +30,8 @@ export const PUBLIC_SETTING_KEYS = [
   "business_hours",
   "shipping_policy",
   "return_policy",
+  "terms_conditions",
+  "privacy_policy",
   "sms_order_confirmation_enabled",
 ] as const;
 
@@ -79,6 +83,60 @@ export const SYSTEM_DEFAULTS: {
     name: "Return Policy",
     value:
       "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. Refunds are processed to your original payment method after we receive and inspect the returned item.",
+  },
+  {
+    key: "terms_conditions",
+    name: "Terms & Conditions",
+    value: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.",
+            },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "We reserve the right to cancel orders in cases of pricing errors, suspected fraud, or inventory issues. For questions about these terms, please contact our support team.",
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    key: "privacy_policy",
+    name: "Privacy Policy",
+    value: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "We collect the information you provide at checkout — including your name, email, phone number, and shipping address — to process and deliver your order. Payment details for card transactions are handled securely by Stripe and are not stored on our servers.",
+            },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Your information may be saved to speed up future purchases. We do not sell your personal data. You may contact us to request updates or deletion of your saved details.",
+            },
+          ],
+        },
+      ],
+    }),
   },
   {
     key: "sms_order_confirmation_enabled",

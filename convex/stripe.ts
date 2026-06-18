@@ -29,6 +29,7 @@ function buildStripeLineItems(
     currency: string;
     shipping: number;
     deliveryCharge?: number;
+    deliveryMethod?: string;
     deliveryMethodLabel?: string;
     items: PricedLineItem[];
   }
@@ -51,21 +52,24 @@ function buildStripeLineItems(
       };
     });
 
-  if (priced.shipping > 0) {
+  const isStandardDelivery =
+    !priced.deliveryMethod || priced.deliveryMethod === "standard";
+
+  if (isStandardDelivery && priced.shipping > 0) {
     lineItems.push({
       price_data: {
         currency: priced.currency.toLowerCase(),
         unit_amount: Math.round(priced.shipping * 100),
         product_data: {
-          name: "Shipping",
-          description: "Order shipping charges",
+          name: priced.deliveryMethodLabel ?? "Standard Delivery",
+          description: "Standard delivery shipping charges",
         },
       },
       quantity: 1,
     });
   }
 
-  if ((priced.deliveryCharge ?? 0) > 0) {
+  if (!isStandardDelivery && (priced.deliveryCharge ?? 0) > 0) {
     lineItems.push({
       price_data: {
         currency: priced.currency.toLowerCase(),

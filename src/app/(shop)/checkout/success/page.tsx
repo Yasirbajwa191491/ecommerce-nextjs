@@ -218,10 +218,12 @@ function CheckoutSuccessContent() {
               />
 
               <OrderDeliverySummary
+                deliveryMethod={order.deliveryMethod}
                 deliveryMethodLabel={order.deliveryMethodLabel}
                 deliveryEstimate={order.deliveryEstimate}
                 deliveryCharge={order.deliveryCharge}
                 shipping={order.shipping}
+                currency={order.currency}
               />
 
               <OrderSummaryBreakdown
@@ -229,6 +231,7 @@ function CheckoutSuccessContent() {
                 discountTotal={order.discountTotal ?? 0}
                 shipping={order.shipping}
                 deliveryCharge={order.deliveryCharge ?? 0}
+                deliveryMethod={order.deliveryMethod}
                 deliveryMethodLabel={order.deliveryMethodLabel}
                 tax={order.tax}
                 total={order.total}

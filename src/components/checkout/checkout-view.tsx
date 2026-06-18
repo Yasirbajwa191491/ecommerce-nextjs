@@ -150,6 +150,7 @@ export function CheckoutView() {
               tax={priced?.tax ?? 0}
               shipping={priced?.shipping ?? 0}
               deliveryCharge={priced?.deliveryCharge ?? 0}
+              deliveryMethod={priced?.deliveryMethod}
               deliveryMethodLabel={priced?.deliveryMethodLabel}
               total={priced?.total ?? 0}
               currency={priced?.currency}

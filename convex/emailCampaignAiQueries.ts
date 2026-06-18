@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
 import { calculateFinalPrice } from "./lib/pricing";
 import { categoryInterestKey } from "./lib/emailSegments";
+import {
+  formatWarrantySummary,
+  normalizeDeliveryOptions,
+} from "./lib/productValidators";
 
 const MAX_PRODUCTS_PER_CATEGORY = 8;
 
@@ -13,10 +17,16 @@ export const getProductsForPromo = internalQuery({
         const product = await ctx.db.get(id);
         if (!product) return null;
         const category = await ctx.db.get(product.categoryId);
+        const standardOption = normalizeDeliveryOptions(
+          product.deliveryOptions
+        ).find((option) => option.type === "standard" && option.enabled);
         return {
           name: product.name,
           categoryName: category?.name ?? "General",
           discountPercent: product.discountPercent ?? 0,
+          warrantySummary: formatWarrantySummary(product),
+          freeShipping: product.shipping === true,
+          deliveryEstimate: standardOption?.estimate ?? "3-5 Business Days",
         };
       })
     );
@@ -28,6 +38,7 @@ export const getDiscountedProductsForCampaign = internalQuery({
   args: {
     categorySlug: v.optional(v.string()),
     minDiscountPercent: v.optional(v.number()),
+    hasWarranty: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -50,6 +61,10 @@ export const getDiscountedProductsForCampaign = internalQuery({
     const filtered = products
       .filter((p) => (p.discountPercent ?? 0) >= minDiscount)
       .filter((p) => !categoryId || p.categoryId === categoryId)
+      .filter(
+        (p) =>
+          args.hasWarranty !== true || p.warrantyAvailable === true
+      )
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .slice(0, limit);
 
@@ -57,6 +72,9 @@ export const getDiscountedProductsForCampaign = internalQuery({
       filtered.map(async (p) => {
         const category = await ctx.db.get(p.categoryId);
         const discountPercent = p.discountPercent ?? 0;
+        const standardOption = normalizeDeliveryOptions(p.deliveryOptions).find(
+          (option) => option.type === "standard" && option.enabled
+        );
         return {
           _id: p._id,
           name: p.name,
@@ -66,6 +84,9 @@ export const getDiscountedProductsForCampaign = internalQuery({
           discountedPrice: calculateFinalPrice(p.price, discountPercent),
           price: p.price,
           currency: p.currency ?? "USD",
+          warrantySummary: formatWarrantySummary(p),
+          freeShipping: p.shipping === true,
+          deliveryEstimate: standardOption?.estimate ?? "3-5 Business Days",
         };
       })
     );
@@ -131,12 +152,20 @@ export const getGenerationContext = internalQuery({
           )
           .sort((a, b) => (b.discountPercent ?? 0) - (a.discountPercent ?? 0))
           .slice(0, MAX_PRODUCTS_PER_CATEGORY)
-          .map((p) => ({
-            id: p._id,
-            name: p.name,
-            discountPercent: p.discountPercent ?? 0,
-            price: p.price,
-          }));
+          .map((p) => {
+            const standardOption = normalizeDeliveryOptions(
+              p.deliveryOptions
+            ).find((option) => option.type === "standard" && option.enabled);
+            return {
+              id: p._id,
+              name: p.name,
+              discountPercent: p.discountPercent ?? 0,
+              price: p.price,
+              warrantySummary: formatWarrantySummary(p),
+              freeShipping: p.shipping === true,
+              deliveryEstimate: standardOption?.estimate ?? "3-5 Business Days",
+            };
+          });
 
         return {
           categoryId: cat._id,

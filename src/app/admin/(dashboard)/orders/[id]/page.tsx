@@ -316,10 +316,12 @@ export default function AdminOrderDetailPage() {
           </CardHeader>
           <CardContent>
             <OrderDeliverySummary
+              deliveryMethod={order.deliveryMethod}
               deliveryMethodLabel={order.deliveryMethodLabel}
               deliveryEstimate={order.deliveryEstimate}
               deliveryCharge={order.deliveryCharge}
               shipping={order.shipping}
+              currency={order.currency}
             />
           </CardContent>
         </Card>

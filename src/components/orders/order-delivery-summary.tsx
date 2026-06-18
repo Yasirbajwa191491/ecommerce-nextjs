@@ -1,31 +1,40 @@
 "use client";
 
-import { Package, Truck } from "lucide-react";
+import { Truck } from "lucide-react";
+import FormatPrice from "@/helpers/FormatPrice";
 import { cn } from "@/lib/utils";
 
 type OrderDeliverySummaryProps = {
+  deliveryMethod?: string;
   deliveryMethodLabel?: string;
   deliveryEstimate?: string;
   deliveryCharge?: number;
   shipping?: number;
+  currency?: string;
   className?: string;
 };
 
 export function OrderDeliverySummary({
+  deliveryMethod,
   deliveryMethodLabel,
   deliveryEstimate,
   deliveryCharge = 0,
   shipping = 0,
+  currency,
   className,
 }: OrderDeliverySummaryProps) {
-  if (!deliveryMethodLabel && shipping === 0 && deliveryCharge === 0) {
+  const isStandardDelivery =
+    !deliveryMethod || deliveryMethod === "standard";
+  const displayCharge = isStandardDelivery ? shipping : deliveryCharge;
+
+  if (!deliveryMethodLabel && displayCharge === 0) {
     return null;
   }
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3",
+        "space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4",
         className
       )}
     >
@@ -41,26 +50,20 @@ export function OrderDeliverySummary({
               <p className="text-muted-foreground">Est. {deliveryEstimate}</p>
             ) : null}
           </div>
-          {deliveryCharge > 0 ? (
-            <span className="font-semibold tabular-nums">${deliveryCharge.toFixed(2)}</span>
-          ) : (
-            <span className="font-semibold text-emerald-600">Included</span>
-          )}
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              displayCharge === 0 ? "text-emerald-600" : "text-foreground"
+            )}
+          >
+            {displayCharge === 0 ? (
+              "Free"
+            ) : (
+              <FormatPrice price={displayCharge} currency={currency} />
+            )}
+          </span>
         </div>
       ) : null}
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Package className="size-4" />
-          Product shipping
-        </div>
-        <span className="font-semibold tabular-nums">
-          {shipping <= 0 ? (
-            <span className="text-emerald-600">Free</span>
-          ) : (
-            `$${shipping.toFixed(2)}`
-          )}
-        </span>
-      </div>
     </div>
   );
 }

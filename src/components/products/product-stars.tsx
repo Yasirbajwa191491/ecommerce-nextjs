@@ -4,9 +4,15 @@ import { cn } from "@/lib/utils";
 type ProductStarsProps = {
   rating: number;
   className?: string;
+  /** Show numeric rating text after stars (default true) */
+  showValue?: boolean;
 };
 
-export function ProductStars({ rating, className }: ProductStarsProps) {
+export function ProductStars({
+  rating,
+  className,
+  showValue = true,
+}: ProductStarsProps) {
   const clamped = Math.max(0, Math.min(5, rating));
 
   return (
@@ -29,9 +35,11 @@ export function ProductStars({ rating, className }: ProductStarsProps) {
           />
         );
       })}
-      <span className="ml-1.5 text-xs font-medium text-muted-foreground tabular-nums">
-        {clamped.toFixed(1)}
-      </span>
+      {showValue ? (
+        <span className="ml-1.5 text-xs font-medium text-muted-foreground tabular-nums">
+          {clamped.toFixed(1)}
+        </span>
+      ) : null}
     </div>
   );
 }

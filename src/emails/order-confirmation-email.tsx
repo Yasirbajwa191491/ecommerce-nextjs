@@ -81,8 +81,12 @@ export function OrderConfirmationEmail({
   paymentMethod,
   paymentStatus,
   subtotal,
+  discountTotal = 0,
   tax,
   shipping,
+  deliveryCharge = 0,
+  deliveryMethodLabel,
+  deliveryEstimate,
   total,
   currency,
   customerAddress,
@@ -140,6 +144,16 @@ export function OrderConfirmationEmail({
               <Hr style={summaryHr} />
               <Text style={summaryLabel}>Shipping address</Text>
               <Text style={summaryValue}>{customerAddress}</Text>
+              {deliveryMethodLabel ? (
+                <>
+                  <Hr style={summaryHr} />
+                  <Text style={summaryLabel}>Delivery method</Text>
+                  <Text style={summaryValue}>
+                    {deliveryMethodLabel}
+                    {deliveryEstimate ? ` — Est. ${deliveryEstimate}` : ""}
+                  </Text>
+                </>
+              ) : null}
             </Section>
 
             <Section style={productsSection}>
@@ -169,6 +183,11 @@ export function OrderConfirmationEmail({
                       <Text style={productName}>{item.productName}</Text>
                       <Text style={productMeta}>Color: {item.color}</Text>
                       <Text style={productMeta}>Qty: {item.quantity}</Text>
+                      {item.warrantySummary ? (
+                        <Text style={productMeta}>
+                          Warranty: {item.warrantySummary}
+                        </Text>
+                      ) : null}
                     </Column>
                     <Column style={productPriceCol}>
                       <Text style={productPrice}>
@@ -191,6 +210,18 @@ export function OrderConfirmationEmail({
                   </Text>
                 </Column>
               </Row>
+              {discountTotal > 0 ? (
+                <Row>
+                  <Column>
+                    <Text style={totalLabel}>Discount</Text>
+                  </Column>
+                  <Column style={totalValueCol}>
+                    <Text style={totalValue}>
+                      −{formatMoney(discountTotal, currency)}
+                    </Text>
+                  </Column>
+                </Row>
+              ) : null}
               <Row>
                 <Column>
                   <Text style={totalLabel}>Tax</Text>
@@ -209,6 +240,20 @@ export function OrderConfirmationEmail({
                   </Text>
                 </Column>
               </Row>
+              {deliveryCharge > 0 ? (
+                <Row>
+                  <Column>
+                    <Text style={totalLabel}>
+                      {deliveryMethodLabel ?? "Delivery"}
+                    </Text>
+                  </Column>
+                  <Column style={totalValueCol}>
+                    <Text style={totalValue}>
+                      {formatMoney(deliveryCharge, currency)}
+                    </Text>
+                  </Column>
+                </Row>
+              ) : null}
               <Hr style={totalsHr} />
               <Row>
                 <Column>

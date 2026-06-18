@@ -11,6 +11,7 @@ type OrderSummaryBreakdownProps = {
   total: number;
   currency?: string;
   deliveryCharge?: number;
+  deliveryMethod?: string;
   deliveryMethodLabel?: string;
   className?: string;
   showProductsLabel?: boolean;
@@ -21,6 +22,7 @@ export function OrderSummaryBreakdown({
   discountTotal = 0,
   shipping = 0,
   deliveryCharge = 0,
+  deliveryMethod,
   deliveryMethodLabel,
   tax = 0,
   total,
@@ -28,6 +30,12 @@ export function OrderSummaryBreakdown({
   className,
   showProductsLabel = false,
 }: OrderSummaryBreakdownProps) {
+  const isStandardDelivery =
+    !deliveryMethod || deliveryMethod === "standard";
+  const shippingLabel = isStandardDelivery
+    ? (deliveryMethodLabel ?? "Shipping")
+    : "Shipping";
+
   return (
     <div className={cn("space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4", className)}>
       <div className="flex items-center justify-between text-sm">
@@ -46,31 +54,41 @@ export function OrderSummaryBreakdown({
           </span>
         </div>
       ) : null}
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Shipping</span>
-        <span
-          className={cn(
-            "font-semibold tabular-nums",
-            shipping === 0 ? "text-emerald-600" : "text-foreground"
-          )}
-        >
-          {shipping === 0 ? (
-            "Free"
-          ) : (
-            <FormatPrice price={shipping} currency={currency} />
-          )}
-        </span>
-      </div>
-      {deliveryCharge > 0 ? (
+      {isStandardDelivery ? (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{shippingLabel}</span>
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              shipping === 0 ? "text-emerald-600" : "text-foreground"
+            )}
+          >
+            {shipping === 0 ? (
+              "Free"
+            ) : (
+              <FormatPrice price={shipping} currency={currency} />
+            )}
+          </span>
+        </div>
+      ) : (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
             {deliveryMethodLabel ?? "Delivery"}
           </span>
-          <span className="font-semibold tabular-nums text-foreground">
-            <FormatPrice price={deliveryCharge} currency={currency} />
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              deliveryCharge === 0 ? "text-emerald-600" : "text-foreground"
+            )}
+          >
+            {deliveryCharge === 0 ? (
+              "Free"
+            ) : (
+              <FormatPrice price={deliveryCharge} currency={currency} />
+            )}
           </span>
         </div>
-      ) : null}
+      )}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Tax</span>
         <span className="font-semibold tabular-nums text-foreground">

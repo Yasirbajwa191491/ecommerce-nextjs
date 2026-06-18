@@ -244,10 +244,12 @@ function TrackOrderDetailContent() {
             className="mt-2"
           />
           <OrderDeliverySummary
+            deliveryMethod={order.deliveryMethod}
             deliveryMethodLabel={order.deliveryMethodLabel}
             deliveryEstimate={order.deliveryEstimate}
             deliveryCharge={order.deliveryCharge}
             shipping={order.shipping}
+            currency={order.currency}
             className="mt-4"
           />
           <OrderSummaryBreakdown
@@ -255,6 +257,7 @@ function TrackOrderDetailContent() {
             discountTotal={order.discountTotal}
             shipping={order.shipping}
             deliveryCharge={order.deliveryCharge}
+            deliveryMethod={order.deliveryMethod}
             deliveryMethodLabel={order.deliveryMethodLabel}
             tax={order.tax}
             total={order.total}

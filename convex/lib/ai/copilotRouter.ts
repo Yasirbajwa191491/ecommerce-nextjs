@@ -125,6 +125,13 @@ const INTENT_RULES: IntentRule[] = [
       /product count/,
       /which products?/,
       /what products?/,
+      /warranty/,
+      /free delivery/,
+      /free shipping/,
+      /express delivery/,
+      /same[- ]day delivery/,
+      /discounted with warranty/,
+      /products? with .* warranty/,
     ],
   },
   {
@@ -277,6 +284,9 @@ export function routeCopilotQuestion(question: string): CopilotIntent[] {
     matched.add("revenue");
     if (/product|selling|seller|sold|stock|catalog/.test(normalized)) {
       matched.add("trending_products");
+      matched.add("products");
+    }
+    if (/warranty|free delivery|express delivery|free shipping/.test(normalized)) {
       matched.add("products");
     }
     if (/order|shipped|delivered|pending/.test(normalized)) {

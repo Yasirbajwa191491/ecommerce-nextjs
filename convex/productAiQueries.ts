@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
 import { buildReviewHighlights } from "./lib/ai/productIntelligenceHelpers";
+import {
+  deliveryOptionValidator,
+  formatWarrantySummary,
+  normalizeDeliveryOptions,
+  warrantyFieldsValidator,
+} from "./lib/productValidators";
 
 export const getProductForIntelligence = internalQuery({
   args: { productId: v.id("products") },
@@ -27,6 +33,13 @@ export const getProductForIntelligence = internalQuery({
         )
       ),
       reviewHighlights: v.array(v.string()),
+      discountPercent: v.number(),
+      warrantyAvailable: v.boolean(),
+      warrantySummary: v.optional(v.string()),
+      warrantyDuration: warrantyFieldsValidator.warrantyDuration,
+      warrantyType: warrantyFieldsValidator.warrantyType,
+      freeShipping: v.boolean(),
+      deliveryOptions: v.array(deliveryOptionValidator),
     }),
     v.null()
   ),
@@ -45,6 +58,8 @@ export const getProductForIntelligence = internalQuery({
       insights?.topics ?? []
     );
 
+    const deliveryOptions = normalizeDeliveryOptions(product.deliveryOptions);
+
     return {
       productId: product._id,
       name: product.name,
@@ -60,6 +75,13 @@ export const getProductForIntelligence = internalQuery({
       embeddingContentHash: product.embeddingContentHash,
       embeddingStatus: product.embeddingStatus,
       reviewHighlights,
+      discountPercent: product.discountPercent ?? 0,
+      warrantyAvailable: product.warrantyAvailable === true,
+      warrantySummary: formatWarrantySummary(product),
+      warrantyDuration: product.warrantyDuration,
+      warrantyType: product.warrantyType,
+      freeShipping: product.shipping === true,
+      deliveryOptions,
     };
   },
 });

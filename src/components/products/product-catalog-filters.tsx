@@ -5,17 +5,22 @@ import { SlidersHorizontal } from "lucide-react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ProductCategory } from "@/types/product";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Separator } from "@/components/ui/separator";
 import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@/lib/currencies";
 import {
   buildPriceTicks,
   formatCompactPrice,
 } from "@/lib/shop/price-ticks";
 import { cn } from "@/lib/utils";
-import { FilterCheckboxList } from "@/components/products/catalog-filter-sections/filter-checkbox-list";
-import { ColorFamilyFilterSection } from "@/components/products/catalog-filter-sections/color-family-filter-section";
-import { RatingFilterSection } from "@/components/products/catalog-filter-sections/rating-filter-section";
+import {
+  FILTER_OPTION_LIST_CLASS,
+  FilterCheckboxList,
+  FilterSidebarSection,
+  FilterSidebarSections,
+  ColorFamilyFilterSection,
+  RatingFilterSection,
+} from "@/components/products/catalog-filter-sections";
 
 type FacetData = {
   brands: Array<{ name: string; slug: string; count: number }>;
@@ -80,28 +85,24 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:gap-5 md:p-5 lg:min-h-[calc(100vh-11rem)] lg:gap-6 lg:p-6",
+        "flex flex-col rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-5 lg:min-h-[calc(100vh-11rem)] lg:p-6",
         className
       )}
     >
       {showHeader ? (
-        <>
-          <div className="flex items-center gap-2.5">
-            <SlidersHorizontal className="size-4 shrink-0 text-[#6254f3]" />
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
-              Filters
-            </h2>
-          </div>
-          <Separator className="lg:my-0" />
-        </>
+        <div className="mb-6 flex items-center gap-2.5 border-b border-border/60 pb-5">
+          <SlidersHorizontal className="size-4 shrink-0 text-[#6254f3]" />
+          <h2 className="text-base font-semibold tracking-tight text-foreground">
+            Filters
+          </h2>
+        </div>
       ) : null}
 
-      <div className="space-y-3 lg:space-y-4">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Category
-        </p>
-        <div className="flex flex-col gap-1.5">
+      <FilterSidebarSections>
+      <FilterSidebarSection title="Category">
+        <div className={FILTER_OPTION_LIST_CLASS}>
           <CategoryOption
+            optionId="category-all"
             label="All categories"
             checked={categoryId === "all"}
             onSelect={() => onCategoryChange("all")}
@@ -109,19 +110,20 @@ export function ProductCatalogFilters({
           {sortedCategories.map((category) => (
             <CategoryOption
               key={category._id}
+              optionId={`category-${category._id}`}
               label={category.name}
               checked={categoryId === category._id}
               onSelect={() => onCategoryChange(category._id)}
             />
           ))}
         </div>
-      </div>
+      </FilterSidebarSection>
 
-      {facets ? (
+      {facets !== undefined ? (
         <>
-          <Separator />
           <FilterCheckboxList
             title="Brand"
+            section
             items={facets.brands.map((brand) => ({
               id: brand.slug,
               label: brand.name,
@@ -130,9 +132,9 @@ export function ProductCatalogFilters({
             selected={selectedBrandSlugs}
             onToggle={onToggleBrand}
           />
-          <Separator />
           <FilterCheckboxList
             title="Promotions"
+            section
             items={facets.promotions.map((promotion) => ({
               id: promotion.slug,
               label: promotion.label,
@@ -141,14 +143,14 @@ export function ProductCatalogFilters({
             selected={selectedPromotionSlugs}
             onToggle={onTogglePromotion}
           />
-          <Separator />
           <RatingFilterSection
+            section
             buckets={facets.ratingBuckets}
             selected={selectedMinRating}
             onSelect={onSelectRating}
           />
-          <Separator />
           <ColorFamilyFilterSection
+            section
             colors={facets.colorFamilies}
             selected={selectedColorSlugs}
             onToggle={onToggleColor}
@@ -156,44 +158,42 @@ export function ProductCatalogFilters({
         </>
       ) : null}
 
-      <Separator />
-
-      <div className="space-y-3 lg:space-y-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Price range
-          </p>
-          <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground tabular-nums">
-            {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
-            {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
-          </span>
+      <FilterSidebarSection title="Price range">
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground tabular-nums">
+              {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
+              {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
+            </span>
+          </div>
+          <Slider
+            min={priceBounds.minPrice}
+            max={priceBounds.maxPrice}
+            step={1}
+            value={priceRange}
+            onValueChange={(value) => {
+              const next = value as number[];
+              if (next.length >= 2) {
+                onPriceRangeChange([next[0], next[1]]);
+              }
+            }}
+            disabled={sliderDisabled}
+            className="py-2 lg:py-3"
+          />
+          <div className="hidden justify-between gap-1 text-[11px] font-medium text-muted-foreground tabular-nums md:flex">
+            {ticks.map((tick) => (
+              <span key={tick}>{formatCompactPrice(tick)}</span>
+            ))}
+          </div>
         </div>
-        <Slider
-          min={priceBounds.minPrice}
-          max={priceBounds.maxPrice}
-          step={1}
-          value={priceRange}
-          onValueChange={(value) => {
-            const next = value as number[];
-            if (next.length >= 2) {
-              onPriceRangeChange([next[0], next[1]]);
-            }
-          }}
-          disabled={sliderDisabled}
-          className="py-2 lg:py-3"
-        />
-        <div className="hidden justify-between gap-1 text-[11px] font-medium text-muted-foreground tabular-nums md:flex">
-          {ticks.map((tick) => (
-            <span key={tick}>{formatCompactPrice(tick)}</span>
-          ))}
-        </div>
-      </div>
+      </FilterSidebarSection>
+      </FilterSidebarSections>
 
       <Button
         type="button"
         variant="outline"
         onClick={onClear}
-        className="mt-auto h-9 w-full text-sm lg:mt-auto"
+        className="mt-6 h-9 w-full text-sm"
       >
         Clear filters
       </Button>
@@ -205,31 +205,37 @@ function CategoryOption({
   label,
   checked,
   onSelect,
+  optionId,
 }: {
   label: string;
   checked: boolean;
   onSelect: () => void;
+  optionId: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "flex w-full min-w-0 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs capitalize transition-colors md:gap-3 md:px-3 md:py-2.5 md:text-sm",
-        checked
-          ? "bg-[#6254f3]/8 font-medium text-[#6254f3]"
-          : "text-foreground hover:bg-muted/60"
-      )}
-      title={label}
-    >
-      <span
+    <div className="flex items-center gap-2.5">
+      <button
+        type="button"
+        id={optionId}
+        role="radio"
+        aria-checked={checked}
+        onClick={onSelect}
         className={cn(
-          "size-3.5 shrink-0 rounded-full border-2 md:size-4",
+          "size-4 shrink-0 rounded-full border-2 p-0 transition-colors",
           checked ? "border-[#6254f3] bg-[#6254f3]" : "border-border bg-background"
         )}
-        aria-hidden
+        title={label}
       />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-    </button>
+      <Label
+        htmlFor={optionId}
+        onClick={onSelect}
+        className={cn(
+          "flex flex-1 cursor-pointer text-sm font-normal capitalize leading-none",
+          checked ? "font-medium text-[#6254f3]" : "text-foreground"
+        )}
+      >
+        {label}
+      </Label>
+    </div>
   );
 }

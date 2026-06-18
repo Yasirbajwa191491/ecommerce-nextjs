@@ -40,6 +40,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import { validateSettingForm } from "@/lib/validation/settings-form";
+import { EmailRichTextEditor } from "@/components/admin/email-marketing/email-rich-text-editor";
+import { EMPTY_TIPTAP_DOC } from "@/lib/email-marketing/tiptap-html";
+import {
+  DEFAULT_PRIVACY_TIPTAP,
+  DEFAULT_TERMS_TIPTAP,
+  isRichTextSettingKey,
+  settingValuePreview,
+} from "@/lib/legal-content";
 import { cn } from "@/lib/utils";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -49,6 +57,35 @@ const emptyForm = {
   name: "",
   value: "",
 };
+
+function normalizeRichTextValue(key: string, value: string) {
+  if (!isRichTextSettingKey(key)) return value;
+
+  try {
+    const parsed = JSON.parse(value) as { type?: string };
+    if (parsed.type === "doc") return value;
+  } catch {
+    // Fall through to defaults or plain-text conversion.
+  }
+
+  if (value.trim()) {
+    return JSON.stringify({
+      type: "doc",
+      content: value
+        .split(/\n{2,}/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean)
+        .map((text) => ({
+          type: "paragraph",
+          content: [{ type: "text", text }],
+        })),
+    });
+  }
+
+  if (key === "terms_conditions") return DEFAULT_TERMS_TIPTAP;
+  if (key === "privacy_policy") return DEFAULT_PRIVACY_TIPTAP;
+  return EMPTY_TIPTAP_DOC;
+}
 
 async function syncResendFromToConvex(value: string) {
   const response = await fetch("/api/admin/sync-resend-from", {
@@ -134,7 +171,10 @@ export default function AdminSettingsPage() {
 
   const openEdit = (setting: SettingRow) => {
     setEditing(setting);
-    setForm({ name: setting.name, value: setting.value });
+    setForm({
+      name: setting.name,
+      value: normalizeRichTextValue(setting.key, setting.value),
+    });
     resetValidation();
     setDialogOpen(true);
   };
@@ -145,7 +185,7 @@ export default function AdminSettingsPage() {
     try {
       const payload = {
         name: form.name.trim(),
-        value: form.value.trim(),
+        value: editingRichText ? form.value : form.value.trim(),
       };
       if (editing) {
         await update({ id: editing._id, ...payload });
@@ -189,6 +229,7 @@ export default function AdminSettingsPage() {
 
   const rows = settings ?? [];
   const isLoading = settings === undefined;
+  const editingRichText = isRichTextSettingKey(editing?.key);
 
   return (
     <>
@@ -240,7 +281,9 @@ export default function AdminSettingsPage() {
                   <TableRow key={setting._id}>
                     <TableCell className="font-medium">{setting.name}</TableCell>
                     <TableCell className="max-w-[24rem] truncate text-muted-foreground">
-                      {setting.value}
+                      {isRichTextSettingKey(setting.key)
+                        ? settingValuePreview(setting.value)
+                        : setting.value}
                     </TableCell>
                     <TableCell>
                       {setting.isSystem ? (
@@ -286,13 +329,24 @@ export default function AdminSettingsPage() {
       </AdminTableCard>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent
+          className={cn(
+            "w-[calc(100vw-1.5rem)] max-w-md sm:max-w-lg",
+            editingRichText &&
+              "flex max-h-[min(92dvh,52rem)] flex-col overflow-hidden sm:max-w-3xl"
+          )}
+        >
+          <DialogHeader className="shrink-0">
             <DialogTitle>
               {editing ? "Edit setting" : "New setting"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div
+            className={cn(
+              "grid gap-4 py-2",
+              editingRichText && "min-h-0 flex-1 overflow-y-auto"
+            )}
+          >
             <AdminFormField
               label="Setting name"
               htmlFor="setting-name"
@@ -318,7 +372,9 @@ export default function AdminSettingsPage() {
                     ? "Automatic review collection calls"
                     : editing?.key === "review_call_auto_delay_days"
                       ? "Days after delivery before auto call"
-                      : "Setting value"
+                      : editingRichText
+                        ? "Page content"
+                        : "Setting value"
               }
               htmlFor="setting-value"
               error={validation.fieldError("value")}
@@ -328,7 +384,11 @@ export default function AdminSettingsPage() {
                   : editing?.key === "shipping_policy" ||
                       editing?.key === "return_policy"
                     ? "Used by the AI assistant and storefront FAQ. Plain text or markdown."
-                    : editing?.key === "sms_order_confirmation_enabled"
+                    : editing?.key === "terms_conditions"
+                      ? "Displayed on the Terms & Conditions page. Use headings, lists, and links as needed."
+                      : editing?.key === "privacy_policy"
+                        ? "Displayed on the Privacy Policy page. Use headings, lists, and links as needed."
+                        : editing?.key === "sms_order_confirmation_enabled"
                       ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. Off by default."
                       : editing?.key === "review_call_auto_enabled"
                         ? "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup."
@@ -383,6 +443,22 @@ export default function AdminSettingsPage() {
                     <SelectItem value="7">7 days</SelectItem>
                   </SelectContent>
                 </Select>
+              ) : editingRichText ? (
+                <EmailRichTextEditor
+                  contentJson={form.value || EMPTY_TIPTAP_DOC}
+                  onChange={(contentJson) =>
+                    setForm((current) => ({
+                      ...current,
+                      value: contentJson,
+                    }))
+                  }
+                  placeholder={
+                    editing?.key === "terms_conditions"
+                      ? "Write your terms and conditions..."
+                      : "Write your privacy policy..."
+                  }
+                  contentClassName="max-h-[min(52vh,28rem)]"
+                />
               ) : (
                 <Textarea
                   id="setting-value"
@@ -401,7 +477,7 @@ export default function AdminSettingsPage() {
               )}
             </AdminFormField>
           </div>
-          <DialogFooter>
+          <DialogFooter className={cn(editingRichText && "shrink-0")}>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>

@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useMutation } from "convex/react";
 import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
+import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +18,18 @@ import {
 function CheckoutCancelContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get("orderNumber");
+  const acknowledgeCancelled = useMutation(
+    api.orders.acknowledgeStripeCheckoutCancelled
+  );
+  const acknowledgedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!orderNumber || acknowledgedRef.current === orderNumber) return;
+    acknowledgedRef.current = orderNumber;
+    void acknowledgeCancelled({ orderNumber }).catch(() => {
+      // Non-blocking: cancel page should still render if cleanup fails.
+    });
+  }, [acknowledgeCancelled, orderNumber]);
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
