@@ -106,6 +106,7 @@ export default function AdminOrderDetailPage() {
 
   const order = detail?.order;
   const items = detail?.items ?? [];
+  const promotions = detail?.promotions ?? [];
   const logs = detail?.transactionLogs ?? [];
 
   const reviewStatus = useQuery(
@@ -377,7 +378,16 @@ export default function AdminOrderDetailPage() {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{item.productName}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {item.productName}
+                      {item.isPromotionGift ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Promotion gift
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
                   <TableCell>{item.sku || "—"}</TableCell>
                   <TableCell>{item.color}</TableCell>
                   <TableCell>{item.size || "—"}</TableCell>
@@ -425,6 +435,23 @@ export default function AdminOrderDetailPage() {
               })}
             </TableBody>
           </Table>
+          {promotions.length > 0 ? (
+            <div className="mt-6 space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Promotions applied
+              </p>
+              {promotions.map((promo) => (
+                <div key={promo._id} className="text-sm">
+                  <span className="font-medium">{promo.promotionName}</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {promo.freeQuantity} free · saved{" "}
+                    {formatCurrencyAmount(promo.savingsAmount, order.currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="mt-4 flex flex-col items-end gap-1 text-sm">
             <div className="flex w-full max-w-xs justify-between">
               <span className="text-muted-foreground">Subtotal</span>

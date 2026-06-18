@@ -9,6 +9,7 @@ import {
   embedProductText,
   generateProductIntelligence,
 } from "./lib/ai/productIntelligence";
+import { isGeminiQuotaError } from "./lib/ai/providers/shared";
 
 const BACKFILL_BATCH_SIZE = 5;
 
@@ -94,6 +95,24 @@ export const processProductIntelligence = internalAction({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Product AI failed";
+
+      if (isGeminiQuotaError(message)) {
+        console.warn(
+          "Product intelligence skipped: Gemini API quota exhausted. Image and product saves are unaffected."
+        );
+        const restoreStatus =
+          data.embeddingStatus === "processing"
+            ? data.embeddingContentHash
+              ? "complete"
+              : "pending"
+            : data.embeddingStatus ?? "pending";
+        await ctx.runMutation(internal.productAi.setEmbeddingStatus, {
+          productId: args.productId,
+          status: restoreStatus,
+        });
+        return null;
+      }
+
       console.error("Product intelligence failed:", message);
       await ctx.runMutation(internal.productAi.setEmbeddingStatus, {
         productId: args.productId,

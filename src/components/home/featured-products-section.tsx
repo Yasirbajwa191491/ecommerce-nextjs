@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { Sparkles } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import { productCardKey } from "@/lib/product-images";
 import ProductCard from "@/components/products/ProductCard";
 import { SectionHeader } from "@/components/home/section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
@@ -48,7 +49,11 @@ export function FeaturedProductsSection() {
         ) : (
           <StaggerGroup className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
             {products.map((product, index) => (
-              <StaggerItem key={product._id} index={index} variant="up">
+              <StaggerItem
+                key={productCardKey(product)}
+                index={index}
+                variant="up"
+              >
                 <ProductCard {...product} />
               </StaggerItem>
             ))}

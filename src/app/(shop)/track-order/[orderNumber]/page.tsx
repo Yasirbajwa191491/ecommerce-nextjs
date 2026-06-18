@@ -27,6 +27,8 @@ import type { PublicOrderItem } from "@/types/order";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
 import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
 import { OrderItemPricing } from "@/components/orders/order-item-pricing";
+import { OrderPromotionsSummary } from "@/components/orders/order-promotions-summary";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 const PRIMARY_BUTTON_CLASS =
@@ -199,7 +201,14 @@ function TrackOrderDetailContent() {
                 </div>
               ) : null}
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{item.productName}</p>
+                <p className="flex flex-wrap items-center gap-2 font-medium">
+                  {item.productName}
+                  {item.isPromotionGift ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Promotion gift
+                    </Badge>
+                  ) : null}
+                </p>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <ColorSwatch color={item.color} />
                   <span>Qty {item.quantity}</span>
@@ -223,6 +232,11 @@ function TrackOrderDetailContent() {
               </div>
             </div>
           ))}
+          <OrderPromotionsSummary
+            promotions={order.promotions ?? []}
+            currency={order.currency}
+            className="mt-2"
+          />
           <OrderSummaryBreakdown
             subtotal={order.subtotal}
             discountTotal={order.discountTotal}

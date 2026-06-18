@@ -94,7 +94,7 @@ export function DashboardReviewAnalytics() {
                     <TableRow key={row.productId}>
                       <TableCell>
                         <Link
-                          href={`/admin/products?edit=${row.productId}`}
+                          href={`/admin/products/${row.productId}/edit`}
                           className="font-medium hover:underline"
                         >
                           {row.productName}
@@ -135,7 +135,7 @@ export function DashboardReviewAnalytics() {
                     <TableRow key={row.productId}>
                       <TableCell>
                         <Link
-                          href={`/admin/products?edit=${row.productId}`}
+                          href={`/admin/products/${row.productId}/edit`}
                           className="font-medium hover:underline"
                         >
                           {row.productName}

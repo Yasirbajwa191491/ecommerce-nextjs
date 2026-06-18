@@ -16,6 +16,7 @@ import {
   PAGE_GUTTER,
   PRIMARY_BUTTON_CLASS,
 } from "@/lib/layout-constants";
+import { getPrimaryImageUrl } from "@/lib/product-images";
 import { productPath } from "@/lib/product-url";
 
 const HERO_FALLBACK_IMAGES = [
@@ -54,7 +55,7 @@ export function HomeHeroSection() {
           id: product._id,
           href: productPath(product._id),
           name: product.name,
-          image: product.image[0]?.url ?? HERO_FALLBACK_IMAGES[0].src,
+          image: getPrimaryImageUrl(product, HERO_FALLBACK_IMAGES[0].src),
           price: product.price,
           discountPercent: product.discountPercent ?? 0,
           currency: product.currency ?? "USD",

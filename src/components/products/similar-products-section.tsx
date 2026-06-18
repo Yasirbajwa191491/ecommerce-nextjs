@@ -5,6 +5,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import ProductCard from "@/components/products/ProductCard";
+import { productCardKey } from "@/lib/product-images";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/types/product";
 
@@ -74,7 +75,7 @@ export function SimilarProductsSection({
       ) : (
         <div className="mt-6 grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(products as Product[]).map((product) => (
-            <ProductCard key={product._id} {...product} />
+            <ProductCard key={productCardKey(product)} {...product} />
           ))}
         </div>
       )}

@@ -18,6 +18,7 @@ import { ProductCatalogLoadMore } from "@/components/products/product-catalog-lo
 import ProductCard from "@/components/products/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
+import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
@@ -52,8 +53,10 @@ function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
   return sorted;
 }
 
-function productIds(products: Product[]) {
-  return products.map((product) => product._id).join(",");
+function productListFingerprint(products: Product[]) {
+  return products
+    .map((product) => `${product._id}:${getPrimaryImageUrl(product, "")}`)
+    .join(",");
 }
 
 export default function ProductCatalog() {
@@ -202,24 +205,29 @@ export default function ProductCatalog() {
 
   const remoteCatalogSignature = useMemo(() => {
     if (!firstPage || totalCount === undefined) return "";
-    return `${totalCount}:${productIds(firstPage.page as Product[])}`;
+    return `${totalCount}:${productListFingerprint(firstPage.page as Product[])}`;
   }, [firstPage, totalCount]);
 
   useEffect(() => {
     if (!firstPage || !remoteCatalogSignature) return;
+    const firstBatch = firstPage.page as Product[];
 
     if (catalogSignatureRef.current !== remoteCatalogSignature) {
       catalogSignatureRef.current = remoteCatalogSignature;
       setPage(0);
-      setAllProducts(firstPage.page as Product[]);
+      setAllProducts(firstBatch);
       loadingMoreRef.current = false;
       return;
     }
 
-    if (page === 0) {
-      setAllProducts(firstPage.page as Product[]);
-      loadingMoreRef.current = false;
-    }
+    setAllProducts((previous) => {
+      if (page === 0 || previous.length === 0) {
+        return firstBatch;
+      }
+      const updates = new Map(firstBatch.map((product) => [product._id, product]));
+      return previous.map((product) => updates.get(product._id) ?? product);
+    });
+    loadingMoreRef.current = false;
   }, [firstPage, remoteCatalogSignature, page]);
 
   useEffect(() => {
@@ -458,7 +466,11 @@ export default function ProductCatalog() {
                   )}
                 >
                   {displayProducts.map((product) => (
-                    <ProductCard key={product._id} {...product} view={view} />
+                    <ProductCard
+                      key={productCardKey(product)}
+                      {...product}
+                      view={view}
+                    />
                   ))}
                 </div>
 

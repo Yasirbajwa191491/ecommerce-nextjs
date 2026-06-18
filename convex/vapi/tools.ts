@@ -130,8 +130,12 @@ async function lookupOrderForTracking(ctx: QueryCtx | MutationCtx, orderNumber: 
     .query("orderItems")
     .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
     .collect();
+  const promotions = await ctx.db
+    .query("orderPromotions")
+    .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+    .collect();
   const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
-  return { order, items, statusHistory };
+  return { order, items, promotions, statusHistory };
 }
 
 async function lookupOrdersByEmail(ctx: QueryCtx | MutationCtx, email: string) {
@@ -627,7 +631,8 @@ export const trackOrder = internalMutation({
         toPublicOrderDetail(
           result.order,
           result.items,
-          result.statusHistory
+          result.statusHistory,
+          result.promotions
         )
       ),
     };

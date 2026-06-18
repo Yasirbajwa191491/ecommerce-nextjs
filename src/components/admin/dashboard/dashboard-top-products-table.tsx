@@ -87,7 +87,7 @@ export function DashboardTopProductsTable({
                       size="sm"
                       render={
                         <Link
-                          href={`/admin/products?edit=${product.productId}`}
+                          href={`/admin/products/${product.productId}/edit`}
                         />
                       }
                     >

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { isProductActive } from "./lib/productActive";
 import { enrichProducts } from "./lib/products";
+import { getPrimaryImageUrl } from "./lib/productImages";
 import { calculateFinalPrice } from "./lib/pricing";
 import { productImageValidator } from "./schema";
 import type { Id } from "./_generated/dataModel";
@@ -170,7 +171,7 @@ export const getSearchCandidates = internalQuery({
         categoryName: category?.name ?? "Product",
         keywords: intelligence?.keywords ?? [],
         popularityScore,
-        imageUrl: product.image[0]?.url ?? "",
+        imageUrl: getPrimaryImageUrl(product),
       });
     }
 
@@ -224,7 +225,7 @@ export const enrichProductsByIds = internalQuery({
       _id: product._id,
       name: product.name,
       company: product.company,
-      imageUrl: product.image[0]?.url ?? "",
+      imageUrl: getPrimaryImageUrl(product),
       price: product.price,
       discountPercent: product.discountPercent ?? 0,
       currency: product.currency ?? "USD",

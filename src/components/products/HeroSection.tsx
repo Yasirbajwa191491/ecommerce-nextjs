@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { ArrowRight, ShieldCheck, Sparkles, Truck } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { getPrimaryImageUrl } from "@/lib/product-images";
 import { STORE_NAME } from "@/lib/site";
 
 const HERO_FALLBACK_IMAGES = [
@@ -44,7 +45,7 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
   const showcaseImages =
     featured.length > 0
       ? featured.slice(0, 3).map((product) => ({
-          src: product.image[0]?.url ?? HERO_FALLBACK_IMAGES[0].src,
+          src: getPrimaryImageUrl(product, HERO_FALLBACK_IMAGES[0].src),
           alt: product.name,
           href: `/product/${product._id}`,
         }))

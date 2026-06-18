@@ -17,6 +17,7 @@ export type NormalizedOrderItem = {
   finalUnitPrice: number;
   shippingCharge: number;
   lineShippingTotal: number;
+  isPromotionGift?: boolean;
 };
 
 export function normalizeOrderItem(item: Doc<"orderItems">): NormalizedOrderItem {
@@ -47,6 +48,7 @@ export function normalizeOrderItem(item: Doc<"orderItems">): NormalizedOrderItem
     finalUnitPrice,
     shippingCharge,
     lineShippingTotal,
+    isPromotionGift: item.isPromotionGift,
   };
 }
 

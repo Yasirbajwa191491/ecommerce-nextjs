@@ -1,10 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
 import { Minus, Plus, ShoppingBag, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
 import { useCartContext } from "@/context/cart_context";
+import { useStableNow } from "@/hooks/use-stable-now";
+import { getPromotionDisplay } from "@/lib/promotion-display";
+import { resolveProductColorOrDefault } from "@/lib/cart-lines";
+import { PromotionOfferBanner } from "@/components/promotions/promotion-offer-banner";
 import { Product } from "@/types/product";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,17 +26,34 @@ export default function AddToCart({
   product,
   variant = "default",
 }: AddToCartProps) {
+  const router = useRouter();
   const { addToCart, total_item } = useCartContext();
   const [amount, setAmount] = useState(1);
-  const [color, setColor] = useState(product.colors[0] ?? "#000");
+  const [color, setColor] = useState(() =>
+    resolveProductColorOrDefault(product.colors, product.colors[0] ?? "#000000")
+  );
   const isDetail = variant === "detail";
   const hasColors = product.colors.length > 0;
+  const now = useStableNow();
+
+  const activePromotions = useQuery(api.productPromotions.getActiveForProduct, {
+    productId: product._id,
+    now,
+  });
 
   const handleAdd = () => {
     addToCart(product._id, color, amount, product);
-    toast.success("Added to cart", {
-      description: `${amount}× ${product.name}`,
-    });
+    const promo = activePromotions?.[0];
+    if (promo) {
+      const { subtitle } = getPromotionDisplay(promo);
+      toast.success("Added to cart — promotion applies!", {
+        description: subtitle,
+      });
+    } else {
+      toast.success("Added to cart", {
+        description: `${amount}× ${product.name}`,
+      });
+    }
   };
 
   const quantityControl = (
@@ -98,14 +121,15 @@ export default function AddToCart({
 
   const viewCartButton = isDetail ? (
     <Button
-      render={<Link href="/cart" />}
+      type="button"
       variant="outline"
+      onClick={() => router.push("/cart")}
       className="h-10 gap-2 rounded-full border-border/80 px-5 text-sm font-semibold hover:border-[#6254f3]/40 hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
     >
       <ShoppingCart className="size-4" />
       View cart
       {total_item > 0 ? (
-        <Badge className="h-5 min-w-5 rounded-full bg-[#6254f3] px-1.5 text-[11px] font-bold text-white hover:bg-[#6254f3]">
+        <Badge className="pointer-events-none h-5 min-w-5 rounded-full bg-[#6254f3] px-1.5 text-[11px] font-bold text-white hover:bg-[#6254f3]">
           {total_item}
         </Badge>
       ) : null}
@@ -121,6 +145,14 @@ export default function AddToCart({
           : "mt-6"
       )}
     >
+      {activePromotions && activePromotions.length > 0 ? (
+        <PromotionOfferBanner
+          promotion={activePromotions[0]!}
+          variant="compact"
+          now={now}
+        />
+      ) : null}
+
       {hasColors ? (
         <div>
           <Label

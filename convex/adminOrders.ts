@@ -181,9 +181,14 @@ export const getDetail = query({
       .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
       .collect();
 
+    const promotions = await ctx.db
+      .query("orderPromotions")
+      .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
+      .collect();
+
     const transactionLogs = await getMergedTransactionLogs(ctx, args.orderId);
 
-    return { order, items, transactionLogs };
+    return { order, items, promotions, transactionLogs };
   },
 });
 

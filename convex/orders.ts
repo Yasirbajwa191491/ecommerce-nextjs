@@ -13,7 +13,7 @@ import {
   validateCustomerFields,
 } from "./lib/checkoutValidation";
 import { generateOrderNumber } from "./lib/orderNumbers";
-import { priceCartLines } from "./lib/orderPricing";
+import { priceCheckoutCart } from "./lib/checkoutPricing";
 import type { PricedLineItem } from "./lib/orderPricing";
 import {
   decrementStock,
@@ -65,6 +65,39 @@ async function insertOrderLineItems(
       finalUnitPrice: item.finalUnitPrice,
       shippingCharge: item.shippingCharge,
       lineShippingTotal: item.lineShippingTotal,
+      isPromotionGift: item.isPromotionGift,
+      promotionId: item.promotionId,
+    });
+  }
+}
+
+async function insertOrderPromotions(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  summaries: Array<{
+    promotionId: Id<"productPromotions">;
+    promotionType: "bogo" | "buy_x_get_y" | "free_gift" | "cross_product";
+    promotionName: string;
+    promotionDescription?: string;
+    buyProductId: Id<"products">;
+    getProductId?: Id<"products">;
+    freeQuantity: number;
+    savingsAmount: number;
+  }>,
+  appliedAt: number
+) {
+  for (const summary of summaries) {
+    await ctx.db.insert("orderPromotions", {
+      orderId,
+      promotionId: summary.promotionId,
+      promotionType: summary.promotionType,
+      promotionName: summary.promotionName,
+      promotionDescription: summary.promotionDescription,
+      buyProductId: summary.buyProductId,
+      getProductId: summary.getProductId,
+      freeQuantity: summary.freeQuantity,
+      savingsAmount: summary.savingsAmount,
+      appliedAt,
     });
   }
 }
@@ -114,11 +147,12 @@ export const getOrderForEmail = internalQuery({
 export const validateCartForCheckout = query({
   args: {
     lines: v.array(cartLineValidator),
+    now: v.number(),
   },
   handler: async (ctx, args) => {
     validateCartLines(args.lines);
     try {
-      const priced = await priceCartLines(ctx, args.lines);
+      const priced = await priceCheckoutCart(ctx, args.lines, args.now);
       return { status: "ok" as const, ...priced };
     } catch (error) {
       return {
@@ -154,7 +188,12 @@ export const getOrderByNumber = query({
       .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
       .collect();
 
-    return { order, items };
+    const promotions = await ctx.db
+      .query("orderPromotions")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
+
+    return { order, items, promotions };
   },
 });
 
@@ -241,7 +280,8 @@ async function createCashOrderHandler(
     validateCartLines(args.lines);
     validateCustomerFields(args.customer);
 
-    const priced = await priceCartLines(ctx, args.lines);
+    const now = Date.now();
+    const priced = await priceCheckoutCart(ctx, args.lines, now);
     await decrementStock(
       ctx,
       priced.items.map((item) => ({
@@ -250,7 +290,6 @@ async function createCashOrderHandler(
       }))
     );
 
-    const now = Date.now();
     const orderId = await ctx.db.insert("orders", {
       orderNumber: generateOrderNumber(now),
       customerEmail: args.customer.email.trim().toLowerCase(),
@@ -275,6 +314,21 @@ async function createCashOrderHandler(
     });
 
     await insertOrderLineItems(ctx, orderId, priced.items);
+    await insertOrderPromotions(ctx, orderId, priced.promotionSummaries, now);
+    if (priced.promotionSummaries.length > 0) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.productPromotions.incrementOrderAnalytics,
+        {
+          summaries: priced.promotionSummaries.map((s) => ({
+            promotionId: s.promotionId,
+            freeQuantity: s.freeQuantity,
+            savingsAmount: s.savingsAmount,
+            orderRevenue: priced.subtotal,
+          })),
+        }
+      );
+    }
     await logOrderCreated(ctx, orderId, "cod", now);
 
     await ctx.scheduler.runAfter(0, internal.notifications.sendOrderConfirmationNotifications, {
@@ -313,7 +367,8 @@ export const createPendingStripeOrder = internalMutation({
     validateCartLines(args.lines);
     validateCustomerFields(args.customer);
 
-    const priced = await priceCartLines(ctx, args.lines);
+    const now = Date.now();
+    const priced = await priceCheckoutCart(ctx, args.lines, now);
     await decrementStock(
       ctx,
       priced.items.map((item) => ({
@@ -322,7 +377,6 @@ export const createPendingStripeOrder = internalMutation({
       }))
     );
 
-    const now = Date.now();
     const orderId = await ctx.db.insert("orders", {
       orderNumber: generateOrderNumber(now),
       customerEmail: args.customer.email.trim().toLowerCase(),
@@ -347,6 +401,21 @@ export const createPendingStripeOrder = internalMutation({
     });
 
     await insertOrderLineItems(ctx, orderId, priced.items);
+    await insertOrderPromotions(ctx, orderId, priced.promotionSummaries, now);
+    if (priced.promotionSummaries.length > 0) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.productPromotions.incrementOrderAnalytics,
+        {
+          summaries: priced.promotionSummaries.map((s) => ({
+            promotionId: s.promotionId,
+            freeQuantity: s.freeQuantity,
+            savingsAmount: s.savingsAmount,
+            orderRevenue: priced.subtotal,
+          })),
+        }
+      );
+    }
     await logOrderCreated(ctx, orderId, "stripe", now);
 
     const order = await ctx.db.get(orderId);
@@ -674,8 +743,12 @@ export const lookupOrderForTracking = internalQuery({
       .query("orderItems")
       .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
       .collect();
+    const promotions = await ctx.db
+      .query("orderPromotions")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
     const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
-    return { order, items, statusHistory };
+    return { order, items, promotions, statusHistory };
   },
 });
 
@@ -723,7 +796,11 @@ export const lookupPublicOrderDetail = internalQuery({
       .query("orderItems")
       .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
       .collect();
+    const promotions = await ctx.db
+      .query("orderPromotions")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
     const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
-    return { order, items, statusHistory };
+    return { order, items, promotions, statusHistory };
   },
 });

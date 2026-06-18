@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { productPath } from "@/lib/product-url";
+import { getPrimaryImageUrl, getPrimaryImageAlt, orderImagesForDisplay } from "@/lib/product-images";
 import { Product } from "@/types/product";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { useProductPromotionBadge } from "@/context/product-promotion-badges-context";
+import { ProductPromotionImageOverlay } from "@/components/promotions/product-promotion-image-overlay";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { ProductImageGallery } from "@/components/products/product-image-gallery";
 import { ProductImageFrame } from "@/components/products/product-image-frame";
 import { ProductPrice } from "@/components/products/product-price";
@@ -19,8 +24,11 @@ export default function ProductCard({
   view = "grid",
   ...product
 }: ProductCardProps) {
-  const imageUrl = product.image[0]?.url ?? "/next.svg";
-  const imageAlt = product.image[0]?.alt?.trim() || product.name;
+  const now = useStableNow();
+  const promotionBadge = useProductPromotionBadge(product._id as Id<"products">);
+  const imageUrl = getPrimaryImageUrl(product);
+  const imageAlt = getPrimaryImageAlt(product);
+  const displayImages = orderImagesForDisplay(product);
   const categoryName = product.category?.name ?? "Product";
   const discountPercent = product.discountPercent ?? 0;
   const freeShipping = product.shipping === true;
@@ -28,11 +36,21 @@ export default function ProductCard({
   if (view === "list") {
     return (
       <div className="group flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-4 transition-all duration-300 hover:border-[#6254f3]/30 hover:shadow-md sm:gap-6 sm:p-5">
-        <ProductImageGallery
-          variant="list"
-          images={product.image}
-          fallbackAlt={product.name}
-        />
+        <div className="relative shrink-0">
+          <ProductImageGallery
+            variant="list"
+            images={displayImages}
+            fallbackAlt={product.name}
+          />
+          {promotionBadge ? (
+            <ProductPromotionImageOverlay
+              badge={promotionBadge}
+              variant="compact"
+              now={now}
+              className="rounded-xl"
+            />
+          ) : null}
+        </div>
 
         <Link
           href={productPath(product._id)}
@@ -103,7 +121,7 @@ export default function ProductCard({
           {categoryName}
         </span>
         {(discountPercent > 0 || freeShipping) && (
-          <div className="absolute top-3 left-3 flex flex-col gap-1">
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
             <ProductDiscountBadge discountPercent={discountPercent} />
             {freeShipping ? (
               <ProductShippingBadge
@@ -114,6 +132,9 @@ export default function ProductCard({
             ) : null}
           </div>
         )}
+        {promotionBadge ? (
+          <ProductPromotionImageOverlay badge={promotionBadge} now={now} />
+        ) : null}
       </div>
 
       <div className="flex min-h-[8rem] flex-1 flex-col gap-2 p-4">

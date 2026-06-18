@@ -4,6 +4,7 @@ import { AboutStorySection } from "@/components/about/about-education-sections";
 import { HomeHeroSection } from "@/components/home/home-hero-section";
 import { ShopByCategorySection } from "@/components/home/shop-by-category-section";
 import { FeaturedProductsSection } from "@/components/home/featured-products-section";
+import { SpecialPromotionsSection } from "@/components/home/special-promotions-section";
 import { PromoBannerSection } from "@/components/home/promo-banner-section";
 import { BestSellersSection } from "@/components/home/best-sellers-section";
 import { NewArrivalsSection } from "@/components/home/new-arrivals-section";
@@ -41,6 +42,7 @@ export function HomePageView() {
       <ShopByCategorySection />
       <AboutStorySection />
       <FeaturedProductsSection />
+      <SpecialPromotionsSection />
       <PromoBannerSection />
       <BestSellersSection />
       <NewArrivalsSection />

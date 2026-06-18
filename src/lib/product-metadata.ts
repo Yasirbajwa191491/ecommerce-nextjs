@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { Product } from "@/types/product";
+import { getPrimaryImageUrl, getPrimaryImageAlt } from "@/lib/product-images";
 import { createPageMetadata } from "@/lib/seo";
 
 function truncateText(text: string, max: number): string {
@@ -23,7 +24,8 @@ export function buildProductPageMetadata(product: Product): Metadata {
   });
 
   const keywords = product.seoKeywords?.filter(Boolean);
-  const imageUrl = product.image[0]?.url;
+  const imageUrl = getPrimaryImageUrl(product, "");
+  const primaryAlt = getPrimaryImageAlt(product);
 
   return {
     ...base,
@@ -31,7 +33,7 @@ export function buildProductPageMetadata(product: Product): Metadata {
     openGraph: {
       ...base.openGraph,
       type: "website",
-      ...(imageUrl ? { images: [{ url: imageUrl, alt: product.image[0]?.alt ?? product.name }] } : {}),
+      ...(imageUrl ? { images: [{ url: imageUrl, alt: primaryAlt }] } : {}),
     },
     twitter: {
       ...base.twitter,

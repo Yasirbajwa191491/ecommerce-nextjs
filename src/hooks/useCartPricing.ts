@@ -5,6 +5,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { CartPricedLine } from "@/components/cart/cart-line-pricing";
+import { useStableNow } from "@/hooks/use-stable-now";
+import { cartItemsToCheckoutLines, cartLineKey } from "@/lib/cart-lines";
 import { resolveCartProductId, type CartItem } from "@/reducer/cartReducer";
 
 type PricedCartItem = {
@@ -32,19 +34,12 @@ export function toCartPricedLine(item: PricedCartItem): CartPricedLine {
 }
 
 export function useCartPricing(cart: CartItem[]) {
-  const lines = useMemo(
-    () =>
-      cart.map((item) => ({
-        productId: resolveCartProductId(item) as Id<"products">,
-        color: item.color,
-        quantity: item.amount,
-      })),
-    [cart]
-  );
+  const now = useStableNow();
+  const lines = useMemo(() => cartItemsToCheckoutLines(cart), [cart]);
 
   const result = useQuery(
     api.orders.validateCartForCheckout,
-    cart.length > 0 ? { lines } : "skip"
+    cart.length > 0 ? { lines, now } : "skip"
   );
 
   const priced = result?.status === "ok" ? result : undefined;
@@ -55,13 +50,16 @@ export function useCartPricing(cart: CartItem[]) {
     const map = new Map<string, PricedCartItem>();
     if (!priced?.items) return map;
     for (const item of priced.items) {
-      map.set(`${item.productId}${item.color}`, item);
+      if (item.isPromotionGift) continue;
+      map.set(cartLineKey(item.productId, item.color), item);
     }
     return map;
   }, [priced]);
 
   const getPricedItem = (item: CartItem) =>
-    pricedItemByKey.get(`${resolveCartProductId(item)}${item.color}`);
+    pricedItemByKey.get(
+      cartLineKey(resolveCartProductId(item), item.color)
+    );
 
   return {
     priced,

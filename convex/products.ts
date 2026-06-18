@@ -13,6 +13,7 @@ import {
   normalizeProductName,
   slugify,
 } from "./lib/products";
+import { getPrimaryImageUrl } from "./lib/productImages";
 import { isProductActive } from "./lib/productActive";
 import { paginateArray } from "./lib/pagination";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
@@ -23,6 +24,7 @@ import {
   normalizeProductShippingCharges,
   validateProductDiscountPercent,
 } from "./lib/pricing";
+import { scheduleProductIntelligenceIfNeeded } from "./lib/ai/scheduleProductIntelligence";
 
 const productFields = {
   name: v.string(),
@@ -32,6 +34,7 @@ const productFields = {
   sku: v.optional(v.string()),
   colors: v.array(v.string()),
   image: v.array(productImageValidator),
+  primaryImageIndex: v.optional(v.number()),
   categoryId: v.id("productCategories"),
   featured: v.boolean(),
   shipping: v.boolean(),
@@ -470,7 +473,7 @@ export const searchSuggestions = query({
       _id: product._id,
       name: product.name,
       company: product.company,
-      imageUrl: product.image[0]?.url ?? "",
+      imageUrl: getPrimaryImageUrl(product),
       price: product.price,
       discountPercent: product.discountPercent ?? 0,
       currency: product.currency ?? "USD",
@@ -516,11 +519,13 @@ export const create = mutation({
       createdAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.productAiActions.processProductIntelligence,
-      { productId, force: false }
-    );
+    await scheduleProductIntelligenceIfNeeded(ctx, productId, {
+      name: args.name,
+      company: args.company,
+      description: args.description,
+      categoryId: args.categoryId,
+      price: args.price,
+    });
 
     return productId;
   },
@@ -559,11 +564,13 @@ export const update = mutation({
       createdAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.productAiActions.processProductIntelligence,
-      { productId: id, force: false }
-    );
+    await scheduleProductIntelligenceIfNeeded(ctx, id, {
+      name: data.name,
+      company: data.company,
+      description: data.description,
+      categoryId: data.categoryId,
+      price: data.price,
+    });
 
     return id;
   },
@@ -678,7 +685,7 @@ function mapDiscountedProductPage(
     return {
       _id: p._id,
       name: p.name,
-      imageUrl: p.image[0]?.url ?? "",
+      imageUrl: getPrimaryImageUrl(p),
       price: p.price,
       discountedPrice,
       discountPercent,
@@ -700,7 +707,7 @@ export const getPromoProductsByIds = query({
         return {
           _id: p._id,
           name: p.name,
-          imageUrl: p.image[0]?.url ?? "",
+          imageUrl: getPrimaryImageUrl(p),
           price: p.price,
           discountedPrice: calculateFinalPrice(p.price, discountPercent),
           discountPercent,

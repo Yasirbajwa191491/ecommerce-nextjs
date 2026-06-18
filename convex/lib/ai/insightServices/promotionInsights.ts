@@ -13,8 +13,22 @@ type PromotionCandidate = {
   reasons: string[];
 };
 
+type ConfiguredPromotion = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  viewCount: number;
+  clickCount: number;
+  conversionCount: number;
+  ordersCount: number;
+  revenueGenerated: number;
+  freeProductsGiven: number;
+};
+
 type PromotionContext = {
   candidates?: PromotionCandidate[];
+  configured?: { promotions?: ConfiguredPromotion[] };
 };
 
 export function computePromotionCards(
@@ -23,6 +37,40 @@ export function computePromotionCards(
   if (!promotion) return [];
 
   const cards: InsightCard[] = [];
+
+  for (const promo of (promotion.configured?.promotions ?? []).slice(0, 3)) {
+    const engagement =
+      promo.viewCount > 0 ? promo.ordersCount / promo.viewCount : 0;
+    cards.push({
+      type: "promotion",
+      title: "Promotion Performance",
+      subtitle: promo.name,
+      metrics: [
+        { label: "Orders", value: formatNumber(promo.ordersCount), trend: promo.ordersCount > 0 ? "up" : "flat" },
+        { label: "Revenue", value: formatCurrency(promo.revenueGenerated) },
+        { label: "Views", value: formatNumber(promo.viewCount) },
+        { label: "Free items", value: formatNumber(promo.freeProductsGiven) },
+      ],
+      badges: [
+        {
+          label: promo.status === "active" ? "Active" : "Inactive",
+          tone: promo.status === "active" ? "positive" : "warning",
+        },
+        {
+          label: promo.type.replace(/_/g, " "),
+          tone: "info",
+        },
+      ],
+      recommendation:
+        engagement < 0.02 && promo.status === "active"
+          ? "Low engagement — consider promoting on homepage and email."
+          : promo.ordersCount > 0
+            ? "Strong performer — feature in upcoming campaigns."
+            : "Monitor clicks and conversions this week.",
+      reason: `Click-through: ${promo.clickCount} clicks from ${promo.viewCount} views.`,
+    });
+  }
+
   for (const candidate of (promotion.candidates ?? []).slice(0, 4)) {
     cards.push({
       type: "promotion",

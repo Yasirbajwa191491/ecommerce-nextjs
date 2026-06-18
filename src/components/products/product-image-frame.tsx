@@ -39,6 +39,7 @@ export function ProductImageFrame({
     >
       {isCatalog || isList ? (
         <Image
+          key={src}
           src={src}
           alt={alt}
           fill
@@ -52,6 +53,7 @@ export function ProductImageFrame({
       ) : (
         <div className="absolute inset-3 sm:inset-4">
           <Image
+            key={src}
             src={src}
             alt={alt}
             fill

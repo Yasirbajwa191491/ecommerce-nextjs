@@ -50,6 +50,11 @@ export const generateCampaign = action({
       }
     );
 
+    const activePromotions = await ctx.runQuery(
+      internal.emailCampaignAiQueries.getActivePromotionsForCampaign,
+      { now: Date.now(), limit: 10 }
+    );
+
     const result = await generateEmailCampaign({
       preset: args.preset,
       customPrompt: args.customPrompt,
@@ -58,6 +63,7 @@ export const generateCampaign = action({
       minDiscountPercent: args.minDiscountPercent,
       context,
       discountedProducts,
+      activePromotions,
     });
 
     return {

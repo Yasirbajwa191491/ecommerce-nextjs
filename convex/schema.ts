@@ -50,6 +50,7 @@ export default defineSchema({
     sku: v.optional(v.string()),
     colors: v.array(v.string()),
     image: v.array(productImageValidator),
+    primaryImageIndex: v.optional(v.number()),
     categoryId: v.id("productCategories"),
     featured: v.boolean(),
     shipping: v.boolean(),
@@ -285,9 +286,63 @@ export default defineSchema({
     finalUnitPrice: v.optional(v.number()),
     shippingCharge: v.optional(v.number()),
     lineShippingTotal: v.optional(v.number()),
+    isPromotionGift: v.optional(v.boolean()),
+    promotionId: v.optional(v.id("productPromotions")),
   })
     .index("by_order_id", ["orderId"])
     .index("by_product_id", ["productId"]),
+
+  productPromotions: defineTable({
+    type: v.union(
+      v.literal("bogo"),
+      v.literal("buy_x_get_y"),
+      v.literal("free_gift"),
+      v.literal("cross_product")
+    ),
+    name: v.string(),
+    description: v.optional(v.string()),
+    promotionMessage: v.optional(v.string()),
+    bannerText: v.optional(v.string()),
+    buyProductId: v.id("products"),
+    buyQuantity: v.number(),
+    getProductId: v.optional(v.id("products")),
+    getQuantity: v.number(),
+    startAt: v.number(),
+    endAt: v.number(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    viewCount: v.number(),
+    clickCount: v.number(),
+    conversionCount: v.number(),
+    ordersCount: v.number(),
+    revenueGenerated: v.number(),
+    freeProductsGiven: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_buy_product", ["buyProductId"])
+    .index("by_get_product", ["getProductId"])
+    .index("by_status", ["status"])
+    .index("by_status_and_start", ["status", "startAt"]),
+
+  orderPromotions: defineTable({
+    orderId: v.id("orders"),
+    promotionId: v.id("productPromotions"),
+    promotionType: v.union(
+      v.literal("bogo"),
+      v.literal("buy_x_get_y"),
+      v.literal("free_gift"),
+      v.literal("cross_product")
+    ),
+    promotionName: v.string(),
+    promotionDescription: v.optional(v.string()),
+    buyProductId: v.id("products"),
+    getProductId: v.optional(v.id("products")),
+    freeQuantity: v.number(),
+    savingsAmount: v.number(),
+    appliedAt: v.number(),
+  })
+    .index("by_order_id", ["orderId"])
+    .index("by_promotion_id", ["promotionId"]),
 
   productReviews: defineTable({
     productId: v.id("products"),

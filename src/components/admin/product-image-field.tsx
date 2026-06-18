@@ -13,13 +13,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { invalidInputClass } from "@/components/admin/admin-form-field";
 import { toastError } from "@/lib/app-toast";
 import { cn } from "@/lib/utils";
-import { ImagePlus, Link2, Plus, Upload, X } from "lucide-react";
+import { ImagePlus, Link2, Plus, Star, Upload, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type ProductImageFieldProps = {
   imageUrls: string[];
   onChange: (urls: string[]) => void;
   imageAlts?: string[];
   onAltsChange?: (alts: string[]) => void;
+  primaryIndex?: number;
+  onPrimaryIndexChange?: (index: number) => void;
   productName?: string;
   error?: string;
   onBlur?: (index: number) => void;
@@ -35,6 +38,8 @@ export function ProductImageField({
   onChange,
   imageAlts = [],
   onAltsChange,
+  primaryIndex = 0,
+  onPrimaryIndexChange,
   productName = "Product",
   error,
   onBlur,
@@ -113,7 +118,28 @@ export function ProductImageField({
     const nextAlts = imageAlts.filter((_, i) => i !== index);
     onChange(nextUrls.length ? nextUrls : [""]);
     onAltsChange?.(nextAlts.length ? nextAlts : [""]);
+    if (onPrimaryIndexChange) {
+      const validCount = nextUrls.filter((u) => u.trim()).length;
+      if (validCount === 0) {
+        onPrimaryIndexChange(0);
+      } else if (index === primaryIndex) {
+        onPrimaryIndexChange(0);
+      } else if (index < primaryIndex) {
+        onPrimaryIndexChange(Math.max(0, primaryIndex - 1));
+      }
+    }
   };
+
+  const resolveDisplayPrimary = (urls: string[]) => {
+    const validIndices = urls
+      .map((url, i) => (url.trim() ? i : -1))
+      .filter((i) => i >= 0);
+    if (validIndices.length === 0) return 0;
+    if (validIndices.includes(primaryIndex)) return primaryIndex;
+    return validIndices[0]!;
+  };
+
+  const displayPrimary = resolveDisplayPrimary(imageUrls);
 
   return (
     <div className="space-y-3">
@@ -211,12 +237,48 @@ export function ProductImageField({
 
       {validUrlEntries.length > 0 ? (
         <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Click an image to set it as the default storefront image.
+          </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {validUrlEntries.map(({ url, index }) => (
+            {validUrlEntries.map(({ url, index }) => {
+              const isDefault = index === displayPrimary;
+              return (
               <div
                 key={`${url}-${index}`}
-                className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
+                className={cn(
+                  "group relative aspect-square overflow-hidden rounded-md border bg-muted",
+                  isDefault && "ring-2 ring-primary",
+                  onPrimaryIndexChange && !isDefault && "cursor-pointer hover:ring-2 hover:ring-primary/50"
+                )}
+                onClick={() => {
+                  if (!onPrimaryIndexChange || isDefault) return;
+                  onPrimaryIndexChange(index);
+                }}
+                onKeyDown={(event) => {
+                  if (!onPrimaryIndexChange || isDefault) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onPrimaryIndexChange(index);
+                  }
+                }}
+                role={onPrimaryIndexChange && !isDefault ? "button" : undefined}
+                tabIndex={onPrimaryIndexChange && !isDefault ? 0 : undefined}
+                aria-label={
+                  onPrimaryIndexChange && !isDefault
+                    ? `Set image ${index + 1} as default`
+                    : undefined
+                }
               >
+                {isDefault ? (
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-1 left-1 z-10 gap-0.5 px-1.5 py-0 text-[10px]"
+                  >
+                    <Star className="size-2.5 fill-current" />
+                    Default
+                  </Badge>
+                ) : null}
                 <Image
                   src={url}
                   alt={imageAlts[index]?.trim() || productName}
@@ -224,17 +286,23 @@ export function ProductImageField({
                   className="object-contain object-center p-1"
                   unoptimized
                 />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  className="absolute top-1 right-1 size-6 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={() => removeUrl(index)}
-                >
-                  <X className="size-3" />
-                </Button>
+                <div className="absolute inset-x-1 bottom-1 flex flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    className="ml-auto size-6"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeUrl(index);
+                    }}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </div>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           {onAltsChange ? (

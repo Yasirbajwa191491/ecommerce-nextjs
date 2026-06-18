@@ -73,7 +73,8 @@ export const trackByOrderNumber = action({
       order: toPublicOrderDetail(
         result.order,
         result.items,
-        result.statusHistory
+        result.statusHistory,
+        result.promotions
       ),
     };
   },
@@ -143,7 +144,8 @@ export const getPublicOrderDetail = action({
       order: toPublicOrderDetail(
         result.order,
         result.items,
-        result.statusHistory
+        result.statusHistory,
+        result.promotions
       ),
     };
   },

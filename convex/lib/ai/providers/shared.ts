@@ -15,6 +15,30 @@ export function truncate(text: string, max = 8000): string {
 
 const RETRYABLE_HTTP_STATUS = new Set([429, 500, 502, 503, 504]);
 
+/** Daily/free-tier quota — retrying immediately will not help. */
+export function isGeminiQuotaExhausted(status: number, body: string): boolean {
+  if (status !== 429) return false;
+  const lower = body.toLowerCase();
+  return (
+    lower.includes("free_tier") ||
+    lower.includes("free tier") ||
+    lower.includes("quota exceeded") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("generaterequestsperday")
+  );
+}
+
+export function isGeminiQuotaError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("429") &&
+    (lower.includes("quota") ||
+      lower.includes("resource_exhausted") ||
+      lower.includes("free_tier") ||
+      lower.includes("free tier"))
+  );
+}
+
 /** Retry transient LLM API failures (rate limits, overload). */
 export async function fetchWithRetry(
   url: string,
@@ -29,6 +53,11 @@ export async function fetchWithRetry(
     if (response.ok) return response;
 
     lastBody = await response.text();
+
+    if (isGeminiQuotaExhausted(response.status, lastBody)) {
+      throw new Error(`${label} failed (${response.status}): ${lastBody}`);
+    }
+
     const retryable =
       RETRYABLE_HTTP_STATUS.has(response.status) && attempt < maxAttempts;
 

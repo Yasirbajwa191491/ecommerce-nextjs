@@ -76,6 +76,14 @@ export type PublicOrderItem = {
   finalUnitPrice: number;
   shippingCharge: number;
   lineShippingTotal: number;
+  isPromotionGift?: boolean;
+};
+
+export type PublicOrderPromotion = {
+  promotionName: string;
+  promotionDescription?: string;
+  freeQuantity: number;
+  savingsAmount: number;
 };
 
 export type PublicOrderSummary = {

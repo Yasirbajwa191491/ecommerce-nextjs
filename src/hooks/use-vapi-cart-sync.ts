@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useCartContext } from "@/context/cart_context";
+import { buildCartLineId } from "@/lib/cart-lines";
 import { parseToolResultPayload } from "@/lib/vapi-activity";
 import type { Product } from "@/types/product";
 
@@ -161,7 +162,9 @@ export function useVapiCartSync() {
           if (!isProductId(productId)) break;
 
           const cartLineId =
-            typeof color === "string" ? `${productId}${color}` : undefined;
+            typeof color === "string"
+              ? buildCartLineId(productId, color)
+              : undefined;
           if (cartLineId) {
             removeItem(cartLineId);
             toast.success("Item removed from cart");

@@ -89,6 +89,16 @@ export async function generateEmailCampaign(params: {
   minDiscountPercent?: number;
   context: CampaignGenerationContext;
   discountedProducts: DiscountedProductSummary[];
+  activePromotions?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    description: string;
+    promotionMessage: string;
+    bannerText: string;
+    buyProductName: string;
+    getProductName: string;
+  }>;
 }): Promise<GenerateCampaignResult> {
   const {
     preset,
@@ -98,6 +108,7 @@ export async function generateEmailCampaign(params: {
     minDiscountPercent,
     context,
     discountedProducts,
+    activePromotions = [],
   } = params;
 
   const presetLabel =
@@ -126,6 +137,8 @@ Reply JSON only with this exact shape:
   "suggestedSegmentKeys": ["segment_key_from_list"]
 }
 Pick 4-6 product IDs from the discounted products list when relevant.
+Prioritize active BOGO, free gift, and cross-product promotions when writing headlines and productPromoText.
+Use phrases like "Buy One Get One Free", "Free Gift Included", or "Limited Time Promotion" when they match active promotions.
 Pick 1-2 segment keys that best match the campaign audience.
 Keep subject under 60 characters. Preview text under 100 characters.
 Do not include markdown. Body paragraphs are plain text only.`;
@@ -147,6 +160,18 @@ Do not include markdown. Body paragraphs are plain text only.`;
       "",
       "Discounted products (use these IDs in suggestedProductIds):",
       buildProductsContext(discountedProducts),
+      activePromotions.length > 0
+        ? [
+            "",
+            "Active store promotions (prioritize in copy):",
+            activePromotions
+              .map(
+                (p) =>
+                  `- ${p.name} (${p.type}): Buy ${p.buyProductName}${p.getProductName ? ` → Get ${p.getProductName} free` : ""}. ${p.bannerText || p.promotionMessage || p.description}`
+              )
+              .join("\n"),
+          ].join("\n")
+        : "",
     ]
       .filter(Boolean)
       .join("\n"),

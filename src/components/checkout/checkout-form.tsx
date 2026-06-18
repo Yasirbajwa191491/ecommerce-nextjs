@@ -25,8 +25,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
+import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import { useCartContext } from "@/context/cart_context";
-import { resolveCartProductId } from "@/reducer/cartReducer";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import {
   createIdempotencyKey,
@@ -75,15 +75,7 @@ export function CheckoutForm({ initialValues }: CheckoutFormProps) {
   );
   const validation = useFormValidation(form, validate);
 
-  const cartLines = useMemo(
-    () =>
-      cart.map((item) => ({
-        productId: resolveCartProductId(item) as Id<"products">,
-        color: item.color,
-        quantity: item.amount,
-      })),
-    [cart]
-  );
+  const cartLines = useMemo(() => cartItemsToCheckoutLines(cart), [cart]);
 
   const customerPayload = useMemo(
     () => ({

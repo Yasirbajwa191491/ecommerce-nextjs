@@ -2,6 +2,7 @@
 
 import { useProducts } from "@/hooks/useProducts";
 import ProductCard from "./ProductCard";
+import { productCardKey } from "@/lib/product-images";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeatureProduct() {
@@ -50,7 +51,7 @@ export default function FeatureProduct() {
         ) : (
           <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-8">
             {featureProducts.map((product) => (
-              <ProductCard key={product._id} {...product} />
+              <ProductCard key={productCardKey(product)} {...product} />
             ))}
           </div>
         )}

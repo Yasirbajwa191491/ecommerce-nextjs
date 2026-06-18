@@ -16,7 +16,7 @@ export function CopilotProductLink({
 
   return (
     <Link
-      href={`/admin/products?edit=${productId}`}
+      href={`/admin/products/${productId}/edit`}
       className="text-xs font-medium text-primary hover:underline"
     >
       View {productName ?? "product"}

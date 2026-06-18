@@ -2,6 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
+import { getPrimaryImageUrl } from "./lib/productImages";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 import {
@@ -128,7 +129,7 @@ export const getById = query({
             _id: product._id,
             name: product.name,
             company: product.company,
-            imageUrl: product.image[0]?.url ?? "",
+            imageUrl: getPrimaryImageUrl(product),
           }
         : null,
       order: order

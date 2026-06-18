@@ -22,6 +22,13 @@ export type PublicOrderSummary = {
   paidAt?: number;
 };
 
+export type PublicOrderPromotion = {
+  promotionName: string;
+  promotionDescription?: string;
+  freeQuantity: number;
+  savingsAmount: number;
+};
+
 export type PublicOrderDetail = PublicOrderSummary & {
   customerName: string;
   customerEmail: string;
@@ -30,6 +37,7 @@ export type PublicOrderDetail = PublicOrderSummary & {
   subtotal: number;
   tax: number;
   items: PublicOrderItem[];
+  promotions: PublicOrderPromotion[];
   statusHistory: Array<{
     event: string;
     description: string;
@@ -62,10 +70,22 @@ export function toPublicOrderSummary(
   };
 }
 
+export function toPublicOrderPromotion(
+  promo: Doc<"orderPromotions">
+): PublicOrderPromotion {
+  return {
+    promotionName: promo.promotionName,
+    promotionDescription: promo.promotionDescription,
+    freeQuantity: promo.freeQuantity,
+    savingsAmount: promo.savingsAmount,
+  };
+}
+
 export function toPublicOrderDetail(
   order: Doc<"orders">,
   items: Doc<"orderItems">[],
-  statusHistory: PublicOrderDetail["statusHistory"]
+  statusHistory: PublicOrderDetail["statusHistory"],
+  promotions: Doc<"orderPromotions">[] = []
 ): PublicOrderDetail {
   return {
     ...toPublicOrderSummary(order, items),
@@ -76,6 +96,7 @@ export function toPublicOrderDetail(
     subtotal: order.subtotal,
     tax: order.tax,
     items: items.map(toPublicOrderItem),
+    promotions: promotions.map(toPublicOrderPromotion),
     statusHistory,
   };
 }

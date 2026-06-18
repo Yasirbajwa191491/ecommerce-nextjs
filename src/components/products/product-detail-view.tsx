@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
+import { use, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
 import {
   ChevronRight,
   Package,
@@ -10,7 +12,9 @@ import {
   Truck,
 } from "lucide-react";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
 import { useSingleProduct } from "@/hooks/useProducts";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { ProductImageGallery } from "@/components/products/product-image-gallery";
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
@@ -20,8 +24,10 @@ import { ProductReviewSection } from "@/components/reviews/product-review-sectio
 import { SimilarProductsSection } from "@/components/products/similar-products-section";
 import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
 import AddToCart from "@/components/products/AddToCart";
+import { PromotionOfferBanner } from "@/components/promotions/promotion-offer-banner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { orderImagesForDisplay } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
 
 type ProductDetailViewProps = {
@@ -55,6 +61,19 @@ function ProductDetailSkeleton() {
 
 export function ProductDetailView({ params }: ProductDetailViewProps) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const promoId = searchParams.get("promo") as Id<"productPromotions"> | null;
+  const now = useStableNow();
+  const recordView = useMutation(api.productPromotions.recordView);
+  const highlightedPromo = useQuery(
+    api.productPromotions.getStorefrontById,
+    promoId ? { id: promoId, now } : "skip"
+  );
+
+  useEffect(() => {
+    if (promoId) void recordView({ id: promoId });
+  }, [promoId, recordView]);
+
   const { singleProduct, isSingleLoading } = useSingleProduct(
     id as Id<"products">
   );
@@ -88,7 +107,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
   const freeShipping = singleProduct.shipping === true;
   const productHighlights =
     singleProduct.highlights?.map((h) => h.trim()).filter(Boolean) ?? [];
-  const galleryImages = singleProduct.image.map((image) => ({
+  const galleryImages = orderImagesForDisplay(singleProduct).map((image) => ({
     url: image.url,
     alt: image.alt?.trim() || singleProduct.name,
   }));
@@ -123,7 +142,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           fallbackAlt={singleProduct.name}
         />
 
-        <div className="flex flex-col gap-5 lg:sticky lg:top-24 lg:gap-6">
+        <div className="flex flex-col gap-5 lg:sticky lg:top-24 lg:z-10 lg:gap-6">
           <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant="secondary"
@@ -148,6 +167,14 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
               {inStock ? "In stock" : "Out of stock"}
             </Badge>
           </div>
+
+          {highlightedPromo ? (
+            <PromotionOfferBanner
+              promotion={highlightedPromo}
+              variant="hero"
+              now={now}
+            />
+          ) : null}
 
           <div>
             <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">

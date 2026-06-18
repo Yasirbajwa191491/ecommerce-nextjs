@@ -17,8 +17,10 @@ import FormatPrice from "@/helpers/FormatPrice";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
 import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
 import { OrderItemPricing } from "@/components/orders/order-item-pricing";
+import { OrderPromotionsSummary } from "@/components/orders/order-promotions-summary";
 import { normalizeOrderItemLike } from "@/lib/order-item-display";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -67,6 +69,7 @@ function CheckoutSuccessContent() {
   const isLoading = orderNumber && orderData === undefined;
   const order = orderData?.order;
   const items = orderData?.items ?? [];
+  const promotions = orderData?.promotions ?? [];
 
   const statusMessage = useMemo(() => {
     if (!order) return null;
@@ -160,8 +163,13 @@ function CheckoutSuccessContent() {
                         className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-start sm:justify-between"
                       >
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="flex flex-wrap items-center gap-2 font-medium text-foreground">
                             {item.productName} × {item.quantity}
+                            {item.isPromotionGift ? (
+                              <Badge variant="secondary" className="text-[10px]">
+                                Promotion gift
+                              </Badge>
+                            ) : null}
                           </p>
                           <div className="mt-1.5">
                             <ColorSwatch color={item.color} />
@@ -192,6 +200,16 @@ function CheckoutSuccessContent() {
                   })}
                 </ul>
               </div>
+
+              <OrderPromotionsSummary
+                promotions={promotions.map((promo) => ({
+                  promotionName: promo.promotionName,
+                  promotionDescription: promo.promotionDescription,
+                  freeQuantity: promo.freeQuantity,
+                  savingsAmount: promo.savingsAmount,
+                }))}
+                currency={order.currency}
+              />
 
               <OrderSummaryBreakdown
                 subtotal={order.subtotal}

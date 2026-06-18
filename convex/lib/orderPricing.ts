@@ -1,5 +1,6 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import { getPrimaryImageUrl } from "./productImages";
 import { isProductActive } from "./productActive";
 import {
   allocateProductShipping,
@@ -7,6 +8,7 @@ import {
   calculateOrderTotals,
   clampDiscountPercent,
 } from "./pricing";
+import { resolveProductColor } from "./cartLines";
 
 export type CartLineInput = {
   productId: Id<"products">;
@@ -33,6 +35,9 @@ export type PricedLineItem = {
   originalLineSubtotal: number;
   shippingCharge: number;
   lineShippingTotal: number;
+  isPromotionGift?: boolean;
+  promotionId?: Id<"productPromotions">;
+  promotionName?: string;
 };
 
 export type OrderTotals = {
@@ -68,7 +73,8 @@ export async function priceCartLines(
     if (!isProductActive(product)) {
       throw new Error(`"${product.name}" is no longer available`);
     }
-    if (!product.colors.includes(line.color)) {
+    const resolvedColor = resolveProductColor(product.colors, line.color);
+    if (!resolvedColor) {
       throw new Error(`Invalid color selected for "${product.name}"`);
     }
 
@@ -115,12 +121,12 @@ export async function priceCartLines(
     pricedLines.push({
       productId: line.productId,
       productName: product.name,
-      color: line.color,
+      color: resolvedColor,
       sku: product.sku,
       quantity: line.quantity,
       unitPrice: linePricing.finalUnitPrice,
       lineTotal: linePricing.lineTotal,
-      imageUrl: product.image[0]?.url ?? "",
+      imageUrl: getPrimaryImageUrl(product),
       originalUnitPrice: linePricing.originalUnitPrice,
       discountPercent: linePricing.discountPercent,
       discountAmount: linePricing.discountAmount,

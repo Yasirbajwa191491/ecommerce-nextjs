@@ -3,12 +3,15 @@
 import styled from "styled-components";
 import { useFilterContext } from "@/context/filter_context";
 import ProductCard from "./ProductCard";
+import { productCardKey } from "@/lib/product-images";
 
 export default function ProductList() {
   const { filter_products, grid_view } = useFilterContext();
   return (
     <Grid $list={!grid_view}>
-      {filter_products.map((p) => <ProductCard key={p._id} {...p} />)}
+      {filter_products.map((p) => (
+        <ProductCard key={productCardKey(p)} {...p} />
+      ))}
     </Grid>
   );
 }

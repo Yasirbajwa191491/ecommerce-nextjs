@@ -9,6 +9,7 @@ import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summa
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useCartContext } from "@/context/cart_context";
+import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
 
@@ -57,6 +58,8 @@ export function CheckoutView() {
   if (!cart.length) {
     return null;
   }
+
+  const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
@@ -107,7 +110,19 @@ export function CheckoutView() {
         ) : null}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1fr)_440px] 2xl:gap-12">
-          <div className="min-w-0 xl:sticky xl:top-24">
+          <div className="min-w-0 space-y-4 xl:sticky xl:top-24">
+            <PromotionAppliedSection
+              gifts={giftItems.map((item) => ({
+                productName: item.productName,
+                color: item.color,
+                quantity: item.quantity,
+                imageUrl: item.imageUrl,
+                promotionName: item.promotionName,
+              }))}
+              summaries={priced?.promotionSummaries}
+              promotionSavingsTotal={priced?.promotionSavingsTotal}
+              currency={priced?.currency}
+            />
             <CheckoutOrderSummary
               cart={cart}
               subtotal={priced?.subtotal ?? 0}

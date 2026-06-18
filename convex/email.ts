@@ -12,6 +12,7 @@ import type { Doc } from "./_generated/dataModel";
 import { getSiteUrl } from "./lib/siteUrl";
 import { applyEmailPlaceholders, buildPlaceholderContext } from "./lib/emailPlaceholders";
 import { calculateFinalPrice } from "./lib/pricing";
+import { getPrimaryImageUrl } from "./lib/productImages";
 import { BATCH_SIZE } from "./lib/campaignQueue";
 import { generateUnsubscribeToken } from "./lib/subscriberTokens";
 
@@ -359,7 +360,7 @@ export const processCampaignBatch = internalAction({
         products.push({
           id: product._id,
           name: product.name,
-          imageUrl: product.image[0]?.url ?? "",
+          imageUrl: getPrimaryImageUrl(product),
           originalPrice: formatMoney(product.price, currency),
           discountedPrice: formatMoney(discountedPrice, currency),
           discountPercent,

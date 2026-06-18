@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 import type { Product } from "@/types/product";
+import { productCardKey } from "@/lib/product-images";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +98,7 @@ export function ProductCarouselSection({
               <CarouselContent className="-ml-3 sm:-ml-4">
                 {products.map((product) => (
                   <CarouselItem
-                    key={product._id}
+                    key={productCardKey(product)}
                     className="basis-[88%] pl-3 sm:basis-[55%] sm:pl-4 md:basis-[42%] lg:basis-[30%] xl:basis-[24%]"
                   >
                     <ProductCard {...product} />

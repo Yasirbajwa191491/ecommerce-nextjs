@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   Sparkles,
   Star,
+  Tag,
   UserCircle2,
   Users,
 } from "lucide-react";
@@ -42,6 +43,7 @@ import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 const NAV = [
   { href: "/admin/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/promotions", label: "Promotions", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/review-calls", label: "Review Calls", icon: Phone },

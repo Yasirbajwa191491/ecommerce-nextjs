@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastError, toastSuccess } from "@/lib/app-toast";
+import { getPrimaryImageUrl } from "@/lib/product-images";
 import { calculateFinalPrice } from "@/lib/pricing";
 
 export default function EmailCampaignDetailPage({
@@ -68,7 +69,7 @@ export default function EmailCampaignDetailPage({
   const promoProducts = products.map((p) => ({
     _id: p._id,
     name: p.name,
-    imageUrl: p.image[0]?.url ?? "",
+    imageUrl: getPrimaryImageUrl(p, ""),
     price: p.price,
     discountedPrice: calculateFinalPrice(p.price, p.discountPercent ?? 0),
     discountPercent: p.discountPercent ?? 0,

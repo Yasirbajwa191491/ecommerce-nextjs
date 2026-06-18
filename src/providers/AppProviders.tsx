@@ -6,13 +6,16 @@ import { theme } from "@/lib/theme";
 import { GlobalStyle } from "@/styles/GlobalStyle";
 import { FilterContextProvider } from "@/context/filter_context";
 import { CartProvider } from "@/context/cart_context";
+import { ProductPromotionBadgesProvider } from "@/context/product-promotion-badges-context";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <FilterContextProvider>
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          <ProductPromotionBadgesProvider>{children}</ProductPromotionBadgesProvider>
+        </CartProvider>
       </FilterContextProvider>
     </ThemeProvider>
   );

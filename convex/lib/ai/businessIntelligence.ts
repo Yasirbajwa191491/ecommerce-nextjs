@@ -796,6 +796,27 @@ export async function getSearchInsights(ctx: QueryCtx, referenceNow: number) {
   };
 }
 
+export async function getConfiguredPromotionPerformance(ctx: QueryCtx) {
+  const promotions = await ctx.db.query("productPromotions").collect();
+  return {
+    promotions: promotions
+      .sort((a, b) => b.revenueGenerated - a.revenueGenerated)
+      .slice(0, 15)
+      .map((p) => ({
+        id: p._id,
+        name: p.name,
+        type: p.type,
+        status: p.status,
+        viewCount: p.viewCount,
+        clickCount: p.clickCount,
+        conversionCount: p.conversionCount,
+        ordersCount: p.ordersCount,
+        revenueGenerated: p.revenueGenerated,
+        freeProductsGiven: p.freeProductsGiven,
+      })),
+  };
+}
+
 export async function getPromotionCandidates(ctx: QueryCtx, referenceNow: number) {
   const inventory = await getInventoryInsights(ctx, referenceNow);
   const sales = await getProductSalesByPeriod(
@@ -987,7 +1008,10 @@ export async function buildBusinessContext(
       case "promotion_recommendations":
         return [
           "promotionRecommendations",
-          await getPromotionCandidates(ctx, referenceNow),
+          {
+            candidates: await getPromotionCandidates(ctx, referenceNow),
+            configured: await getConfiguredPromotionPerformance(ctx),
+          },
         ] as const;
       case "inventory":
         return ["inventory", await getInventoryInsights(ctx, referenceNow)] as const;

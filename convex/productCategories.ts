@@ -8,6 +8,7 @@ import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 import { slugify } from "./lib/products";
 import { isProductActive } from "./lib/productActive";
+import { getPrimaryImageUrl } from "./lib/productImages";
 
 function normalizeCategoryName(name: string): string {
   return name.trim().toLowerCase();
@@ -85,7 +86,9 @@ export const listWithProductCounts = query({
           .withIndex("by_category_id", (q) => q.eq("categoryId", category._id))
           .collect();
         const activeProducts = products.filter(isProductActive);
-        const sampleImageUrl = activeProducts[0]?.image[0]?.url ?? null;
+        const sampleImageUrl = activeProducts[0]
+          ? getPrimaryImageUrl(activeProducts[0])
+          : null;
 
         return {
           _id: category._id,

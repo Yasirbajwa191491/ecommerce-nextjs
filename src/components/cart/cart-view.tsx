@@ -30,6 +30,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import FormatPrice from "@/helpers/FormatPrice";
+import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 
 export function CartView() {
@@ -44,6 +45,7 @@ export function CartView() {
   } = useCartContext();
 
   const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(cart);
+  const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
   const currency = priced?.currency;
   const displaySubtotal = priced?.subtotal ?? total_price;
   const displayTotal = priced?.total ?? total_price;
@@ -230,7 +232,20 @@ export function CartView() {
                 </div>
               </div>
 
-              <aside className="xl:sticky xl:top-24">
+              <aside className="space-y-4 xl:sticky xl:top-24">
+                <PromotionAppliedSection
+                  gifts={giftItems.map((item) => ({
+                    productName: item.productName,
+                    color: item.color,
+                    quantity: item.quantity,
+                    imageUrl: item.imageUrl,
+                    promotionName: item.promotionName,
+                    isPromotionGift: true,
+                  }))}
+                  summaries={priced?.promotionSummaries}
+                  promotionSavingsTotal={priced?.promotionSavingsTotal}
+                  currency={currency}
+                />
                 <CartOrderSummary
                   totalItem={total_item}
                   subtotal={displaySubtotal}

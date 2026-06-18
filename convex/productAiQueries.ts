@@ -18,6 +18,14 @@ export const getProductForIntelligence = internalQuery({
       categoryName: v.string(),
       active: v.boolean(),
       embeddingContentHash: v.optional(v.string()),
+      embeddingStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("processing"),
+          v.literal("complete"),
+          v.literal("failed")
+        )
+      ),
       reviewHighlights: v.array(v.string()),
     }),
     v.null()
@@ -50,6 +58,7 @@ export const getProductForIntelligence = internalQuery({
       categoryName: category?.name ?? "General",
       active: product.active !== false,
       embeddingContentHash: product.embeddingContentHash,
+      embeddingStatus: product.embeddingStatus,
       reviewHighlights,
     };
   },

@@ -74,6 +74,41 @@ export const getDiscountedProductsForCampaign = internalQuery({
   },
 });
 
+export const getActivePromotionsForCampaign = internalQuery({
+  args: { now: v.number(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 12;
+    const promotions = await ctx.db
+      .query("productPromotions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    const active = promotions.filter(
+      (p) => args.now >= p.startAt && args.now <= p.endAt
+    );
+
+    const enriched = await Promise.all(
+      active.slice(0, limit).map(async (p) => {
+        const buy = await ctx.db.get(p.buyProductId);
+        const getId = p.getProductId ?? p.buyProductId;
+        const get = await ctx.db.get(getId);
+        return {
+          id: p._id,
+          name: p.name,
+          type: p.type,
+          description: p.description ?? "",
+          promotionMessage: p.promotionMessage ?? "",
+          bannerText: p.bannerText ?? "",
+          buyProductName: buy?.name ?? "",
+          getProductName: get?.name ?? "",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
 export const getGenerationContext = internalQuery({
   args: {},
   handler: async (ctx) => {

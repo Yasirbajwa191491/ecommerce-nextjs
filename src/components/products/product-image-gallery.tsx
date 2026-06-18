@@ -28,6 +28,7 @@ export function ProductImageGallery({
   const galleryImages =
     images.length > 0 ? images : [{ url: "/next.svg" }];
   const [activeIndex, setActiveIndex] = useState(0);
+  const imageFingerprint = galleryImages.map((image) => image.url).join("|");
 
   const goTo = useCallback(
     (index: number) => {
@@ -36,6 +37,10 @@ export function ProductImageGallery({
     },
     [galleryImages.length]
   );
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [imageFingerprint]);
 
   useEffect(() => {
     if (activeIndex >= galleryImages.length) {

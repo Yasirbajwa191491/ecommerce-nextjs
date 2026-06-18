@@ -93,7 +93,7 @@ export function DashboardActivityFeed({
                 ) : null}
                 {item.relatedProductId ? (
                   <Link
-                    href={`/admin/products?edit=${item.relatedProductId}`}
+                    href={`/admin/products/${item.relatedProductId}/edit`}
                     className="font-medium text-primary hover:underline"
                   >
                     View product
