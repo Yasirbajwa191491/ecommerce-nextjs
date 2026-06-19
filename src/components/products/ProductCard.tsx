@@ -76,7 +76,7 @@ export default function ProductCard({
         {...hoverShellProps}
         whileTap={reduceMotion ? undefined : cardTap}
       >
-        <div className="relative mx-auto w-full max-w-[11rem] shrink-0 sm:max-w-[12.5rem] xl:mx-0 xl:max-w-none">
+        <div className="relative w-full shrink-0 sm:mx-auto sm:max-w-[12.5rem] xl:mx-0 xl:max-w-none">
           <MotionHoverImage className="size-full rounded-xl" zoom="subtle">
             <ProductImageGallery
               variant="list"

@@ -512,7 +512,7 @@ export default function ProductCatalog() {
             onTogglePromotion={togglePromotion}
             onSelectRating={setMinRating}
             onClear={handleClear}
-            className="hidden md:sticky md:top-24 md:z-10 md:block md:self-start md:max-h-[calc(100vh-11rem)] md:overflow-y-auto md:overscroll-contain"
+            className="hidden md:sticky md:top-24 md:z-10 md:block"
           />
 
           <section className="min-w-0">

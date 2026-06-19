@@ -86,7 +86,7 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex flex-col rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-5 lg:min-h-[calc(100vh-11rem)] lg:p-6",
+        "flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:min-h-[calc(100vh-8.5rem)] md:p-5 md:max-h-[calc(100vh-5.5rem)] lg:min-h-[calc(100vh-8rem)] lg:p-6",
         className
       )}
     >
@@ -97,7 +97,7 @@ export function ProductCatalogFilters({
         </div>
       ) : null}
 
-      <FilterSidebarSections>
+      <FilterSidebarSections className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <FilterSidebarSection title="Category">
         <div className={FILTER_OPTION_LIST_CLASS}>
           <CategoryOption
@@ -197,7 +197,7 @@ export function ProductCatalogFilters({
         type="button"
         variant="outline"
         onClick={onClear}
-        className="mt-6 h-9 w-full text-sm"
+        className="mt-4 h-9 w-full shrink-0 text-sm md:mt-6"
       >
         Clear filters
       </Button>

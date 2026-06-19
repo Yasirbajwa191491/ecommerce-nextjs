@@ -56,7 +56,7 @@ export function ProductImageGallery({
       className={cn(
         "flex",
         isList
-          ? "shrink-0 flex-row gap-2 sm:gap-2.5"
+          ? "w-full shrink-0 flex-row gap-2 max-sm:items-stretch sm:gap-2.5"
           : "flex-col gap-4 lg:flex-row lg:gap-5"
       )}
       onClick={(event) => event.stopPropagation()}
@@ -110,7 +110,7 @@ export function ProductImageGallery({
       <div
         className={cn(
           isList
-            ? "relative shrink-0"
+            ? "relative min-w-0 max-sm:flex-1 sm:shrink-0"
             : "relative order-1 min-w-0 flex-1 lg:order-2"
         )}
       >
@@ -126,7 +126,7 @@ export function ProductImageGallery({
             priority={!isList}
             sizes={
               isList
-                ? "(max-width: 640px) 176px, 224px"
+                ? "(max-width: 639px) 75vw, (max-width: 1279px) 224px, 208px"
                 : "(max-width: 1024px) 100vw, 55vw"
             }
             interactive={isList}
