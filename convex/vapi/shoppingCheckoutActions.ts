@@ -7,6 +7,8 @@ import {
   validateCartLines,
   validateCustomerFields,
 } from "../lib/checkoutValidation";
+import { deliveryMethodTypeValidator } from "../lib/productValidators";
+import { formatVoiceOrderConfirmationDelivery } from "./voiceDeliveryHelpers";
 
 type CartLine = {
   productId: Id<"products">;
@@ -19,6 +21,7 @@ export const createCheckoutSession = internalAction({
     conversationId: v.id("vapiConversations"),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   returns: v.object({
     checkoutUrl: v.string(),
@@ -26,6 +29,11 @@ export const createCheckoutSession = internalAction({
     total: v.number(),
     currency: v.string(),
     paymentMethod: v.literal("stripe"),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+    deliveryMethodLabel: v.optional(v.string()),
+    deliveryCharge: v.optional(v.number()),
+    shipping: v.optional(v.number()),
+    deliveryEstimate: v.optional(v.string()),
     message: v.string(),
   }),
   handler: async (ctx, args): Promise<{
@@ -34,6 +42,11 @@ export const createCheckoutSession = internalAction({
     total: number;
     currency: string;
     paymentMethod: "stripe";
+    deliveryMethod?: import("../lib/productValidators").DeliveryMethodType;
+    deliveryMethodLabel?: string;
+    deliveryCharge?: number;
+    shipping?: number;
+    deliveryEstimate?: string;
     message: string;
   }> => {
     const lines: CartLine[] = await ctx.runQuery(
@@ -43,16 +56,15 @@ export const createCheckoutSession = internalAction({
     validateCartLines(lines);
     validateCustomerFields(args.customer);
 
-    const session: {
-      url: string;
-      orderNumber: string;
-      total: number;
-      currency: string;
-    } = await ctx.runAction(internal.stripe.createCheckoutSessionForVoice, {
-      lines,
-      customer: args.customer,
-      idempotencyKey: args.idempotencyKey,
-    });
+    const session = await ctx.runAction(
+      internal.stripe.createCheckoutSessionForVoice,
+      {
+        lines,
+        customer: args.customer,
+        idempotencyKey: args.idempotencyKey,
+        deliveryMethod: args.deliveryMethod,
+      }
+    );
 
     await ctx.runMutation(internal.vapi.shoppingTools.clearCartAfterCheckout, {
       conversationId: args.conversationId,
@@ -69,13 +81,27 @@ export const createCheckoutSession = internalAction({
       currency: session.currency,
     });
 
+    const deliveryMessage = formatVoiceOrderConfirmationDelivery({
+      deliveryMethod: session.deliveryMethod,
+      deliveryMethodLabel: session.deliveryMethodLabel,
+      deliveryEstimate: session.deliveryEstimate,
+      deliveryCharge: session.deliveryCharge,
+      shipping: session.shipping,
+      currency: session.currency,
+    });
+
     return {
       checkoutUrl: session.url,
       orderNumber: session.orderNumber,
       total: session.total,
       currency: session.currency,
       paymentMethod: "stripe" as const,
-      message: `Checkout ready!\nOrder number: ${session.orderNumber}\nTotal: ${session.currency} ${session.total.toFixed(2)}\nPayment: Card (Stripe)\nComplete payment at the checkout link.`,
+      deliveryMethod: session.deliveryMethod,
+      deliveryMethodLabel: session.deliveryMethodLabel,
+      deliveryCharge: session.deliveryCharge,
+      shipping: session.shipping,
+      deliveryEstimate: session.deliveryEstimate,
+      message: `Checkout ready!\nOrder number: ${session.orderNumber}\nTotal: ${session.currency} ${session.total.toFixed(2)}${deliveryMessage ? `\n${deliveryMessage}` : ""}\nPayment: Card (Stripe)\nComplete payment at the checkout link.`,
     };
   },
 });

@@ -1,9 +1,23 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { ProductWithCategory } from "../lib/products";
-import { calculateFinalPrice } from "../lib/pricing";
+import { calculateFinalPrice, roundMoney } from "../lib/pricing";
 import { getSiteUrl } from "../lib/siteUrl";
 import { HOW_TO_BUY_STEPS } from "../lib/storeGuideContent";
 import type { PublicOrderDetail, PublicOrderSummary } from "../lib/publicOrderDto";
+import {
+  DELIVERY_METHOD_LABELS,
+  formatWarrantySummary,
+  normalizeDeliveryOptions,
+  type DeliveryMethodType,
+  type DeliveryOption,
+} from "../lib/productValidators";
+
+export type VapiDeliveryOption = {
+  type: DeliveryMethodType;
+  label: string;
+  charge: number;
+  estimate: string;
+};
 
 export type VapiProductSummary = {
   id: string;
@@ -33,11 +47,46 @@ export type VapiProductDetail = VapiProductSummary & {
   reviewSummary: string | null;
   howToBuy: string[];
   addToCartUrl: string;
+  warrantyAvailable: boolean;
+  warrantySummary: string | null;
+  deliveryOptions: VapiDeliveryOption[];
 };
 
 function buildProductUrl(productId: Id<"products">): string {
   const base = getSiteUrl().replace(/\/$/, "");
   return `${base}/product/${productId}`;
+}
+
+function formatProductDeliveryOptions(
+  product: Doc<"products">
+): VapiDeliveryOption[] {
+  const options: DeliveryOption[] = normalizeDeliveryOptions(
+    product.deliveryOptions
+  );
+  return options
+    .filter((option) => option.enabled)
+    .map((option) => ({
+      type: option.type,
+      label: DELIVERY_METHOD_LABELS[option.type],
+      charge:
+        option.type === "standard"
+          ? product.shipping
+            ? 0
+            : roundMoney(product.shippingCharges ?? 0)
+          : roundMoney(option.charge),
+      estimate: option.estimate,
+    }));
+}
+
+function formatProductWarranty(product: Doc<"products">): {
+  warrantyAvailable: boolean;
+  warrantySummary: string | null;
+} {
+  const warrantyAvailable = product.warrantyAvailable === true;
+  const warrantySummary = warrantyAvailable
+    ? (formatWarrantySummary(product) ?? null)
+    : null;
+  return { warrantyAvailable, warrantySummary };
 }
 
 function shippingInfo(product: Doc<"products">): string {
@@ -86,6 +135,7 @@ export function toVapiProductDetail(
   }
 ): VapiProductDetail {
   const summary = toVapiProductSummary(product, { includeStock: true });
+  const warranty = formatProductWarranty(product);
   return {
     ...summary,
     stock: product.stock,
@@ -99,6 +149,9 @@ export function toVapiProductDetail(
     reviewSummary: extras?.reviewSummary ?? null,
     howToBuy: [...HOW_TO_BUY_STEPS],
     addToCartUrl: summary.url,
+    warrantyAvailable: warranty.warrantyAvailable,
+    warrantySummary: warranty.warrantySummary,
+    deliveryOptions: formatProductDeliveryOptions(product),
   };
 }
 
@@ -127,11 +180,17 @@ export function toVapiOrderDetail(order: PublicOrderDetail) {
     shipmentStatus: order.status,
     total: order.total,
     currency: order.currency,
+    shipping: order.shipping,
+    deliveryCharge: order.deliveryCharge ?? 0,
+    deliveryMethod: order.deliveryMethod ?? null,
+    deliveryMethodLabel: order.deliveryMethodLabel ?? null,
+    deliveryEstimate: order.deliveryEstimate ?? null,
     items: order.items.map((item) => ({
       name: item.productName,
       quantity: item.quantity,
       lineTotal: item.lineTotal,
       isPromotionGift: item.isPromotionGift ?? false,
+      warrantySummary: item.warrantySummary ?? null,
     })),
     promotions: order.promotions.map((promo) => ({
       name: promo.promotionName,

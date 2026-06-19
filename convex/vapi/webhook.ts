@@ -2,6 +2,7 @@ import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ReviewCallStatus } from "../lib/reviewCallValidators";
+import { parseVoiceDeliveryMethod } from "./voiceDeliveryHelpers";
 
 type ToolCall = {
   id: string;
@@ -388,6 +389,17 @@ async function executeTool(
       return await ctx.runQuery(internal.vapi.shoppingTools.getCart, {
         conversationId,
         now: Date.now(),
+        deliveryMethod: parseVoiceDeliveryMethod(parameters.deliveryMethod),
+      });
+    }
+    case "getDeliveryOptions": {
+      if (!conversationId) {
+        return { error: "Voice cart session not ready. Please try again." };
+      }
+      return await ctx.runQuery(internal.vapi.shoppingTools.getDeliveryOptions, {
+        conversationId,
+        now: Date.now(),
+        deliveryMethod: parseVoiceDeliveryMethod(parameters.deliveryMethod),
       });
     }
     case "getActivePromotions":
@@ -422,6 +434,7 @@ async function executeTool(
         conversationId,
         customer: parseVoiceCustomer(parameters),
         idempotencyKey: buildVoiceIdempotencyKey(conversationId),
+        deliveryMethod: parseVoiceDeliveryMethod(parameters.deliveryMethod),
       });
     }
     case "createCashOrder": {
@@ -432,6 +445,7 @@ async function executeTool(
         conversationId,
         customer: parseVoiceCustomer(parameters),
         idempotencyKey: buildVoiceIdempotencyKey(conversationId),
+        deliveryMethod: parseVoiceDeliveryMethod(parameters.deliveryMethod),
       });
     }
     default:

@@ -163,6 +163,7 @@ import type * as vapi_shoppingCheckoutActions from "../vapi/shoppingCheckoutActi
 import type * as vapi_shoppingTools from "../vapi/shoppingTools.js";
 import type * as vapi_tools from "../vapi/tools.js";
 import type * as vapi_voiceCheckout from "../vapi/voiceCheckout.js";
+import type * as vapi_voiceDeliveryHelpers from "../vapi/voiceDeliveryHelpers.js";
 import type * as vapi_voiceSearchActions from "../vapi/voiceSearchActions.js";
 import type * as vapi_webhook from "../vapi/webhook.js";
 
@@ -328,6 +329,7 @@ declare const fullApi: ApiFromModules<{
   "vapi/shoppingTools": typeof vapi_shoppingTools;
   "vapi/tools": typeof vapi_tools;
   "vapi/voiceCheckout": typeof vapi_voiceCheckout;
+  "vapi/voiceDeliveryHelpers": typeof vapi_voiceDeliveryHelpers;
   "vapi/voiceSearchActions": typeof vapi_voiceSearchActions;
   "vapi/webhook": typeof vapi_webhook;
 }>;

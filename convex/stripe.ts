@@ -132,6 +132,11 @@ export const createCheckoutSessionForVoice = internalAction({
     orderNumber: v.string(),
     total: v.number(),
     currency: v.string(),
+    shipping: v.number(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+    deliveryMethodLabel: v.optional(v.string()),
+    deliveryCharge: v.optional(v.number()),
+    deliveryEstimate: v.optional(v.string()),
   }),
   handler: async (
     ctx,
@@ -142,16 +147,19 @@ export const createCheckoutSessionForVoice = internalAction({
     orderNumber: string;
     total: number;
     currency: string;
+    shipping: number;
+    deliveryMethod?: import("./lib/productValidators").DeliveryMethodType;
+    deliveryMethodLabel?: string;
+    deliveryCharge?: number;
+    deliveryEstimate?: string;
   }> => {
     const session = await createCheckoutSessionHandler(ctx, args);
-    const order: { total: number; currency: string } = await ctx.runQuery(
-      internal.orders.getOrderTotalsInternal,
-      { orderId: session.orderId }
-    );
+    const order = await ctx.runQuery(internal.orders.getOrderTotalsInternal, {
+      orderId: session.orderId,
+    });
     return {
       ...session,
-      total: order.total,
-      currency: order.currency,
+      ...order,
     };
   },
 });

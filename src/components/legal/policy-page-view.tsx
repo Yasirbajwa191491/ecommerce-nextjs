@@ -76,9 +76,9 @@ function PolicyPageContent({ variant }: { variant: "terms" | "privacy" }) {
           paddingRight: "clamp(1rem, 3vw, 3rem)",
         }}
       >
-        <div className="mx-auto w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl">
-          <Card className="overflow-hidden border-border/60 bg-card shadow-sm">
-            <CardContent className="p-6 sm:p-8 md:p-10">
+        <div className="w-full">
+          <Card className="w-full overflow-hidden border-border/60 bg-card shadow-sm">
+            <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12">
               {isLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-4 w-full" />

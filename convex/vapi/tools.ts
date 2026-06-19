@@ -208,6 +208,16 @@ const vapiProductDetailValidator = v.object({
   addToCartUrl: v.string(),
   url: v.string(),
   category: v.union(v.string(), v.null()),
+  warrantyAvailable: v.boolean(),
+  warrantySummary: v.union(v.string(), v.null()),
+  deliveryOptions: v.array(
+    v.object({
+      type: v.string(),
+      label: v.string(),
+      charge: v.number(),
+      estimate: v.string(),
+    })
+  ),
   promotions: v.array(vapiPromotionSummaryValidator),
 });
 

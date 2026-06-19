@@ -140,6 +140,26 @@ function formatProductSummary(payload: ToolResultPayload): {
     typeof payload.shippingInfo === "string"
       ? `Shipping: ${payload.shippingInfo}`
       : null,
+    payload.warrantyAvailable === true && typeof payload.warrantySummary === "string"
+      ? `Warranty: ${payload.warrantySummary}`
+      : null,
+    Array.isArray(payload.deliveryOptions) && payload.deliveryOptions.length > 0
+      ? `Delivery options:\n${payload.deliveryOptions
+          .map((option) => {
+            if (typeof option !== "object" || option === null) return null;
+            const row = option as Record<string, unknown>;
+            const label = typeof row.label === "string" ? row.label : "Delivery";
+            const charge =
+              typeof row.charge === "number" && row.charge > 0
+                ? formatMoney(payload.currency, row.charge)
+                : "Free";
+            const estimate =
+              typeof row.estimate === "string" ? row.estimate : "";
+            return `- ${label}: ${charge}${estimate ? ` (${estimate})` : ""}`;
+          })
+          .filter(Boolean)
+          .join("\n")}`
+      : null,
     typeof payload.id === "string" ? `Product ID: ${payload.id}` : null,
   ].filter(Boolean);
 
@@ -167,12 +187,18 @@ function formatCheckoutSessionCard(
       ? rawUrl
       : undefined;
   const total = formatMoney(payload.currency, payload.total);
+  const deliveryLabel =
+    typeof payload.deliveryMethodLabel === "string"
+      ? payload.deliveryMethodLabel
+      : null;
 
   return {
     text: [
       "Checkout ready!",
       `Order number: ${payload.orderNumber}`,
       total ? `Total: ${total}` : null,
+      deliveryLabel ? `Delivery: ${deliveryLabel}` : null,
+      typeof payload.deliverySummary === "string" ? payload.deliverySummary : null,
       "Payment: Card (Stripe)",
       checkoutUrl
         ? "Use the button below to pay securely on Stripe."
@@ -278,12 +304,45 @@ export function formatToolResultForDisplay(
         "Order confirmed!",
         `Order number: ${payload.orderNumber}`,
         total ? `Total: ${total}` : null,
+        typeof payload.deliveryMethodLabel === "string"
+          ? `Delivery: ${payload.deliveryMethodLabel}`
+          : null,
+        typeof payload.deliveryEstimate === "string"
+          ? `Estimate: ${payload.deliveryEstimate}`
+          : null,
         "Payment: Cash on delivery",
         "Pay when your order arrives.",
       ]
         .filter(Boolean)
         .join("\n"),
     };
+  }
+
+  if (toolName === "getCart" && payload.isEmpty !== true) {
+    const total = formatMoney(payload.currency, payload.total);
+    const lines = [
+      typeof payload.deliverySummary === "string" ? payload.deliverySummary : null,
+      total ? `Grand total: ${total}` : null,
+      typeof payload.promotionSummary === "string" && payload.promotionSummary
+        ? `Promotions: ${payload.promotionSummary}`
+        : null,
+    ].filter(Boolean);
+    if (lines.length > 0) {
+      return { text: lines.join("\n") };
+    }
+  }
+
+  if (toolName === "getDeliveryOptions" && payload.isEmpty !== true) {
+    const lines = [
+      typeof payload.optionsSummary === "string" ? payload.optionsSummary : null,
+      typeof payload.deliverySummary === "string" ? payload.deliverySummary : null,
+      typeof payload.total === "number"
+        ? `Grand total: ${formatMoney(payload.currency, payload.total)}`
+        : null,
+    ].filter(Boolean);
+    if (lines.length > 0) {
+      return { text: lines.join("\n\n") };
+    }
   }
 
   if (typeof payload.message === "string" && payload.message.trim()) {

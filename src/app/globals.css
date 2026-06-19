@@ -451,7 +451,7 @@ a[data-slot="button"].bg-primary {
 .rich-text-content ul,
 .rich-text-content ol {
   margin: 0.75em 0 1.25em;
-  padding-left: 1.5rem;
+  padding-left: 1.75rem;
   list-style-position: outside;
 }
 
@@ -467,6 +467,31 @@ a[data-slot="button"].bg-primary {
   display: list-item;
   margin-bottom: 0.4em;
   line-height: 1.7;
+}
+
+/* Tailwind preflight sets `li { list-style-type: none }` — restore markers */
+.legal-content.rich-text-content ul > li {
+  list-style-type: disc !important;
+}
+
+.legal-content.rich-text-content ol > li {
+  list-style-type: decimal !important;
+}
+
+.legal-content.rich-text-content ul ul > li {
+  list-style-type: circle !important;
+}
+
+.legal-content.rich-text-content ol ol > li {
+  list-style-type: lower-alpha !important;
+}
+
+.rich-text-editor ul > li {
+  list-style-type: disc !important;
+}
+
+.rich-text-editor ol > li {
+  list-style-type: decimal !important;
 }
 
 .rich-text-content li:last-child {

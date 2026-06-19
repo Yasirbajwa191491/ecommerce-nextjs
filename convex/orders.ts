@@ -431,13 +431,26 @@ export const getOrderTotalsInternal = internalQuery({
   returns: v.object({
     total: v.number(),
     currency: v.string(),
+    shipping: v.number(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+    deliveryMethodLabel: v.optional(v.string()),
+    deliveryCharge: v.optional(v.number()),
+    deliveryEstimate: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) {
       throw new ConvexError("Order not found");
     }
-    return { total: order.total, currency: order.currency };
+    return {
+      total: order.total,
+      currency: order.currency,
+      shipping: order.shipping,
+      deliveryMethod: order.deliveryMethod,
+      deliveryMethodLabel: order.deliveryMethodLabel,
+      deliveryCharge: order.deliveryCharge,
+      deliveryEstimate: order.deliveryEstimate,
+    };
   },
 });
 

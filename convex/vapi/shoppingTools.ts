@@ -8,6 +8,13 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { enrichProduct } from "../lib/products";
 import { priceCheckoutCart } from "../lib/checkoutPricing";
+import { deliveryMethodTypeValidator } from "../lib/productValidators";
+import {
+  formatVoiceCartDeliverySummary,
+  formatVoiceDeliveryOptionsList,
+  formatVoiceOrderConfirmationDelivery,
+  voiceDeliveryMethodOptionValidator,
+} from "./voiceDeliveryHelpers";
 import { mergeCartLines, quantityByProduct, resolveProductColor } from "../lib/cartLines";
 import {
   formatAddToCartPromotionHint,
@@ -360,6 +367,7 @@ export const getCart = internalQuery({
   args: {
     conversationId: v.id("vapiConversations"),
     now: v.number(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   returns: v.object({
     items: v.array(voiceCartItemValidator),
@@ -368,6 +376,13 @@ export const getCart = internalQuery({
     subtotal: v.number(),
     discountTotal: v.number(),
     promotionSavingsTotal: v.number(),
+    shipping: v.number(),
+    deliveryCharge: v.number(),
+    deliveryMethod: deliveryMethodTypeValidator,
+    deliveryMethodLabel: v.string(),
+    deliveryEstimate: v.string(),
+    availableDeliveryMethods: v.array(voiceDeliveryMethodOptionValidator),
+    deliverySummary: v.string(),
     total: v.number(),
     currency: v.string(),
     isEmpty: v.boolean(),
@@ -385,6 +400,13 @@ export const getCart = internalQuery({
         subtotal: 0,
         discountTotal: 0,
         promotionSavingsTotal: 0,
+        shipping: 0,
+        deliveryCharge: 0,
+        deliveryMethod: "standard" as const,
+        deliveryMethodLabel: "Standard Delivery",
+        deliveryEstimate: "3-5 Business Days",
+        availableDeliveryMethods: [],
+        deliverySummary: "",
         total: 0,
         currency: "USD",
         isEmpty: true,
@@ -395,7 +417,12 @@ export const getCart = internalQuery({
 
     try {
       validateCartLines(cart.items);
-      const priced = await priceCheckoutCart(ctx, cart.items, args.now);
+      const priced = await priceCheckoutCart(
+        ctx,
+        cart.items,
+        args.now,
+        args.deliveryMethod
+      );
       const paidLines = priced.items.filter((line) => !line.isPromotionGift);
       const giftLines = priced.items.filter((line) => line.isPromotionGift);
 
@@ -420,6 +447,7 @@ export const getCart = internalQuery({
         priced.promotionSummaries,
         priced.currency
       );
+      const deliverySummary = formatVoiceCartDeliverySummary(priced);
 
       return {
         items,
@@ -428,6 +456,13 @@ export const getCart = internalQuery({
         subtotal: priced.subtotal,
         discountTotal: priced.discountTotal,
         promotionSavingsTotal: priced.promotionSavingsTotal,
+        shipping: priced.shipping,
+        deliveryCharge: priced.deliveryCharge,
+        deliveryMethod: priced.deliveryMethod,
+        deliveryMethodLabel: priced.deliveryMethodLabel,
+        deliveryEstimate: priced.deliveryEstimate,
+        availableDeliveryMethods: priced.availableDeliveryMethods,
+        deliverySummary,
         total: priced.total,
         currency: priced.currency,
         isEmpty: false,
@@ -439,6 +474,73 @@ export const getCart = internalQuery({
         error instanceof Error ? error.message : "Unable to price cart"
       );
     }
+  },
+});
+
+export const getDeliveryOptions = internalQuery({
+  args: {
+    conversationId: v.id("vapiConversations"),
+    now: v.number(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+  },
+  returns: v.object({
+    isEmpty: v.boolean(),
+    availableDeliveryMethods: v.array(voiceDeliveryMethodOptionValidator),
+    selectedDeliveryMethod: deliveryMethodTypeValidator,
+    deliveryMethodLabel: v.string(),
+    deliveryCharge: v.number(),
+    shipping: v.number(),
+    deliveryEstimate: v.string(),
+    currency: v.string(),
+    total: v.number(),
+    optionsSummary: v.string(),
+    deliverySummary: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const cart = await getCartDoc(ctx, args.conversationId);
+    if (!cart || cart.items.length === 0) {
+      return {
+        isEmpty: true,
+        availableDeliveryMethods: [],
+        selectedDeliveryMethod: "standard" as const,
+        deliveryMethodLabel: "Standard Delivery",
+        deliveryCharge: 0,
+        shipping: 0,
+        deliveryEstimate: "3-5 Business Days",
+        currency: "USD",
+        total: 0,
+        optionsSummary: "Your cart is empty.",
+        deliverySummary: "",
+      };
+    }
+
+    validateCartLines(cart.items);
+    const priced = await priceCheckoutCart(
+      ctx,
+      cart.items,
+      args.now,
+      args.deliveryMethod
+    );
+
+    const optionsSummary = formatVoiceDeliveryOptionsList(
+      priced.availableDeliveryMethods,
+      priced.currency
+    );
+    const deliverySummary = formatVoiceCartDeliverySummary(priced);
+
+    return {
+      isEmpty: false,
+      availableDeliveryMethods: priced.availableDeliveryMethods,
+      selectedDeliveryMethod: priced.deliveryMethod,
+      deliveryMethodLabel: priced.deliveryMethodLabel,
+      deliveryCharge: priced.deliveryCharge,
+      shipping: priced.shipping,
+      deliveryEstimate: priced.deliveryEstimate,
+      currency: priced.currency,
+      total: priced.total,
+      optionsSummary,
+      deliverySummary,
+    };
   },
 });
 
@@ -538,12 +640,18 @@ export const createCashOrder = internalMutation({
     conversationId: v.id("vapiConversations"),
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   returns: v.object({
     orderNumber: v.string(),
     total: v.number(),
     currency: v.string(),
     paymentMethod: v.literal("cod"),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+    deliveryMethodLabel: v.optional(v.string()),
+    deliveryCharge: v.optional(v.number()),
+    shipping: v.number(),
+    deliveryEstimate: v.optional(v.string()),
     message: v.string(),
     promotions: v.array(appliedPromotionSummaryValidator),
     promotionSummary: v.string(),
@@ -559,6 +667,7 @@ export const createCashOrder = internalMutation({
         lines,
         customer: args.customer,
         idempotencyKey: args.idempotencyKey,
+        deliveryMethod: args.deliveryMethod,
       });
 
     await clearCartItems(ctx, args.conversationId);
@@ -593,13 +702,26 @@ export const createCashOrder = internalMutation({
     const promotionMessage = promotionSummary
       ? `\nPromotions applied:\n${promotionSummary}`
       : "";
+    const deliveryMessage = formatVoiceOrderConfirmationDelivery({
+      deliveryMethod: order.deliveryMethod,
+      deliveryMethodLabel: order.deliveryMethodLabel,
+      deliveryEstimate: order.deliveryEstimate,
+      deliveryCharge: order.deliveryCharge,
+      shipping: order.shipping,
+      currency: order.currency,
+    });
 
     return {
       orderNumber: result.orderNumber,
       total: order.total,
       currency: order.currency,
       paymentMethod: "cod" as const,
-      message: `Order confirmed!\nOrder number: ${result.orderNumber}\nTotal: ${order.currency} ${order.total.toFixed(2)}${promotionMessage}\nPayment: Cash on delivery\nPay when your order arrives.`,
+      deliveryMethod: order.deliveryMethod,
+      deliveryMethodLabel: order.deliveryMethodLabel,
+      deliveryCharge: order.deliveryCharge,
+      shipping: order.shipping,
+      deliveryEstimate: order.deliveryEstimate,
+      message: `Order confirmed!\nOrder number: ${result.orderNumber}\nTotal: ${order.currency} ${order.total.toFixed(2)}${promotionMessage}\n${deliveryMessage}\nPayment: Cash on delivery\nPay when your order arrives.`,
       promotions,
       promotionSummary,
     };

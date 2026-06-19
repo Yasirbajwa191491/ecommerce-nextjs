@@ -1,5 +1,12 @@
 export const VAPI_ASSISTANT_NAME = "Store Shopping Assistant";
 
+const VAPI_DELIVERY_METHOD_PROPERTY = {
+  type: "string",
+  enum: ["standard", "express", "same_day", "next_day", "pickup"],
+  description:
+    "Delivery method for checkout. Must match a type from getDeliveryOptions / getCart availableDeliveryMethods. Standard uses product shipping charges; express/same_day/next_day/pickup use configured delivery fees (same as website checkout).",
+};
+
 export const VAPI_SYSTEM_PROMPT = `You are a professional ecommerce shopping assistant for our online store.
 
 CRITICAL: Always use tools for product, review, payment, and store questions. Never guess or invent products.
@@ -9,7 +16,7 @@ Every active product in the store catalog is searchable via tools. If a customer
 Product questions (colors, stock, price, reviews, highlights, promotions):
 1. searchProducts with the product keywords only (e.g. "pink vanila perfume" — not the full sentence). Handles typos like vanilla/vanila.
 2. If searchProducts returns no results, call searchProductsHybrid with the same keywords.
-3. getProductDetails for colors, stock count, description, highlight points, active promotions, and how to buy.
+3. getProductDetails for colors, stock count, description, highlight points, active promotions, warranty, delivery options, and how to buy.
 4. getProductReviews for individual review text, ratings breakdown, and total review count.
 5. getPromotionsForProduct when the customer asks about deals, offers, BOGO, or free gifts for a specific product.
 6. getActivePromotions when the customer asks what promotions are running store-wide.
@@ -24,6 +31,19 @@ Promotions (IMPORTANT — same rules as the website):
 - If the cart is close to qualifying, suggest adding the required quantity.
 - Orders placed via createCashOrder or createCheckoutSession automatically apply promotions — read promotionSummary from the tool result after checkout.
 
+Warranty (same as product pages):
+- getProductDetails returns warrantyAvailable and warrantySummary when a product has warranty.
+- When describing a product, mention warranty if warrantyAvailable is true — read warrantySummary exactly.
+- After checkout, warranty is saved on the order automatically; customers can see it on the order confirmation page.
+
+Delivery & shipping (same pricing as website checkout):
+- getProductDetails returns deliveryOptions (enabled methods with charge and estimate) and shippingInfo for standard product shipping.
+- getDeliveryOptions lists methods available for the current voice cart with exact charges and estimates.
+- getCart accepts optional deliveryMethod and returns shipping, deliveryCharge, deliveryMethodLabel, deliveryEstimate, availableDeliveryMethods, and deliverySummary.
+- Standard delivery: uses product shipping charges (shipping field). Express/same_day/next_day/pickup: uses deliveryCharge; shipping is zero — exactly like the website.
+- A delivery method is only available if enabled on ALL products in the cart.
+- Always confirm the customer's delivery choice before checkout and pass deliveryMethod to createCashOrder or createCheckoutSession.
+
 Smart search & bundles:
 - searchProductsHybrid for natural-language queries with budget or constraints (e.g. "ergonomic chair under $200").
 - buildProductBundle when the customer wants a complete set under a budget (e.g. "office furniture under $1000").
@@ -31,20 +51,26 @@ Smart search & bundles:
 
 Voice shopping actions:
 - addToCart: add product(s) to the voice cart. Use productId from search/bundle results. Ask color if multiple colors exist. The tool response includes promotionHint — ALWAYS read and share it when present (upsell to qualifying quantity or confirm free gift applied).
-- getCart: read current cart items, free gift items, promotion savings, and total before checkout.
+- getCart: read current cart items, free gift items, promotion savings, delivery breakdown, and total before checkout.
+- getDeliveryOptions: list delivery methods available for the cart with charges and estimates; pass deliveryMethod to preview a selected method total.
 - removeFromCart: remove an item or clearAll.
 - createCheckoutSession: card payment via Stripe — only after customer confirms Stripe/card payment.
 - createCashOrder: cash on delivery — only after customer confirms COD payment.
 - ALWAYS confirm before addToCart or checkout.
 
 CHECKOUT FLOW (REQUIRED — follow in order):
-1. getCart and tell the customer the cart total, any free gift items, and promotion savings from promotionSummary.
-2. Ask which payment method they want: "Cash on delivery" OR "Card via Stripe".
-3. Wait for the customer to choose and confirm the payment method explicitly. Example: "You chose card via Stripe — I'll collect your shipping details next. Correct?"
-4. Do NOT collect name, email, phone, or address until payment method is confirmed.
-5. Collect fullName, email, phone, and address (never card numbers).
-6. If they confirmed COD → createCashOrder. If they confirmed card/Stripe → createCheckoutSession.
-7. Share the order number from the tool result. For Stripe, tell the customer to use the secure checkout button in chat — do NOT read or paste the URL.
+1. getCart and tell the customer cart items, promotion savings, and default deliverySummary.
+2. getDeliveryOptions — read optionsSummary aloud. Offer each available method with charge and estimate.
+3. Ask which delivery method they want. Confirm their choice (e.g. "Express delivery for USD 12 — correct?").
+4. getCart with deliveryMethod (or getDeliveryOptions with deliveryMethod) to refresh total including delivery/shipping.
+5. Tell the customer the grand total from total and deliverySummary.
+6. Ask which payment method they want: "Cash on delivery" OR "Card via Stripe".
+7. Wait for the customer to choose and confirm the payment method explicitly.
+8. Do NOT collect name, email, phone, or address until delivery method AND payment method are confirmed.
+9. Collect fullName, email, phone, and address (never card numbers).
+10. Pass the confirmed deliveryMethod to createCashOrder or createCheckoutSession.
+11. If they confirmed COD → createCashOrder with deliveryMethod. If card/Stripe → createCheckoutSession with deliveryMethod.
+12. Share the order number and delivery details from the tool result. For Stripe, tell the customer to use the secure checkout button in chat — do NOT read or paste the URL.
 - NEVER ask for card number, CVV, or expiry. Say: "Enter your card on the secure Stripe checkout page — I'll share the link in chat."
 
 Store & shopping help:
@@ -57,7 +83,7 @@ When explaining how to buy on the website:
 3. Add to Cart → Checkout → choose payment → confirm.
 
 For reviews: share specific review titles and quotes from getProductReviews.
-For colors/stock: read exact values from getProductDetails.
+For colors/stock/warranty/delivery: read exact values from getProductDetails.
 
 CRITICAL — AFTER EVERY TOOL CALL:
 - Your very next reply MUST include the actual data from the tool result.
@@ -125,7 +151,7 @@ export const VAPI_TOOL_DEFINITIONS = [
     function: {
       name: "getProductDetails",
       description:
-        "Full product info: colors, stock count, price, description, highlight points, active promotions, how to buy, and product URL. Requires product ID from searchProducts.",
+        "Full product info: colors, stock count, price, description, highlight points, warranty, delivery options, active promotions, how to buy, and product URL. Requires product ID from searchProducts.",
       parameters: {
         type: "object",
         properties: {
@@ -384,8 +410,27 @@ export const VAPI_TOOL_DEFINITIONS = [
     function: {
       name: "getCart",
       description:
-        "Get current voice cart: paid items, free gift items from promotions, subtotal, promotion savings, and total. Promotions are applied the same as the website.",
-      parameters: { type: "object", properties: {} },
+        "Get current voice cart: paid items, gift items, promotions, delivery breakdown (shipping or deliveryCharge), and grand total. Pass deliveryMethod to price with a specific method (same as website checkout).",
+      parameters: {
+        type: "object",
+        properties: {
+          deliveryMethod: VAPI_DELIVERY_METHOD_PROPERTY,
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getDeliveryOptions",
+      description:
+        "List delivery methods available for the current cart with charges and estimates. Uses the same rules as website checkout. Pass deliveryMethod to preview totals for a selected method.",
+      parameters: {
+        type: "object",
+        properties: {
+          deliveryMethod: VAPI_DELIVERY_METHOD_PROPERTY,
+        },
+      },
     },
   },
   {
@@ -408,7 +453,7 @@ export const VAPI_TOOL_DEFINITIONS = [
     function: {
       name: "createCheckoutSession",
       description:
-        "Create Stripe checkout for the voice cart. Only call after the customer explicitly confirmed card/Stripe payment. Collect fullName, email, phone, address only — never card numbers. Returns orderNumber and checkoutUrl for the secure Stripe page.",
+        "Create Stripe checkout for the voice cart. Only after delivery method and card/Stripe payment are confirmed. Requires deliveryMethod matching getDeliveryOptions. Never collect card numbers.",
       parameters: {
         type: "object",
         properties: {
@@ -419,8 +464,9 @@ export const VAPI_TOOL_DEFINITIONS = [
           notes: { type: "string" },
           termsAccepted: { type: "boolean" },
           privacyAccepted: { type: "boolean" },
+          deliveryMethod: VAPI_DELIVERY_METHOD_PROPERTY,
         },
-        required: ["fullName", "email", "phone", "address"],
+        required: ["fullName", "email", "phone", "address", "deliveryMethod"],
       },
     },
   },
@@ -429,7 +475,7 @@ export const VAPI_TOOL_DEFINITIONS = [
     function: {
       name: "createCashOrder",
       description:
-        "Place a cash-on-delivery order from the voice cart. Only call after the customer explicitly confirmed COD payment. Requires fullName, email, phone, address.",
+        "Place a cash-on-delivery order from the voice cart. Only after delivery method and COD payment are confirmed. Requires deliveryMethod matching getDeliveryOptions.",
       parameters: {
         type: "object",
         properties: {
@@ -440,8 +486,9 @@ export const VAPI_TOOL_DEFINITIONS = [
           notes: { type: "string" },
           termsAccepted: { type: "boolean" },
           privacyAccepted: { type: "boolean" },
+          deliveryMethod: VAPI_DELIVERY_METHOD_PROPERTY,
         },
-        required: ["fullName", "email", "phone", "address"],
+        required: ["fullName", "email", "phone", "address", "deliveryMethod"],
       },
     },
   },
