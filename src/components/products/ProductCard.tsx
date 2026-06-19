@@ -20,6 +20,13 @@ import { MotionHoverImage } from "@/components/motion";
 import { cardTap, fadeUp } from "@/lib/motion";
 import { hoverOrchestrator, hoverShadowGlow } from "@/lib/motion/image-card-hover";
 import { viewportReveal } from "@/lib/motion/transitions";
+import {
+  PRODUCT_CARD_BRAND,
+  PRODUCT_CARD_CATEGORY,
+  PRODUCT_CARD_NAME,
+  PRODUCT_CARD_RATING,
+  SHOP_BODY_SM,
+} from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type ProductCardProps = Product & {
@@ -93,18 +100,21 @@ export default function ProductCard({
         >
           <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-2">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <span className="rounded-full bg-[#6254f3]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#6254f3] uppercase">
+              <span
+                className={cn(
+                  "rounded-full bg-[#6254f3]/10 px-2.5 py-0.5 text-[#6254f3]",
+                  PRODUCT_CARD_CATEGORY
+                )}
+              >
                 {categoryName}
               </span>
-              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {product.company}
-              </span>
+              <span className={PRODUCT_CARD_BRAND}>{product.company}</span>
             </div>
-            <h3 className="line-clamp-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+            <h3 className={cn("line-clamp-1 min-h-0", PRODUCT_CARD_NAME)}>
               {product.name}
             </h3>
             {product.description ? (
-              <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              <p className={cn("line-clamp-2", SHOP_BODY_SM)}>
                 {product.description}
               </p>
             ) : null}
@@ -112,6 +122,7 @@ export default function ProductCard({
               rating={product.stars}
               reviewCount={product.reviews}
               compact
+              className={PRODUCT_CARD_RATING}
             />
             <ProductStockBadge stock={product.stock} variant="list" />
           </div>
@@ -173,7 +184,7 @@ export default function ProductCard({
                   className="rounded-none"
                 />
               </MotionHoverImage>
-              <span className="absolute top-3 right-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#6254f3] uppercase shadow-sm backdrop-blur-sm">
+              <span className={cn("absolute top-3 right-3", PRODUCT_CARD_CATEGORY)}>
                 {categoryName}
               </span>
               {(discountPercent > 0 || freeShipping) && (
@@ -193,26 +204,28 @@ export default function ProductCard({
               ) : null}
             </div>
 
-            <div className="flex min-h-[8rem] flex-1 flex-col gap-2 p-4">
-              <p className="truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            <div className="flex min-h-[9rem] flex-1 flex-col gap-2.5 p-4 sm:p-5">
+              <p className={PRODUCT_CARD_BRAND}>
                 {product.company}
               </p>
-              <h3 className="line-clamp-2 h-[2.75rem] text-base font-semibold leading-snug tracking-tight text-foreground">
+              <h3 className={PRODUCT_CARD_NAME}>
                 {product.name}
               </h3>
               <ProductRatingDisplay
                 rating={product.stars}
                 reviewCount={product.reviews}
-                compact
+                size="md"
+                className={PRODUCT_CARD_RATING}
               />
               <div className="flex w-fit max-w-full flex-wrap items-start gap-2">
                 <ProductStockBadge stock={product.stock} variant="compact" />
               </div>
-              <div className="mt-auto border-t border-border/50 pt-2.5">
+              <div className="mt-auto border-t border-border/50 pt-3">
                 <ProductPrice
                   price={product.price}
                   discountPercent={discountPercent}
                   currency={product.currency}
+                  size="lg"
                 />
               </div>
             </div>

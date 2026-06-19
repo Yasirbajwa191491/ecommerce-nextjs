@@ -10,6 +10,7 @@ import { sectionHeaderContainer, sectionHeaderItem } from "@/lib/motion/variants
 import { viewportRevealHeadline } from "@/lib/motion/transitions";
 import {
   SHOP_EYEBROW,
+  SHOP_SECTION_ACTION,
   SHOP_SECTION_LEAD,
   SHOP_SECTION_TITLE,
 } from "@/lib/typography";
@@ -72,7 +73,7 @@ export function AnimatedSectionHeader({
             variants={sectionHeaderItem}
             className={cn(SHOP_EYEBROW, "mt-0")}
           >
-            {BadgeIcon ? <BadgeIcon className="size-3.5 sm:size-4" /> : null}
+            {BadgeIcon ? <BadgeIcon className="size-4 sm:size-5" /> : null}
             {badge}
           </m.span>
         ) : null}
@@ -83,7 +84,7 @@ export function AnimatedSectionHeader({
           {title}
         </m.h2>
         {description ? (
-          <m.p variants={sectionHeaderItem} className={SHOP_SECTION_LEAD}>
+          <m.p variants={sectionHeaderItem} className={cn(SHOP_SECTION_LEAD, isCenter && "mx-auto")}>
             {description}
           </m.p>
         ) : null}
@@ -96,12 +97,12 @@ export function AnimatedSectionHeader({
             variant="outline"
             className={cn(
               SECTION_ACTION_BUTTON_CLASS,
-              "h-11 px-6 text-base",
+              SHOP_SECTION_ACTION,
               isCenter && "self-center sm:self-center"
             )}
           >
             {action.label}
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-4 sm:size-5" />
           </Button>
         </m.div>
       ) : null}
@@ -132,7 +133,7 @@ export function SectionHeaderStatic({
       <div className={cn("min-w-0 max-w-3xl", isCenter && "mx-auto text-center")}>
         {badge ? (
           <span className={SHOP_EYEBROW}>
-            {BadgeIcon ? <BadgeIcon className="size-3.5 sm:size-4" /> : null}
+            {BadgeIcon ? <BadgeIcon className="size-4 sm:size-5" /> : null}
             {badge}
           </span>
         ) : null}
@@ -140,7 +141,7 @@ export function SectionHeaderStatic({
           {title}
         </h2>
         {description ? (
-          <p className={SHOP_SECTION_LEAD}>{description}</p>
+          <p className={cn(SHOP_SECTION_LEAD, isCenter && "mx-auto")}>{description}</p>
         ) : null}
       </div>
 
@@ -150,12 +151,12 @@ export function SectionHeaderStatic({
           variant="outline"
           className={cn(
             SECTION_ACTION_BUTTON_CLASS,
-            "h-11 px-6 text-base",
+            SHOP_SECTION_ACTION,
             isCenter && "self-center sm:self-center"
           )}
         >
           {action.label}
-          <ArrowRight className="size-4" />
+          <ArrowRight className="size-4 sm:size-5" />
         </Button>
       ) : null}
     </div>

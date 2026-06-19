@@ -6,6 +6,7 @@ import {
   formatPromotionEndsAt,
   formatPromotionEndsAtCompact,
 } from "@/lib/promotion-datetime";
+import { SHOP_BODY_SM } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type PromotionEndsLabelProps = {
@@ -47,10 +48,8 @@ export function PromotionEndsLabel({
         className={cn(
           "flex items-center gap-1.5",
           variant === "overlay"
-            ? "text-[11px] font-medium text-amber-100/95 sm:text-xs"
-            : variant === "compact"
-              ? "text-[10px] text-muted-foreground sm:text-[11px]"
-              : "text-xs text-muted-foreground sm:text-sm",
+            ? "text-sm font-medium text-amber-100/95 sm:text-base"
+            : SHOP_BODY_SM,
           className
         )}
       >
@@ -68,10 +67,8 @@ export function PromotionEndsLabel({
       className={cn(
         "flex items-center gap-1.5",
         variant === "overlay"
-          ? "text-[11px] font-medium text-amber-100/95 sm:text-xs"
-          : variant === "compact"
-            ? "text-[10px] text-muted-foreground sm:text-[11px]"
-            : "text-xs text-muted-foreground sm:text-sm",
+          ? "text-sm font-medium text-amber-100/95 sm:text-base"
+          : SHOP_BODY_SM,
         className
       )}
     >

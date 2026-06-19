@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastError, toastSuccess } from "@/lib/app-toast";
+import { SHOP_BODY, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 5;
@@ -124,12 +125,8 @@ export function ProductReviewSection({
   return (
     <section className={cn("space-y-8", className)}>
       <div>
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          Customer reviews
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Ratings from verified purchases
-        </p>
+        <h2 className={SHOP_SUBSECTION_TITLE}>Customer reviews</h2>
+        <p className={cn("mt-1", SHOP_BODY)}>Ratings from verified purchases</p>
       </div>
 
       <ReviewAiSummary
@@ -150,7 +147,7 @@ export function ProductReviewSection({
                 rating={summary.averageRating}
                 className="[&_span]:text-base [&_svg]:size-5"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className={SHOP_BODY}>
                 <span className="font-semibold text-foreground">
                   {summary.averageRating.toFixed(1)} out of 5
                 </span>
@@ -167,7 +164,7 @@ export function ProductReviewSection({
           {summary.totalReviews > 0 ? (
             <RatingBreakdown distribution={summary.distribution} />
           ) : null}
-          <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+          <div className={cn("rounded-xl bg-muted/40 p-4", SHOP_BODY)}>
             Purchased this item?{" "}
             <Link href="/track-order" className="font-medium text-[#6254f3] hover:underline">
               Track your order

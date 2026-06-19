@@ -39,11 +39,7 @@ export function ProductStockBadge({
     <span
       className={cn(
         "inline-flex w-fit max-w-full shrink-0 items-center rounded-full font-semibold uppercase tracking-wide",
-        variant === "compact"
-          ? "px-2 py-0.5 text-[10px]"
-          : variant === "list"
-            ? "px-2.5 py-1 text-[11px]"
-            : "px-2.5 py-1 text-[11px]",
+        "px-2.5 py-1 text-sm sm:text-base",
         STOCK_STYLES[status],
         className
       )}

@@ -7,7 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PAGE_GUTTER } from "@/lib/layout-constants";
+import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
 
 const BRAND_SKELETON_COUNT = 6;
@@ -20,7 +20,7 @@ export function PopularBrandsSection() {
   }
 
   return (
-    <section className="border-y border-border/60 bg-muted/20 py-10 sm:py-12">
+    <section className={cn("border-y border-border/60 bg-muted/20", SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Partners"

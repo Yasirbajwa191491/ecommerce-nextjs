@@ -5,7 +5,9 @@ import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { AboutSectionHeader } from "@/components/about/about-section-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { ABOUT_CARD_GRID_CLASS, PAGE_GUTTER } from "@/lib/layout-constants";
+import { ABOUT_CARD_GRID_CLASS, PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { SHOP_BODY_SM, SHOP_CARD_TITLE } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type ContactCard = {
   icon: typeof MapPin;
@@ -43,7 +45,7 @@ export function AboutContactSection() {
   ];
 
   return (
-    <section className="bg-background py-6 sm:py-10 md:py-12 lg:py-14">
+    <section className={cn("bg-background", SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AboutSectionHeader
           badge="Contact"
@@ -58,11 +60,11 @@ export function AboutContactSection() {
               key={title}
               className="border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md"
             >
-              <CardContent className="flex flex-col p-3 sm:p-4">
+              <CardContent className="flex flex-col p-5 sm:p-6">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-[#6254f3]/10 text-[#6254f3] sm:size-9 sm:rounded-xl">
                   <Icon className="size-4 sm:size-5" />
                 </span>
-                <p className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm">
+                <p className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
                   {title}
                 </p>
                 {lines.map((line) =>
@@ -70,14 +72,17 @@ export function AboutContactSection() {
                     <a
                       key={line}
                       href={href}
-                      className="mt-1 wrap-break-word text-[11px] text-muted-foreground transition-colors hover:text-[#6254f3] sm:text-xs md:text-sm"
+                      className={cn(
+                        "mt-1 wrap-break-word transition-colors hover:text-[#6254f3]",
+                        SHOP_BODY_SM
+                      )}
                     >
                       {line}
                     </a>
                   ) : (
                     <p
                       key={line}
-                      className="mt-1 wrap-break-word text-[11px] leading-snug text-muted-foreground sm:text-xs md:text-sm md:leading-relaxed"
+                      className={cn("mt-1 wrap-break-word", SHOP_BODY_SM)}
                     >
                       {line}
                     </p>

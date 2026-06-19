@@ -1,7 +1,8 @@
 "use client";
 
 import { Banknote, CreditCard } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { ShopLabel } from "@/components/shop";
+import { SHOP_BODY_SM } from "@/lib/typography";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/validation/checkout-form";
@@ -38,9 +39,9 @@ export function PaymentMethodSelector({
 }: PaymentMethodSelectorProps) {
   return (
     <div className="space-y-3">
-      <Label className="text-sm font-medium">
+      <ShopLabel>
         Payment method <span className="text-destructive">*</span>
-      </Label>
+      </ShopLabel>
       <RadioGroup
         value={value}
         onValueChange={(next) => onChange(next as PaymentMethod)}
@@ -55,7 +56,7 @@ export function PaymentMethodSelector({
             <label
               key={optionValue}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors",
+                "flex cursor-pointer items-start gap-3 rounded-xl border p-5 transition-colors",
                 selected
                   ? "border-[#6254f3]/50 bg-[#6254f3]/5 ring-1 ring-[#6254f3]/20"
                   : "border-border/60 bg-card hover:bg-muted/20",
@@ -67,10 +68,10 @@ export function PaymentMethodSelector({
                 <Icon className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-foreground">
+                <span className="block text-base font-semibold text-foreground">
                   {label}
                 </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
+                <span className={cn("mt-0.5 block", SHOP_BODY_SM)}>
                   {description}
                 </span>
               </span>

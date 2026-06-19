@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/carousel";
 import { formatCurrencyAmount } from "@/lib/currencies";
 import { EASE_PREMIUM } from "@/lib/motion";
+import {
+  HERO_CARD_PRICE,
+  HERO_CARD_PRICE_COMPACT,
+  HERO_CARD_PRODUCT_NAME,
+  HERO_CARD_PRODUCT_NAME_COMPACT,
+  SHOP_BADGE,
+} from "@/lib/typography";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -86,13 +93,18 @@ function HeroProductCardShell({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a1435]/70 via-[#0a1435]/10 to-transparent" />
           {product.discountPercent > 0 ? (
-            <span className="absolute top-3 left-3 rounded-full bg-[#6254f3] px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-white shadow-lg">
+            <span
+              className={cn(
+                "absolute top-3 left-3 rounded-full bg-[#6254f3] px-2.5 py-0.5 text-white shadow-lg",
+                SHOP_BADGE
+              )}
+            >
               −{product.discountPercent}%
             </span>
           ) : null}
         </div>
-        <div className="border-t border-white/10 bg-[#0a1435]/80 px-4 py-3.5 backdrop-blur-md">
-          <p className="line-clamp-1 text-base font-semibold text-white">{product.name}</p>
+        <div className="border-t border-white/10 bg-[#0a1435]/80 px-4 py-3.5 backdrop-blur-md sm:px-5 sm:py-4">
+          <p className={HERO_CARD_PRODUCT_NAME}>{product.name}</p>
           {product.price > 0 ? (
             <div className="mt-1.5">
               <HeroCardPrice
@@ -151,8 +163,7 @@ function HeroCardPrice({
     <div className="flex flex-wrap items-baseline gap-1.5">
       <span
         className={cn(
-          "font-bold text-white",
-          compact ? "text-xs sm:text-sm" : "text-sm sm:text-base"
+          compact ? HERO_CARD_PRICE_COMPACT : HERO_CARD_PRICE
         )}
       >
         {formatCurrencyAmount(finalPrice, currency)}
@@ -161,7 +172,7 @@ function HeroCardPrice({
         <span
           className={cn(
             "text-white/45 line-through",
-            compact ? "text-[10px] sm:text-xs" : "text-xs"
+            compact ? "text-xs sm:text-sm" : "text-sm sm:text-base"
           )}
         >
           {formatCurrencyAmount(price, currency)}
@@ -291,7 +302,12 @@ function ShowcaseProductCard({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a1435]/70 via-[#0a1435]/10 to-transparent" />
               {product.discountPercent > 0 ? (
-                <span className="absolute top-2.5 left-2.5 rounded-full bg-[#6254f3] px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-lg sm:text-[11px]">
+                <span
+                  className={cn(
+                    "absolute top-2.5 left-2.5 rounded-full bg-[#6254f3] px-2 py-0.5 text-white shadow-lg",
+                    SHOP_BADGE
+                  )}
+                >
                   −{product.discountPercent}%
                 </span>
               ) : null}
@@ -300,15 +316,16 @@ function ShowcaseProductCard({
               className={cn(
                 "border-t border-white/10 bg-[#0a1435]/80 backdrop-blur-md",
                 isFeatured
-                  ? "px-3.5 py-3 sm:px-4 sm:py-3.5"
-                  : "px-2.5 py-2 sm:px-3 sm:py-2.5"
+                  ? "px-4 py-3.5 sm:px-5 sm:py-4"
+                  : "px-3 py-2.5 sm:px-3.5 sm:py-3"
               )}
             >
               <p
-                className={cn(
-                  "line-clamp-1 font-semibold text-white",
-                  isFeatured ? "text-sm sm:text-base" : "text-[11px] sm:text-xs"
-                )}
+                className={
+                  isFeatured
+                    ? HERO_CARD_PRODUCT_NAME
+                    : HERO_CARD_PRODUCT_NAME_COMPACT
+                }
               >
                 {product.name}
               </p>
@@ -393,7 +410,10 @@ function DesktopShowcase({
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15, ease: EASE_PREMIUM }}
-        className="pointer-events-none absolute top-[6%] right-[8%] z-40 flex items-center gap-1.5 rounded-full border border-white/15 bg-[#6254f3]/90 px-3 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase shadow-lg backdrop-blur-sm sm:text-[11px]"
+        className={cn(
+          "pointer-events-none absolute top-[6%] right-[8%] z-40 flex items-center gap-1.5 rounded-full border border-white/15 bg-[#6254f3]/90 px-3 py-1.5 text-white shadow-lg backdrop-blur-sm",
+          SHOP_BADGE
+        )}
       >
         <Sparkles className="size-3" />
         Featured
@@ -481,12 +501,15 @@ function MobileShowcaseCarousel({
           initial={reduceMotion ? false : { opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease: EASE_PREMIUM }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#6254f3]/90 px-3 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase shadow-lg backdrop-blur-sm"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#6254f3]/90 px-3 py-1.5 text-white shadow-lg backdrop-blur-sm",
+            SHOP_BADGE
+          )}
         >
           <Sparkles className="size-3" />
           Featured
         </m.div>
-        <p className="text-[11px] font-medium tracking-wide text-white/50 tabular-nums">
+        <p className="text-sm font-medium tracking-wide text-white/50 tabular-nums">
           {selectedIndex + 1} / {products.length}
         </p>
       </div>
@@ -566,7 +589,7 @@ function MobileShowcaseCarousel({
         </div>
       ) : null}
 
-      <p className="mt-3 text-center text-[11px] font-medium tracking-wide text-white/40">
+      <p className="mt-3 text-center text-sm font-medium tracking-wide text-white/40">
         Swipe to explore featured products
       </p>
     </div>

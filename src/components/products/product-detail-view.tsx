@@ -33,12 +33,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { orderImagesForDisplay } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
 import {
+  SHOP_BADGE,
   SHOP_BODY,
+  SHOP_BODY_SM,
   SHOP_BREADCRUMB,
   SHOP_META_LABEL,
   SHOP_PRODUCT_TITLE,
   SHOP_SUBSECTION_TITLE,
 } from "@/lib/typography";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 
 type ProductDetailViewProps = {
   params: Promise<{ id: string }>;
@@ -46,7 +49,10 @@ type ProductDetailViewProps = {
 
 function ProductDetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+    <div
+      className={cn("mx-auto w-full max-w-7xl", CONTENT_SECTION_PADDING_Y)}
+      style={PAGE_GUTTER}
+    >
       <Skeleton className="mb-8 h-5 w-64 max-w-full" />
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
         <Skeleton className="aspect-square w-full rounded-2xl" />
@@ -96,7 +102,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
         <h1 className="text-2xl font-semibold text-foreground">
           Product not found
         </h1>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        <p className={cn("mt-2 max-w-md", SHOP_BODY)}>
           This product may have been removed or the link is incorrect.
         </p>
         <Link
@@ -131,7 +137,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
     activePromotions?.filter((promo) => !promoId || promo._id !== promoId) ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+    <div
+      className={cn("mx-auto w-full max-w-7xl", CONTENT_SECTION_PADDING_Y)}
+      style={PAGE_GUTTER}
+    >
       <nav
         aria-label="Breadcrumb"
         className={cn("mb-6 sm:mb-8", SHOP_BREADCRUMB)}
@@ -164,19 +173,23 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant="secondary"
-              className="rounded-full bg-[#6254f3]/10 px-3 py-0.5 text-[11px] font-semibold tracking-wide text-[#6254f3] uppercase"
+              className={cn(
+                "rounded-full bg-[#6254f3]/10 px-3 py-0.5 font-semibold text-[#6254f3]",
+                SHOP_BADGE
+              )}
             >
               {categoryName}
             </Badge>
             {singleProduct.featured ? (
-              <Badge className="rounded-full bg-amber-500/15 px-3 py-0.5 text-[11px] font-semibold tracking-wide text-amber-700 uppercase hover:bg-amber-500/15">
+              <Badge className={cn("rounded-full bg-amber-500/15 px-3 py-0.5 font-semibold text-amber-700 hover:bg-amber-500/15", SHOP_BADGE)}>
                 Featured
               </Badge>
             ) : null}
             <Badge
               variant="outline"
               className={cn(
-                "rounded-full px-3 py-0.5 text-[11px] font-semibold uppercase",
+                "rounded-full px-3 py-0.5 font-semibold uppercase",
+                SHOP_BADGE,
                 inStock
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-red-200 bg-red-50 text-red-600"
@@ -223,9 +236,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
 
           <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Price
-              </p>
+              <p className={SHOP_META_LABEL}>Price</p>
               <ProductDiscountBadge discountPercent={discountPercent} />
             </div>
             <ProductPrice
@@ -265,7 +276,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           ) : null}
 
           {singleProduct.description ? (
-            <p className={cn("whitespace-pre-line", SHOP_BODY)}>
+            <p className={cn("max-w-2xl whitespace-pre-line", SHOP_BODY)}>
               {singleProduct.description}
             </p>
           ) : null}
@@ -274,7 +285,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
 
           <ProductDeliveryOptions product={singleProduct} />
 
-          <dl className="grid gap-3 rounded-2xl border border-border/60 bg-card p-4 text-sm sm:grid-cols-2 sm:p-5">
+          <dl className={cn("grid gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:grid-cols-2 sm:p-5", SHOP_BODY_SM)}>
             <div>
               <dt className="text-muted-foreground">Brand</dt>
               <dd className="mt-0.5 font-semibold text-foreground">
@@ -312,7 +323,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
                 <span className="flex size-11 items-center justify-center rounded-full bg-muted">
                   <Icon className="size-5 text-[#6254f3]" />
                 </span>
-                <p className="text-[11px] font-medium leading-snug text-muted-foreground sm:text-xs">
+                <p className={cn("leading-snug", SHOP_BODY_SM)}>
                   {label}
                 </p>
               </div>
@@ -354,7 +365,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           <h2 className={SHOP_SUBSECTION_TITLE}>
             Product description
           </h2>
-          <p className={cn("mt-4 max-w-3xl whitespace-pre-line", SHOP_BODY)}>
+          <p className={cn("mt-4 max-w-2xl whitespace-pre-line", SHOP_BODY)}>
             {singleProduct.description}
           </p>
         </section>

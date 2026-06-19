@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { BadgeCheck, ThumbsUp } from "lucide-react";
 import { ProductStars } from "@/components/products/product-stars";
 import { Button } from "@/components/ui/button";
+import { SHOP_BODY, SHOP_BODY_EMPHASIS, SHOP_BODY_SM, SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 export type PublicReview = {
@@ -43,14 +44,14 @@ export function ReviewCard({
   return (
     <article
       className={cn(
-        "rounded-2xl border border-border/60 bg-card p-5 shadow-sm",
+        "rounded-2xl border border-border/60 bg-card p-6 shadow-sm",
         className
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-foreground">{review.customerName}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className={cn("mt-1", SHOP_BODY_SM)}>
             {formatReviewDate(review.createdAt)}
           </p>
         </div>
@@ -59,20 +60,20 @@ export function ReviewCard({
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {review.isVerifiedPurchase ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-sm font-medium text-emerald-700">
             <BadgeCheck className="size-3.5" />
             Verified Purchase
           </span>
         ) : null}
         {review.aiTags?.map((tag) => (
-          <Badge key={tag} variant="outline" className="rounded-full text-xs">
+          <Badge key={tag} variant="outline" className="rounded-full text-sm">
             {tag}
           </Badge>
         ))}
       </div>
 
       <h3 className="mt-3 font-semibold text-foreground">{review.title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+      <p className={cn("mt-2", SHOP_BODY)}>
         {review.content}
       </p>
 
@@ -100,10 +101,10 @@ export function ReviewCard({
 
       {review.adminReplyPublished ? (
         <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className={SHOP_META_LABEL}>
             Store response
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-foreground">
+          <p className={cn("mt-2", SHOP_BODY_EMPHASIS)}>
             {review.adminReplyPublished}
           </p>
         </div>

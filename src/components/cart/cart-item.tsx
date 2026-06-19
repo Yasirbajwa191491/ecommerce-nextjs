@@ -17,6 +17,13 @@ import {
 } from "@/components/cart/cart-line-pricing";
 import type { CartItem as CartItemType } from "@/reducer/cartReducer";
 import { listItem } from "@/lib/motion";
+import {
+  SHOP_BADGE,
+  SHOP_LINE_ITEM_META,
+  SHOP_LINE_ITEM_PRICE,
+  SHOP_LINE_ITEM_TITLE,
+  SHOP_META_LABEL,
+} from "@/lib/typography";
 
 type CartItemProps = {
   item: CartItemType;
@@ -34,7 +41,8 @@ function StockBadge({ max, amount }: { max: number; amount: number }) {
     <Badge
       variant="outline"
       className={cn(
-        "w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        "w-fit rounded-full px-2 py-0.5",
+        SHOP_BADGE,
         lowStock
           ? "border-amber-200 bg-amber-50 text-amber-700"
           : "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -141,7 +149,7 @@ export function CartItemMobile({
         <CartProductImage item={item} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-base font-semibold leading-snug text-foreground">
+            <h3 className={cn("line-clamp-2 leading-snug", SHOP_LINE_ITEM_TITLE)}>
               {item.name}
             </h3>
             <RemoveButton item={item} onRemove={onRemove} />
@@ -154,7 +162,7 @@ export function CartItemMobile({
               />
             </div>
           ) : (
-            <p className="mt-1 text-sm font-medium tabular-nums text-muted-foreground">
+            <p className={cn("mt-1 font-medium tabular-nums", SHOP_LINE_ITEM_META)}>
               <FormatPrice price={item.price} currency={currency} /> each
             </p>
           )}
@@ -172,10 +180,8 @@ export function CartItemMobile({
           onDecrement={onDecrement}
         />
         <div className="text-right">
-          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Line total
-          </p>
-          <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+          <p className={SHOP_META_LABEL}>Line total</p>
+          <p className={cn("mt-0.5", SHOP_LINE_ITEM_PRICE)}>
             <FormatPrice price={lineTotal} currency={currency} />
           </p>
         </div>
@@ -214,7 +220,7 @@ export function CartItemRow({
         <div className="flex min-w-0 items-center gap-5">
           <CartProductImage item={item} size="lg" />
           <div className="min-w-0 space-y-2.5">
-            <h3 className="text-base font-semibold leading-snug text-foreground">
+            <h3 className={cn("leading-snug", SHOP_LINE_ITEM_TITLE)}>
               {item.name}
             </h3>
             <div className="flex flex-wrap items-center gap-2">
@@ -250,8 +256,10 @@ export function CartItemRow({
         </div>
       </TableCell>
 
-      <TableCell className="w-32 py-6 text-right text-base font-bold tabular-nums text-foreground">
-        <FormatPrice price={lineTotal} currency={currency} />
+      <TableCell className="w-32 py-6 text-right">
+        <span className={SHOP_LINE_ITEM_PRICE}>
+          <FormatPrice price={lineTotal} currency={currency} />
+        </span>
       </TableCell>
 
       <TableCell className="w-28 whitespace-normal py-6 pr-8 text-right xl:pr-10">

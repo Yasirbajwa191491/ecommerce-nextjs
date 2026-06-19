@@ -8,6 +8,7 @@ import {
   FilterSidebarSection,
 } from "@/components/products/catalog-filter-sections/filter-sidebar-section";
 import { getColorFamilyHex } from "@/lib/color-families";
+import { SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type ColorFamilyFilterProps = {
@@ -47,7 +48,7 @@ export function ColorFamilyFilterSection({
                 <ColorSwatch color={hex} showLabel={false} />
                 <span>{color.name}</span>
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 ({color.count})
               </span>
             </Label>
@@ -67,7 +68,7 @@ export function ColorFamilyFilterSection({
 
   return (
     <div className={cn("space-y-3 lg:space-y-4", className)}>
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <p className={SHOP_META_LABEL}>
         Color Family
       </p>
       {content}

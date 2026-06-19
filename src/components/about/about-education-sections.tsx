@@ -30,7 +30,7 @@ import {
   WHY_SHOP_FEATURES,
 } from "@/lib/about-content";
 import { OUTLINE_BUTTON_CLASS, PAGE_GUTTER, PRIMARY_BUTTON_CLASS, ABOUT_CARD_GRID_CLASS } from "@/lib/layout-constants";
-import { SHOP_BODY } from "@/lib/typography";
+import { SHOP_BADGE, SHOP_BODY, SHOP_CARD_TITLE, SHOP_META_LABEL, SHOP_STORY_BODY, SHOP_STORY_HIGHLIGHT, SHOP_STORY_LEAD } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 function SectionShell({
@@ -59,24 +59,25 @@ export function AboutStorySection() {
             badgeIcon={BookOpen}
             title={ABOUT_STORY.title}
             description={ABOUT_STORY.subtitle}
+            descriptionClassName={SHOP_STORY_LEAD}
             align="left"
             className="mx-0 max-w-none text-left"
           />
-          <StaggerGroup className="mt-6 space-y-4">
+          <StaggerGroup className="mt-8 space-y-5">
             {ABOUT_STORY.paragraphs.map((paragraph, index) => (
               <StaggerItem key={paragraph.slice(0, 32)} index={index} variant="up">
-                <p className={SHOP_BODY}>
+                <p className={SHOP_STORY_BODY}>
                   {paragraph}
                 </p>
               </StaggerItem>
             ))}
           </StaggerGroup>
-          <StaggerGroup className="mt-6 space-y-3">
+          <StaggerGroup className="mt-8 space-y-4">
             {ABOUT_STORY.highlights.map((item, index) => (
               <StaggerItem key={item} index={index} variant="up">
-                <div className={cn("flex items-start gap-3 text-foreground", SHOP_BODY)}>
-                  <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
-                    <Sparkles className="size-3" />
+                <div className={cn("flex items-start gap-3 sm:gap-4", SHOP_STORY_HIGHLIGHT)}>
+                  <span className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3] sm:mt-1.5 sm:size-8">
+                    <Sparkles className="size-4 sm:size-[1.125rem]" />
                   </span>
                   {item}
                 </div>
@@ -119,10 +120,10 @@ export function AboutHowItWorksSection() {
                 <Icon className="size-4 sm:size-5" />
               </span>
             </div>
-            <h3 className="mt-3 text-xs font-semibold text-foreground sm:mt-4 sm:text-sm md:text-base">
+            <h3 className={cn("mt-3 sm:mt-4", SHOP_CARD_TITLE)}>
               {title}
             </h3>
-            <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground sm:mt-2 sm:text-xs md:text-sm md:leading-relaxed">
+            <p className={cn("mt-1.5 sm:mt-2", SHOP_BODY)}>
               {description}
             </p>
           </li>
@@ -151,10 +152,10 @@ export function AboutWhyShopSection() {
               <span className="flex size-9 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3] sm:size-10 md:size-12">
                 <Icon className="size-4 sm:size-5 md:size-6" />
               </span>
-              <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm md:text-base">
+              <h3 className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
                 {title}
               </h3>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:mt-2 sm:text-xs md:text-sm md:leading-relaxed">
+              <p className={cn("mt-1 sm:mt-2", SHOP_BODY)}>
                 {description}
               </p>
             </CardContent>
@@ -184,10 +185,10 @@ export function AboutAiFeaturesSection() {
               <span className="flex size-8 items-center justify-center rounded-lg bg-[#6254f3]/10 text-[#6254f3] sm:size-9 sm:rounded-xl md:size-10">
                 <Icon className="size-4 sm:size-5" />
               </span>
-              <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm md:text-base">
+              <h3 className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
                 {title}
               </h3>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:mt-2 sm:text-xs md:text-sm md:leading-relaxed">
+              <p className={cn("mt-1 sm:mt-2", SHOP_BODY)}>
                 {description}
               </p>
             </CardContent>
@@ -217,10 +218,10 @@ export function AboutPaymentSection() {
               <span className="flex size-8 items-center justify-center rounded-lg bg-[#6254f3]/10 text-[#6254f3] sm:size-9 sm:rounded-xl">
                 <Icon className="size-4 sm:size-5" />
               </span>
-              <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm">
+              <h3 className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
                 {title}
               </h3>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs md:text-sm md:leading-relaxed">
+              <p className={cn("mt-1", SHOP_BODY)}>
                 {description}
               </p>
             </CardContent>
@@ -228,7 +229,7 @@ export function AboutPaymentSection() {
         ))}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:mt-8">
-        <span className="mr-2 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+        <span className={cn("mr-2", SHOP_META_LABEL)}>
           We accept
         </span>
         {PAYMENT_BRANDS.map((brand) => (
@@ -263,10 +264,10 @@ export function AboutShippingSection() {
               <span className="flex size-8 items-center justify-center rounded-lg bg-[#6254f3]/10 text-[#6254f3] sm:size-9 sm:rounded-xl">
                 <Icon className="size-4 sm:size-5" />
               </span>
-              <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm">
+              <h3 className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
                 {title}
               </h3>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs md:text-sm md:leading-relaxed">
+              <p className={cn("mt-1", SHOP_BODY)}>
                 {description}
               </p>
             </CardContent>
@@ -291,7 +292,10 @@ export function AboutTrackingSection() {
         {TRACKING_METHODS.map((method) => (
           <span
             key={method}
-            className="rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-[11px] font-medium text-[#6254f3] sm:px-4 sm:py-1.5 sm:text-xs md:text-sm"
+            className={cn(
+              "rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 font-medium text-[#6254f3] sm:px-4 sm:py-1.5",
+              SHOP_BADGE
+            )}
           >
             {method}
           </span>
@@ -307,10 +311,10 @@ export function AboutTrackingSection() {
             <span className="mx-auto flex size-7 items-center justify-center rounded-full bg-[#6254f3] text-xs font-bold text-white sm:size-8 sm:text-sm">
               {step}
             </span>
-            <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm">
+            <h3 className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
               {title}
             </h3>
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs md:text-sm">
+            <p className={cn("mt-1", SHOP_BODY)}>
               {description}
             </p>
           </li>
@@ -352,10 +356,10 @@ export function AboutSupportSection() {
               <span className="flex size-8 items-center justify-center rounded-lg bg-[#6254f3]/10 text-[#6254f3] sm:size-9 sm:rounded-xl">
                 <Icon className="size-4 sm:size-5" />
               </span>
-              <h3 className="mt-2 text-xs font-semibold text-foreground sm:mt-3 sm:text-sm">
+              <h3 className={cn("mt-2 sm:mt-3", SHOP_CARD_TITLE)}>
                 {title}
               </h3>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs md:text-sm md:leading-relaxed">
+              <p className={cn("mt-1", SHOP_BODY)}>
                 {description}
               </p>
             </CardContent>
@@ -365,14 +369,14 @@ export function AboutSupportSection() {
 
       <Card className="mt-6 border-border/60 bg-card shadow-sm sm:mt-8">
         <CardContent className="p-5 sm:p-6">
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className={SHOP_CARD_TITLE}>
             We can help you with
           </h3>
           <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SUPPORT_TOPICS.map((topic) => (
               <li
                 key={topic}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
+                className={cn("flex items-center gap-2", SHOP_BODY)}
               >
                 <HelpCircle className="size-4 shrink-0 text-[#6254f3]" />
                 {topic}

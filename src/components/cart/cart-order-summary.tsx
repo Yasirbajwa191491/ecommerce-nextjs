@@ -19,6 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
 import { cn } from "@/lib/utils";
+import { SHOP_BODY, SHOP_BODY_SM } from "@/lib/typography";
 
 type CartOrderSummaryProps = {
   totalItem: number;
@@ -63,7 +64,7 @@ export function CartOrderSummary({
           </span>
           <div>
             <CardTitle className="text-lg font-bold">Order summary</CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className={SHOP_BODY}>
               {totalItem} {totalItem === 1 ? "item" : "items"} ready to checkout
             </p>
           </div>
@@ -92,7 +93,7 @@ export function CartOrderSummary({
               className="flex flex-col items-center gap-1.5 rounded-lg bg-muted/30 px-2 py-2.5 text-center"
             >
               <Icon className="size-4 text-[#6254f3]" />
-              <span className="text-[10px] font-medium leading-tight text-muted-foreground sm:text-[11px]">
+              <span className={cn("leading-tight", SHOP_BODY_SM)}>
                 {label}
               </span>
             </li>
@@ -118,7 +119,7 @@ export function CartOrderSummary({
             Continue shopping
           </Button>
         </div>
-        <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
+        <p className={cn("flex items-center justify-center gap-1.5 text-center", SHOP_BODY_SM)}>
           <Lock className="size-3 shrink-0" />
           Your payment information is encrypted and secure
         </p>

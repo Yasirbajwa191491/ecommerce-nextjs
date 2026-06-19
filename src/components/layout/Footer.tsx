@@ -12,6 +12,7 @@ import { FooterNewsletter } from "@/components/layout/footer-newsletter";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { StoreLogoLink } from "@/components/layout/store-logo-link";
 import { NAV_LINKS, STORE_NAME } from "@/lib/site";
+import { FOOTER_COLUMN_TITLE, FOOTER_LINK } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 const FOOTER_GUTTER = {
@@ -21,13 +22,15 @@ const FOOTER_GUTTER = {
 
 const SUPPORT_LINKS = [
   { href: "/contact", label: "Contact us" },
-  { href: "/contact", label: "Shipping & delivery" },
-  { href: "/contact", label: "Returns & refunds" },
+  { href: "/shipping", label: "Shipping & delivery" },
+  { href: "/return", label: "Returns & refunds" },
   { href: "/terms", label: "Terms & conditions" },
   { href: "/privacy", label: "Privacy policy" },
 ] as const;
 
 const LEGAL_LINKS = [
+  { href: "/shipping", label: "Shipping policy" },
+  { href: "/return", label: "Return policy" },
   { href: "/privacy", label: "Privacy policy" },
   { href: "/terms", label: "Terms of service" },
 ] as const;
@@ -53,10 +56,7 @@ function FooterLink({
   return (
     <Link
       href={href}
-      className={cn(
-        "text-sm text-white/70 transition-colors hover:text-[#a89cff]",
-        className
-      )}
+      className={cn(FOOTER_LINK, className)}
     >
       {children}
     </Link>
@@ -74,7 +74,7 @@ function FooterColumn({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <h3 className="text-xs font-semibold tracking-[0.14em] text-white uppercase sm:text-sm">
+      <h3 className={FOOTER_COLUMN_TITLE}>
         {title}
       </h3>
       <div className="mt-3 sm:mt-4">{children}</div>
@@ -95,12 +95,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-10 md:gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-12">
           <div className="min-w-0 sm:col-span-2 lg:col-span-4">
             <StoreLogoLink className="text-lg text-white hover:opacity-90 sm:text-xl" />
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/65 sm:mt-5">
+            <p className="mt-4 max-w-md text-base leading-relaxed text-white/65 sm:mt-5">
               Quality products across every category — electronics, furniture,
               kitchen, office, and more. Shop with confidence and fast delivery.
             </p>
 
-            <div className="mt-6 space-y-3 text-sm text-white/70 sm:mt-7 sm:space-y-3.5">
+            <div className="mt-6 space-y-3 text-base text-white/70 sm:mt-7 sm:space-y-3.5">
               <p className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-[#a89cff]" />
                 <span className="min-w-0 break-words">{address}</span>
@@ -168,21 +168,21 @@ export default function Footer() {
             title="Stay in the loop"
             className="sm:col-span-2 lg:col-span-4"
           >
-            <p className="max-w-md text-sm leading-relaxed text-white/65">
+            <p className="max-w-md text-base leading-relaxed text-white/65">
               Subscribe for new arrivals, exclusive offers, and curated picks
               from our catalog.
             </p>
             <FooterNewsletter />
 
             <div className="mt-6 sm:mt-8">
-              <p className="text-[10px] font-semibold tracking-[0.14em] text-white/50 uppercase sm:text-xs">
+              <p className="text-sm font-semibold tracking-[0.14em] text-white/50 uppercase">
                 We accept
               </p>
               <div className="mt-2.5 flex flex-wrap gap-2 sm:mt-3">
                 {PAYMENT_METHODS.map((method) => (
                   <span
                     key={method}
-                    className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-medium text-white/75 sm:px-2.5 sm:text-[11px]"
+                    className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/75"
                   >
                     {method}
                   </span>
@@ -195,7 +195,7 @@ export default function Footer() {
 
       <div className="border-t border-white/10">
         <div
-          className="mx-auto flex w-full max-w-[1600px] flex-col items-center gap-3 py-5 text-center text-xs text-white/55 sm:flex-row sm:justify-between sm:gap-4 sm:py-6 sm:text-left sm:text-sm"
+          className="mx-auto flex w-full max-w-[1600px] flex-col items-center gap-3 py-5 text-center text-sm text-white/55 sm:flex-row sm:justify-between sm:gap-4 sm:py-6 sm:text-left sm:text-base"
           style={FOOTER_GUTTER}
         >
           <p className="max-w-full">

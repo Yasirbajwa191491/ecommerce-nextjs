@@ -10,25 +10,26 @@ import {
   OUTLINE_BUTTON_CLASS,
   PAGE_GUTTER,
   PRIMARY_BUTTON_CLASS,
+  SECTION_PADDING_Y,
 } from "@/lib/layout-constants";
+import { SHOP_EYEBROW, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 export function AboutHero() {
   return (
     <section className="border-b border-border/60 bg-background">
       <div
-        className="mx-auto w-full max-w-[1600px] py-8 sm:py-10 md:py-12 lg:py-14"
+        className={cn("mx-auto w-full max-w-[1600px]", SECTION_PADDING_Y)}
         style={PAGE_GUTTER}
       >
         <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-none lg:text-left">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[#6254f3] uppercase sm:text-xs">
-              <Info className="size-3.5" />
+            <span className={SHOP_EYEBROW}>
+              <Info className="size-3.5 sm:size-4" />
               {ABOUT_HERO.badge}
             </span>
-            <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-[2.5rem] md:leading-tight">
-              {ABOUT_HERO.title}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base lg:mx-0">
+            <h1 className={cn("mt-4", SHOP_PAGE_TITLE)}>{ABOUT_HERO.title}</h1>
+            <p className={cn("mt-3 max-w-2xl lg:mx-0", SHOP_PAGE_LEAD)}>
               {ABOUT_HERO.description}
             </p>
             <div className={`mt-6 ${BUTTON_ROW_CLASS}`}>

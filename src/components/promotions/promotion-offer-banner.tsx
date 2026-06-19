@@ -7,6 +7,7 @@ import {
   getPromotionDisplay,
   type PromotionDisplayInput,
 } from "@/lib/promotion-display";
+import { SHOP_BADGE, SHOP_BODY_SM } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type PromotionOfferBannerProps = {
@@ -46,7 +47,10 @@ export function PromotionOfferBanner({
           {promotion.typeLabel ? (
             <Badge
               variant="secondary"
-              className="mb-0.5 gap-1 rounded-full border-emerald-500/20 bg-emerald-500/10 px-2 py-0 text-[10px] font-semibold tracking-wide text-emerald-800 uppercase dark:text-emerald-200"
+              className={cn(
+                "mb-0.5 gap-1 rounded-full border-emerald-500/20 bg-emerald-500/10 px-2 py-0 text-emerald-800 uppercase dark:text-emerald-200",
+                SHOP_BADGE
+              )}
             >
               <Tag className="size-3" />
               {promotion.typeLabel}
@@ -55,7 +59,7 @@ export function PromotionOfferBanner({
           <p
             className={cn(
               "font-semibold leading-snug text-emerald-900 dark:text-emerald-100",
-              isHero ? "text-base sm:text-lg" : "text-sm"
+              isHero ? "text-base sm:text-lg" : "text-base"
             )}
           >
             {title}
@@ -63,7 +67,7 @@ export function PromotionOfferBanner({
           <p
             className={cn(
               "leading-relaxed text-emerald-800/85 dark:text-emerald-200/90",
-              isHero ? "text-sm sm:text-[0.9375rem]" : "text-sm"
+              isHero ? SHOP_BODY_SM : SHOP_BODY_SM
             )}
           >
             {subtitle}

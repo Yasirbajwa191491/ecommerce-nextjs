@@ -11,9 +11,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { MotionSkeleton } from "@/components/motion";
-import { PAGE_GUTTER } from "@/lib/layout-constants";
-import type { Product } from "@/types/product";
+import { SHOP_BODY } from "@/lib/typography";
+import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { productCardKey } from "@/lib/product-images";
+import type { Product } from "@/types/product";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +59,7 @@ export function ProductCarouselSection({
   return (
     <section
       className={cn(
-        "py-10 sm:py-14 md:py-16",
+        SECTION_PADDING_Y,
         background === "muted" ? "bg-muted/30" : "bg-background",
         className
       )}
@@ -80,7 +81,7 @@ export function ProductCarouselSection({
               <p className="text-base font-semibold text-foreground">
                 No products to show yet
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className={cn("mt-2", SHOP_BODY)}>
                 Check back soon as we add more to the catalog.
               </p>
             </div>

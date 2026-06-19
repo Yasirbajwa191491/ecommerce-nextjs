@@ -1,4 +1,5 @@
 import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
+import { SHOP_BADGE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { Truck } from "lucide-react";
 
@@ -23,7 +24,8 @@ export function ProductShippingBadge({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 sm:text-xs",
+          "inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-semibold text-emerald-700",
+          SHOP_BADGE,
           className
         )}
       >
@@ -38,7 +40,8 @@ export function ProductShippingBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:text-xs",
+        "inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-medium text-muted-foreground",
+        SHOP_BADGE,
         className
       )}
     >

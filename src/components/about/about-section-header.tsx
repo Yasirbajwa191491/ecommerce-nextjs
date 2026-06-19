@@ -11,6 +11,7 @@ type AboutSectionHeaderProps = {
   badgeIcon: LucideIcon;
   title: string;
   description?: string;
+  descriptionClassName?: string;
   align?: "left" | "center";
   className?: string;
 };
@@ -20,6 +21,7 @@ export function AboutSectionHeader({
   badgeIcon: BadgeIcon,
   title,
   description,
+  descriptionClassName,
   align = "center",
   className,
 }: AboutSectionHeaderProps) {
@@ -38,7 +40,7 @@ export function AboutSectionHeader({
       </span>
       <h2 className={cn(SHOP_SECTION_TITLE, "mt-4")}>{title}</h2>
       {description ? (
-        <p className={SHOP_SECTION_LEAD}>{description}</p>
+        <p className={cn(SHOP_SECTION_LEAD, descriptionClassName)}>{description}</p>
       ) : null}
     </div>
   );

@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HOME_PATH, NAV_LINKS } from "@/lib/site";
+import {
+  HEADER_NAV_DRAWER_LABEL,
+  HEADER_NAV_LINK,
+} from "@/lib/typography";
 
 const NAV_ICONS: Record<(typeof NAV_LINKS)[number]["label"], LucideIcon> = {
   Home,
@@ -54,7 +58,7 @@ export function HeaderNav({
           ? "flex w-full flex-col gap-2"
           : vertical
             ? "flex flex-col gap-1"
-            : "flex items-center gap-6 lg:gap-10"
+            : "flex items-center gap-7 lg:gap-9 xl:gap-10"
       )}
     >
       {NAV_LINKS.map(({ href, label }) => {
@@ -85,7 +89,7 @@ export function HeaderNav({
               >
                 <Icon className="size-5" strokeWidth={2} />
               </span>
-              <span className="min-w-0 flex-1 text-[0.9375rem] font-medium leading-none">
+              <span className={HEADER_NAV_DRAWER_LABEL}>
                 {label}
               </span>
               <ChevronRight
@@ -105,8 +109,9 @@ export function HeaderNav({
             href={href}
             onClick={onNavigate}
             className={cn(
-              "text-[0.9375rem] font-medium tracking-tight transition-colors duration-200 sm:text-base",
-              vertical ? "py-2.5 text-lg" : "",
+              HEADER_NAV_LINK,
+              "transition-colors duration-200",
+              vertical ? "py-2.5 text-lg sm:text-xl" : "",
               active
                 ? "text-[#6254f3]"
                 : "text-foreground/85 hover:text-[#6254f3]",

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SECTION_ACTION_BUTTON_CLASS } from "@/lib/layout-constants";
 import {
   SHOP_EYEBROW,
+  SHOP_SECTION_ACTION,
   SHOP_SECTION_LEAD,
   SHOP_SECTION_TITLE,
 } from "@/lib/typography";
@@ -45,7 +46,7 @@ export function SectionHeader({
       <div className={cn("min-w-0 max-w-3xl", isCenter && "mx-auto text-center")}>
         {badge ? (
           <span className={SHOP_EYEBROW}>
-            {BadgeIcon ? <BadgeIcon className="size-3.5 sm:size-4" /> : null}
+            {BadgeIcon ? <BadgeIcon className="size-4 sm:size-5" /> : null}
             {badge}
           </span>
         ) : null}
@@ -53,7 +54,7 @@ export function SectionHeader({
           {title}
         </h2>
         {description ? (
-          <p className={SHOP_SECTION_LEAD}>{description}</p>
+          <p className={cn(SHOP_SECTION_LEAD, isCenter && "mx-auto")}>{description}</p>
         ) : null}
       </div>
 
@@ -63,12 +64,12 @@ export function SectionHeader({
           variant="outline"
           className={cn(
             SECTION_ACTION_BUTTON_CLASS,
-            "h-11 px-6 text-base",
+            SHOP_SECTION_ACTION,
             isCenter && "self-center sm:self-center"
           )}
         >
           {action.label}
-          <ArrowRight className="size-4" />
+          <ArrowRight className="size-4 sm:size-5" />
         </Button>
       ) : null}
     </div>

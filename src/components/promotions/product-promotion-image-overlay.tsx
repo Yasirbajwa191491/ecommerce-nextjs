@@ -10,6 +10,7 @@ import {
   MotionHoverOverlay,
 } from "@/components/motion";
 import { hoverCardLift, hoverShadowGlow } from "@/lib/motion/image-card-hover";
+import { SHOP_BADGE, SHOP_BODY_SM } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import type { ProductPromotionBadge } from "@/context/product-promotion-badges-context";
 
@@ -45,8 +46,8 @@ export function ProductPromotionImageOverlay({
         className={cn(
           "inline-flex items-center rounded-full bg-emerald-500 font-bold uppercase tracking-wide text-white shadow-sm",
           isCompact
-            ? "px-2 py-0.5 text-[9px]"
-            : "px-2.5 py-0.5 text-[10px] sm:text-[11px]"
+            ? "px-2 py-0.5 text-sm"
+            : cn("px-2.5 py-0.5", SHOP_BADGE)
         )}
       >
         {badge.shortLabel}
@@ -54,7 +55,7 @@ export function ProductPromotionImageOverlay({
       <p
         className={cn(
           "mt-1 font-semibold leading-snug text-white",
-          isCompact ? "line-clamp-2 text-[10px]" : "line-clamp-2 text-xs sm:text-sm"
+          isCompact ? "line-clamp-2 text-sm" : cn("line-clamp-2", SHOP_BODY_SM, "text-white/95")
         )}
       >
         {badge.offerLine}
@@ -109,7 +110,7 @@ export function PromotionCardImagePanel({
             sizes="(max-width: 640px) 50vw, 25vw"
           />
         ) : null}
-        <span className="absolute top-2 left-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+        <span className={cn("absolute top-2 left-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-white backdrop-blur-sm", SHOP_BADGE)}>
           Buy
         </span>
       </div>
@@ -128,7 +129,7 @@ export function PromotionCardImagePanel({
             <Gift className="size-10" />
           </div>
         )}
-        <span className="absolute top-2 right-2 z-10 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+        <span className={cn("absolute top-2 right-2 z-10 rounded-full bg-emerald-500 px-2 py-0.5 text-white shadow-sm", SHOP_BADGE)}>
           Free
         </span>
       </div>
@@ -137,7 +138,7 @@ export function PromotionCardImagePanel({
 
   const badges = (
     <div className="absolute top-3 left-3 z-10">
-      <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-bold tracking-wide text-white shadow-md sm:text-xs">
+      <span className={cn("rounded-full bg-emerald-500 px-2.5 py-1 tracking-wide text-white shadow-md", SHOP_BADGE)}>
         {shortLabel}
       </span>
     </div>
@@ -145,7 +146,7 @@ export function PromotionCardImagePanel({
 
   const captionContent = (
     <>
-      <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-200 uppercase sm:text-[11px]">
+      <p className={cn("font-semibold tracking-[0.14em] text-emerald-200 uppercase", SHOP_BADGE)}>
         {typeLabel}
       </p>
       <h3 className="mt-1 line-clamp-2 text-base font-semibold leading-snug text-white sm:text-lg">

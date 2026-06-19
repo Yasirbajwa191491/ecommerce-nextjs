@@ -6,14 +6,14 @@ import {
   LayoutDashboard,
   Search,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { PRIMARY_BUTTON_CLASS, OUTLINE_BUTTON_CLASS } from "@/lib/layout-constants";
 import { STORE_NAME } from "@/lib/site";
-
-const PRIMARY_BUTTON_CLASS =
-  "group inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] [&_svg]:!text-white";
-
-const OUTLINE_BUTTON_CLASS =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[#6254f3]/30 bg-background px-6 text-sm font-medium text-[#6254f3] transition-all hover:bg-[#6254f3]/8 hover:text-[#5548e0] [&_svg]:text-[#6254f3]";
+import {
+  SHOP_BODY,
+  SHOP_EYEBROW,
+  SHOP_PAGE_TITLE,
+} from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 export type NotFoundPageVariant = "shop" | "admin" | "admin-dashboard";
 
@@ -56,18 +56,18 @@ export function NotFoundPageView({
           />
         </div>
 
-        <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <p className={cn(isAdmin ? "text-xs font-medium tracking-wide text-muted-foreground uppercase" : SHOP_EYEBROW)}>
           {isAdmin ? "Admin" : STORE_NAME}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+        <h1 className={cn(isAdmin ? "text-2xl font-semibold tracking-tight text-foreground sm:text-3xl" : SHOP_PAGE_TITLE)}>
           {title}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className={cn("mt-3", isAdmin ? "text-sm leading-relaxed text-muted-foreground sm:text-base" : SHOP_BODY)}>
           {description}
         </p>
 
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
-          <Link href={primaryHref} className={PRIMARY_BUTTON_CLASS}>
+          <Link href={primaryHref} className={cn(PRIMARY_BUTTON_CLASS, "group inline-flex items-center justify-center")}>
             {isAdmin ? (
               <LayoutDashboard className="size-4" aria-hidden />
             ) : (

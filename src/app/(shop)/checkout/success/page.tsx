@@ -30,6 +30,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCartContext } from "@/context/cart_context";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BODY, SHOP_BODY_SM, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 function CheckoutSuccessContent() {
@@ -88,9 +90,9 @@ function CheckoutSuccessContent() {
 
   if (!orderNumber) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Order not found</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className={cn("mx-auto max-w-lg text-center", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
+        <h1 className={SHOP_PAGE_TITLE}>Order not found</h1>
+        <p className={cn("mt-2", SHOP_BODY)}>
           We could not find your order details.
         </p>
         <Button render={<Link href="/products" />} className="mt-6">
@@ -102,16 +104,16 @@ function CheckoutSuccessContent() {
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
-      <section className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-8 sm:py-14">
+      <section className={cn("mx-auto w-full max-w-3xl", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
             <Loader2 className="size-8 animate-spin text-[#6254f3]" />
-            <p>Loading your order…</p>
+            <p className={SHOP_BODY}>Loading your order…</p>
           </div>
         ) : !order ? (
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Order not found</h1>
-            <p className="mt-2 text-muted-foreground">
+            <h1 className={SHOP_PAGE_TITLE}>Order not found</h1>
+            <p className={cn("mt-2", SHOP_BODY)}>
               This order could not be retrieved. Check your email for confirmation.
             </p>
             <Button render={<Link href="/products" />} className="mt-6">
@@ -130,13 +132,13 @@ function CheckoutSuccessContent() {
                 )}
               </div>
               <div>
-                <CardTitle className="text-2xl sm:text-3xl">
+                <CardTitle className={SHOP_PAGE_TITLE}>
                   {order.paymentMethod === "stripe" &&
                   order.paymentStatus === "pending"
                     ? "Payment processing"
                     : "Order confirmed!"}
                 </CardTitle>
-                <CardDescription className="mt-2 text-base">
+                <CardDescription className={cn("mt-2", SHOP_BODY)}>
                   {statusMessage}
                 </CardDescription>
               </div>
@@ -144,14 +146,14 @@ function CheckoutSuccessContent() {
 
             <CardContent className="space-y-6 px-6 py-8 sm:px-8">
               <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                <p className="text-sm text-muted-foreground">Order number</p>
+                <p className={SHOP_BODY_SM}>Order number</p>
                 <p className="mt-1 text-lg font-bold tracking-wide text-foreground">
                   {order.orderNumber}
                 </p>
               </div>
 
               <div className="space-y-3">
-                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className={cn("flex items-center gap-2", SHOP_SUBSECTION_TITLE)}>
                   <Package className="size-4" />
                   Items ordered
                 </h2>
@@ -167,7 +169,7 @@ function CheckoutSuccessContent() {
                           <p className="flex flex-wrap items-center gap-2 font-medium text-foreground">
                             {item.productName} × {item.quantity}
                             {item.isPromotionGift ? (
-                              <Badge variant="secondary" className="text-[10px]">
+                              <Badge variant="secondary" className={SHOP_BODY_SM}>
                                 Promotion gift
                               </Badge>
                             ) : null}
@@ -258,7 +260,8 @@ function CheckoutSuccessContent() {
 
               <p
                 className={cn(
-                  "text-center text-xs text-muted-foreground",
+                  "text-center",
+                  SHOP_BODY_SM,
                   order.paymentMethod === "stripe" &&
                     order.paymentStatus === "pending" &&
                     "animate-pulse"

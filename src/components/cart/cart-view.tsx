@@ -35,7 +35,8 @@ import { cn } from "@/lib/utils";
 import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { fadeUp } from "@/lib/motion";
-import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
 
 export function CartView() {
   const {
@@ -61,7 +62,7 @@ export function CartView() {
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
-      <section className="w-full px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10 xl:px-16 2xl:px-20">
+      <section className={cn("w-full", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
         <nav
           aria-label="Breadcrumb"
           className={cn("mb-5", SHOP_BREADCRUMB)}
@@ -90,9 +91,7 @@ export function CartView() {
                   <ShoppingCart className="size-6" />
                 </span>
                 <div>
-                  <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                    Your shopping cart
-                  </h1>
+                  <h1 className={SHOP_PAGE_TITLE}>Your shopping cart</h1>
                   <p className={SHOP_PAGE_LEAD}>
                     Review items, adjust quantities, and proceed when you are
                     ready.
@@ -144,16 +143,16 @@ export function CartView() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
-                          <TableHead className="h-12 py-4 pl-8 text-xs font-bold tracking-wider text-foreground/70 uppercase xl:pl-10">
+                          <TableHead className={cn("h-12 py-4 pl-8 xl:pl-10", SHOP_TABLE_HEAD)}>
                             Product
                           </TableHead>
-                          <TableHead className="h-12 w-32 py-4 text-right text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                          <TableHead className={cn("h-12 w-32 py-4 text-right", SHOP_TABLE_HEAD)}>
                             Unit price
                           </TableHead>
-                          <TableHead className="h-12 w-44 py-4 text-center text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                          <TableHead className={cn("h-12 w-44 py-4 text-center", SHOP_TABLE_HEAD)}>
                             Quantity
                           </TableHead>
-                          <TableHead className="h-12 w-32 py-4 text-right text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                          <TableHead className={cn("h-12 w-32 py-4 text-right", SHOP_TABLE_HEAD)}>
                             Subtotal
                           </TableHead>
                           <TableHead className="h-12 w-28 py-4 pr-8 xl:pr-10">

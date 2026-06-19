@@ -8,13 +8,15 @@ import ProductCard from "@/components/products/ProductCard";
 import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { MotionSkeleton } from "@/components/motion";
-import { PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BODY } from "@/lib/typography";
+import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { cn } from "@/lib/utils";
 
 export function FeaturedProductsSection() {
   const products = useQuery(api.products.featured);
 
   return (
-    <section className="bg-muted/30 py-10 sm:py-14 md:py-16 lg:py-20">
+    <section className={cn("bg-muted/30", SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Curated"
@@ -40,7 +42,7 @@ export function FeaturedProductsSection() {
               <p className="text-lg font-semibold text-foreground">
                 No featured products yet
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className={cn("mt-2", SHOP_BODY)}>
                 Mark products as featured in admin to showcase them here.
               </p>
             </div>

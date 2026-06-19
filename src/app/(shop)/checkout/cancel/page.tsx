@@ -14,6 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BODY, SHOP_PAGE_TITLE } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 function CheckoutCancelContent() {
   const searchParams = useSearchParams();
@@ -33,15 +36,15 @@ function CheckoutCancelContent() {
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
-      <section className="mx-auto w-full max-w-lg px-4 py-10 sm:px-8 sm:py-14">
+      <section className={cn("mx-auto w-full max-w-lg", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
         <Card className="overflow-hidden rounded-2xl border-border/60 shadow-lg">
           <CardHeader className="space-y-4 border-b border-border/60 bg-muted/20 px-6 py-8 text-center">
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
               <AlertCircle className="size-8" />
             </div>
             <div>
-              <CardTitle className="text-2xl">Payment cancelled</CardTitle>
-              <CardDescription className="mt-2 text-base">
+              <CardTitle className={SHOP_PAGE_TITLE}>Payment cancelled</CardTitle>
+              <CardDescription className={cn("mt-2", SHOP_BODY)}>
                 Your payment was not completed. No charges were made.
                 {orderNumber ? (
                   <>

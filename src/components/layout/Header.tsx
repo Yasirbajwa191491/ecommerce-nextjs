@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  HEADER_STORE_NAME_DESKTOP,
+  HEADER_STORE_NAME_MOBILE,
+} from "@/lib/typography";
 import { StoreLogoLink } from "@/components/layout/store-logo-link";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -59,7 +63,7 @@ export default function Header() {
       >
         <StoreLogoLink
           onNavigate={() => setMobileOpen(false)}
-          className="max-w-[7.5rem] justify-self-start truncate text-sm sm:max-w-none sm:text-base md:text-lg"
+          className={HEADER_STORE_NAME_MOBILE}
         />
 
         <div className="flex min-w-0 w-full justify-center px-1 sm:px-2 md:max-w-xl">
@@ -85,7 +89,7 @@ export default function Header() {
         className="mx-auto hidden h-20 w-full max-w-[1600px] items-center gap-8 lg:flex"
         style={gutterStyle}
       >
-        <StoreLogoLink className="shrink-0 text-xl" />
+        <StoreLogoLink className={HEADER_STORE_NAME_DESKTOP} />
 
         <div className="flex min-w-0 flex-1 justify-center px-4 xl:px-8">
           {desktopSearch}

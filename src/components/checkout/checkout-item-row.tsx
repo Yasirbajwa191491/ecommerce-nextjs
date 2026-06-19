@@ -12,6 +12,13 @@ import {
 } from "@/components/cart/cart-line-pricing";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { CartItem } from "@/reducer/cartReducer";
+import {
+  SHOP_LINE_ITEM_META,
+  SHOP_LINE_ITEM_PRICE,
+  SHOP_LINE_ITEM_TITLE,
+  SHOP_META_LABEL,
+} from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type CheckoutItemProps = {
   item: CartItem;
@@ -31,13 +38,13 @@ export function CheckoutItemMobile({
       <div className="flex gap-4">
         <CartProductImage item={item} />
         <div className="min-w-0 flex-1 space-y-2">
-          <h3 className="line-clamp-2 text-base font-semibold leading-snug text-foreground">
+          <h3 className={cn("line-clamp-2 leading-snug", SHOP_LINE_ITEM_TITLE)}>
             {item.name}
           </h3>
           {pricedLine ? (
             <CartLinePricingDetails priced={pricedLine} currency={currency} />
           ) : (
-            <p className="text-sm font-medium tabular-nums text-muted-foreground">
+            <p className={cn("font-medium tabular-nums", SHOP_LINE_ITEM_META)}>
               <FormatPrice price={item.price} currency={currency} /> each
             </p>
           )}
@@ -47,18 +54,14 @@ export function CheckoutItemMobile({
 
       <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/25 px-4 py-3">
         <div>
-          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Quantity
-          </p>
+          <p className={SHOP_META_LABEL}>Quantity</p>
           <div className="mt-1">
             <QuantityDisplay amount={item.amount} />
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Line total
-          </p>
-          <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+          <p className={SHOP_META_LABEL}>Line total</p>
+          <p className={cn("mt-0.5", SHOP_LINE_ITEM_PRICE)}>
             <FormatPrice price={lineTotal} currency={currency} />
           </p>
         </div>
@@ -80,7 +83,7 @@ export function CheckoutItemRow({
         <div className="flex min-w-0 items-center gap-5">
           <CartProductImage item={item} size="lg" />
           <div className="min-w-0 space-y-2.5">
-            <h3 className="text-base font-semibold leading-snug text-foreground">
+            <h3 className={cn("leading-snug", SHOP_LINE_ITEM_TITLE)}>
               {item.name}
             </h3>
             <ColorSwatch color={item.color} />
@@ -109,8 +112,10 @@ export function CheckoutItemRow({
         </div>
       </TableCell>
 
-      <TableCell className="w-32 py-6 pr-8 text-right text-base font-bold tabular-nums text-foreground xl:pr-10">
-        <FormatPrice price={lineTotal} currency={currency} />
+      <TableCell className="w-32 py-6 pr-8 text-right xl:pr-10">
+        <span className={SHOP_LINE_ITEM_PRICE}>
+          <FormatPrice price={lineTotal} currency={currency} />
+        </span>
       </TableCell>
     </TableRow>
   );

@@ -9,15 +9,17 @@ import { PROMO_BANNERS } from "@/lib/home-content";
 import {
   PAGE_GUTTER,
   PRIMARY_BUTTON_CLASS,
+  SECTION_PADDING_Y,
   SURFACE_BUTTON_CLASS,
 } from "@/lib/layout-constants";
+import { SHOP_BADGE, SHOP_HERO_LEAD } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 export function PromoBannerSection() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="bg-background py-8 sm:py-10 md:py-12">
+    <section className={cn("bg-background", SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <StaggerGroup className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:gap-6">
           {PROMO_BANNERS.map((banner, index) => (
@@ -46,14 +48,14 @@ export function PromoBannerSection() {
                   }}
                 />
                 <div className="relative max-w-md">
-                  <p className="text-[11px] font-semibold tracking-[0.2em] uppercase opacity-80 sm:text-xs">
+                  <p className={cn(SHOP_BADGE, "tracking-[0.2em] opacity-80")}>
                     {banner.eyebrow}
                   </p>
                   <h3 className="mt-2 text-2xl font-bold tracking-tight transition-transform duration-500 group-hover:-translate-y-0.5 sm:text-3xl md:text-4xl">
                     {banner.title}
                   </h3>
                   {banner.description ? (
-                    <p className="mt-2 text-base leading-relaxed opacity-85 sm:mt-3 sm:text-lg">
+                    <p className={cn("mt-2 opacity-85 sm:mt-3", SHOP_HERO_LEAD)}>
                       {banner.description}
                     </p>
                   ) : null}

@@ -4,11 +4,12 @@ import { useCallback, useState } from "react";
 import { useMutation } from "convex/react";
 import { Loader2, Send } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import { ShopButton, ShopInput, ShopLabel, ShopTextarea } from "@/components/shop";
 import {
-  AdminFormField,
-  invalidInputClass,
-} from "@/components/admin/admin-form-field";
-import { Button } from "@/components/ui/button";
+  Field,
+  FieldContent,
+  FieldError,
+} from "@/components/ui/field";
 import {
   Card,
   CardContent,
@@ -16,10 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import { toastError, toastSuccess } from "@/lib/app-toast";
+import { SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import {
   validateContactForm,
@@ -31,6 +31,40 @@ const emptyForm = (): ContactFormValues => ({
   email: "",
   message: "",
 });
+
+function ContactFormField({
+  label,
+  htmlFor,
+  error,
+  required,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  error?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Field data-invalid={!!error}>
+      <ShopLabel htmlFor={htmlFor}>
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </ShopLabel>
+      <FieldContent>
+        {children}
+        <FieldError>{error}</FieldError>
+      </FieldContent>
+    </Field>
+  );
+}
+
+function invalidInputClass(error?: string) {
+  return cn(
+    error &&
+      "border-destructive/80 focus-visible:border-destructive focus-visible:ring-destructive/20"
+  );
+}
 
 export function ContactForm() {
   const [form, setForm] = useState<ContactFormValues>(emptyForm);
@@ -74,7 +108,7 @@ export function ContactForm() {
   return (
     <Card className="border-border/60 shadow-sm">
       <CardHeader className="space-y-1 px-5 pt-6 sm:px-6">
-        <CardTitle className="text-xl sm:text-2xl">Send us a message</CardTitle>
+        <CardTitle className={SHOP_SUBSECTION_TITLE}>Send us a message</CardTitle>
         <CardDescription>
           Fill in the form below and our team will get back to you shortly.
         </CardDescription>
@@ -85,13 +119,13 @@ export function ContactForm() {
           className="flex flex-col gap-5"
           onSubmit={handleSubmit}
         >
-          <AdminFormField
+          <ContactFormField
             label="Name"
             htmlFor="contact-name"
             error={validation.fieldError("name")}
             required
           >
-            <Input
+            <ShopInput
               id="contact-name"
               name="name"
               value={form.name}
@@ -102,17 +136,17 @@ export function ContactForm() {
               placeholder="Your full name"
               disabled={submitting}
               aria-invalid={!!validation.fieldError("name")}
-              className={cn(invalidInputClass(validation.fieldError("name")), "h-11")}
+              className={invalidInputClass(validation.fieldError("name"))}
             />
-          </AdminFormField>
+          </ContactFormField>
 
-          <AdminFormField
+          <ContactFormField
             label="Email"
             htmlFor="contact-email"
             error={validation.fieldError("email")}
             required
           >
-            <Input
+            <ShopInput
               id="contact-email"
               name="email"
               type="email"
@@ -127,17 +161,17 @@ export function ContactForm() {
               placeholder="you@example.com"
               disabled={submitting}
               aria-invalid={!!validation.fieldError("email")}
-              className={cn(invalidInputClass(validation.fieldError("email")), "h-11")}
+              className={invalidInputClass(validation.fieldError("email"))}
             />
-          </AdminFormField>
+          </ContactFormField>
 
-          <AdminFormField
+          <ContactFormField
             label="Message"
             htmlFor="contact-message"
             error={validation.fieldError("message")}
             required
           >
-            <Textarea
+            <ShopTextarea
               id="contact-message"
               name="message"
               value={form.message}
@@ -157,12 +191,12 @@ export function ContactForm() {
                 "min-h-[9rem] resize-y"
               )}
             />
-          </AdminFormField>
+          </ContactFormField>
 
-          <Button
+          <ShopButton
             type="submit"
             disabled={submitting}
-            className="h-11 w-full gap-2 bg-[#6254f3] text-white hover:bg-[#5548e0] sm:w-auto sm:self-start"
+            className="w-full gap-2 bg-[#6254f3] text-white hover:bg-[#5548e0] sm:w-auto sm:self-start"
           >
             {submitting ? (
               <>
@@ -175,7 +209,7 @@ export function ContactForm() {
                 Send message
               </>
             )}
-          </Button>
+          </ShopButton>
         </form>
       </CardContent>
     </Card>

@@ -79,7 +79,7 @@ export function ProductCatalogMobileFilters({
           <SlidersHorizontal className="size-4 text-[#6254f3]" />
           Filters
           {activeFilterCount > 0 ? (
-            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#6254f3] px-1.5 py-0.5 text-[11px] font-semibold text-white tabular-nums">
+            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#6254f3] px-1.5 py-0.5 text-sm font-semibold text-white tabular-nums">
               {activeFilterCount}
             </span>
           ) : null}

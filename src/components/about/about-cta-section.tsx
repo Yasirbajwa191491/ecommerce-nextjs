@@ -5,6 +5,8 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ABOUT_CTA } from "@/lib/about-content";
 import { BUTTON_ROW_CLASS, PAGE_GUTTER, PRIMARY_BUTTON_CLASS } from "@/lib/layout-constants";
+import { SHOP_HERO_LEAD } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 export function AboutCtaSection() {
   return (
@@ -24,7 +26,7 @@ export function AboutCtaSection() {
         <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
           {ABOUT_CTA.title}
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">
+        <p className={cn("mx-auto mt-4 max-w-2xl", SHOP_HERO_LEAD)}>
           {ABOUT_CTA.description}
         </p>
         <div className={`mt-8 ${BUTTON_ROW_CLASS} justify-center`}>

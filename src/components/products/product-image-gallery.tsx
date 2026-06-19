@@ -175,7 +175,7 @@ export function ProductImageGallery({
           ) : null}
 
           {galleryImages.length > 1 && isList ? (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-2 py-0.5 text-sm font-medium text-white backdrop-blur-sm">
               {activeIndex + 1} / {galleryImages.length}
             </div>
           ) : null}

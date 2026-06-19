@@ -11,6 +11,7 @@ import { formatCurrencyAmount } from "@/lib/currencies";
 import { productPath } from "@/lib/product-url";
 import type { HybridSearchProduct } from "@/hooks/use-hybrid-product-search";
 import { dropdown, staggerContainer, staggerItem } from "@/lib/motion";
+import { SHOP_BODY_SM, SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type SearchSuggestion = {
@@ -109,7 +110,7 @@ function SearchResultRow({
           </p>
           <ProductDiscountBadge discountPercent={item.discountPercent} />
         </div>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-sm text-muted-foreground">
           {item.categoryName} · {item.company}
         </p>
         {item.reviews > 0 ? (
@@ -153,7 +154,7 @@ export function HeaderSearchDropdown({
       <DropdownShell>
         {recentSearches.length > 0 ? (
           <div className="border-b border-border/60 px-3 py-2">
-            <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className={cn("px-1 pb-1", SHOP_META_LABEL)}>
               Recent searches
             </p>
             <m.ul
@@ -179,7 +180,7 @@ export function HeaderSearchDropdown({
         ) : null}
 
         <div className="px-3 py-2">
-          <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className={cn("px-1 pb-1", SHOP_META_LABEL)}>
             Suggested searches
           </p>
           {suggestionsLoading ? (
@@ -233,7 +234,7 @@ export function HeaderSearchDropdown({
       ) : (
         <>
           {isSimilarFallback ? (
-            <p className="border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
+            <p className={cn("border-b border-border/60 px-4 py-2.5", SHOP_BODY_SM)}>
               You may be interested in these similar products.
             </p>
           ) : null}
@@ -256,7 +257,7 @@ export function HeaderSearchDropdown({
       )}
 
       {loading && products.length > 0 ? (
-        <div className="flex items-center justify-center gap-2 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+        <div className={cn("flex items-center justify-center gap-2 border-t border-border/60 px-4 py-2", SHOP_BODY_SM)}>
           <Loader2 className="size-3.5 animate-spin" />
           Updating results…
         </div>

@@ -18,7 +18,8 @@ import {
   CATEGORY_IMAGE_FALLBACKS,
   DEFAULT_CATEGORY_IMAGE,
 } from "@/lib/home-content";
-import { PAGE_GUTTER } from "@/lib/layout-constants";
+import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { CATEGORY_CARD_COUNT, CATEGORY_CARD_NAME } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 function getCategoryImage(slug: string, sampleImageUrl: string | null) {
@@ -30,7 +31,7 @@ export function ShopByCategorySection() {
   const categories = useQuery(api.productCategories.listWithProductCounts);
 
   return (
-    <section className="bg-background py-10 sm:py-14 md:py-16">
+    <section className={cn("bg-background", SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Explore"
@@ -89,11 +90,9 @@ export function ShopByCategorySection() {
                       <ArrowRight className="size-3.5" />
                     </MotionHoverArrow>
 
-                    <MotionHoverCaption className="absolute inset-x-0 bottom-0 p-3.5 text-white sm:p-4">
-                      <h3 className="text-sm font-bold tracking-tight sm:text-base">
-                        {category.name}
-                      </h3>
-                      <p className="mt-0.5 text-xs text-white/80">
+                    <MotionHoverCaption className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
+                      <h3 className={CATEGORY_CARD_NAME}>{category.name}</h3>
+                      <p className={CATEGORY_CARD_COUNT}>
                         {category.productCount}{" "}
                         {category.productCount === 1 ? "Product" : "Products"}
                       </p>

@@ -28,6 +28,8 @@ import {
 import { OrderProgressTimeline } from "@/components/orders/order-progress-timeline";
 import { toastError } from "@/lib/app-toast";
 import { formatCurrencyAmount } from "@/lib/currencies";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BODY, SHOP_BODY_SM, SHOP_META_LABEL, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import {
   hasTrackByCustomerErrors,
@@ -187,15 +189,13 @@ export function TrackOrderView() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
+    <div className={cn("mx-auto max-w-3xl", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
       <div className="mb-8 text-center sm:mb-10">
         <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl bg-[#6254f3]/10 text-[#6254f3] shadow-sm ring-1 ring-[#6254f3]/15">
           <PackageSearch className="size-8" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Track your order
-        </h1>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
+        <h1 className={SHOP_PAGE_TITLE}>Track your order</h1>
+        <p className={cn("mx-auto mt-3 max-w-xl", SHOP_PAGE_LEAD)}>
           Enter your order number or the contact details used at checkout to
           see real-time status and delivery progress.
         </p>
@@ -224,7 +224,7 @@ export function TrackOrderView() {
         <TabsContent value="order-number" className="mt-0">
           <Card className="overflow-hidden rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
             <CardHeader className="space-y-1 border-b border-border/50 bg-muted/20 px-5 py-6 sm:px-8">
-              <CardTitle className="text-xl">Track by order number</CardTitle>
+              <CardTitle className={SHOP_SUBSECTION_TITLE}>Track by order number</CardTitle>
               <CardDescription>
                 Your order number is in your confirmation email and on the
                 checkout success page.
@@ -270,9 +270,7 @@ export function TrackOrderView() {
                 <div className="space-y-5 rounded-2xl border border-[#6254f3]/15 bg-[#6254f3]/[0.04] p-5 sm:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Order found
-                      </p>
+                      <p className={SHOP_META_LABEL}>Order found</p>
                       <p className="mt-1 text-lg font-semibold">
                         {orderResult.order.orderNumber}
                       </p>
@@ -341,7 +339,7 @@ export function TrackOrderView() {
         <TabsContent value="customer" className="mt-0">
           <Card className="overflow-hidden rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
             <CardHeader className="space-y-1 border-b border-border/50 bg-muted/20 px-5 py-6 sm:px-8">
-              <CardTitle className="text-xl">Track by customer info</CardTitle>
+              <CardTitle className={SHOP_SUBSECTION_TITLE}>Track by customer info</CardTitle>
               <CardDescription>
                 Provide the email address or phone number from your order —
                 you only need one of them.
@@ -418,7 +416,7 @@ export function TrackOrderView() {
 
               {customerResults?.found && customerResults.orders.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className={cn("font-medium", SHOP_BODY)}>
                     {customerResults.orders.length} order
                     {customerResults.orders.length === 1 ? "" : "s"} found
                   </p>

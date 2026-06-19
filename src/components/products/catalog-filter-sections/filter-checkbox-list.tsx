@@ -6,6 +6,7 @@ import {
   FILTER_OPTION_LIST_CLASS,
   FilterSidebarSection,
 } from "@/components/products/catalog-filter-sections/filter-sidebar-section";
+import { SHOP_BODY_SM, SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type FilterCheckboxListProps = {
@@ -44,7 +45,7 @@ export function FilterCheckboxList({
               className="flex flex-1 cursor-pointer items-center justify-between text-sm font-normal"
             >
               <span>{item.label}</span>
-              <span className="text-xs text-muted-foreground">({item.count})</span>
+              <span className={SHOP_BODY_SM}>({item.count})</span>
             </Label>
           </div>
         );
@@ -62,9 +63,7 @@ export function FilterCheckboxList({
 
   return (
     <div className={cn("space-y-3 lg:space-y-4", className)}>
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </p>
+      <p className={SHOP_META_LABEL}>{title}</p>
       {content}
     </div>
   );

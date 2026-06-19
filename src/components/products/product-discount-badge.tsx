@@ -3,6 +3,7 @@
 import { m, useReducedMotion } from "framer-motion";
 import { formatDiscountBadge } from "@/lib/pricing";
 import { badgePop } from "@/lib/motion";
+import { SHOP_BADGE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type ProductDiscountBadgeProps = {
@@ -22,7 +23,8 @@ export function ProductDiscountBadge({
     return (
       <span
         className={cn(
-          "inline-flex items-center rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-rose-600 uppercase sm:text-xs",
+          "inline-flex items-center rounded-full bg-rose-500/10 px-2 py-0.5 text-rose-600",
+          SHOP_BADGE,
           className
         )}
       >
@@ -37,7 +39,8 @@ export function ProductDiscountBadge({
       animate="visible"
       variants={badgePop}
       className={cn(
-        "inline-flex items-center rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-rose-600 uppercase sm:text-xs",
+        "inline-flex items-center rounded-full bg-rose-500/10 px-2 py-0.5 text-rose-600",
+        SHOP_BADGE,
         className
       )}
     >

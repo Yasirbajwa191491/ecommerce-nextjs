@@ -12,7 +12,7 @@ import {
   buildPriceTicks,
   formatCompactPrice,
 } from "@/lib/shop/price-ticks";
-import { SHOP_BODY_SM, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
+import { SHOP_BADGE, SHOP_BODY_SM, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import {
   FILTER_OPTION_LIST_CLASS,
@@ -160,7 +160,12 @@ export function ProductCatalogFilters({
       <FilterSidebarSection title="Price range">
         <div className="space-y-3">
           <div className="flex justify-end">
-            <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground tabular-nums">
+            <span
+              className={cn(
+                "w-fit rounded-full bg-muted px-2.5 py-1 text-foreground tabular-nums",
+                SHOP_BADGE
+              )}
+            >
               {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
               {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
             </span>
@@ -179,7 +184,7 @@ export function ProductCatalogFilters({
             disabled={sliderDisabled}
             className="py-2 lg:py-3"
           />
-          <div className="hidden justify-between gap-1 text-[11px] font-medium text-muted-foreground tabular-nums md:flex">
+          <div className={cn("hidden justify-between gap-1 tabular-nums md:flex", SHOP_BODY_SM)}>
             {ticks.map((tick) => (
               <span key={tick}>{formatCompactPrice(tick)}</span>
             ))}

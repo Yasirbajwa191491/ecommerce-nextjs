@@ -7,6 +7,7 @@ import {
   FILTER_OPTION_LIST_CLASS,
   FilterSidebarSection,
 } from "@/components/products/catalog-filter-sections/filter-sidebar-section";
+import { SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type RatingFilterProps = {
@@ -49,7 +50,7 @@ export function RatingFilterSection({
                 className="gap-0.5"
               />
               <span className="sr-only">{bucket.label}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 ({bucket.count})
               </span>
             </Label>
@@ -69,7 +70,7 @@ export function RatingFilterSection({
 
   return (
     <div className={cn("space-y-3 lg:space-y-4", className)}>
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <p className={SHOP_META_LABEL}>
         Rating
       </p>
       {content}

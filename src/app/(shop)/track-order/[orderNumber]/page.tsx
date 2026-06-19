@@ -29,6 +29,9 @@ import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdo
 import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 import { OrderItemPricing } from "@/components/orders/order-item-pricing";
 import { OrderPromotionsSummary } from "@/components/orders/order-promotions-summary";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BADGE, SHOP_BODY, SHOP_BODY_SM, SHOP_META_LABEL, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
@@ -75,9 +78,9 @@ function TrackOrderDetailContent() {
 
   if (!result?.found) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Order not found</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className={cn("mx-auto max-w-lg text-center", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
+        <h1 className={SHOP_PAGE_TITLE}>Order not found</h1>
+        <p className={cn("mt-2", SHOP_BODY)}>
           {result?.message ??
             "We couldn't find an order with that number. Please check and try again."}
         </p>
@@ -94,7 +97,7 @@ function TrackOrderDetailContent() {
   const order = result.order;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:py-10">
+    <div className={cn("mx-auto max-w-4xl space-y-6", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
       <Button
         variant="ghost"
         render={<Link href="/track-order" />}
@@ -105,13 +108,9 @@ function TrackOrderDetailContent() {
       </Button>
 
       <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-[#6254f3]">
-          Order tracking
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
-          {order.orderNumber}
-        </h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className={SHOP_META_LABEL}>Order tracking</p>
+        <h1 className={cn("mt-1", SHOP_PAGE_TITLE)}>{order.orderNumber}</h1>
+        <p className={cn("mt-2", SHOP_BODY)}>
           Placed on{" "}
           {new Intl.DateTimeFormat(undefined, {
             dateStyle: "long",
@@ -122,7 +121,7 @@ function TrackOrderDetailContent() {
 
       <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
         <CardHeader>
-          <CardTitle>Order progress</CardTitle>
+          <CardTitle className={SHOP_SUBSECTION_TITLE}>Order progress</CardTitle>
         </CardHeader>
         <CardContent>
           <OrderProgressTimeline status={order.status} />
@@ -132,9 +131,9 @@ function TrackOrderDetailContent() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
           <CardHeader>
-            <CardTitle>Customer information</CardTitle>
+            <CardTitle className={SHOP_SUBSECTION_TITLE}>Customer information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className={cn("space-y-2", SHOP_BODY)}>
             <p>
               <span className="text-muted-foreground">Name: </span>
               {order.customerName}
@@ -156,7 +155,7 @@ function TrackOrderDetailContent() {
 
         <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
           <CardHeader>
-            <CardTitle>Payment information</CardTitle>
+            <CardTitle className={SHOP_SUBSECTION_TITLE}>Payment information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between gap-4">
@@ -182,7 +181,7 @@ function TrackOrderDetailContent() {
 
       <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
         <CardHeader>
-          <CardTitle>Ordered products</CardTitle>
+          <CardTitle className={SHOP_SUBSECTION_TITLE}>Ordered products</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {order.items.map((item: PublicOrderItem, index: number) => (
@@ -205,7 +204,7 @@ function TrackOrderDetailContent() {
                 <p className="flex flex-wrap items-center gap-2 font-medium">
                   {item.productName}
                   {item.isPromotionGift ? (
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className={SHOP_BADGE}>
                       Promotion gift
                     </Badge>
                   ) : null}
@@ -217,7 +216,7 @@ function TrackOrderDetailContent() {
                   {item.size ? <span>Size {item.size}</span> : null}
                 </div>
                 {item.warrantySummary ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className={cn("mt-1", SHOP_BODY_SM)}>
                     Warranty: {item.warrantySummary}
                   </p>
                 ) : null}
@@ -279,7 +278,7 @@ function TrackOrderDetailContent() {
 
       <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">
         <CardHeader>
-          <CardTitle>Status history</CardTitle>
+          <CardTitle className={SHOP_SUBSECTION_TITLE}>Status history</CardTitle>
         </CardHeader>
         <CardContent>
           <OrderStatusHistory history={order.statusHistory} />

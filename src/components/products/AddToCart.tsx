@@ -16,6 +16,7 @@ import { Product } from "@/types/product";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { SHOP_BODY_SM, SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type AddToCartProps = {
@@ -60,14 +61,7 @@ export default function AddToCart({
 
   const quantityControl = (
     <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-      <Label
-        className={cn(
-          "font-medium",
-          isDetail ? "text-xs sm:text-sm" : "text-sm"
-        )}
-      >
-        Quantity
-      </Label>
+      <Label className={SHOP_META_LABEL}>Quantity</Label>
       <div className="inline-flex items-center rounded-full border border-border/80 bg-background">
         <Button
           type="button"
@@ -98,7 +92,7 @@ export default function AddToCart({
           <Plus className="size-4" />
         </Button>
       </div>
-      <span className="text-[11px] text-muted-foreground sm:text-xs">
+      <span className={SHOP_BODY_SM}>
         {product.stock} available
       </span>
     </div>
@@ -113,8 +107,8 @@ export default function AddToCart({
         className={cn(
           "gap-2 rounded-full font-semibold",
           isDetail
-            ? "h-10 bg-[#6254f3] px-5 text-sm hover:bg-[#5548e0] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
-            : undefined
+            ? "h-11 bg-[#6254f3] px-6 text-base hover:bg-[#5548e0] sm:h-12 sm:px-8 lg:h-12 lg:px-8"
+            : "h-11 px-6 text-base sm:h-12 sm:px-8"
         )}
       >
         <ShoppingBag className="size-4" />
@@ -128,12 +122,12 @@ export default function AddToCart({
       type="button"
       variant="outline"
       onClick={() => router.push("/cart")}
-      className="h-10 gap-2 rounded-full border-border/80 px-5 text-sm font-semibold hover:border-[#6254f3]/40 hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
+      className="h-11 gap-2 rounded-full border-border/80 px-6 text-base font-semibold hover:border-[#6254f3]/40 hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:h-12 sm:px-8"
     >
       <ShoppingCart className="size-4" />
       View cart
       {total_item > 0 ? (
-        <Badge className="pointer-events-none h-5 min-w-5 rounded-full bg-[#6254f3] px-1.5 text-[11px] font-bold text-white hover:bg-[#6254f3]">
+        <Badge className="pointer-events-none h-5 min-w-5 rounded-full bg-[#6254f3] px-1.5 text-sm font-bold text-white hover:bg-[#6254f3]">
           {total_item}
         </Badge>
       ) : null}
@@ -159,14 +153,7 @@ export default function AddToCart({
 
       {hasColors ? (
         <div>
-          <Label
-            className={cn(
-              "mb-2 block font-medium",
-              isDetail ? "text-xs sm:text-sm" : "text-sm"
-            )}
-          >
-            Color
-          </Label>
+          <Label className={cn(SHOP_META_LABEL, "mb-2 block")}>Color</Label>
           <div className="flex flex-wrap gap-2 sm:gap-2.5">
             {product.colors.map((c) => (
               <button

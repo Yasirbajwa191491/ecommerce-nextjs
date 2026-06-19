@@ -1,7 +1,8 @@
 "use client";
 
 import { Truck } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { ShopLabel } from "@/components/shop";
+import { SHOP_BODY_SM } from "@/lib/typography";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrencyAmount } from "@/lib/currencies";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ export function DeliveryMethodSelector({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Truck className="size-4 text-[#6254f3]" />
-        <Label className="text-sm font-semibold">Delivery method</Label>
+        <ShopLabel className="font-semibold">Delivery method</ShopLabel>
       </div>
       <RadioGroup
         value={value}
@@ -47,7 +48,7 @@ export function DeliveryMethodSelector({
             key={method.type}
             htmlFor={`delivery-${method.type}`}
             className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors",
+              "flex cursor-pointer items-start gap-3 rounded-xl border p-5 transition-colors",
               value === method.type
                 ? "border-[#6254f3] bg-[#6254f3]/5"
                 : "border-border/70 hover:bg-muted/40"
@@ -60,14 +61,14 @@ export function DeliveryMethodSelector({
             />
             <div className="flex flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{method.label}</span>
-                <span className="text-sm font-semibold tabular-nums">
+                <span className="text-base font-medium">{method.label}</span>
+                <span className="text-base font-semibold tabular-nums">
                   {method.charge <= 0
                     ? "Free"
                     : formatCurrencyAmount(method.charge, currency)}
                 </span>
               </div>
-              <span className="text-sm text-muted-foreground">
+              <span className={SHOP_BODY_SM}>
                 {method.estimate}
               </span>
             </div>

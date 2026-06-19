@@ -12,6 +12,7 @@ import { useCartContext } from "@/context/cart_context";
 import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +86,7 @@ export function CheckoutView() {
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
-      <section className="w-full px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10 xl:px-16 2xl:px-20">
+      <section className={cn("w-full", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
         <nav
           aria-label="Breadcrumb"
           className={cn("mb-5", SHOP_BREADCRUMB)}

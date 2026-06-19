@@ -2,23 +2,32 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { FileText, Loader2, Shield } from "lucide-react";
+import { FileText, Loader2, Package, RotateCcw, Shield } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLegalPageContent } from "@/hooks/use-legal-page-content";
-import type { RichTextSettingKey } from "@/lib/legal-content";
+import type { PolicySettingKey } from "@/lib/legal-content";
+import { CONTENT_PROSE_WIDTH, PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import {
+  SHOP_BODY,
+  SHOP_EYEBROW,
+  SHOP_PAGE_LEAD,
+  SHOP_PAGE_TITLE,
+} from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+type PolicyVariant = "terms" | "privacy" | "shipping" | "return";
+
 type PolicyPageConfig = {
-  settingKey: RichTextSettingKey;
+  settingKey: PolicySettingKey;
   title: string;
   eyebrow: string;
   description: string;
   icon: typeof FileText;
 };
 
-const POLICY_PAGES: Record<"terms" | "privacy", PolicyPageConfig> = {
+const POLICY_PAGES: Record<PolicyVariant, PolicyPageConfig> = {
   terms: {
     settingKey: "terms_conditions",
     title: "Terms & Conditions",
@@ -35,9 +44,25 @@ const POLICY_PAGES: Record<"terms" | "privacy", PolicyPageConfig> = {
       "We are committed to protecting your personal information. This policy explains what we collect, how we use it, and your rights.",
     icon: Shield,
   },
+  shipping: {
+    settingKey: "shipping_policy",
+    title: "Shipping Policy",
+    eyebrow: "Delivery",
+    description:
+      "Learn how we calculate shipping costs, when orders ship, and how to track your delivery from checkout to your door.",
+    icon: Package,
+  },
+  return: {
+    settingKey: "return_policy",
+    title: "Return Policy",
+    eyebrow: "Refunds",
+    description:
+      "Our return and refund guidelines help you shop with confidence. Review eligibility, timelines, and how to start a return.",
+    icon: RotateCcw,
+  },
 };
 
-function PolicyPageContent({ variant }: { variant: "terms" | "privacy" }) {
+function PolicyPageContent({ variant }: { variant: PolicyVariant }) {
   const config = POLICY_PAGES[variant];
   const searchParams = useSearchParams();
   const fromCheckout = searchParams.get("from") === "checkout";
@@ -48,33 +73,23 @@ function PolicyPageContent({ variant }: { variant: "terms" | "privacy" }) {
     <div className="min-h-screen bg-muted/20">
       <section className="border-b border-border/60 bg-background">
         <div
-          className="mx-auto w-full max-w-[1600px] py-8 sm:py-10 md:py-12"
-          style={{
-            paddingLeft: "clamp(1rem, 3vw, 3rem)",
-            paddingRight: "clamp(1rem, 3vw, 3rem)",
-          }}
+          className={cn("mx-auto w-full max-w-[1600px]", SECTION_PADDING_Y)}
+          style={PAGE_GUTTER}
         >
           <div className="mx-auto max-w-3xl text-center md:mx-0 md:max-w-none md:text-left">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[#6254f3] uppercase sm:text-xs">
-              <Icon className="size-3.5" />
+            <span className={SHOP_EYEBROW}>
+              <Icon className="size-3.5 sm:size-4" />
               {config.eyebrow}
             </span>
-            <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-[2.5rem]">
-              {config.title}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {config.description}
-            </p>
+            <h1 className={cn("mt-4", SHOP_PAGE_TITLE)}>{config.title}</h1>
+            <p className={cn("max-w-2xl", SHOP_PAGE_LEAD)}>{config.description}</p>
           </div>
         </div>
       </section>
 
       <section
-        className="mx-auto w-full max-w-[1600px] py-8 sm:py-10 md:py-12 lg:py-14"
-        style={{
-          paddingLeft: "clamp(1rem, 3vw, 3rem)",
-          paddingRight: "clamp(1rem, 3vw, 3rem)",
-        }}
+        className={cn("mx-auto w-full max-w-[1600px]", SECTION_PADDING_Y)}
+        style={PAGE_GUTTER}
       >
         <div className="w-full">
           <Card className="w-full overflow-hidden border-border/60 bg-card shadow-sm">
@@ -90,7 +105,9 @@ function PolicyPageContent({ variant }: { variant: "terms" | "privacy" }) {
               ) : (
                 <div
                   className={cn(
-                    "legal-content rich-text-content text-sm leading-relaxed sm:text-[0.95rem]"
+                    "legal-content rich-text-content",
+                    CONTENT_PROSE_WIDTH,
+                    SHOP_BODY
                   )}
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
@@ -118,7 +135,7 @@ function PolicyPageFallback() {
   );
 }
 
-export function PolicyPageView({ variant }: { variant: "terms" | "privacy" }) {
+export function PolicyPageView({ variant }: { variant: PolicyVariant }) {
   return (
     <Suspense fallback={<PolicyPageFallback />}>
       <PolicyPageContent variant={variant} />

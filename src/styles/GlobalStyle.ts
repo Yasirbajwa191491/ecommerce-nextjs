@@ -8,7 +8,7 @@ export const GlobalStyle = createGlobalStyle`
   box-sizing: border-box;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
-html { font-size: 62.5%; overflow-x: hidden; }
+html { font-size: 100%; overflow-x: hidden; }
 body { margin: 0; overflow-x: hidden; }
 a { text-decoration: none; }
 li { list-style: none; }
@@ -21,7 +21,6 @@ li { list-style: none; }
 .caption { position: absolute; top: 15%; right: 10%; text-transform: uppercase; background: ${({ theme }) => theme.colors.bg}; color: ${({ theme }) => theme.colors.helper}; padding: 0.8rem 2rem; font-size: 1.2rem; border-radius: 2rem; }
 .page_loading { font-size: 3.2rem; display: flex; justify-content: center; padding: 6rem; }
 @media (max-width: ${({ theme }) => theme.media.mobile}) {
-  html { font-size: 50%; }
   .grid-two-column, .grid-three-column, .grid-filter-column { grid-template-columns: 1fr; }
 }
 `;

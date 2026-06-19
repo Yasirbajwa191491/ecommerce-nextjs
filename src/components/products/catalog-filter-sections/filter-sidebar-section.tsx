@@ -1,6 +1,7 @@
-"use client";
+  "use client";
 
 import type { ReactNode } from "react";
+import { SHOP_META_LABEL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 /** Shared vertical rhythm for filter option lists (category, brand, etc.) */
@@ -19,9 +20,7 @@ export function FilterSidebarSection({
 }: FilterSidebarSectionProps) {
   return (
     <section className={cn("space-y-3 py-5 first:pt-0 last:pb-0", className)}>
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </p>
+      <p className={SHOP_META_LABEL}>{title}</p>
       {children}
     </section>
   );

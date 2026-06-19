@@ -429,12 +429,20 @@ a[data-slot="button"].bg-primary {
 /* Shared rich-text display (storefront legal pages + admin editor) */
 .rich-text-content {
   color: inherit;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+}
+
+@media (min-width: 768px) {
+  .rich-text-content {
+    font-size: 1.125rem;
+  }
 }
 
 .rich-text-content p {
   margin-top: 0;
-  margin-bottom: 1.25em;
-  line-height: 1.75;
+  margin-bottom: 1.5em;
+  line-height: 1.8;
 }
 
 .rich-text-content p:last-child {
@@ -457,19 +465,31 @@ a[data-slot="button"].bg-primary {
 
 .rich-text-content h1 {
   margin: 1.75em 0 0.75em;
-  font-size: 1.5rem;
+  font-size: 2rem;
   line-height: 1.3;
+}
+
+@media (min-width: 768px) {
+  .rich-text-content h1 {
+    font-size: 2.5rem;
+  }
 }
 
 .rich-text-content h2 {
   margin: 1.5em 0 0.65em;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   line-height: 1.35;
+}
+
+@media (min-width: 768px) {
+  .rich-text-content h2 {
+    font-size: 1.875rem;
+  }
 }
 
 .rich-text-content h3 {
   margin: 1.35em 0 0.55em;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   line-height: 1.4;
 }
 
@@ -497,8 +517,8 @@ a[data-slot="button"].bg-primary {
 
 .rich-text-content li {
   display: list-item;
-  margin-bottom: 0.4em;
-  line-height: 1.7;
+  margin-bottom: 0.65em;
+  line-height: 1.8;
 }
 
 /* Tailwind preflight sets `li { list-style-type: none }` — restore markers */
@@ -580,7 +600,7 @@ a[data-slot="button"].bg-primary {
 }
 
 .legal-content p {
-  line-height: 1.75;
+  line-height: 1.8;
 }
 
 .legal-content a {

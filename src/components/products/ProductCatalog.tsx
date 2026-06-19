@@ -23,6 +23,7 @@ import { ScrollReveal } from "@/components/home/scroll-reveal";
 import { m } from "framer-motion";
 import { fadeIn } from "@/lib/motion";
 import { SHOP_BODY, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
+import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
@@ -477,11 +478,8 @@ export default function ProductCatalog() {
     <div className="min-h-screen bg-muted/20">
       <div className="border-b border-border/60 bg-background">
         <div
-          className="mx-auto w-full max-w-[1600px] py-4 sm:py-5"
-          style={{
-            paddingLeft: "clamp(1rem, 3vw, 3rem)",
-            paddingRight: "clamp(1rem, 3vw, 3rem)",
-          }}
+          className={cn("mx-auto w-full max-w-[1600px]", CONTENT_SECTION_PADDING_Y)}
+          style={PAGE_GUTTER}
         >
           <ScrollReveal variant="headline">
             <h1 className={SHOP_PAGE_TITLE}>Ecommerce Products</h1>
@@ -493,11 +491,8 @@ export default function ProductCatalog() {
       </div>
 
       <div
-        className="mx-auto w-full max-w-[1600px] py-5 lg:py-6"
-        style={{
-          paddingLeft: "clamp(1rem, 3vw, 3rem)",
-          paddingRight: "clamp(1rem, 3vw, 3rem)",
-        }}
+        className={cn("mx-auto w-full max-w-[1600px]", CONTENT_SECTION_PADDING_Y)}
+        style={PAGE_GUTTER}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
           <ProductCatalogFilters

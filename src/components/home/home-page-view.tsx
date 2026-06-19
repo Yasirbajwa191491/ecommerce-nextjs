@@ -15,12 +15,14 @@ import { PopularBrandsSection } from "@/components/home/popular-brands-section";
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { CONVERSION_TRUST_STRIP } from "@/lib/home-content";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
+import { SHOP_BODY_SM } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 function ConversionTrustStrip() {
   return (
     <div className="border-y border-border/60 bg-muted/20">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <StaggerGroup className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 py-4 text-sm text-muted-foreground sm:gap-x-8 sm:text-base">
+        <StaggerGroup className={cn("flex flex-wrap items-center justify-center gap-x-6 gap-y-3 py-4 sm:gap-x-8", SHOP_BODY_SM)}>
         {CONVERSION_TRUST_STRIP.map(({ icon: Icon, label }, index) => (
           <StaggerItem key={label} index={index} variant="fade" staggerMs={60}>
             <span className="inline-flex items-center gap-2 font-medium">

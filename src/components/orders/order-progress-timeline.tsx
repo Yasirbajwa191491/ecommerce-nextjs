@@ -88,7 +88,7 @@ export function OrderProgressTimeline({
             )}
             <span
               className={cn(
-                "text-[10px] font-medium leading-tight sm:text-sm",
+                "text-sm font-medium leading-tight",
                 isCurrent && "text-[#6254f3]",
                 !isComplete && !isCurrent && "text-muted-foreground"
               )}

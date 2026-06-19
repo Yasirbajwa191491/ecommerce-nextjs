@@ -1,6 +1,7 @@
 "use client";
 
 import FormatPrice from "@/helpers/FormatPrice";
+import { SHOP_PRICE_TOTAL } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type OrderSummaryBreakdownProps = {
@@ -97,7 +98,7 @@ export function OrderSummaryBreakdown({
       </div>
       <div className="flex items-center justify-between border-t border-border/60 pt-3">
         <span className="text-base font-semibold text-foreground">Grand total</span>
-        <span className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
+        <span className={SHOP_PRICE_TOTAL}>
           <FormatPrice price={total} currency={currency} />
         </span>
       </div>

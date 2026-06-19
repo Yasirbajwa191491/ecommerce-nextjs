@@ -13,13 +13,20 @@ import {
 import { HERO_TRUST_ITEMS } from "@/lib/home-content";
 import {
   BUTTON_ROW_CLASS,
-  GHOST_ON_DARK_BUTTON_CLASS,
+  HERO_GHOST_BUTTON_CLASS,
+  HERO_PRIMARY_BUTTON_CLASS,
   PAGE_GUTTER,
-  PRIMARY_BUTTON_CLASS,
 } from "@/lib/layout-constants";
 import { getPrimaryImageUrl } from "@/lib/product-images";
 import { productPath } from "@/lib/product-url";
 import { fadeIn, fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
+import {
+  SHOP_HERO_BADGE,
+  SHOP_HERO_FEATURE,
+  SHOP_HERO_LEAD,
+  SHOP_HERO_TITLE,
+} from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 const HERO_FALLBACK_IMAGES = [
   {
@@ -102,25 +109,19 @@ export function HomeHeroSection() {
           animate="visible"
           variants={staggerContainer(0.1, 0.05)}
         >
-          <m.span
-            variants={fadeUp}
-            className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/40 bg-[#6254f3]/20 px-3.5 py-1.5 text-xs font-bold tracking-wide text-white"
-          >
-            <Percent className="size-3.5 text-[#a99bfa]" />
+          <m.span variants={fadeUp} className={SHOP_HERO_BADGE}>
+            <Percent className="size-4 text-[#a99bfa] sm:size-[1.125rem]" />
             Up To 40% Off
           </m.span>
 
           <m.h1
             variants={fadeUp}
-            className="mt-4 max-w-xl text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-3xl md:text-4xl md:leading-[1.08] lg:text-[3.25rem]"
+            className={cn("mt-4 max-w-xl text-white sm:mt-5", SHOP_HERO_TITLE)}
           >
             Discover Premium Products For Your Lifestyle
           </m.h1>
 
-          <m.p
-            variants={fadeIn}
-            className="mt-4 max-w-lg text-sm leading-relaxed text-white/75 sm:text-base md:text-lg"
-          >
+          <m.p variants={fadeIn} className={cn("mt-4 max-w-lg", SHOP_HERO_LEAD)}>
             Shop curated furniture, electronics, and essentials with secure
             checkout, fast delivery, and quality you can trust.
           </m.p>
@@ -132,17 +133,17 @@ export function HomeHeroSection() {
             <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
               <Button
                 render={<Link href="/products" />}
-                className={PRIMARY_BUTTON_CLASS}
+                className={HERO_PRIMARY_BUTTON_CLASS}
               >
                 Shop Now
-                <ArrowRight className="size-4" />
+                <ArrowRight />
               </Button>
             </m.div>
             <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
               <Button
                 render={<Link href="/products" />}
                 variant="outline"
-                className={GHOST_ON_DARK_BUTTON_CLASS}
+                className={HERO_GHOST_BUTTON_CLASS}
               >
                 Browse Categories
               </Button>
@@ -151,19 +152,19 @@ export function HomeHeroSection() {
 
           <m.ul
             variants={staggerContainer(0.06, 0)}
-            className="mt-6 grid w-full max-w-xl grid-cols-2 gap-x-3 gap-y-2.5 sm:mt-8 sm:gap-x-4 sm:gap-y-3 md:max-w-lg"
+            className="mt-6 grid w-full max-w-xl grid-cols-2 gap-x-4 gap-y-3 sm:mt-8 sm:gap-x-5 sm:gap-y-4 md:max-w-2xl"
           >
             {HERO_TRUST_ITEMS.map(({ icon: Icon, label }) => (
               <m.li
                 key={label}
                 variants={staggerItem}
-                className="flex items-center gap-2 text-left text-xs text-white/80 sm:text-sm"
+                className={cn("flex items-center gap-2.5 text-left sm:gap-3", SHOP_HERO_FEATURE)}
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#a99bfa]">
-                  <Check className="size-3.5" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#a99bfa] sm:size-10">
+                  <Check className="size-4 sm:size-[1.125rem]" />
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Icon className="size-3.5 shrink-0 text-[#a99bfa]" />
+                <span className="flex items-center gap-2 sm:gap-2.5">
+                  <Icon className="size-[1.125rem] shrink-0 text-[#a99bfa] sm:size-5" />
                   {label}
                 </span>
               </m.li>

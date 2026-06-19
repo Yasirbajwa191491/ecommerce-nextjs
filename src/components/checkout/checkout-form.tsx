@@ -17,7 +17,13 @@ import {
   DeliveryMethodSelector,
   type DeliveryMethodOption,
 } from "@/components/checkout/delivery-method-selector";
-import { Button } from "@/components/ui/button";
+import { ShopButton, ShopInput, ShopLabel, ShopTextarea } from "@/components/shop";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+} from "@/components/ui/field";
 import {
   Card,
   CardContent,
@@ -26,9 +32,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { Textarea } from "@/components/ui/textarea";
 import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import { useCartContext } from "@/context/cart_context";
 import { useFormValidation } from "@/hooks/use-form-validation";
@@ -37,6 +41,7 @@ import {
   saveCheckoutCustomer,
 } from "@/lib/checkout-customer-storage";
 import { toastError, toastSuccess } from "@/lib/app-toast";
+import { SHOP_BODY_SM, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import {
   validateCheckoutForm,
@@ -63,6 +68,38 @@ const emptyForm = (): CheckoutFormValues => ({
   termsAccepted: false,
   privacyAccepted: false,
 });
+
+function CheckoutFormField({
+  label,
+  htmlFor,
+  error,
+  description,
+  required,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  error?: string;
+  description?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Field data-invalid={!!error}>
+      <ShopLabel htmlFor={htmlFor}>
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </ShopLabel>
+      <FieldContent>
+        {children}
+        {description && !error ? (
+          <FieldDescription>{description}</FieldDescription>
+        ) : null}
+        <FieldError>{error}</FieldError>
+      </FieldContent>
+    </Field>
+  );
+}
 
 export function CheckoutForm({
   initialValues,
@@ -187,20 +224,20 @@ export function CheckoutForm({
   return (
     <Card className="overflow-hidden rounded-2xl border-border/60 shadow-lg ring-1 ring-foreground/5">
       <CardHeader className="space-y-1 border-b border-border/60 bg-muted/20 px-5 py-6 sm:px-7">
-        <CardTitle className="text-xl sm:text-2xl">Customer information</CardTitle>
+        <CardTitle className={SHOP_SUBSECTION_TITLE}>Customer information</CardTitle>
         <CardDescription>
           Enter your details to complete your order securely.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-5 py-6 sm:px-7">
         <form noValidate className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          <AdminFormField
+          <CheckoutFormField
             label="Full name"
             htmlFor="checkout-full-name"
             error={validation.fieldError("fullName")}
             required
           >
-            <Input
+            <ShopInput
               id="checkout-full-name"
               name="fullName"
               value={form.fullName}
@@ -211,20 +248,17 @@ export function CheckoutForm({
               placeholder="Your full name"
               disabled={submitting}
               aria-invalid={!!validation.fieldError("fullName")}
-              className={cn(
-                invalidInputClass(validation.fieldError("fullName")),
-                "h-11"
-              )}
+              className={invalidInputClass(validation.fieldError("fullName"))}
             />
-          </AdminFormField>
+          </CheckoutFormField>
 
-          <AdminFormField
+          <CheckoutFormField
             label="Email address"
             htmlFor="checkout-email"
             error={validation.fieldError("email")}
             required
           >
-            <Input
+            <ShopInput
               id="checkout-email"
               name="email"
               type="email"
@@ -236,12 +270,9 @@ export function CheckoutForm({
               placeholder="you@example.com"
               disabled={submitting}
               aria-invalid={!!validation.fieldError("email")}
-              className={cn(
-                invalidInputClass(validation.fieldError("email")),
-                "h-11"
-              )}
+              className={invalidInputClass(validation.fieldError("email"))}
             />
-          </AdminFormField>
+          </CheckoutFormField>
 
           <AdminFormField
             label="Phone number"
@@ -262,13 +293,13 @@ export function CheckoutForm({
             />
           </AdminFormField>
 
-          <AdminFormField
+          <CheckoutFormField
             label="Address"
             htmlFor="checkout-address"
             error={validation.fieldError("address")}
             required
           >
-            <Textarea
+            <ShopTextarea
               id="checkout-address"
               name="address"
               value={form.address}
@@ -285,15 +316,15 @@ export function CheckoutForm({
                 "min-h-[5.5rem] resize-y"
               )}
             />
-          </AdminFormField>
+          </CheckoutFormField>
 
-          <AdminFormField
+          <CheckoutFormField
             label="Order notes"
             htmlFor="checkout-notes"
             error={validation.fieldError("notes")}
             description="Optional delivery instructions or special requests."
           >
-            <Textarea
+            <ShopTextarea
               id="checkout-notes"
               name="notes"
               value={form.notes}
@@ -310,7 +341,7 @@ export function CheckoutForm({
                 "min-h-[5rem] resize-y"
               )}
             />
-          </AdminFormField>
+          </CheckoutFormField>
 
           {deliveryMethods.length > 0 ? (
             <DeliveryMethodSelector
@@ -346,10 +377,18 @@ export function CheckoutForm({
                 disabled={submitting}
                 aria-invalid={!!validation.fieldError("termsAccepted")}
               />
-              <span className="text-sm leading-relaxed text-foreground">
+              <span className={cn("leading-relaxed text-foreground", SHOP_BODY_SM)}>
                 I agree to the{" "}
                 <Link href="/terms?from=checkout" className="font-medium text-[#6254f3] hover:underline">
                   Terms & Conditions
+                </Link>
+                ,{" "}
+                <Link href="/shipping?from=checkout" className="font-medium text-[#6254f3] hover:underline">
+                  Shipping Policy
+                </Link>
+                , and{" "}
+                <Link href="/return?from=checkout" className="font-medium text-[#6254f3] hover:underline">
+                  Return Policy
                 </Link>
               </span>
             </label>
@@ -372,7 +411,7 @@ export function CheckoutForm({
                 disabled={submitting}
                 aria-invalid={!!validation.fieldError("privacyAccepted")}
               />
-              <span className="text-sm leading-relaxed text-foreground">
+              <span className={cn("leading-relaxed text-foreground", SHOP_BODY_SM)}>
                 I agree to the{" "}
                 <Link href="/privacy?from=checkout" className="font-medium text-[#6254f3] hover:underline">
                   Privacy Policy
@@ -387,10 +426,10 @@ export function CheckoutForm({
           </div>
 
           <div className="flex w-full flex-col items-center gap-3">
-            <Button
+            <ShopButton
               type="submit"
               disabled={submitting}
-              className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] disabled:opacity-50 [&_svg]:!text-white"
+              className="group gap-2 rounded-full bg-[#6254f3] px-8 !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] disabled:opacity-50 [&_svg]:!text-white"
             >
               {submitting ? (
                 <>
@@ -408,10 +447,10 @@ export function CheckoutForm({
                   Place order
                 </>
               )}
-            </Button>
+            </ShopButton>
           </div>
 
-          <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
+          <p className={cn("flex items-center justify-center gap-1.5 text-center", SHOP_BODY_SM)}>
             <Lock className="size-3 shrink-0" />
             Your payment information is encrypted and secure
           </p>

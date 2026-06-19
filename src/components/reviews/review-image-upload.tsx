@@ -142,7 +142,7 @@ export function ReviewImageUpload({
             ) : (
               <>
                 <ImagePlus className="size-5" />
-                <span className="text-[10px]">Add</span>
+                <span className="text-sm">Add</span>
               </>
             )}
           </Button>

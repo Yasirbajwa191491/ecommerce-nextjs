@@ -18,6 +18,7 @@ import { CheckoutItemMobile, CheckoutItemRow } from "@/components/checkout/check
 import { OrderSummaryBreakdown } from "@/components/orders/order-summary-breakdown";
 import type { CartPricedLine } from "@/components/cart/cart-line-pricing";
 import { cn } from "@/lib/utils";
+import { SHOP_BODY_SM, SHOP_SUBSECTION_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
 import type { CartItem } from "@/reducer/cartReducer";
 import { Package } from "lucide-react";
 
@@ -63,8 +64,8 @@ export function CheckoutOrderSummary({
               <Package className="size-5" />
             </span>
             <div>
-              <h2 className="text-lg font-bold text-foreground">Order summary</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className={SHOP_SUBSECTION_TITLE}>Order summary</h2>
+              <p className={SHOP_BODY_SM}>
                 {totalItems} {totalItems === 1 ? "item" : "items"} in your order
               </p>
             </div>
@@ -86,16 +87,16 @@ export function CheckoutOrderSummary({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
-                <TableHead className="h-12 py-4 pl-8 text-xs font-bold tracking-wider text-foreground/70 uppercase xl:pl-10">
+                <TableHead className={cn("h-12 py-4 pl-8 xl:pl-10", SHOP_TABLE_HEAD)}>
                   Product
                 </TableHead>
-                <TableHead className="h-12 w-40 py-4 text-right text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                <TableHead className={cn("h-12 w-40 py-4 text-right", SHOP_TABLE_HEAD)}>
                   Unit price
                 </TableHead>
-                <TableHead className="h-12 w-44 py-4 text-center text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                <TableHead className={cn("h-12 w-44 py-4 text-center", SHOP_TABLE_HEAD)}>
                   Quantity
                 </TableHead>
-                <TableHead className="h-12 w-32 py-4 text-right text-xs font-bold tracking-wider text-foreground/70 uppercase">
+                <TableHead className={cn("h-12 w-32 py-4 text-right", SHOP_TABLE_HEAD)}>
                   Subtotal
                 </TableHead>
               </TableRow>
@@ -116,7 +117,7 @@ export function CheckoutOrderSummary({
 
       <Card className="overflow-hidden rounded-2xl border-border/60 shadow-lg ring-1 ring-foreground/5">
         <CardHeader className="border-b border-border/60 bg-muted/20 px-6 py-5">
-          <CardTitle className="text-base font-bold">Price details</CardTitle>
+          <CardTitle className={SHOP_SUBSECTION_TITLE}>Price details</CardTitle>
         </CardHeader>
         <CardContent className="px-6 py-6">
           {isLoading ? (
