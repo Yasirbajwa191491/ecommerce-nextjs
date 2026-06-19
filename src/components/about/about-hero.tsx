@@ -6,7 +6,6 @@ import { AboutImage } from "@/components/about/about-image";
 import { Button } from "@/components/ui/button";
 import { ABOUT_HERO } from "@/lib/about-content";
 import {
-  BUTTON_ROW_CLASS,
   OUTLINE_BUTTON_CLASS,
   PAGE_GUTTER,
   PRIMARY_BUTTON_CLASS,
@@ -29,10 +28,14 @@ export function AboutHero() {
               {ABOUT_HERO.badge}
             </span>
             <h1 className={cn("mt-4", SHOP_PAGE_TITLE)}>{ABOUT_HERO.title}</h1>
-            <p className={cn("mt-3 max-w-2xl lg:mx-0", SHOP_PAGE_LEAD)}>
+            <p className={cn("mx-auto mt-3 max-w-2xl lg:mx-0", SHOP_PAGE_LEAD)}>
               {ABOUT_HERO.description}
             </p>
-            <div className={`mt-6 ${BUTTON_ROW_CLASS}`}>
+            <div
+              className={cn(
+                "mt-6 flex flex-row flex-wrap items-center justify-center gap-3 lg:justify-start"
+              )}
+            >
               <Button
                 render={<Link href="/products" />}
                 className={PRIMARY_BUTTON_CLASS}

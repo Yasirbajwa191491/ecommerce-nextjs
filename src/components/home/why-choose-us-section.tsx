@@ -22,12 +22,12 @@ export function WhyChooseUsSection() {
           className="sm:items-center sm:text-center"
         />
 
-        <StaggerGroup className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4 lg:gap-5">
+        <StaggerGroup className="mt-8 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4 lg:gap-5">
           {WHY_CHOOSE_US_FEATURES.map(({ title, description, icon: Icon }, index) => (
-            <StaggerItem key={title} index={index} variant="scale">
+            <StaggerItem key={title} index={index} variant="scale" className="h-full w-full">
               <Card
                 className={cn(
-                  "h-full border-border/60 bg-card shadow-sm",
+                  "h-full w-full border-border/60 bg-card shadow-sm",
                   "transition-[transform,box-shadow,border-color] duration-500 ease-out",
                   "hover:-translate-y-1 hover:border-[#6254f3]/25 hover:shadow-lg hover:shadow-[#6254f3]/5"
                 )}

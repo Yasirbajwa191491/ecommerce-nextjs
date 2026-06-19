@@ -106,7 +106,7 @@ export function AboutHowItWorksSection() {
         title="How Our Store Works"
         description="From browsing to delivery — here is your complete shopping journey in six simple steps."
       />
-      <ol className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 md:grid-cols-3 md:gap-4 lg:gap-5">
+      <ol className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-2 md:grid-cols-3 md:gap-4 lg:gap-5">
         {HOW_IT_WORKS_STEPS.map(({ step, title, description, icon: Icon }) => (
           <li
             key={step}
@@ -142,7 +142,7 @@ export function AboutWhyShopSection() {
         title="Why Shop With Us"
         description="Everything you need for a confident, hassle-free online shopping experience."
       />
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 md:grid-cols-3 md:gap-4 lg:gap-5">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-2 md:grid-cols-3 md:gap-4 lg:gap-5">
         {WHY_SHOP_FEATURES.map(({ title, description, icon: Icon }) => (
           <Card
             key={title}
@@ -302,7 +302,7 @@ export function AboutTrackingSection() {
         ))}
       </div>
 
-      <ol className="mt-6 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-3 md:gap-4">
+      <ol className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-3 sm:gap-3 md:gap-4">
         {TRACKING_STEPS.map(({ step, title, description }) => (
           <li
             key={step}

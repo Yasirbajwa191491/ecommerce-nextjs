@@ -27,9 +27,9 @@ export function SpecialPromotionsSection() {
           title="Special Promotions"
           description="Exclusive bundle deals — buy the qualifying quantity and receive free items at checkout."
         />
-        <StaggerGroup className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
+        <StaggerGroup className="mt-8 grid w-full grid-cols-1 items-stretch gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
           {promotions.map((promo, index) => (
-            <StaggerItem key={promo._id} index={index} className="h-full">
+            <StaggerItem key={promo._id} index={index} className="h-full w-full">
               <PromotionStorefrontCard promotion={promo} className="h-full" />
             </StaggerItem>
           ))}

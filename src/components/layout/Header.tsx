@@ -56,32 +56,32 @@ export default function Header() {
         scrolled && "shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
       )}
     >
-      {/* Phone + tablet only (hidden on lg / 1024px+) */}
+      {/* Phone + tablet: logo/actions row, then full-width search (hidden on lg) */}
       <div
-        className="mx-auto grid h-[4.25rem] w-full max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 max-lg:grid sm:gap-x-4 md:h-[4.5rem] md:gap-x-6 lg:!hidden"
+        className="mx-auto w-full max-w-[1600px] pb-3 pt-3 sm:pb-3.5 sm:pt-3.5 md:pt-4 lg:hidden"
         style={gutterStyle}
       >
-        <StoreLogoLink
-          onNavigate={() => setMobileOpen(false)}
-          className={HEADER_STORE_NAME_MOBILE}
-        />
+        <div className="flex items-center justify-between gap-3">
+          <StoreLogoLink
+            onNavigate={() => setMobileOpen(false)}
+            className={HEADER_STORE_NAME_MOBILE}
+          />
 
-        <div className="flex min-w-0 w-full justify-center px-1 sm:px-2 md:max-w-xl">
-          {mobileSearch}
+          <div className="flex shrink-0 items-center gap-2.5 sm:gap-4">
+            <HeaderCart compact />
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-10 shrink-0 rounded-full border-border/80 bg-background shadow-sm"
+              aria-label="Open menu"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="size-5" />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-self-end gap-2.5 sm:gap-4">
-          <HeaderCart compact />
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-10 shrink-0 rounded-full border-border/80 bg-background shadow-sm"
-            aria-label="Open menu"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="size-5" />
-          </Button>
-        </div>
+        <div className="mt-2.5 w-full sm:mt-3">{mobileSearch}</div>
       </div>
 
       {/* Laptop / desktop only (lg / 1024px+) */}

@@ -57,48 +57,90 @@ export function OrderProgressTimeline({
   const activeIndex = getActiveStepIndex(status);
 
   return (
-    <ol
-      className={cn(
-        "grid w-full grid-cols-5 gap-1.5 sm:gap-2 md:gap-4",
-        className
-      )}
-    >
-      {PROGRESS_STEPS.map((step, index) => {
-        const isComplete = index < activeIndex;
-        const isCurrent = index === activeIndex;
+    <>
+      {/* Phone: vertical step list — avoids cramped 5-column grid */}
+      <ol className={cn("flex flex-col gap-2 sm:hidden", className)}>
+        {PROGRESS_STEPS.map((step, index) => {
+          const isComplete = index < activeIndex;
+          const isCurrent = index === activeIndex;
 
-        return (
-          <li
-            key={step.key}
-            className={cn(
-              "flex min-w-0 flex-col items-center gap-1 rounded-lg border p-1.5 text-center sm:gap-2 sm:rounded-xl sm:p-3",
-              isCurrent && "border-[#6254f3] bg-[#6254f3]/5",
-              isComplete && "border-emerald-500/30 bg-emerald-500/5"
-            )}
-          >
-            {isComplete || isCurrent ? (
-              <CheckCircle2
-                className={cn(
-                  "size-4 shrink-0 sm:size-5",
-                  isCurrent ? "text-[#6254f3]" : "text-emerald-600"
-                )}
-              />
-            ) : (
-              <Circle className="size-4 shrink-0 text-muted-foreground sm:size-5" />
-            )}
-            <span
+          return (
+            <li
+              key={step.key}
               className={cn(
-                "text-sm font-medium leading-tight",
-                isCurrent && "text-[#6254f3]",
-                !isComplete && !isCurrent && "text-muted-foreground"
+                "flex items-center gap-3 rounded-lg border px-3 py-2.5",
+                isCurrent && "border-[#6254f3] bg-[#6254f3]/5",
+                isComplete && "border-emerald-500/30 bg-emerald-500/5"
               )}
             >
-              {step.label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+              {isComplete || isCurrent ? (
+                <CheckCircle2
+                  className={cn(
+                    "size-5 shrink-0",
+                    isCurrent ? "text-[#6254f3]" : "text-emerald-600"
+                  )}
+                />
+              ) : (
+                <Circle className="size-5 shrink-0 text-muted-foreground" />
+              )}
+              <span
+                className={cn(
+                  "text-sm font-medium",
+                  isCurrent && "text-[#6254f3]",
+                  !isComplete && !isCurrent && "text-muted-foreground"
+                )}
+              >
+                {step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* Tablet+ : horizontal progress grid */}
+      <ol
+        className={cn(
+          "hidden w-full grid-cols-5 gap-2 sm:grid md:gap-4",
+          className
+        )}
+      >
+        {PROGRESS_STEPS.map((step, index) => {
+          const isComplete = index < activeIndex;
+          const isCurrent = index === activeIndex;
+
+          return (
+            <li
+              key={step.key}
+              className={cn(
+                "flex min-w-0 flex-col items-center gap-2 rounded-xl border p-3 text-center",
+                isCurrent && "border-[#6254f3] bg-[#6254f3]/5",
+                isComplete && "border-emerald-500/30 bg-emerald-500/5"
+              )}
+            >
+              {isComplete || isCurrent ? (
+                <CheckCircle2
+                  className={cn(
+                    "size-5 shrink-0",
+                    isCurrent ? "text-[#6254f3]" : "text-emerald-600"
+                  )}
+                />
+              ) : (
+                <Circle className="size-5 shrink-0 text-muted-foreground" />
+              )}
+              <span
+                className={cn(
+                  "text-sm font-medium leading-tight",
+                  isCurrent && "text-[#6254f3]",
+                  !isComplete && !isCurrent && "text-muted-foreground"
+                )}
+              >
+                {step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 

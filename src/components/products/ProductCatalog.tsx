@@ -589,7 +589,7 @@ export default function ProductCatalog() {
                     shimmer
                     className={cn(
                       "rounded-2xl",
-                      view === "list" ? "h-32" : "h-[18rem]"
+                      view === "list" ? "h-52 sm:h-56" : "h-[18rem]"
                     )}
                   />
                 ))}

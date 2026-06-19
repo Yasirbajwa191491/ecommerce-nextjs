@@ -29,7 +29,7 @@ export function ProductImageFrame({
       className={cn(
         "relative shrink-0 overflow-hidden bg-white",
         isList
-          ? "aspect-square h-44 w-44 rounded-xl sm:h-56 sm:w-56"
+          ? "aspect-square h-36 w-36 rounded-xl sm:h-44 sm:w-44 xl:h-52 xl:w-52"
           : cn(
               "w-full",
               isCatalog ? "aspect-[4/3]" : "aspect-[4/5]"

@@ -71,12 +71,12 @@ export default function ProductCard({
   if (view === "list") {
     return (
       <m.div
-        className="group flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:gap-6 sm:p-5"
+        className="group flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:p-5 xl:flex-row xl:items-start xl:gap-6"
         {...entranceProps}
         {...hoverShellProps}
         whileTap={reduceMotion ? undefined : cardTap}
       >
-        <div className="relative shrink-0 overflow-hidden rounded-xl">
+        <div className="relative mx-auto w-full max-w-[11rem] shrink-0 sm:max-w-[12.5rem] xl:mx-0 xl:max-w-none">
           <MotionHoverImage className="size-full rounded-xl" zoom="subtle">
             <ProductImageGallery
               variant="list"
@@ -96,7 +96,7 @@ export default function ProductCard({
 
         <Link
           href={productPath(product._id)}
-          className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6"
+          className="flex min-w-0 flex-1 flex-col gap-4 xl:flex-row xl:items-center xl:gap-6"
         >
           <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-2">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -127,14 +127,14 @@ export default function ProductCard({
             <ProductStockBadge stock={product.stock} variant="list" />
           </div>
 
-          <div className="flex shrink-0 flex-col justify-center gap-2 border-t border-border/50 pt-3 sm:w-36 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right md:w-40">
+          <div className="flex w-full shrink-0 flex-row items-center justify-between gap-3 border-t border-border/50 pt-3 xl:w-40 xl:flex-col xl:items-end xl:justify-center xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6 xl:text-right">
             <ProductPrice
               price={product.price}
               discountPercent={discountPercent}
               currency={product.currency}
-              className="sm:justify-end"
+              className="xl:justify-end"
             />
-            <div className="flex flex-wrap gap-1 sm:justify-end">
+            <div className="flex flex-wrap justify-end gap-1">
               <ProductDiscountBadge discountPercent={discountPercent} />
               <ProductShippingBadge
                 freeShipping={freeShipping}

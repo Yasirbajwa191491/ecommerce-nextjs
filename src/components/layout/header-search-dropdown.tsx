@@ -52,7 +52,8 @@ function DropdownShell({
       exit={reduceMotion ? undefined : "exit"}
       variants={dropdown}
       className={cn(
-        "absolute top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xl",
+        "absolute top-[calc(100%+0.5rem)] z-50 w-full min-w-0 overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xl",
+        "max-lg:left-0 max-lg:right-0",
         className
       )}
     >
@@ -168,10 +169,10 @@ export function HeaderSearchDropdown({
                     type="button"
                     role="option"
                     onClick={() => onSelectQuery(term)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60"
+                    className="flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60"
                   >
-                    <Clock className="size-3.5 shrink-0 text-muted-foreground" />
-                    {term}
+                    <Clock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 break-words">{term}</span>
                   </button>
                 </m.li>
               ))}
@@ -201,10 +202,10 @@ export function HeaderSearchDropdown({
                     type="button"
                     role="option"
                     onClick={() => onSelectQuery(item.query)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60"
+                    className="flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60"
                   >
                     <SuggestionIcon type={item.type} />
-                    {item.label}
+                    <span className="min-w-0 flex-1 break-words">{item.label}</span>
                   </button>
                 </m.li>
               ))}

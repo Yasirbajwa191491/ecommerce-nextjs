@@ -21,18 +21,19 @@ export function PromoBannerSection() {
   return (
     <section className={cn("bg-background", HOME_SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <StaggerGroup className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:gap-6">
+        <StaggerGroup className="grid grid-cols-1 items-stretch gap-4 sm:gap-5 md:grid-cols-2 lg:gap-6">
           {PROMO_BANNERS.map((banner, index) => (
             <StaggerItem
               key={banner.id}
               index={index}
               variant={index === 0 ? "left" : "right"}
+              className="h-full w-full"
             >
               <m.div
                 whileHover={reduceMotion ? undefined : { y: -4, scale: 1.01 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl border p-5 transition-shadow duration-500 sm:p-7 md:p-8 lg:p-10",
+                  "group relative flex h-full min-h-[12.5rem] flex-col overflow-hidden rounded-2xl border p-5 transition-shadow duration-500 sm:min-h-[14rem] sm:p-7 md:p-8 lg:p-10",
                   "hover:shadow-xl",
                   banner.variant === "primary"
                     ? "border-[#6254f3]/20 bg-gradient-to-br from-[#6254f3] to-[#4f46e5] text-white shadow-lg shadow-[#6254f3]/20 hover:shadow-[#6254f3]/25"
@@ -47,7 +48,7 @@ export function PromoBannerSection() {
                       "radial-gradient(circle at 80% 20%, white 0%, transparent 50%)",
                   }}
                 />
-                <div className="relative max-w-md">
+                <div className="relative flex max-w-md flex-1 flex-col">
                   <p className={cn(SHOP_BADGE, "tracking-[0.2em] opacity-80")}>
                     {banner.eyebrow}
                   </p>
@@ -59,12 +60,16 @@ export function PromoBannerSection() {
                       {banner.description}
                     </p>
                   ) : null}
-                  <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                  <m.div
+                    className="mt-auto pt-4 sm:pt-5"
+                    whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                  >
                     <Button
                       render={<Link href={banner.ctaHref} />}
                       variant="outline"
                       className={cn(
-                        "mt-4 sm:mt-5",
+                        "mt-0",
                         banner.variant === "primary"
                           ? SURFACE_BUTTON_CLASS
                           : PRIMARY_BUTTON_CLASS
