@@ -79,7 +79,7 @@ export function AnimatedSectionHeader({
         ) : null}
         <m.h2
           variants={sectionHeaderItem}
-          className={cn(SHOP_SECTION_TITLE, badge ? "mt-3" : "mt-0")}
+          className={cn(SHOP_SECTION_TITLE, badge ? "mt-2" : "mt-0")}
         >
           {title}
         </m.h2>
@@ -137,7 +137,7 @@ export function SectionHeaderStatic({
             {badge}
           </span>
         ) : null}
-        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-3" : "mt-0")}>
+        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-2" : "mt-0")}>
           {title}
         </h2>
         {description ? (

@@ -104,31 +104,31 @@ export function HomeHeroSection() {
         style={PAGE_GUTTER}
       >
         <m.div
-          className="flex flex-col items-center pb-4 pt-8 text-center text-white sm:pb-6 sm:pt-10 md:items-start md:py-12 md:pb-10 md:text-left lg:py-14"
+          className="flex flex-col items-center pb-3 pt-7 text-center text-white sm:pb-5 sm:pt-8 md:items-start md:py-10 md:pb-8 md:text-left lg:py-12"
           initial={reduceMotion ? false : "hidden"}
           animate="visible"
           variants={staggerContainer(0.1, 0.05)}
         >
           <m.span variants={fadeUp} className={SHOP_HERO_BADGE}>
-            <Percent className="size-4 text-[#a99bfa] sm:size-[1.125rem]" />
+            <Percent className="size-3.5 text-[#a99bfa] sm:size-4" />
             Up To 40% Off
           </m.span>
 
           <m.h1
             variants={fadeUp}
-            className={cn("mt-4 max-w-xl text-white sm:mt-5", SHOP_HERO_TITLE)}
+            className={cn("mt-3 max-w-xl text-white sm:mt-3.5", SHOP_HERO_TITLE)}
           >
             Discover Premium Products For Your Lifestyle
           </m.h1>
 
-          <m.p variants={fadeIn} className={cn("mt-4 max-w-lg", SHOP_HERO_LEAD)}>
+          <m.p variants={fadeIn} className={cn("mt-3 max-w-lg", SHOP_HERO_LEAD)}>
             Shop curated furniture, electronics, and essentials with secure
             checkout, fast delivery, and quality you can trust.
           </m.p>
 
           <m.div
             variants={fadeUp}
-            className={`mt-6 sm:mt-7 ${BUTTON_ROW_CLASS} md:justify-start`}
+            className={`mt-5 sm:mt-6 ${BUTTON_ROW_CLASS} md:justify-start`}
           >
             <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
               <Button
@@ -152,16 +152,16 @@ export function HomeHeroSection() {
 
           <m.ul
             variants={staggerContainer(0.06, 0)}
-            className="mt-6 grid w-full max-w-xl grid-cols-2 gap-x-4 gap-y-3 sm:mt-8 sm:gap-x-5 sm:gap-y-4 md:max-w-2xl"
+            className="mt-5 grid w-full max-w-xl grid-cols-2 gap-x-3 gap-y-2.5 sm:mt-6 sm:gap-x-4 sm:gap-y-3 md:max-w-2xl"
           >
             {HERO_TRUST_ITEMS.map(({ icon: Icon, label }) => (
               <m.li
                 key={label}
                 variants={staggerItem}
-                className={cn("flex items-center gap-2.5 text-left sm:gap-3", SHOP_HERO_FEATURE)}
+                className={cn("flex items-center gap-2 text-left sm:gap-2.5", SHOP_HERO_FEATURE)}
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#a99bfa] sm:size-10">
-                  <Check className="size-4 sm:size-[1.125rem]" />
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#a99bfa] sm:size-9">
+                  <Check className="size-3.5 sm:size-4" />
                 </span>
                 <span className="flex items-center gap-2 sm:gap-2.5">
                   <Icon className="size-[1.125rem] shrink-0 text-[#a99bfa] sm:size-5" />

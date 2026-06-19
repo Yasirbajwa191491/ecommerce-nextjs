@@ -19,7 +19,7 @@ export function FilterSidebarSection({
   className,
 }: FilterSidebarSectionProps) {
   return (
-    <section className={cn("space-y-3 py-5 first:pt-0 last:pb-0", className)}>
+    <section className={cn("space-y-3 py-4 first:pt-0 last:pb-0", className)}>
       <p className={SHOP_META_LABEL}>{title}</p>
       {children}
     </section>

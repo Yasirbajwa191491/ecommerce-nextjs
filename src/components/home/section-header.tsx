@@ -38,7 +38,7 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6",
+        "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5",
         isCenter && "sm:flex-col sm:items-center sm:text-center",
         className
       )}
@@ -50,7 +50,7 @@ export function SectionHeader({
             {badge}
           </span>
         ) : null}
-        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-3" : "mt-0")}>
+        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-2" : "mt-0")}>
           {title}
         </h2>
         {description ? (

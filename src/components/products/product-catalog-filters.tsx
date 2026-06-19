@@ -86,7 +86,9 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-5 lg:p-6",
+        "flex h-auto flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
+        "md:h-[calc(100vh-5.5rem)] md:max-h-[calc(100vh-5.5rem)] md:min-h-[calc(100vh-5.5rem)]",
+        "md:p-5 lg:p-6",
         className
       )}
     >
@@ -197,7 +199,7 @@ export function ProductCatalogFilters({
         type="button"
         variant="outline"
         onClick={onClear}
-        className="mt-4 h-9 w-full shrink-0 text-sm md:mt-6"
+        className="mt-auto h-9 w-full shrink-0 pt-4 text-sm md:pt-5"
       >
         Clear filters
       </Button>

@@ -52,7 +52,7 @@ export function PromoBannerSection() {
                   <p className={cn(SHOP_BADGE, "tracking-[0.2em] opacity-80")}>
                     {banner.eyebrow}
                   </p>
-                  <h3 className="mt-2 text-2xl font-bold tracking-tight transition-transform duration-500 group-hover:-translate-y-0.5 sm:text-3xl md:text-4xl">
+                  <h3 className="mt-2 text-xl font-bold tracking-tight transition-transform duration-500 group-hover:-translate-y-0.5 sm:text-2xl md:text-[1.75rem]">
                     {banner.title}
                   </h3>
                   {banner.description ? (

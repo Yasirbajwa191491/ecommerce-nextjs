@@ -38,7 +38,7 @@ export function AboutSectionHeader({
         <BadgeIcon className="size-3.5 sm:size-4" />
         {badge}
       </span>
-      <h2 className={cn(SHOP_SECTION_TITLE, "mt-3")}>{title}</h2>
+      <h2 className={cn(SHOP_SECTION_TITLE, "mt-2")}>{title}</h2>
       {description ? (
         <p className={cn(SHOP_SECTION_LEAD, descriptionClassName)}>{description}</p>
       ) : null}

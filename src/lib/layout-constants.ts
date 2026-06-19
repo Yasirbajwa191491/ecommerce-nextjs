@@ -4,16 +4,16 @@ export const PAGE_GUTTER = {
 } as const;
 
 /** Home page section rhythm — tighter than marketing/legal pages */
-export const HOME_SECTION_PADDING_Y = "py-10 sm:py-12 md:py-14 lg:py-16";
+export const HOME_SECTION_PADDING_Y = "py-8 sm:py-10 md:py-12 lg:py-14";
 
 /** Generous vertical section padding for policy / long-form pages */
-export const SECTION_PADDING_Y = "py-12 sm:py-14 md:py-16 lg:py-20";
+export const SECTION_PADDING_Y = "py-10 sm:py-12 md:py-14 lg:py-16";
 
 /** Catalog / transaction page body */
-export const CONTENT_SECTION_PADDING_Y = "py-5 sm:py-6 lg:py-8";
+export const CONTENT_SECTION_PADDING_Y = "py-4 sm:py-5 lg:py-6";
 
 /** Catalog page title band only — avoids double-stacked huge gaps */
-export const PAGE_HEADER_PADDING_Y = "pt-6 pb-4 sm:pt-8 sm:pb-5 md:pt-10 md:pb-6";
+export const PAGE_HEADER_PADDING_Y = "pt-5 pb-3 sm:pt-6 sm:pb-4 md:pt-8 md:pb-5";
 
 /** Paragraph spacing in prose blocks */
 export const PARAGRAPH_SPACING = "mb-6 sm:mb-8";
@@ -38,14 +38,14 @@ export const GHOST_ON_DARK_BUTTON_CLASS =
 
 /** Larger hero CTAs — Shop Now / Browse Categories on home hero */
 export const HERO_PRIMARY_BUTTON_CLASS =
-  "h-12 w-auto shrink-0 gap-2.5 rounded-full bg-[#6254f3] px-9 text-base font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] sm:h-[3.25rem] sm:px-10 sm:text-lg [&_svg]:size-5 [&_svg]:!text-white";
+  "h-11 w-auto shrink-0 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] sm:h-12 sm:px-9 sm:text-base [&_svg]:size-4 [&_svg]:!text-white sm:[&_svg]:size-5";
 
 export const HERO_GHOST_BUTTON_CLASS =
-  "h-12 w-auto shrink-0 gap-2.5 rounded-full border-white/25 bg-white/5 px-9 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white sm:h-[3.25rem] sm:px-10 sm:text-lg";
+  "h-11 w-auto shrink-0 gap-2 rounded-full border-white/25 bg-white/5 px-8 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white sm:h-12 sm:px-9 sm:text-base";
 
 /** Compact outline for section “View all” links. */
 export const SECTION_ACTION_BUTTON_CLASS =
-  "h-12 w-fit shrink-0 gap-2.5 self-start rounded-full border-[#6254f3]/30 px-6 text-base font-semibold text-[#6254f3] hover:bg-[#6254f3]/5 sm:self-auto sm:px-7 sm:text-lg md:text-xl";
+  "h-10 w-fit shrink-0 gap-2 self-start rounded-full border-[#6254f3]/30 px-5 text-sm font-semibold text-[#6254f3] hover:bg-[#6254f3]/5 sm:h-11 sm:self-auto sm:px-6 sm:text-base";
 
 export const BUTTON_ROW_CLASS =
   "flex flex-row flex-wrap items-center justify-center gap-3 md:justify-start";
