@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { MotionHoverStoryImage } from "@/components/motion";
 import { cn } from "@/lib/utils";
 
 const FALLBACK_IMAGE = {
@@ -26,12 +27,7 @@ export function AboutImage({
   const [imageAlt, setImageAlt] = useState(alt);
 
   return (
-    <div
-      className={cn(
-        "w-full overflow-hidden rounded-2xl border border-border/60 bg-muted/30 shadow-sm",
-        className
-      )}
-    >
+    <MotionHoverStoryImage className={cn("w-full", className)}>
       <Image
         src={imageSrc}
         alt={imageAlt}
@@ -47,6 +43,6 @@ export function AboutImage({
           }
         }}
       />
-    </div>
+    </MotionHoverStoryImage>
   );
 }

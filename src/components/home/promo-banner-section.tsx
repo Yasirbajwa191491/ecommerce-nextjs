@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { m, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
@@ -13,6 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export function PromoBannerSection() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <section className="bg-background py-8 sm:py-10 md:py-12">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
@@ -23,7 +26,9 @@ export function PromoBannerSection() {
               index={index}
               variant={index === 0 ? "left" : "right"}
             >
-              <div
+              <m.div
+                whileHover={reduceMotion ? undefined : { y: -4, scale: 1.01 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 className={cn(
                   "group relative overflow-hidden rounded-2xl border p-5 transition-shadow duration-500 sm:p-7 md:p-8 lg:p-10",
                   "hover:shadow-xl",
@@ -52,21 +57,23 @@ export function PromoBannerSection() {
                       {banner.description}
                     </p>
                   ) : null}
-                  <Button
-                    render={<Link href={banner.ctaHref} />}
-                    variant="outline"
-                    className={cn(
-                      "mt-4 transition-transform duration-300 group-hover:scale-[1.02] sm:mt-5",
-                      banner.variant === "primary"
-                        ? SURFACE_BUTTON_CLASS
-                        : PRIMARY_BUTTON_CLASS
-                    )}
-                  >
-                    {banner.ctaLabel}
-                    <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </Button>
+                  <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                    <Button
+                      render={<Link href={banner.ctaHref} />}
+                      variant="outline"
+                      className={cn(
+                        "mt-4 sm:mt-5",
+                        banner.variant === "primary"
+                          ? SURFACE_BUTTON_CLASS
+                          : PRIMARY_BUTTON_CLASS
+                      )}
+                    >
+                      {banner.ctaLabel}
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </m.div>
                 </div>
-              </div>
+              </m.div>
             </StaggerItem>
           ))}
         </StaggerGroup>

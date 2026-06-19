@@ -7,7 +7,9 @@ import { productCardKey } from "@/lib/product-images";
 import ProductCard from "@/components/products/ProductCard";
 import { SectionHeader } from "@/components/home/section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MotionSkeleton } from "@/components/motion";
+import { m } from "framer-motion";
+import { fadeIn } from "@/lib/motion";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 
 export function FeaturedProductsSection() {
@@ -29,8 +31,9 @@ export function FeaturedProductsSection() {
         {products === undefined ? (
           <div className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton
+              <MotionSkeleton
                 key={index}
+                shimmer
                 className="h-[22rem] w-full rounded-2xl"
               />
             ))}
@@ -47,17 +50,23 @@ export function FeaturedProductsSection() {
             </div>
           </ScrollReveal>
         ) : (
-          <StaggerGroup className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
-            {products.map((product, index) => (
-              <StaggerItem
-                key={productCardKey(product)}
-                index={index}
-                variant="up"
-              >
-                <ProductCard {...product} />
-              </StaggerItem>
-            ))}
-          </StaggerGroup>
+          <m.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <StaggerGroup className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
+              {products.map((product, index) => (
+                <StaggerItem
+                  key={productCardKey(product)}
+                  index={index}
+                  variant="up"
+                >
+                  <ProductCard {...product} animateEntrance={false} />
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
+          </m.div>
         )}
       </div>
     </section>

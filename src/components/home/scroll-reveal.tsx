@@ -1,28 +1,24 @@
 "use client";
 
+import { createContext, useContext, type ReactNode } from "react";
+import { m, useReducedMotion } from "framer-motion";
 import {
-  createContext,
-  useContext,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
-import { useScrollReveal } from "@/hooks/use-scroll-reveal";
+  revealVariants,
+  staggerContainer,
+  staggerItem,
+  staggerItemScale,
+  type RevealVariant,
+  withReducedMotion,
+} from "@/lib/motion";
+import { viewportReveal } from "@/lib/motion/transitions";
 import { cn } from "@/lib/utils";
 
-type RevealVariant = "up" | "scale" | "fade" | "left" | "right";
-
-const variantClass: Record<RevealVariant, string> = {
-  up: "home-reveal-up",
-  scale: "home-reveal-scale",
-  fade: "home-reveal-fade",
-  left: "home-reveal-left",
-  right: "home-reveal-right",
-};
+type RevealVariantLocal = RevealVariant;
 
 type ScrollRevealProps = {
   children: ReactNode;
   className?: string;
-  variant?: RevealVariant;
+  variant?: RevealVariantLocal;
   delay?: number;
 };
 
@@ -32,27 +28,27 @@ export function ScrollReveal({
   variant = "up",
   delay = 0,
 }: ScrollRevealProps) {
-  const { ref, isVisible } = useScrollReveal();
-  const style =
-    delay > 0 ? ({ transitionDelay: `${delay}ms` } as CSSProperties) : undefined;
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
-    <div
-      ref={ref}
-      className={cn(
-        "home-reveal",
-        variantClass[variant],
-        isVisible && "home-reveal-visible",
-        className
-      )}
-      style={style}
+    <m.div
+      className={cn(className)}
+      initial="hidden"
+      whileInView="visible"
+      viewport={viewportReveal}
+      variants={revealVariants[variant]}
+      transition={delay > 0 ? { delay: delay / 1000 } : undefined}
     >
       {children}
-    </div>
+    </m.div>
   );
 }
 
-const StaggerVisibleContext = createContext(false);
+const StaggerVariantContext = createContext<RevealVariantLocal>("up");
 
 type StaggerGroupProps = {
   children: ReactNode;
@@ -60,14 +56,24 @@ type StaggerGroupProps = {
 };
 
 export function StaggerGroup({ children, className }: StaggerGroupProps) {
-  const { ref, isVisible } = useScrollReveal();
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
-    <StaggerVisibleContext.Provider value={isVisible}>
-      <div ref={ref} className={className}>
+    <StaggerVariantContext.Provider value="up">
+      <m.div
+        className={className}
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportReveal}
+        variants={staggerContainer(0.085)}
+      >
         {children}
-      </div>
-    </StaggerVisibleContext.Provider>
+      </m.div>
+    </StaggerVariantContext.Provider>
   );
 }
 
@@ -75,30 +81,31 @@ type StaggerItemProps = {
   children: ReactNode;
   index: number;
   className?: string;
-  variant?: RevealVariant;
+  variant?: RevealVariantLocal;
   staggerMs?: number;
 };
 
 export function StaggerItem({
   children,
-  index,
+  index: _index,
   className,
   variant = "up",
-  staggerMs = 85,
+  staggerMs: _staggerMs = 85,
 }: StaggerItemProps) {
-  const isVisible = useContext(StaggerVisibleContext);
+  const reduceMotion = useReducedMotion();
+  const parentVariant = useContext(StaggerVariantContext);
+  const resolvedVariant = variant ?? parentVariant;
+
+  if (reduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
+
+  const itemVariant =
+    resolvedVariant === "scale" ? staggerItemScale : staggerItem;
 
   return (
-    <div
-      className={cn(
-        "home-reveal",
-        variantClass[variant],
-        isVisible && "home-reveal-visible",
-        className
-      )}
-      style={{ transitionDelay: `${index * staggerMs}ms` }}
-    >
+    <m.div className={cn(className)} variants={withReducedMotion(itemVariant, false)}>
       {children}
-    </div>
+    </m.div>
   );
 }

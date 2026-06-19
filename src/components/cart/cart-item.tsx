@@ -1,6 +1,7 @@
 "use client";
 
 import { Minus, Plus, Trash2 } from "lucide-react";
+import { m, useReducedMotion } from "framer-motion";
 import FormatPrice from "@/helpers/FormatPrice";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   type CartPricedLine,
 } from "@/components/cart/cart-line-pricing";
 import type { CartItem as CartItemType } from "@/reducer/cartReducer";
+import { listItem } from "@/lib/motion";
 
 type CartItemProps = {
   item: CartItemType;
@@ -48,6 +50,7 @@ function QuantityStepper({
   onIncrement,
   onDecrement,
 }: Pick<CartItemProps, "item" | "onIncrement" | "onDecrement">) {
+  const reduceMotion = useReducedMotion();
   const atMax = item.amount >= item.max;
   const atMin = item.amount <= 1;
 
@@ -64,9 +67,21 @@ function QuantityStepper({
       >
         <Minus className="size-3.5" />
       </Button>
-      <span className="min-w-10 text-center text-sm font-bold tabular-nums text-foreground">
-        {item.amount}
-      </span>
+      {reduceMotion ? (
+        <span className="min-w-10 text-center text-sm font-bold tabular-nums text-foreground">
+          {item.amount}
+        </span>
+      ) : (
+        <m.span
+          key={item.amount}
+          initial={{ scale: 1.2, opacity: 0.7 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 500, damping: 25 }}
+          className="min-w-10 text-center text-sm font-bold tabular-nums text-foreground"
+        >
+          {item.amount}
+        </m.span>
+      )}
       <Button
         type="button"
         variant="ghost"
@@ -117,9 +132,10 @@ export function CartItemMobile({
   onDecrement,
   onRemove,
 }: CartItemProps) {
+  const reduceMotion = useReducedMotion();
   const lineTotal = pricedLine?.lineTotal ?? item.price * item.amount;
 
-  return (
+  const article = (
     <article className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
       <div className="flex gap-4">
         <CartProductImage item={item} />
@@ -165,6 +181,20 @@ export function CartItemMobile({
         </div>
       </div>
     </article>
+  );
+
+  if (reduceMotion) return article;
+
+  return (
+    <m.div
+      layout
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      variants={listItem}
+    >
+      {article}
+    </m.div>
   );
 }
 

@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { m, useReducedMotion } from "framer-motion";
 import { Clock, Loader2, Search, Sparkles, TrendingUp } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MotionSkeleton } from "@/components/motion";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
 import { ProductStars } from "@/components/products/product-stars";
 import { formatCurrencyAmount } from "@/lib/currencies";
 import { productPath } from "@/lib/product-url";
 import type { HybridSearchProduct } from "@/hooks/use-hybrid-product-search";
+import { dropdown, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 type SearchSuggestion = {
@@ -31,6 +33,33 @@ type HeaderSearchDropdownProps = {
   viewAllHref: string;
 };
 
+function DropdownShell({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <m.div
+      id="search-suggestions"
+      role="listbox"
+      initial={reduceMotion ? false : "hidden"}
+      animate="visible"
+      exit={reduceMotion ? undefined : "exit"}
+      variants={dropdown}
+      className={cn(
+        "absolute top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xl",
+        className
+      )}
+    >
+      {children}
+    </m.div>
+  );
+}
+
 function SuggestionIcon({ type }: { type: SearchSuggestion["type"] }) {
   if (type === "trending") {
     return <TrendingUp className="size-3.5 shrink-0 text-[#6254f3]" />;
@@ -50,47 +79,57 @@ function SearchResultRow({
   onClose: () => void;
   onSelectQuery: (query: string) => void;
 }) {
-  return (
-    <li>
-      <Link
-        href={productPath(item._id)}
-        role="option"
-        onClick={() => {
-          onSelectQuery(item.name);
-          onClose();
-        }}
-        className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/60"
-      >
-        <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-muted">
-          {item.imageUrl ? (
-            <Image
-              src={item.imageUrl}
-              alt=""
-              fill
-              sizes="44px"
-              className="object-cover object-center"
-            />
-          ) : null}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium text-foreground">
-              {item.name}
-            </p>
-            <ProductDiscountBadge discountPercent={item.discountPercent} />
-          </div>
-          <p className="truncate text-xs text-muted-foreground">
-            {item.categoryName} · {item.company}
+  const reduceMotion = useReducedMotion();
+
+  const content = (
+    <Link
+      href={productPath(item._id)}
+      role="option"
+      onClick={() => {
+        onSelectQuery(item.name);
+        onClose();
+      }}
+      className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/60"
+    >
+      <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-muted">
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt=""
+            fill
+            sizes="44px"
+            className="object-cover object-center"
+          />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium text-foreground">
+            {item.name}
           </p>
-          {item.reviews > 0 ? (
-            <ProductStars rating={item.stars} className="mt-1" />
-          ) : null}
+          <ProductDiscountBadge discountPercent={item.discountPercent} />
         </div>
-        <span className="shrink-0 text-sm font-semibold text-[#6254f3]">
-          {formatCurrencyAmount(item.finalPrice, item.currency)}
-        </span>
-      </Link>
-    </li>
+        <p className="truncate text-xs text-muted-foreground">
+          {item.categoryName} · {item.company}
+        </p>
+        {item.reviews > 0 ? (
+          <ProductStars rating={item.stars} className="mt-1" />
+        ) : null}
+      </div>
+      <span className="shrink-0 text-sm font-semibold text-[#6254f3]">
+        {formatCurrencyAmount(item.finalPrice, item.currency)}
+      </span>
+    </Link>
+  );
+
+  if (reduceMotion) {
+    return <li>{content}</li>;
+  }
+
+  return (
+    <m.li variants={staggerItem} layout={false}>
+      {content}
+    </m.li>
   );
 }
 
@@ -107,21 +146,23 @@ export function HeaderSearchDropdown({
   onClose,
   viewAllHref,
 }: HeaderSearchDropdownProps) {
+  const reduceMotion = useReducedMotion();
+
   if (showEmptySuggestions) {
     return (
-      <div
-        id="search-suggestions"
-        role="listbox"
-        className="absolute top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xl"
-      >
+      <DropdownShell>
         {recentSearches.length > 0 ? (
           <div className="border-b border-border/60 px-3 py-2">
             <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Recent searches
             </p>
-            <ul>
+            <m.ul
+              initial={reduceMotion ? false : "hidden"}
+              animate="visible"
+              variants={staggerContainer(0.04)}
+            >
               {recentSearches.map((term) => (
-                <li key={term}>
+                <m.li key={term} variants={staggerItem}>
                   <button
                     type="button"
                     role="option"
@@ -131,9 +172,9 @@ export function HeaderSearchDropdown({
                     <Clock className="size-3.5 shrink-0 text-muted-foreground" />
                     {term}
                   </button>
-                </li>
+                </m.li>
               ))}
-            </ul>
+            </m.ul>
           </div>
         ) : null}
 
@@ -143,14 +184,18 @@ export function HeaderSearchDropdown({
           </p>
           {suggestionsLoading ? (
             <div className="space-y-2 px-1 py-1">
-              <Skeleton className="h-8 w-full rounded-lg" />
-              <Skeleton className="h-8 w-full rounded-lg" />
-              <Skeleton className="h-8 w-full rounded-lg" />
+              <MotionSkeleton shimmer className="h-8 w-full rounded-lg" />
+              <MotionSkeleton shimmer className="h-8 w-full rounded-lg" />
+              <MotionSkeleton shimmer className="h-8 w-full rounded-lg" />
             </div>
           ) : (
-            <ul>
+            <m.ul
+              initial={reduceMotion ? false : "hidden"}
+              animate="visible"
+              variants={staggerContainer(0.04)}
+            >
               {(suggestions ?? []).map((item) => (
-                <li key={`${item.type}-${item.query}`}>
+                <m.li key={`${item.type}-${item.query}`} variants={staggerItem}>
                   <button
                     type="button"
                     role="option"
@@ -160,25 +205,26 @@ export function HeaderSearchDropdown({
                     <SuggestionIcon type={item.type} />
                     {item.label}
                   </button>
-                </li>
+                </m.li>
               ))}
-            </ul>
+            </m.ul>
           )}
         </div>
-      </div>
+      </DropdownShell>
     );
   }
 
   return (
-    <div
-      id="search-suggestions"
-      role="listbox"
-      className="absolute top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xl"
-    >
+    <DropdownShell>
       {loading && products.length === 0 ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin text-[#6254f3]" />
-          Searching…
+        <div className="space-y-2 px-3 py-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin text-[#6254f3]" />
+            Searching…
+          </div>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <MotionSkeleton key={i} shimmer className="h-14 w-full rounded-lg" />
+          ))}
         </div>
       ) : products.length === 0 && !loading ? (
         <p className="px-4 py-3 text-sm text-muted-foreground">
@@ -191,7 +237,12 @@ export function HeaderSearchDropdown({
               You may be interested in these similar products.
             </p>
           ) : null}
-          <ul className="max-h-80 overflow-y-auto py-1">
+          <m.ul
+            className="max-h-80 overflow-y-auto py-1"
+            initial={reduceMotion ? false : "hidden"}
+            animate="visible"
+            variants={staggerContainer(0.05)}
+          >
             {products.map((item) => (
               <SearchResultRow
                 key={item._id}
@@ -200,7 +251,7 @@ export function HeaderSearchDropdown({
                 onSelectQuery={onSelectQuery}
               />
             ))}
-          </ul>
+          </m.ul>
         </>
       )}
 
@@ -220,6 +271,6 @@ export function HeaderSearchDropdown({
       >
         View all results for &ldquo;{debouncedQuery.trim()}&rdquo;
       </Link>
-    </div>
+    </DropdownShell>
   );
 }

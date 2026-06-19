@@ -18,7 +18,9 @@ import { ProductCatalogToolbar } from "@/components/products/product-catalog-too
 import { ProductCatalogLoadMore } from "@/components/products/product-catalog-load-more";
 import { CatalogActiveFilters } from "@/components/products/catalog-active-filters";
 import ProductCard from "@/components/products/ProductCard";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MotionSkeleton } from "@/components/motion";
+import { m } from "framer-motion";
+import { fadeIn } from "@/lib/motion";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
@@ -583,8 +585,9 @@ export default function ProductCatalog() {
                 )}
               >
                 {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                  <Skeleton
+                  <MotionSkeleton
                     key={i}
+                    shimmer
                     className={cn(
                       "rounded-2xl",
                       view === "list" ? "h-32" : "h-[18rem]"
@@ -604,10 +607,13 @@ export default function ProductCatalog() {
                 </p>
               </div>
             ) : (
-              <div
+              <m.div
                 className={cn(
                   isRefetching && "pointer-events-none opacity-60"
                 )}
+                initial="hidden"
+                animate="visible"
+                variants={fadeIn}
               >
                 <div
                   className={cn(
@@ -633,7 +639,7 @@ export default function ProductCatalog() {
                   loadedCount={displayProducts.length}
                   view={view}
                 />
-              </div>
+              </m.div>
             )}
           </section>
         </div>

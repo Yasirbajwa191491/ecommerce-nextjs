@@ -4,11 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   AnimatePresence,
-  motion,
+  m,
+  useMotionValue,
   useReducedMotion,
+  useTransform,
+  type MotionValue,
   type Transition,
 } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Sparkles } from "lucide-react";
 import {
   Carousel,
@@ -17,6 +20,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { formatCurrencyAmount } from "@/lib/currencies";
+import { EASE_PREMIUM } from "@/lib/motion";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +38,6 @@ type HeroProductShowcaseProps = {
   products: HeroShowcaseProduct[];
 };
 
-const EASE_PREMIUM = [0.22, 1, 0.36, 1] as const;
 const ROTATION_MS = 6500;
 const MD_BREAKPOINT = "(min-width: 768px)";
 
@@ -175,6 +178,8 @@ function ShowcaseProductCard({
   entranceDelay = 0,
   priority = false,
   isRotating = false,
+  parallaxRotateX,
+  parallaxRotateY,
 }: {
   product: HeroShowcaseProduct;
   variant: "featured" | "satellite";
@@ -182,6 +187,8 @@ function ShowcaseProductCard({
   entranceDelay?: number;
   priority?: boolean;
   isRotating?: boolean;
+  parallaxRotateX?: MotionValue<number>;
+  parallaxRotateY?: MotionValue<number>;
 }) {
   const reduceMotion = useReducedMotion();
   const isFeatured = variant === "featured";
@@ -203,7 +210,7 @@ function ShowcaseProductCard({
   const floatY = isFeatured ? [-3, 3, -3] : [-5, 5, -5];
 
   return (
-    <motion.div
+    <m.div
       className={cn(
         "absolute",
         isFeatured
@@ -243,9 +250,14 @@ function ShowcaseProductCard({
               transition: { duration: 0.35, ease: EASE_PREMIUM },
             }
       }
-      style={{ willChange: "transform, opacity" }}
+      style={{
+        willChange: "transform, opacity",
+        rotateX: isFeatured && parallaxRotateX && !reduceMotion ? parallaxRotateX : undefined,
+        rotateY: isFeatured && parallaxRotateY && !reduceMotion ? parallaxRotateY : undefined,
+        perspective: isFeatured ? 800 : undefined,
+      }}
     >
-      <motion.div
+      <m.div
         animate={reduceMotion ? undefined : { y: floatY }}
         transition={reduceMotion ? undefined : floatTransition}
         style={{ willChange: "transform" }}
@@ -313,8 +325,8 @@ function ShowcaseProductCard({
             </div>
           </div>
         </Link>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }
 
@@ -325,6 +337,26 @@ function DesktopShowcase({
   products: HeroShowcaseProduct[];
   featuredIndex: number;
 }) {
+  const reduceMotion = useReducedMotion();
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const parallaxRotateX = useTransform(mouseY, [-0.5, 0.5], [3, -3]);
+  const parallaxRotateY = useTransform(mouseX, [-0.5, 0.5], [-3, 3]);
+
+  const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    if (reduceMotion) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    mouseX.set(x);
+    mouseY.set(y);
+  };
+
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
   const count = products.length;
   const featured = products[featuredIndex]!;
   const satelliteSlots: SatelliteSlot[] = [
@@ -339,7 +371,11 @@ function DesktopShowcase({
   }));
 
   return (
-    <div className="relative mx-auto aspect-[4/5] w-full max-w-[420px] lg:max-w-[460px]">
+    <div
+      className="relative mx-auto aspect-[4/5] w-full max-w-[420px] lg:max-w-[460px]"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <div
         className="pointer-events-none absolute inset-[8%] rounded-full bg-[#6254f3]/25 blur-3xl"
         aria-hidden
@@ -353,7 +389,7 @@ function DesktopShowcase({
         aria-hidden
       />
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15, ease: EASE_PREMIUM }}
@@ -361,7 +397,7 @@ function DesktopShowcase({
       >
         <Sparkles className="size-3" />
         Featured
-      </motion.div>
+      </m.div>
 
       <AnimatePresence mode="wait">
         <ShowcaseProductCard
@@ -371,6 +407,8 @@ function DesktopShowcase({
           entranceDelay={0.08}
           priority
           isRotating={featuredIndex > 0}
+          parallaxRotateX={parallaxRotateX}
+          parallaxRotateY={parallaxRotateY}
         />
       </AnimatePresence>
 
@@ -439,7 +477,7 @@ function MobileShowcaseCarousel({
       />
 
       <div className="relative z-10 mb-4 flex items-center justify-between gap-3 px-1">
-        <motion.div
+        <m.div
           initial={reduceMotion ? false : { opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease: EASE_PREMIUM }}
@@ -447,7 +485,7 @@ function MobileShowcaseCarousel({
         >
           <Sparkles className="size-3" />
           Featured
-        </motion.div>
+        </m.div>
         <p className="text-[11px] font-medium tracking-wide text-white/50 tabular-nums">
           {selectedIndex + 1} / {products.length}
         </p>
@@ -477,7 +515,7 @@ function MobileShowcaseCarousel({
                   key={product.id}
                   className="basis-[86%] pl-3 sm:basis-[78%]"
                 >
-                  <motion.div
+                  <m.div
                     initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.96 }}
                     animate={{
                       opacity: isActive ? 1 : 0.45,
@@ -500,7 +538,7 @@ function MobileShowcaseCarousel({
                       priority={index === 0}
                       featured={isActive}
                     />
-                  </motion.div>
+                  </m.div>
                 </CarouselItem>
               );
             })}

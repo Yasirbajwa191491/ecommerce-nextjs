@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, ShoppingCart, Trash2 } from "lucide-react";
+import { AnimatePresence, m } from "framer-motion";
 import { toast } from "sonner";
 import { useCartContext } from "@/context/cart_context";
 import { CartItemMobile, CartItemRow } from "@/components/cart/cart-item";
@@ -32,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import FormatPrice from "@/helpers/FormatPrice";
 import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
+import { fadeUp } from "@/lib/motion";
 
 export function CartView() {
   const {
@@ -115,22 +117,24 @@ export function CartView() {
                 <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-md ring-1 ring-foreground/5">
                   {/* Mobile / tablet */}
                   <div className="space-y-4 p-4 lg:hidden">
-                    {cart.map((item) => {
-                      const pricedLine = getPricedItem(item);
-                      return (
-                        <CartItemMobile
-                          key={item.id}
-                          item={item}
-                          pricedLine={
-                            pricedLine ? toCartPricedLine(pricedLine) : undefined
-                          }
-                          currency={currency}
-                          onIncrement={setIncrement}
-                          onDecrement={setDecrease}
-                          onRemove={removeItem}
-                        />
-                      );
-                    })}
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {cart.map((item) => {
+                        const pricedLine = getPricedItem(item);
+                        return (
+                          <CartItemMobile
+                            key={item.id}
+                            item={item}
+                            pricedLine={
+                              pricedLine ? toCartPricedLine(pricedLine) : undefined
+                            }
+                            currency={currency}
+                            onIncrement={setIncrement}
+                            onDecrement={setDecrease}
+                            onRemove={removeItem}
+                          />
+                        );
+                      })}
+                    </AnimatePresence>
                   </div>
 
                   {/* Desktop table */}
@@ -232,7 +236,12 @@ export function CartView() {
                 </div>
               </div>
 
-              <aside className="space-y-4 xl:sticky xl:top-24">
+              <m.aside
+                className="space-y-4 xl:sticky xl:top-24"
+                initial="hidden"
+                animate="visible"
+                variants={fadeUp}
+              >
                 <PromotionAppliedSection
                   gifts={giftItems.map((item) => ({
                     productName: item.productName,
@@ -256,7 +265,7 @@ export function CartView() {
                   currency={currency}
                   isLoading={isLoading}
                 />
-              </aside>
+              </m.aside>
             </div>
           </>
         )}

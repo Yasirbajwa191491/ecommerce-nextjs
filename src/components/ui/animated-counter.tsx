@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { useInView } from "@/hooks/use-in-view";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +16,16 @@ export function AnimatedCounter({
   duration = 1500,
   className,
 }: AnimatedCounterProps) {
+  const reduceMotion = useReducedMotion();
   const { ref, inView } = useInView<HTMLSpanElement>({ threshold: 0.3 });
-  const [displayValue, setDisplayValue] = useState(0);
+  const [displayValue, setDisplayValue] = useState(reduceMotion ? value : 0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      setDisplayValue(value);
+      return;
+    }
+
     if (!inView) return;
 
     let frameId = 0;
@@ -36,7 +43,7 @@ export function AnimatedCounter({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [inView, value, duration]);
+  }, [inView, value, duration, reduceMotion]);
 
   return (
     <span ref={ref} className={cn("tabular-nums", className)}>

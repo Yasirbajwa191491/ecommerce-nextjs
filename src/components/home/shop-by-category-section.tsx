@@ -1,13 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useQuery } from "convex/react";
 import { ArrowRight, LayoutGrid } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { SectionHeader } from "@/components/home/section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  MotionHoverArrow,
+  MotionHoverCaption,
+  MotionHoverCard,
+  MotionHoverImage,
+  MotionHoverOverlay,
+  MotionSkeleton,
+} from "@/components/motion";
 import {
   CATEGORY_IMAGE_FALLBACKS,
   DEFAULT_CATEGORY_IMAGE,
@@ -40,7 +46,7 @@ export function ShopByCategorySection() {
         {categories === undefined ? (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:mt-10 lg:grid-cols-6 lg:gap-5">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="aspect-[4/5] rounded-2xl" />
+              <MotionSkeleton key={index} shimmer className="aspect-[4/5] rounded-2xl" />
             ))}
           </div>
         ) : categories.length === 0 ? (
@@ -55,53 +61,47 @@ export function ShopByCategorySection() {
           <StaggerGroup className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:mt-10 lg:grid-cols-6 lg:gap-5">
             {categories.map((category, index) => (
               <StaggerItem key={category._id} index={index} variant="scale">
-                <Link
+                <MotionHoverCard
                   href={`/products?category=${category.slug}`}
-                  className={cn(
-                    "group relative block overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm",
-                    "transition-[transform,box-shadow,border-color] duration-500 ease-out",
-                    "hover:-translate-y-1.5 hover:border-[#6254f3]/35 hover:shadow-xl hover:shadow-[#6254f3]/10"
-                  )}
+                  className="border-0 shadow-none hover:border-[#6254f3]/35"
                 >
-                  <div className="relative aspect-[4/5] overflow-hidden bg-muted">
-                    <Image
-                      src={getCategoryImage(
-                        category.slug,
-                        category.sampleImageUrl
-                      )}
-                      alt={category.name}
-                      fill
-                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 200px"
-                      className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
-                    />
-                    <div
+                  <div className="relative aspect-[4/5] bg-muted">
+                    <MotionHoverImage className="absolute inset-0">
+                      <Image
+                        src={getCategoryImage(
+                          category.slug,
+                          category.sampleImageUrl
+                        )}
+                        alt={category.name}
+                        fill
+                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 200px"
+                        className="object-cover object-center"
+                      />
+                    </MotionHoverImage>
+
+                    <MotionHoverOverlay
                       className={cn(
-                        "absolute inset-0 bg-gradient-to-t from-[#0a1435]/85 via-[#0a1435]/25 to-transparent",
-                        "transition-opacity duration-500 group-hover:from-[#0a1435]/90"
+                        "bg-gradient-to-t from-[#0a1435]/90 via-[#0a1435]/30 to-transparent"
                       )}
                     />
+
                     <div className="home-category-shine" aria-hidden />
-                    <span
-                      className={cn(
-                        "absolute top-3 right-3 flex size-8 items-center justify-center rounded-full",
-                        "border border-white/20 bg-white/10 text-white backdrop-blur-sm",
-                        "opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-0 translate-x-1"
-                      )}
-                      aria-hidden
-                    >
+
+                    <MotionHoverArrow className="top-3 right-3 flex size-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm">
                       <ArrowRight className="size-3.5" />
-                    </span>
+                    </MotionHoverArrow>
+
+                    <MotionHoverCaption className="absolute inset-x-0 bottom-0 p-3.5 text-white sm:p-4">
+                      <h3 className="text-sm font-bold tracking-tight sm:text-base">
+                        {category.name}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-white/80">
+                        {category.productCount}{" "}
+                        {category.productCount === 1 ? "Product" : "Products"}
+                      </p>
+                    </MotionHoverCaption>
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 p-3.5 text-white sm:p-4">
-                    <h3 className="text-sm font-bold tracking-tight transition-transform duration-500 group-hover:-translate-y-0.5 sm:text-base">
-                      {category.name}
-                    </h3>
-                    <p className="mt-0.5 text-xs text-white/75 transition-colors duration-300 group-hover:text-white/90">
-                      {category.productCount}{" "}
-                      {category.productCount === 1 ? "Product" : "Products"}
-                    </p>
-                  </div>
-                </Link>
+                </MotionHoverCard>
               </StaggerItem>
             ))}
           </StaggerGroup>

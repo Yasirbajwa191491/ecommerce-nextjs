@@ -10,7 +10,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MotionSkeleton } from "@/components/motion";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 import type { Product } from "@/types/product";
 import { productCardKey } from "@/lib/product-images";
@@ -32,8 +32,9 @@ function ProductCarouselSkeleton() {
   return (
     <div className="mt-8 flex gap-4 overflow-hidden lg:mt-10">
       {Array.from({ length: 4 }).map((_, index) => (
-        <Skeleton
+        <MotionSkeleton
           key={index}
+          shimmer
           className="h-[22rem] w-[min(280px,78vw)] shrink-0 rounded-2xl"
         />
       ))}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "convex/react";
+import { m, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, Percent } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/layout-constants";
 import { getPrimaryImageUrl } from "@/lib/product-images";
 import { productPath } from "@/lib/product-url";
+import { fadeIn, fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 
 const HERO_FALLBACK_IMAGES = [
   {
@@ -48,6 +50,7 @@ const HERO_FALLBACK_IMAGES = [
 
 export function HomeHeroSection() {
   const featured = useQuery(api.products.featured);
+  const reduceMotion = useReducedMotion();
 
   const showcaseProducts: HeroShowcaseProduct[] =
     featured && featured.length > 0
@@ -93,42 +96,67 @@ export function HomeHeroSection() {
         className="relative mx-auto grid w-full max-w-[1600px] grid-cols-1 items-center gap-6 sm:gap-8 md:grid-cols-2 md:gap-10 lg:gap-14"
         style={PAGE_GUTTER}
       >
-        <div className="flex flex-col items-center pb-6 pt-10 text-center text-white sm:pb-8 sm:pt-12 md:items-start md:py-16 md:pb-16 md:text-left lg:py-20">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/40 bg-[#6254f3]/20 px-3.5 py-1.5 text-xs font-bold tracking-wide text-white">
+        <m.div
+          className="flex flex-col items-center pb-6 pt-10 text-center text-white sm:pb-8 sm:pt-12 md:items-start md:py-16 md:pb-16 md:text-left lg:py-20"
+          initial={reduceMotion ? false : "hidden"}
+          animate="visible"
+          variants={staggerContainer(0.1, 0.05)}
+        >
+          <m.span
+            variants={fadeUp}
+            className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/40 bg-[#6254f3]/20 px-3.5 py-1.5 text-xs font-bold tracking-wide text-white"
+          >
             <Percent className="size-3.5 text-[#a99bfa]" />
             Up To 40% Off
-          </span>
+          </m.span>
 
-          <h1 className="mt-4 max-w-xl text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-3xl md:text-4xl md:leading-[1.08] lg:text-[3.25rem]">
+          <m.h1
+            variants={fadeUp}
+            className="mt-4 max-w-xl text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-3xl md:text-4xl md:leading-[1.08] lg:text-[3.25rem]"
+          >
             Discover Premium Products For Your Lifestyle
-          </h1>
+          </m.h1>
 
-          <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/75 sm:text-base md:text-lg">
+          <m.p
+            variants={fadeIn}
+            className="mt-4 max-w-lg text-sm leading-relaxed text-white/75 sm:text-base md:text-lg"
+          >
             Shop curated furniture, electronics, and essentials with secure
             checkout, fast delivery, and quality you can trust.
-          </p>
+          </m.p>
 
-          <div className={`mt-6 sm:mt-7 ${BUTTON_ROW_CLASS} md:justify-start`}>
-            <Button
-              render={<Link href="/products" />}
-              className={PRIMARY_BUTTON_CLASS}
-            >
-              Shop Now
-              <ArrowRight className="size-4" />
-            </Button>
-            <Button
-              render={<Link href="/products" />}
-              variant="outline"
-              className={GHOST_ON_DARK_BUTTON_CLASS}
-            >
-              Browse Categories
-            </Button>
-          </div>
+          <m.div
+            variants={fadeUp}
+            className={`mt-6 sm:mt-7 ${BUTTON_ROW_CLASS} md:justify-start`}
+          >
+            <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+              <Button
+                render={<Link href="/products" />}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Shop Now
+                <ArrowRight className="size-4" />
+              </Button>
+            </m.div>
+            <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+              <Button
+                render={<Link href="/products" />}
+                variant="outline"
+                className={GHOST_ON_DARK_BUTTON_CLASS}
+              >
+                Browse Categories
+              </Button>
+            </m.div>
+          </m.div>
 
-          <ul className="mt-6 grid w-full max-w-xl grid-cols-2 gap-x-3 gap-y-2.5 sm:mt-8 sm:gap-x-4 sm:gap-y-3 md:max-w-lg">
+          <m.ul
+            variants={staggerContainer(0.06, 0)}
+            className="mt-6 grid w-full max-w-xl grid-cols-2 gap-x-3 gap-y-2.5 sm:mt-8 sm:gap-x-4 sm:gap-y-3 md:max-w-lg"
+          >
             {HERO_TRUST_ITEMS.map(({ icon: Icon, label }) => (
-              <li
+              <m.li
                 key={label}
+                variants={staggerItem}
                 className="flex items-center gap-2 text-left text-xs text-white/80 sm:text-sm"
               >
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#a99bfa]">
@@ -138,10 +166,10 @@ export function HomeHeroSection() {
                   <Icon className="size-3.5 shrink-0 text-[#a99bfa]" />
                   {label}
                 </span>
-              </li>
+              </m.li>
             ))}
-          </ul>
-        </div>
+          </m.ul>
+        </m.div>
 
         <HeroProductShowcase products={showcaseProducts} />
       </div>

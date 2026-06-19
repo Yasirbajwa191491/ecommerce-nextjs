@@ -384,6 +384,38 @@ a[data-slot="button"].bg-primary {
   .home-category-shine {
     display: none;
   }
+
+  .motion-skeleton-shimmer::after {
+    animation: none !important;
+  }
+}
+
+@keyframes motion-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.motion-skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.motion-skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  animation: motion-shimmer 1.5s ease-in-out infinite;
 }
 
 [data-slot="sheet-content"] [data-drawer-footer] {

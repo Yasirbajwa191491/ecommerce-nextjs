@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/home/section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MotionSkeleton } from "@/components/motion";
 import { STATS_LABELS } from "@/lib/about-content";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
@@ -42,8 +42,8 @@ export function StoreStatsSection() {
                 <CardContent className="flex flex-col items-center p-5 sm:p-6">
                   {stats === undefined ? (
                     <>
-                      <Skeleton className="h-9 w-16" />
-                      <Skeleton className="mt-3 h-4 w-24" />
+                      <MotionSkeleton shimmer className="h-9 w-16" />
+                      <MotionSkeleton shimmer className="mt-3 h-4 w-24" />
                     </>
                   ) : (
                     <>

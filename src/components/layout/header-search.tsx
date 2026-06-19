@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
+import { AnimatePresence } from "framer-motion";
 import { Loader2, Search } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Input } from "@/components/ui/input";
@@ -174,21 +175,24 @@ function HeaderSearchForm({
         </div>
       </form>
 
-      {showDropdown ? (
-        <HeaderSearchDropdown
-          debouncedQuery={debouncedQuery}
-          loading={loading}
-          products={products}
-          isSimilarFallback={isSimilarFallback}
-          recentSearches={recentSearches}
-          suggestions={suggestions}
-          suggestionsLoading={suggestions === undefined && showEmptySuggestions}
-          showEmptySuggestions={showEmptySuggestions}
-          onSelectQuery={handleSelectQuery}
-          onClose={() => setDropdownOpen(false)}
-          viewAllHref={buildProductsSearchPath(trimmedDebounced)}
-        />
-      ) : null}
+      <AnimatePresence>
+        {showDropdown ? (
+          <HeaderSearchDropdown
+            key={showEmptySuggestions ? "suggestions" : trimmedDebounced || "search"}
+            debouncedQuery={debouncedQuery}
+            loading={loading}
+            products={products}
+            isSimilarFallback={isSimilarFallback}
+            recentSearches={recentSearches}
+            suggestions={suggestions}
+            suggestionsLoading={suggestions === undefined && showEmptySuggestions}
+            showEmptySuggestions={showEmptySuggestions}
+            onSelectQuery={handleSelectQuery}
+            onClose={() => setDropdownOpen(false)}
+            viewAllHref={buildProductsSearchPath(trimmedDebounced)}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

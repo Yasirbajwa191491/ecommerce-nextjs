@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AboutImage } from "@/components/about/about-image";
 import { AboutSectionHeader } from "@/components/about/about-section-header";
+import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { OrderProgressTimeline } from "@/components/orders/order-progress-timeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,7 +52,7 @@ export function AboutStorySection() {
   return (
     <SectionShell className="bg-muted/20">
       <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
-        <div>
+        <ScrollReveal variant="up">
           <AboutSectionHeader
             badge="Our Story"
             badgeIcon={BookOpen}
@@ -60,35 +61,35 @@ export function AboutStorySection() {
             align="left"
             className="mx-0 max-w-none text-left"
           />
-          <div className="mt-6 space-y-4">
-            {ABOUT_STORY.paragraphs.map((paragraph) => (
-              <p
-                key={paragraph.slice(0, 32)}
-                className="text-sm leading-relaxed text-muted-foreground sm:text-base"
-              >
-                {paragraph}
-              </p>
+          <StaggerGroup className="mt-6 space-y-4">
+            {ABOUT_STORY.paragraphs.map((paragraph, index) => (
+              <StaggerItem key={paragraph.slice(0, 32)} index={index} variant="up">
+                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {paragraph}
+                </p>
+              </StaggerItem>
             ))}
-          </div>
-          <ul className="mt-6 space-y-3">
-            {ABOUT_STORY.highlights.map((item) => (
-              <li
-                key={item}
-                className="flex items-start gap-3 text-sm text-foreground sm:text-base"
-              >
-                <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
-                  <Sparkles className="size-3" />
-                </span>
-                {item}
-              </li>
+          </StaggerGroup>
+          <StaggerGroup className="mt-6 space-y-3">
+            {ABOUT_STORY.highlights.map((item, index) => (
+              <StaggerItem key={item} index={index} variant="up">
+                <div className="flex items-start gap-3 text-sm text-foreground sm:text-base">
+                  <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
+                    <Sparkles className="size-3" />
+                  </span>
+                  {item}
+                </div>
+              </StaggerItem>
             ))}
-          </ul>
-        </div>
+          </StaggerGroup>
+        </ScrollReveal>
 
-        <AboutImage
-          src={ABOUT_STORY.image.src}
-          alt={ABOUT_STORY.image.alt}
-        />
+        <ScrollReveal variant="scale" delay={80}>
+          <AboutImage
+            src={ABOUT_STORY.image.src}
+            alt={ABOUT_STORY.image.alt}
+          />
+        </ScrollReveal>
       </div>
     </SectionShell>
   );

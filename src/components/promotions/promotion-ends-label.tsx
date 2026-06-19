@@ -1,5 +1,6 @@
 "use client";
 
+import { m, useReducedMotion } from "framer-motion";
 import { Clock } from "lucide-react";
 import {
   formatPromotionEndsAt,
@@ -20,14 +21,50 @@ export function PromotionEndsLabel({
   variant = "default",
   className,
 }: PromotionEndsLabelProps) {
+  const reduceMotion = useReducedMotion();
   const referenceNow = now ?? Date.now();
   const label =
     variant === "compact"
       ? formatPromotionEndsAtCompact(endAt, referenceNow)
       : formatPromotionEndsAt(endAt, referenceNow);
 
+  const content = (
+    <>
+      <Clock
+        className={cn(
+          "shrink-0 opacity-80",
+          variant === "compact" ? "size-3" : "size-3.5"
+        )}
+        aria-hidden
+      />
+      <span>{label}</span>
+    </>
+  );
+
+  if (reduceMotion) {
+    return (
+      <p
+        className={cn(
+          "flex items-center gap-1.5",
+          variant === "overlay"
+            ? "text-[11px] font-medium text-amber-100/95 sm:text-xs"
+            : variant === "compact"
+              ? "text-[10px] text-muted-foreground sm:text-[11px]"
+              : "text-xs text-muted-foreground sm:text-sm",
+          className
+        )}
+      >
+        {content}
+      </p>
+    );
+  }
+
   return (
-    <p
+    <m.p
+      key={label}
+      initial={{ opacity: 0.7 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
       className={cn(
         "flex items-center gap-1.5",
         variant === "overlay"
@@ -38,14 +75,7 @@ export function PromotionEndsLabel({
         className
       )}
     >
-      <Clock
-        className={cn(
-          "shrink-0 opacity-80",
-          variant === "compact" ? "size-3" : "size-3.5"
-        )}
-        aria-hidden
-      />
-      <span>{label}</span>
-    </p>
+      {content}
+    </m.p>
   );
 }

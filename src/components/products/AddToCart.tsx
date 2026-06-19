@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
+import { m, useReducedMotion } from "framer-motion";
 import { Minus, Plus, ShoppingBag, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
@@ -33,6 +34,7 @@ export default function AddToCart({
     resolveProductColorOrDefault(product.colors, product.colors[0] ?? "#000000")
   );
   const isDetail = variant === "detail";
+  const reduceMotion = useReducedMotion();
   const hasColors = product.colors.length > 0;
   const now = useStableNow();
 
@@ -103,20 +105,22 @@ export default function AddToCart({
   );
 
   const addToCartButton = (
-    <Button
-      type="button"
-      size={isDetail ? "default" : "lg"}
-      onClick={handleAdd}
-      className={cn(
-        "gap-2 rounded-full font-semibold",
-        isDetail
-          ? "h-10 bg-[#6254f3] px-5 text-sm hover:bg-[#5548e0] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
-          : undefined
-      )}
-    >
-      <ShoppingBag className="size-4" />
-      Add to cart
-    </Button>
+    <m.div whileTap={reduceMotion ? undefined : { scale: 0.97 }}>
+      <Button
+        type="button"
+        size={isDetail ? "default" : "lg"}
+        onClick={handleAdd}
+        className={cn(
+          "gap-2 rounded-full font-semibold",
+          isDetail
+            ? "h-10 bg-[#6254f3] px-5 text-sm hover:bg-[#5548e0] sm:h-11 sm:px-6 lg:h-12 lg:px-8 lg:text-base"
+            : undefined
+        )}
+      >
+        <ShoppingBag className="size-4" />
+        Add to cart
+      </Button>
+    </m.div>
   );
 
   const viewCartButton = isDetail ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { m, useReducedMotion } from "framer-motion";
 import { productPath } from "@/lib/product-url";
 import { getPrimaryImageUrl, getPrimaryImageAlt, orderImagesForDisplay } from "@/lib/product-images";
 import { Product } from "@/types/product";
@@ -15,15 +16,23 @@ import { ProductDiscountBadge } from "@/components/products/product-discount-bad
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
 import { ProductStockBadge } from "@/components/products/product-stock-badge";
 import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
+import { MotionHoverImage } from "@/components/motion";
+import { cardTap, fadeUp } from "@/lib/motion";
+import { hoverOrchestrator, hoverShadowGlow } from "@/lib/motion/image-card-hover";
+import { viewportReveal } from "@/lib/motion/transitions";
+import { cn } from "@/lib/utils";
 
 type ProductCardProps = Product & {
   view?: "grid" | "list";
+  animateEntrance?: boolean;
 };
 
 export default function ProductCard({
   view = "grid",
+  animateEntrance = true,
   ...product
 }: ProductCardProps) {
+  const reduceMotion = useReducedMotion();
   const now = useStableNow();
   const promotionBadge = useProductPromotionBadge(product._id as Id<"products">);
   const imageUrl = getPrimaryImageUrl(product);
@@ -33,15 +42,41 @@ export default function ProductCard({
   const discountPercent = product.discountPercent ?? 0;
   const freeShipping = product.shipping === true;
 
+  const entranceProps = reduceMotion
+    ? {}
+    : {
+        initial: animateEntrance ? ("hidden" as const) : false,
+        whileInView: animateEntrance ? ("visible" as const) : undefined,
+        viewport: viewportReveal,
+        variants: fadeUp,
+        style: { willChange: "transform, opacity" as const },
+      };
+
+  const hoverShellProps = reduceMotion
+    ? {}
+    : {
+        initial: "rest" as const,
+        whileHover: "hover" as const,
+        animate: "rest" as const,
+        variants: hoverOrchestrator,
+      };
+
   if (view === "list") {
     return (
-      <div className="group flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-4 transition-all duration-300 hover:border-[#6254f3]/30 hover:shadow-md sm:gap-6 sm:p-5">
-        <div className="relative shrink-0">
-          <ProductImageGallery
-            variant="list"
-            images={displayImages}
-            fallbackAlt={product.name}
-          />
+      <m.div
+        className="group flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:gap-6 sm:p-5"
+        {...entranceProps}
+        {...hoverShellProps}
+        whileTap={reduceMotion ? undefined : cardTap}
+      >
+        <div className="relative shrink-0 overflow-hidden rounded-xl">
+          <MotionHoverImage className="size-full rounded-xl" zoom="subtle">
+            <ProductImageGallery
+              variant="list"
+              images={displayImages}
+              fallbackAlt={product.name}
+            />
+          </MotionHoverImage>
           {promotionBadge ? (
             <ProductPromotionImageOverlay
               badge={promotionBadge}
@@ -99,67 +134,91 @@ export default function ProductCard({
             </div>
           </div>
         </Link>
-      </div>
+      </m.div>
     );
   }
 
   return (
-    <Link
-      href={productPath(product._id)}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-all duration-300 hover:-translate-y-0.5 hover:border-[#6254f3]/20 hover:shadow-lg"
+    <m.div
+      className={cn(
+        "group h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm",
+        "transition-[border-color] duration-500 hover:border-[#6254f3]/20"
+      )}
+      {...entranceProps}
+      whileTap={reduceMotion ? undefined : cardTap}
     >
-      <div className="relative shrink-0">
-        <ProductImageFrame
-          src={imageUrl}
-          alt={imageAlt}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          interactive
-          variant="catalog"
-          className="rounded-none"
-        />
-        <span className="absolute top-3 right-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#6254f3] uppercase shadow-sm backdrop-blur-sm">
-          {categoryName}
-        </span>
-        {(discountPercent > 0 || freeShipping) && (
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-            <ProductDiscountBadge discountPercent={discountPercent} />
-            {freeShipping ? (
-              <ProductShippingBadge
-                freeShipping
-                currency={product.currency}
-                variant="compact"
-              />
-            ) : null}
-          </div>
-        )}
-        {promotionBadge ? (
-          <ProductPromotionImageOverlay badge={promotionBadge} now={now} />
-        ) : null}
-      </div>
+      <m.div
+        initial={reduceMotion ? false : "rest"}
+        whileHover={reduceMotion ? undefined : "hover"}
+        animate="rest"
+        variants={reduceMotion ? undefined : hoverOrchestrator}
+        className="flex h-full flex-col"
+      >
+        <m.div
+          variants={reduceMotion ? undefined : hoverShadowGlow}
+          className="flex h-full flex-col rounded-2xl"
+        >
+          <Link
+            href={productPath(product._id)}
+            className="flex h-full flex-col"
+          >
+            <div className="relative shrink-0 overflow-hidden">
+              <MotionHoverImage className="w-full">
+                <ProductImageFrame
+                  src={imageUrl}
+                  alt={imageAlt}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  interactive={false}
+                  variant="catalog"
+                  className="rounded-none"
+                />
+              </MotionHoverImage>
+              <span className="absolute top-3 right-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#6254f3] uppercase shadow-sm backdrop-blur-sm">
+                {categoryName}
+              </span>
+              {(discountPercent > 0 || freeShipping) && (
+                <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+                  <ProductDiscountBadge discountPercent={discountPercent} />
+                  {freeShipping ? (
+                    <ProductShippingBadge
+                      freeShipping
+                      currency={product.currency}
+                      variant="compact"
+                    />
+                  ) : null}
+                </div>
+              )}
+              {promotionBadge ? (
+                <ProductPromotionImageOverlay badge={promotionBadge} now={now} />
+              ) : null}
+            </div>
 
-      <div className="flex min-h-[8rem] flex-1 flex-col gap-2 p-4">
-        <p className="truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          {product.company}
-        </p>
-        <h3 className="line-clamp-2 h-[2.75rem] text-base font-semibold leading-snug tracking-tight text-foreground">
-          {product.name}
-        </h3>
-        <ProductRatingDisplay
-          rating={product.stars}
-          reviewCount={product.reviews}
-          compact
-        />
-        <div className="flex w-fit max-w-full flex-wrap items-start gap-2">
-          <ProductStockBadge stock={product.stock} variant="compact" />
-        </div>
-        <div className="mt-auto border-t border-border/50 pt-2.5">
-          <ProductPrice
-            price={product.price}
-            discountPercent={discountPercent}
-            currency={product.currency}
-          />
-        </div>
-      </div>
-    </Link>
+            <div className="flex min-h-[8rem] flex-1 flex-col gap-2 p-4">
+              <p className="truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                {product.company}
+              </p>
+              <h3 className="line-clamp-2 h-[2.75rem] text-base font-semibold leading-snug tracking-tight text-foreground">
+                {product.name}
+              </h3>
+              <ProductRatingDisplay
+                rating={product.stars}
+                reviewCount={product.reviews}
+                compact
+              />
+              <div className="flex w-fit max-w-full flex-wrap items-start gap-2">
+                <ProductStockBadge stock={product.stock} variant="compact" />
+              </div>
+              <div className="mt-auto border-t border-border/50 pt-2.5">
+                <ProductPrice
+                  price={product.price}
+                  discountPercent={discountPercent}
+                  currency={product.currency}
+                />
+              </div>
+            </div>
+          </Link>
+        </m.div>
+      </m.div>
+    </m.div>
   );
 }
