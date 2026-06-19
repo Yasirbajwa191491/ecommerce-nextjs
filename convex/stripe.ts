@@ -31,6 +31,7 @@ function buildStripeLineItems(
     deliveryCharge?: number;
     deliveryMethod?: string;
     deliveryMethodLabel?: string;
+    tax?: number;
     items: PricedLineItem[];
   }
 ): Stripe.Checkout.SessionCreateParams.LineItem[] {
@@ -38,13 +39,14 @@ function buildStripeLineItems(
     priced.items.map((item: PricedLineItem) => {
       const discountNote =
         item.discountPercent > 0 ? ` · ${item.discountPercent}% off` : "";
+      const promotionNote = item.isPromotionGift ? " · Promotion gift" : "";
       return {
         price_data: {
           currency: priced.currency.toLowerCase(),
           unit_amount: Math.round(item.finalUnitPrice * 100),
           product_data: {
             name: item.productName,
-            description: `Color: ${item.color}${discountNote}`,
+            description: `Color: ${item.color}${discountNote}${promotionNote}`,
             images: item.imageUrl ? [item.imageUrl] : undefined,
           },
         },
@@ -83,24 +85,77 @@ function buildStripeLineItems(
     });
   }
 
+  if ((priced.tax ?? 0) > 0) {
+    lineItems.push({
+      price_data: {
+        currency: priced.currency.toLowerCase(),
+        unit_amount: Math.round((priced.tax ?? 0) * 100),
+        product_data: {
+          name: "Tax",
+          description: "Order tax",
+        },
+      },
+      quantity: 1,
+    });
+  }
+
   return lineItems;
 }
 
-function assertStripeAmountMatchesOrder(
-  lineItems: Stripe.Checkout.SessionCreateParams.LineItem[],
-  expectedTotal: number
-): void {
-  const centsTotal = lineItems.reduce((sum, item) => {
+function sumStripeLineItemsCents(
+  lineItems: Stripe.Checkout.SessionCreateParams.LineItem[]
+): number {
+  return lineItems.reduce((sum, item) => {
     const unitAmount = item.price_data?.unit_amount ?? 0;
     const quantity = item.quantity ?? 1;
     return sum + unitAmount * quantity;
   }, 0);
+}
+
+function assertStripeAmountMatchesOrder(
+  lineItems: Stripe.Checkout.SessionCreateParams.LineItem[],
+  expectedTotal: number,
+  promotionDiscountCents = 0
+): void {
+  const centsTotal = sumStripeLineItemsCents(lineItems) - promotionDiscountCents;
   const expectedCents = Math.round(expectedTotal * 100);
   if (centsTotal !== expectedCents) {
     throw new ConvexError(
       `Stripe line items total (${centsTotal}) does not match order total (${expectedCents})`
     );
   }
+}
+
+async function createPromotionDiscountCoupon(
+  stripe: Stripe,
+  priced: {
+    currency: string;
+    promotionSavingsTotal?: number;
+    promotionSummaries?: Array<{ promotionName: string }>;
+  }
+): Promise<Stripe.Checkout.SessionCreateParams.Discount[] | undefined> {
+  const promotionSavings = priced.promotionSavingsTotal ?? 0;
+  if (promotionSavings <= 0) {
+    return undefined;
+  }
+
+  const amountOff = Math.round(promotionSavings * 100);
+  if (amountOff <= 0) {
+    return undefined;
+  }
+
+  const label =
+    priced.promotionSummaries?.map((summary) => summary.promotionName).join(", ") ||
+    "Promotion savings";
+
+  const coupon = await stripe.coupons.create({
+    amount_off: amountOff,
+    currency: priced.currency.toLowerCase(),
+    duration: "once",
+    name: label.slice(0, 40),
+  });
+
+  return [{ coupon: coupon.id }];
 }
 
 export const createCheckoutSession = action({
@@ -190,14 +245,24 @@ async function createCheckoutSessionHandler(
     const appUrl = getSiteUrl();
 
     const lineItems = buildStripeLineItems(priced);
-    assertStripeAmountMatchesOrder(lineItems, priced.total);
+    const promotionDiscountCents = Math.round(
+      (priced.promotionSavingsTotal ?? 0) * 100
+    );
+    assertStripeAmountMatchesOrder(
+      lineItems,
+      priced.total,
+      promotionDiscountCents
+    );
+    const discounts = await createPromotionDiscountCoupon(stripe, priced);
+    const hasPromotionDiscount = Boolean(discounts?.length);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      allow_promotion_codes: true,
+      allow_promotion_codes: !hasPromotionDiscount,
       customer_email: args.customer.email.trim(),
       line_items: lineItems,
+      discounts,
       metadata: {
         orderId,
         orderNumber,
