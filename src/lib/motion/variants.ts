@@ -10,6 +10,48 @@ export const fadeUp: Variants = {
   },
 };
 
+/** Apple-style headline reveal — slow drift up with subtle de-blur */
+export const appleHeadline: Variants = {
+  hidden: { opacity: 0, y: 56, filter: "blur(10px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.95, ease: [0.25, 0.1, 0.25, 1] },
+  },
+};
+
+/** Apple-style body / card text entrance */
+export const appleFadeUp: Variants = {
+  hidden: { opacity: 0, y: 36 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+  },
+};
+
+/** Section header line items (badge → title → description) */
+export const sectionHeaderItem: Variants = {
+  hidden: { opacity: 0, y: 44, filter: "blur(8px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.85, ease: [0.25, 0.1, 0.25, 1] },
+  },
+};
+
+export const sectionHeaderContainer = (
+  staggerChildren = 0.14,
+  delayChildren = 0.04
+): Variants => ({
+  hidden: {},
+  visible: {
+    transition: { staggerChildren, delayChildren },
+  },
+});
+
 export const fadeIn: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -75,11 +117,21 @@ export const staggerContainer = (
 });
 
 export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 32 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: EASE_PREMIUM },
+    transition: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] },
+  },
+};
+
+export const staggerItemApple: Variants = {
+  hidden: { opacity: 0, y: 40, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
   },
 };
 
@@ -149,7 +201,7 @@ export const listItem: Variants = {
   },
 };
 
-export type RevealVariant = "up" | "scale" | "fade" | "left" | "right";
+export type RevealVariant = "up" | "scale" | "fade" | "left" | "right" | "headline" | "apple";
 
 export const revealVariants: Record<RevealVariant, Variants> = {
   up: fadeUp,
@@ -157,4 +209,6 @@ export const revealVariants: Record<RevealVariant, Variants> = {
   fade: fadeIn,
   left: slideFromLeft,
   right: slideFromRight,
+  headline: appleHeadline,
+  apple: appleFadeUp,
 };

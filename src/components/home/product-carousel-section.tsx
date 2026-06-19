@@ -1,7 +1,7 @@
 "use client";
 
 import ProductCard from "@/components/products/ProductCard";
-import { SectionHeader } from "@/components/home/section-header";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { ScrollReveal } from "@/components/home/scroll-reveal";
 import {
   Carousel,
@@ -64,15 +64,13 @@ export function ProductCarouselSection({
       )}
     >
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <ScrollReveal variant="fade">
-          <SectionHeader
-            badge={badge}
-            badgeIcon={badgeIcon}
-            title={title}
-            description={description}
-            action={action}
-          />
-        </ScrollReveal>
+        <AnimatedSectionHeader
+          badge={badge}
+          badgeIcon={badgeIcon}
+          title={title}
+          description={description}
+          action={action}
+        />
 
         {isLoading ? (
           <ProductCarouselSkeleton />
@@ -88,7 +86,7 @@ export function ProductCarouselSection({
             </div>
           </ScrollReveal>
         ) : (
-          <ScrollReveal className="relative mt-8 lg:mt-10" delay={120}>
+          <ScrollReveal className="relative mt-8 lg:mt-10" delay={160}>
             <Carousel
               opts={{
                 align: "start",

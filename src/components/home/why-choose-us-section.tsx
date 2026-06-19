@@ -2,8 +2,9 @@
 
 import { ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { SectionHeader } from "@/components/home/section-header";
-import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
+import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
+import { SHOP_BODY, SHOP_CARD_TITLE } from "@/lib/typography";
 import { WHY_CHOOSE_US_FEATURES } from "@/lib/home-content";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
@@ -12,16 +13,14 @@ export function WhyChooseUsSection() {
   return (
     <section className="bg-background py-10 sm:py-14 md:py-16">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <ScrollReveal variant="fade">
-          <SectionHeader
-            badge="Why Us"
-            badgeIcon={ShieldCheck}
-            title="Why Choose Us"
-            description="We combine secure payments, reliable delivery, and responsive support so you can shop with confidence."
-            align="center"
-            className="sm:items-center sm:text-center"
-          />
-        </ScrollReveal>
+        <AnimatedSectionHeader
+          badge="Why Us"
+          badgeIcon={ShieldCheck}
+          title="Why Choose Us"
+          description="We combine secure payments, reliable delivery, and responsive support so you can shop with confidence."
+          align="center"
+          className="sm:items-center sm:text-center"
+        />
 
         <StaggerGroup className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4 lg:gap-5">
           {WHY_CHOOSE_US_FEATURES.map(({ title, description, icon: Icon }, index) => (
@@ -42,10 +41,10 @@ export function WhyChooseUsSection() {
                   >
                     <Icon className="size-5" />
                   </span>
-                  <h3 className="mt-4 text-base font-semibold text-foreground">
+                  <h3 className={cn("mt-4", SHOP_CARD_TITLE)}>
                     {title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  <p className={cn("mt-2", SHOP_BODY)}>
                     {description}
                   </p>
                 </CardContent>

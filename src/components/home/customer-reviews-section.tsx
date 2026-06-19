@@ -4,8 +4,9 @@ import { useQuery } from "convex/react";
 import { BadgeCheck, MessageSquareQuote } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { ProductStars } from "@/components/products/product-stars";
-import { SectionHeader } from "@/components/home/section-header";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { ScrollReveal } from "@/components/home/scroll-reveal";
+import { SHOP_BODY, SHOP_CARD_TITLE } from "@/lib/typography";
 import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
+import { cn } from "@/lib/utils";
 
 export function CustomerReviewsSection() {
   const reviews = useQuery(api.productReviews.listHomepageTestimonials, {
@@ -25,16 +27,14 @@ export function CustomerReviewsSection() {
   return (
     <section className="bg-muted/30 py-10 sm:py-14 md:py-16">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <ScrollReveal variant="fade">
-          <SectionHeader
-            badge="Testimonials"
-            badgeIcon={MessageSquareQuote}
-            title="Customer Reviews"
-            description="Real feedback from verified shoppers — only approved reviews are shown."
-            align="center"
-            className="sm:items-center sm:text-center"
-          />
-        </ScrollReveal>
+        <AnimatedSectionHeader
+          badge="Testimonials"
+          badgeIcon={MessageSquareQuote}
+          title="Customer Reviews"
+          description="Real feedback from verified shoppers — only approved reviews are shown."
+          align="center"
+          className="sm:items-center sm:text-center"
+        />
 
         {reviews === undefined ? (
           <div className="mt-8 flex gap-4 overflow-hidden lg:mt-10">
@@ -71,7 +71,7 @@ export function CustomerReviewsSection() {
                     <article className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-[transform,box-shadow,border-color] duration-500 hover:-translate-y-1 hover:border-[#6254f3]/20 hover:shadow-md">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-foreground">
+                          <p className="text-lg font-semibold text-foreground">
                             {review.customerName}
                           </p>
                           <ProductStars
@@ -90,11 +90,11 @@ export function CustomerReviewsSection() {
                         ) : null}
                       </div>
                       {review.title ? (
-                        <h3 className="mt-4 text-sm font-semibold text-foreground">
+                        <h3 className={cn("mt-4", SHOP_CARD_TITLE)}>
                           {review.title}
                         </h3>
                       ) : null}
-                      <p className="mt-2 line-clamp-4 flex-1 text-sm leading-relaxed text-muted-foreground">
+                      <p className={cn("mt-2 line-clamp-4 flex-1", SHOP_BODY)}>
                         {review.content}
                       </p>
                     </article>

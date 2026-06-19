@@ -19,8 +19,10 @@ import { ProductCatalogLoadMore } from "@/components/products/product-catalog-lo
 import { CatalogActiveFilters } from "@/components/products/catalog-active-filters";
 import ProductCard from "@/components/products/ProductCard";
 import { MotionSkeleton } from "@/components/motion";
+import { ScrollReveal } from "@/components/home/scroll-reveal";
 import { m } from "framer-motion";
 import { fadeIn } from "@/lib/motion";
+import { SHOP_BODY, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
@@ -481,12 +483,12 @@ export default function ProductCatalog() {
             paddingRight: "clamp(1rem, 3vw, 3rem)",
           }}
         >
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Ecommerce Products
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Browse our catalog — search from the header anytime.
-          </p>
+          <ScrollReveal variant="headline">
+            <h1 className={SHOP_PAGE_TITLE}>Ecommerce Products</h1>
+            <p className={SHOP_PAGE_LEAD}>
+              Browse our catalog — search from the header anytime.
+            </p>
+          </ScrollReveal>
         </div>
       </div>
 
@@ -569,9 +571,11 @@ export default function ProductCatalog() {
             />
 
             {isHybridSearch && hybridSearch.isSimilarFallback ? (
-              <div className="mb-4 rounded-xl border border-[#6254f3]/20 bg-[#6254f3]/5 px-4 py-3 text-sm text-muted-foreground">
-                No exact matches for &ldquo;{urlSearch.trim()}&rdquo;. You may
-                be interested in these similar products.
+              <div className="mb-4 rounded-xl border border-[#6254f3]/20 bg-[#6254f3]/5 px-4 py-3 sm:px-5 sm:py-4">
+                <p className={SHOP_BODY}>
+                  No exact matches for &ldquo;{urlSearch.trim()}&rdquo;. You may
+                  be interested in these similar products.
+                </p>
               </div>
             ) : null}
 
@@ -597,10 +601,8 @@ export default function ProductCatalog() {
               </div>
             ) : showNoResults ? (
               <div className="rounded-2xl border border-dashed border-border/80 bg-card px-6 py-20 text-center">
-                <p className="text-xl font-semibold text-foreground">
-                  No products found
-                </p>
-                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                <p className={SHOP_SUBSECTION_TITLE}>No products found</p>
+                <p className={cn("mx-auto mt-3 max-w-lg", SHOP_BODY)}>
                   {urlSearch
                     ? `We couldn't find anything matching "${urlSearch}". Try a different search in the header or adjust your filters.`
                     : "Try adjusting your category or price filters."}

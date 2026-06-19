@@ -12,6 +12,8 @@ import { useCartContext } from "@/context/cart_context";
 import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
+import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type DeliveryMethodType =
   | "standard"
@@ -86,7 +88,7 @@ export function CheckoutView() {
       <section className="w-full px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10 xl:px-16 2xl:px-20">
         <nav
           aria-label="Breadcrumb"
-          className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
+          className={cn("mb-5", SHOP_BREADCRUMB)}
         >
           <Link href="/home" className="transition-colors hover:text-foreground">
             Home
@@ -105,10 +107,8 @@ export function CheckoutView() {
               <CreditCard className="size-6" />
             </span>
             <div>
-              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                Checkout
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+              <h1 className={SHOP_PAGE_TITLE}>Checkout</h1>
+              <p className={SHOP_PAGE_LEAD}>
                 Review your order and enter your details to complete purchase.
               </p>
             </div>

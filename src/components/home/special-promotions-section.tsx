@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { SectionHeader } from "@/components/home/section-header";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { PromotionStorefrontCard } from "@/components/promotions/promotion-storefront-card";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
@@ -21,7 +21,7 @@ export function SpecialPromotionsSection() {
   return (
     <section className="border-y border-border/60 bg-muted/20 py-12 sm:py-16">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <SectionHeader
+        <AnimatedSectionHeader
           badge="Limited time"
           title="Special Promotions"
           description="Exclusive bundle deals — buy the qualifying quantity and receive free items at checkout."

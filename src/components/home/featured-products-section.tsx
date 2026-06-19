@@ -5,11 +5,9 @@ import { Sparkles } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { productCardKey } from "@/lib/product-images";
 import ProductCard from "@/components/products/ProductCard";
-import { SectionHeader } from "@/components/home/section-header";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { MotionSkeleton } from "@/components/motion";
-import { m } from "framer-motion";
-import { fadeIn } from "@/lib/motion";
 import { PAGE_GUTTER } from "@/lib/layout-constants";
 
 export function FeaturedProductsSection() {
@@ -18,15 +16,13 @@ export function FeaturedProductsSection() {
   return (
     <section className="bg-muted/30 py-10 sm:py-14 md:py-16 lg:py-20">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <ScrollReveal variant="fade">
-          <SectionHeader
-            badge="Curated"
-            badgeIcon={Sparkles}
-            title="Featured Products"
-            description="Handpicked favorites from our catalog — quality pieces selected for style, value, and customer satisfaction."
-            action={{ label: "View All Products", href: "/products" }}
-          />
-        </ScrollReveal>
+        <AnimatedSectionHeader
+          badge="Curated"
+          badgeIcon={Sparkles}
+          title="Featured Products"
+          description="Handpicked favorites from our catalog — quality pieces selected for style, value, and customer satisfaction."
+          action={{ label: "View All Products", href: "/products" }}
+        />
 
         {products === undefined ? (
           <div className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
@@ -50,23 +46,16 @@ export function FeaturedProductsSection() {
             </div>
           </ScrollReveal>
         ) : (
-          <m.div
-            initial="hidden"
-            animate="visible"
-            variants={fadeIn}
-          >
-            <StaggerGroup className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
+          <StaggerGroup className="mt-8 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6">
               {products.map((product, index) => (
                 <StaggerItem
                   key={productCardKey(product)}
                   index={index}
-                  variant="up"
                 >
                   <ProductCard {...product} animateEntrance={false} />
                 </StaggerItem>
               ))}
             </StaggerGroup>
-          </m.div>
         )}
       </div>
     </section>

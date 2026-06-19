@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SHOP_BODY_SM } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "grid" | "list";
@@ -37,7 +38,7 @@ export function ProductCatalogToolbar({
   return (
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 shadow-sm sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div className="min-w-0">
-        <p className="text-sm text-muted-foreground">
+        <p className={SHOP_BODY_SM}>
           {isSearching ? (
             <span className="font-medium text-foreground">Searching…</span>
           ) : (

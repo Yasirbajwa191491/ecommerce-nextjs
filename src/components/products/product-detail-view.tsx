@@ -32,6 +32,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { orderImagesForDisplay } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
+import {
+  SHOP_BODY,
+  SHOP_BREADCRUMB,
+  SHOP_META_LABEL,
+  SHOP_PRODUCT_TITLE,
+  SHOP_SUBSECTION_TITLE,
+} from "@/lib/typography";
 
 type ProductDetailViewProps = {
   params: Promise<{ id: string }>;
@@ -127,7 +134,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
       <nav
         aria-label="Breadcrumb"
-        className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground sm:mb-8"
+        className={cn("mb-6 sm:mb-8", SHOP_BREADCRUMB)}
       >
         <Link href="/home" className="transition-colors hover:text-foreground">
           Home
@@ -201,10 +208,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           ) : null}
 
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+            <p className={SHOP_META_LABEL}>
               {singleProduct.company}
             </p>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+            <h1 className={cn("mt-3", SHOP_PRODUCT_TITLE)}>
               {singleProduct.name}
             </h1>
           </div>
@@ -245,7 +252,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           </div>
 
           {productHighlights.length > 0 ? (
-            <ul className="space-y-2 text-sm text-foreground sm:text-base">
+            <ul className={cn("space-y-2 text-foreground", SHOP_BODY)}>
               {productHighlights.map((highlight) => (
                 <li key={highlight} className="flex items-start gap-2">
                   <span className="mt-0.5 text-[#6254f3]" aria-hidden>
@@ -258,7 +265,7 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           ) : null}
 
           {singleProduct.description ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className={cn("whitespace-pre-line", SHOP_BODY)}>
               {singleProduct.description}
             </p>
           ) : null}
@@ -344,10 +351,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
 
       {singleProduct.description ? (
         <section className="mt-12 border-t border-border/60 pt-10 lg:mt-16">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          <h2 className={SHOP_SUBSECTION_TITLE}>
             Product description
           </h2>
-          <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className={cn("mt-4 max-w-3xl whitespace-pre-line", SHOP_BODY)}>
             {singleProduct.description}
           </p>
         </section>

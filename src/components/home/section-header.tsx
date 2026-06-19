@@ -3,6 +3,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SECTION_ACTION_BUTTON_CLASS } from "@/lib/layout-constants";
+import {
+  SHOP_EYEBROW,
+  SHOP_SECTION_LEAD,
+  SHOP_SECTION_TITLE,
+} from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type SectionHeaderProps = {
@@ -37,20 +42,18 @@ export function SectionHeader({
         className
       )}
     >
-      <div className={cn("min-w-0 max-w-2xl", isCenter && "mx-auto text-center")}>
+      <div className={cn("min-w-0 max-w-3xl", isCenter && "mx-auto text-center")}>
         {badge ? (
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[#6254f3] uppercase sm:text-xs">
-            {BadgeIcon ? <BadgeIcon className="size-3.5" /> : null}
+          <span className={SHOP_EYEBROW}>
+            {BadgeIcon ? <BadgeIcon className="size-3.5 sm:size-4" /> : null}
             {badge}
           </span>
         ) : null}
-        <h2 className="mt-3 text-xl font-bold tracking-tight text-foreground sm:text-2xl md:text-3xl">
+        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-4" : "mt-0")}>
           {title}
         </h2>
         {description ? (
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {description}
-          </p>
+          <p className={SHOP_SECTION_LEAD}>{description}</p>
         ) : null}
       </div>
 
@@ -60,6 +63,7 @@ export function SectionHeader({
           variant="outline"
           className={cn(
             SECTION_ACTION_BUTTON_CLASS,
+            "h-11 px-6 text-base",
             isCenter && "self-center sm:self-center"
           )}
         >

@@ -12,6 +12,7 @@ import {
   buildPriceTicks,
   formatCompactPrice,
 } from "@/lib/shop/price-ticks";
+import { SHOP_BODY_SM, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import {
   FILTER_OPTION_LIST_CLASS,
@@ -92,9 +93,7 @@ export function ProductCatalogFilters({
       {showHeader ? (
         <div className="mb-6 flex items-center gap-2.5 border-b border-border/60 pb-5">
           <SlidersHorizontal className="size-4 shrink-0 text-[#6254f3]" />
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
-            Filters
-          </h2>
+          <h2 className={SHOP_SUBSECTION_TITLE}>Filters</h2>
         </div>
       ) : null}
 

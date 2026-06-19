@@ -6,6 +6,7 @@ import {
   revealVariants,
   staggerContainer,
   staggerItem,
+  staggerItemApple,
   staggerItemScale,
   type RevealVariant,
   withReducedMotion,
@@ -25,7 +26,7 @@ type ScrollRevealProps = {
 export function ScrollReveal({
   children,
   className,
-  variant = "up",
+  variant = "apple",
   delay = 0,
 }: ScrollRevealProps) {
   const reduceMotion = useReducedMotion();
@@ -48,14 +49,19 @@ export function ScrollReveal({
   );
 }
 
-const StaggerVariantContext = createContext<RevealVariantLocal>("up");
+const StaggerVariantContext = createContext<RevealVariantLocal>("apple");
 
 type StaggerGroupProps = {
   children: ReactNode;
   className?: string;
+  staggerMs?: number;
 };
 
-export function StaggerGroup({ children, className }: StaggerGroupProps) {
+export function StaggerGroup({
+  children,
+  className,
+  staggerMs = 0.1,
+}: StaggerGroupProps) {
   const reduceMotion = useReducedMotion();
 
   if (reduceMotion) {
@@ -63,13 +69,13 @@ export function StaggerGroup({ children, className }: StaggerGroupProps) {
   }
 
   return (
-    <StaggerVariantContext.Provider value="up">
+    <StaggerVariantContext.Provider value="apple">
       <m.div
         className={className}
         initial="hidden"
         whileInView="visible"
         viewport={viewportReveal}
-        variants={staggerContainer(0.085)}
+        variants={staggerContainer(staggerMs, 0.06)}
       >
         {children}
       </m.div>
@@ -89,8 +95,8 @@ export function StaggerItem({
   children,
   index: _index,
   className,
-  variant = "up",
-  staggerMs: _staggerMs = 85,
+  variant = "apple",
+  staggerMs: _staggerMs = 100,
 }: StaggerItemProps) {
   const reduceMotion = useReducedMotion();
   const parentVariant = useContext(StaggerVariantContext);
@@ -101,7 +107,11 @@ export function StaggerItem({
   }
 
   const itemVariant =
-    resolvedVariant === "scale" ? staggerItemScale : staggerItem;
+    resolvedVariant === "scale"
+      ? staggerItemScale
+      : resolvedVariant === "up" || resolvedVariant === "apple"
+        ? staggerItemApple
+        : staggerItem;
 
   return (
     <m.div className={cn(className)} variants={withReducedMotion(itemVariant, false)}>

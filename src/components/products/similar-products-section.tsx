@@ -6,6 +6,8 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import ProductCard from "@/components/products/ProductCard";
 import { productCardKey } from "@/lib/product-images";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
+import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/types/product";
 
@@ -59,25 +61,25 @@ export function SimilarProductsSection({
 
   return (
     <section className={className}>
-      <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-        You may also like
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Similar products based on features, category, and customer reviews.
-      </p>
+      <AnimatedSectionHeader
+        title="You may also like"
+        description="Similar products based on features, category, and customer reviews."
+      />
 
       {loading || products === undefined ? (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-[18rem] rounded-2xl" />
           ))}
         </div>
       ) : (
-        <div className="mt-6 grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {(products as Product[]).map((product) => (
-            <ProductCard key={productCardKey(product)} {...product} />
+        <StaggerGroup className="mt-8 grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4">
+          {(products as Product[]).map((product, index) => (
+            <StaggerItem key={productCardKey(product)} index={index}>
+              <ProductCard {...product} animateEntrance={false} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGroup>
       )}
     </section>
   );

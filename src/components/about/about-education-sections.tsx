@@ -30,6 +30,7 @@ import {
   WHY_SHOP_FEATURES,
 } from "@/lib/about-content";
 import { OUTLINE_BUTTON_CLASS, PAGE_GUTTER, PRIMARY_BUTTON_CLASS, ABOUT_CARD_GRID_CLASS } from "@/lib/layout-constants";
+import { SHOP_BODY } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 function SectionShell({
@@ -52,7 +53,7 @@ export function AboutStorySection() {
   return (
     <SectionShell className="bg-muted/20">
       <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
-        <ScrollReveal variant="up">
+        <ScrollReveal variant="headline">
           <AboutSectionHeader
             badge="Our Story"
             badgeIcon={BookOpen}
@@ -64,7 +65,7 @@ export function AboutStorySection() {
           <StaggerGroup className="mt-6 space-y-4">
             {ABOUT_STORY.paragraphs.map((paragraph, index) => (
               <StaggerItem key={paragraph.slice(0, 32)} index={index} variant="up">
-                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                <p className={SHOP_BODY}>
                   {paragraph}
                 </p>
               </StaggerItem>
@@ -73,7 +74,7 @@ export function AboutStorySection() {
           <StaggerGroup className="mt-6 space-y-3">
             {ABOUT_STORY.highlights.map((item, index) => (
               <StaggerItem key={item} index={index} variant="up">
-                <div className="flex items-start gap-3 text-sm text-foreground sm:text-base">
+                <div className={cn("flex items-start gap-3 text-foreground", SHOP_BODY)}>
                   <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
                     <Sparkles className="size-3" />
                   </span>

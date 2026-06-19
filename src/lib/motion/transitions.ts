@@ -27,6 +27,13 @@ export const transitionDropdown = {
 
 export const viewportReveal = {
   once: true,
-  margin: "-8%",
-  amount: 0.15,
+  margin: "-6%",
+  amount: 0.2,
+} as const;
+
+/** Slightly earlier trigger for large headlines (Apple-style sections) */
+export const viewportRevealHeadline = {
+  once: true,
+  margin: "-4%",
+  amount: 0.35,
 } as const;

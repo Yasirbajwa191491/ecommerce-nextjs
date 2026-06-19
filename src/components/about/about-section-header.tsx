@@ -1,4 +1,9 @@
 import type { LucideIcon } from "lucide-react";
+import {
+  SHOP_EYEBROW,
+  SHOP_SECTION_LEAD,
+  SHOP_SECTION_TITLE,
+} from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type AboutSectionHeaderProps = {
@@ -27,17 +32,13 @@ export function AboutSectionHeader({
         className
       )}
     >
-      <span className="inline-flex items-center gap-2 rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[#6254f3] uppercase sm:text-xs">
-        <BadgeIcon className="size-3.5" />
+      <span className={SHOP_EYEBROW}>
+        <BadgeIcon className="size-3.5 sm:size-4" />
         {badge}
       </span>
-      <h2 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        {title}
-      </h2>
+      <h2 className={cn(SHOP_SECTION_TITLE, "mt-4")}>{title}</h2>
       {description ? (
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {description}
-        </p>
+        <p className={SHOP_SECTION_LEAD}>{description}</p>
       ) : null}
     </div>
   );

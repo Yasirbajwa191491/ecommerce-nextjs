@@ -49,11 +49,11 @@ export function PromoBannerSection() {
                   <p className="text-[11px] font-semibold tracking-[0.2em] uppercase opacity-80 sm:text-xs">
                     {banner.eyebrow}
                   </p>
-                  <h3 className="mt-2 text-xl font-bold tracking-tight transition-transform duration-500 group-hover:-translate-y-0.5 sm:text-2xl md:text-3xl">
+                  <h3 className="mt-2 text-2xl font-bold tracking-tight transition-transform duration-500 group-hover:-translate-y-0.5 sm:text-3xl md:text-4xl">
                     {banner.title}
                   </h3>
                   {banner.description ? (
-                    <p className="mt-2 text-sm leading-relaxed opacity-85 sm:mt-3 sm:text-base">
+                    <p className="mt-2 text-base leading-relaxed opacity-85 sm:mt-3 sm:text-lg">
                       {banner.description}
                     </p>
                   ) : null}

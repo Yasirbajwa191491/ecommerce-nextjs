@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useQuery } from "convex/react";
 import { ArrowRight, LayoutGrid } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
-import { SectionHeader } from "@/components/home/section-header";
+import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import {
   MotionHoverArrow,
@@ -32,16 +32,14 @@ export function ShopByCategorySection() {
   return (
     <section className="bg-background py-10 sm:py-14 md:py-16">
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
-        <ScrollReveal variant="fade">
-          <SectionHeader
-            badge="Explore"
-            badgeIcon={LayoutGrid}
-            title="Shop By Category"
-            description="Browse our curated collections and find the perfect products for every room and lifestyle."
-            align="center"
-            className="sm:items-center sm:text-center"
-          />
-        </ScrollReveal>
+        <AnimatedSectionHeader
+          badge="Explore"
+          badgeIcon={LayoutGrid}
+          title="Shop By Category"
+          description="Browse our curated collections and find the perfect products for every room and lifestyle."
+          align="center"
+          className="sm:items-center sm:text-center"
+        />
 
         {categories === undefined ? (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:mt-10 lg:grid-cols-6 lg:gap-5">

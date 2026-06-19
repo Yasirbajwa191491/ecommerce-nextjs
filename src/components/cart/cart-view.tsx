@@ -31,9 +31,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import FormatPrice from "@/helpers/FormatPrice";
+import { cn } from "@/lib/utils";
 import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { fadeUp } from "@/lib/motion";
+import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
 
 export function CartView() {
   const {
@@ -62,7 +64,7 @@ export function CartView() {
       <section className="w-full px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10 xl:px-16 2xl:px-20">
         <nav
           aria-label="Breadcrumb"
-          className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
+          className={cn("mb-5", SHOP_BREADCRUMB)}
         >
           <Link href="/home" className="transition-colors hover:text-foreground">
             Home
@@ -74,7 +76,7 @@ export function CartView() {
         {!cart.length ? (
           <>
             <div className="mb-8">
-              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <h1 className={SHOP_PAGE_TITLE}>
                 Your shopping cart
               </h1>
             </div>
@@ -91,7 +93,7 @@ export function CartView() {
                   <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                     Your shopping cart
                   </h1>
-                  <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                  <p className={SHOP_PAGE_LEAD}>
                     Review items, adjust quantities, and proceed when you are
                     ready.
                   </p>
