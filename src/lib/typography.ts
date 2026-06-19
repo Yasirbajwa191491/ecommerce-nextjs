@@ -2,23 +2,23 @@ import { cn } from "@/lib/utils";
 
 /** Hero H1 on home and promo banners */
 export const SHOP_HERO_TITLE =
-  "font-heading text-[2rem] font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-[2.5rem] md:text-5xl lg:text-6xl xl:text-[4.5rem]";
+  "font-heading text-[1.625rem] font-bold leading-[1.15] tracking-tight sm:text-[1.875rem] md:text-[2.125rem] lg:text-[2.375rem]";
 
 /** Page-level H1 (products, cart, checkout, track order) */
 export const SHOP_PAGE_TITLE =
-  "font-heading text-[2rem] font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-[3rem]";
+  "font-heading text-xl font-bold leading-[1.2] tracking-tight text-foreground sm:text-2xl md:text-[1.75rem] lg:text-[2rem]";
 
 /** Lead paragraph under page titles */
 export const SHOP_PAGE_LEAD =
-  "mt-2 text-lg leading-[1.75] text-muted-foreground sm:text-xl md:mt-3 md:text-[1.125rem] md:leading-[1.8]";
+  "mt-2 text-base leading-[1.75] text-muted-foreground sm:text-lg md:mt-2.5 md:leading-[1.8]";
 
 /** Section H2 on home and shop (featured, similar products, etc.) */
 export const SHOP_SECTION_TITLE =
-  "font-heading text-[1.75rem] font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl";
+  "font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl md:text-[1.75rem] lg:text-[2rem]";
 
 /** Section description / subtitle under headings */
 export const SHOP_SECTION_LEAD =
-  "mt-3 max-w-3xl text-lg leading-[1.75] text-muted-foreground sm:text-xl md:mt-4 md:text-[1.125rem] md:leading-[1.8] lg:text-[1.25rem]";
+  "mt-2 max-w-3xl text-base leading-[1.75] text-muted-foreground sm:text-lg md:mt-3 md:leading-[1.8]";
 
 /** Section action link — View All Products, etc. */
 export const SHOP_SECTION_ACTION =
@@ -26,19 +26,19 @@ export const SHOP_SECTION_ACTION =
 
 /** Hero floating product card — name */
 export const HERO_CARD_PRODUCT_NAME =
-  "line-clamp-1 text-base font-semibold text-white sm:text-lg md:text-xl";
+  "line-clamp-1 text-sm font-semibold text-white sm:text-base";
 
 /** Hero floating product card — name (smaller satellite cards) */
 export const HERO_CARD_PRODUCT_NAME_COMPACT =
-  "line-clamp-1 text-sm font-semibold text-white sm:text-base md:text-lg";
+  "line-clamp-1 text-xs font-semibold text-white sm:text-sm";
 
 /** Hero floating product card — price */
 export const HERO_CARD_PRICE =
-  "text-base font-bold text-white sm:text-lg md:text-xl";
+  "text-sm font-bold text-white sm:text-base";
 
 /** Hero floating product card — price (satellite) */
 export const HERO_CARD_PRICE_COMPACT =
-  "text-sm font-bold text-white sm:text-base md:text-lg";
+  "text-xs font-bold text-white sm:text-sm";
 
 /** Category grid card — name on image overlay */
 export const CATEGORY_CARD_NAME =
@@ -50,7 +50,7 @@ export const CATEGORY_CARD_COUNT =
 
 /** Our Story — subtitle under section title */
 export const SHOP_STORY_LEAD =
-  "mt-4 text-xl font-medium leading-[1.75] text-foreground sm:text-2xl md:text-[1.5rem] md:leading-[1.8]";
+  "mt-3 text-lg font-medium leading-[1.75] text-foreground sm:text-xl md:text-[1.25rem] md:leading-[1.8]";
 
 /** Our Story — body paragraphs */
 export const SHOP_STORY_BODY =
@@ -62,15 +62,15 @@ export const SHOP_STORY_HIGHLIGHT =
 
 /** Product detail H1 */
 export const SHOP_PRODUCT_TITLE =
-  "font-heading text-2xl font-bold leading-[1.08] tracking-tight text-foreground sm:text-3xl md:text-4xl";
+  "font-heading text-xl font-bold leading-[1.12] tracking-tight text-foreground sm:text-2xl md:text-[1.75rem] lg:text-[2rem]";
 
-/** Card / feature titles */
+/** Card / feature titles — filter panels, contact cards, form sections */
 export const SHOP_CARD_TITLE =
-  "text-lg font-semibold text-foreground sm:text-xl md:text-2xl";
+  "text-base font-semibold text-foreground sm:text-lg md:text-xl";
 
-/** Subsection H2/H3 on detail and content pages */
+/** Subsection H2/H3 on detail, cart, checkout, order pages */
 export const SHOP_SUBSECTION_TITLE =
-  "text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem] md:text-3xl";
+  "text-lg font-semibold tracking-tight text-foreground sm:text-xl md:text-[1.375rem]";
 
 /** Standard body copy — paragraphs, lists, long-form content */
 export const SHOP_BODY =
@@ -152,9 +152,9 @@ export const SHOP_PRICE_PRIMARY =
 export const SHOP_BREADCRUMB =
   "flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground sm:text-base";
 
-/** Header store name / logo */
+/** Header store name / logo — dark navy to match section headings */
 export const HEADER_STORE_NAME =
-  "font-bold tracking-tight text-[#6254f3]";
+  "font-bold tracking-tight text-[#0a1435]";
 
 export const HEADER_STORE_NAME_MOBILE =
   "max-w-[8.5rem] justify-self-start truncate text-base sm:max-w-none sm:text-lg md:text-xl";

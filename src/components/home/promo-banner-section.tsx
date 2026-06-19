@@ -9,7 +9,7 @@ import { PROMO_BANNERS } from "@/lib/home-content";
 import {
   PAGE_GUTTER,
   PRIMARY_BUTTON_CLASS,
-  SECTION_PADDING_Y,
+  HOME_SECTION_PADDING_Y,
   SURFACE_BUTTON_CLASS,
 } from "@/lib/layout-constants";
 import { SHOP_BADGE, SHOP_HERO_LEAD } from "@/lib/typography";
@@ -19,7 +19,7 @@ export function PromoBannerSection() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className={cn("bg-background", SECTION_PADDING_Y)}>
+    <section className={cn("bg-background", HOME_SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <StaggerGroup className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:gap-6">
           {PROMO_BANNERS.map((banner, index) => (

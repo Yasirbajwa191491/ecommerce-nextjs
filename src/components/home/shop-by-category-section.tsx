@@ -18,7 +18,7 @@ import {
   CATEGORY_IMAGE_FALLBACKS,
   DEFAULT_CATEGORY_IMAGE,
 } from "@/lib/home-content";
-import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { PAGE_GUTTER, HOME_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { CATEGORY_CARD_COUNT, CATEGORY_CARD_NAME } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ export function ShopByCategorySection() {
   const categories = useQuery(api.productCategories.listWithProductCounts);
 
   return (
-    <section className={cn("bg-background", SECTION_PADDING_Y)}>
+    <section className={cn("bg-background", HOME_SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Explore"
@@ -45,7 +45,7 @@ export function ShopByCategorySection() {
         {categories === undefined ? (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:mt-10 lg:grid-cols-6 lg:gap-5">
             {Array.from({ length: 6 }).map((_, index) => (
-              <MotionSkeleton key={index} shimmer className="aspect-[4/5] rounded-2xl" />
+              <MotionSkeleton key={index} shimmer className="aspect-[3/4] min-h-[200px] rounded-2xl sm:min-h-[240px]" />
             ))}
           </div>
         ) : categories.length === 0 ? (
@@ -64,7 +64,7 @@ export function ShopByCategorySection() {
                   href={`/products?category=${category.slug}`}
                   className="border-0 shadow-none hover:border-[#6254f3]/35"
                 >
-                  <div className="relative aspect-[4/5] bg-muted">
+                  <div className="relative aspect-[3/4] min-h-[200px] bg-muted sm:min-h-[240px] md:min-h-[280px]">
                     <MotionHoverImage className="absolute inset-0">
                       <Image
                         src={getCategoryImage(

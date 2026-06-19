@@ -81,7 +81,7 @@ export function HomeHeroSection() {
         }));
 
   return (
-    <section className="relative overflow-hidden bg-[#0a1435]">
+    <section className="relative overflow-hidden bg-[#0a1435] pb-8 sm:pb-10 md:pb-12">
       <div
         className="pointer-events-none absolute inset-0 opacity-90"
         aria-hidden
@@ -104,7 +104,7 @@ export function HomeHeroSection() {
         style={PAGE_GUTTER}
       >
         <m.div
-          className="flex flex-col items-center pb-6 pt-10 text-center text-white sm:pb-8 sm:pt-12 md:items-start md:py-16 md:pb-16 md:text-left lg:py-20"
+          className="flex flex-col items-center pb-4 pt-8 text-center text-white sm:pb-6 sm:pt-10 md:items-start md:py-12 md:pb-10 md:text-left lg:py-14"
           initial={reduceMotion ? false : "hidden"}
           animate="visible"
           variants={staggerContainer(0.1, 0.05)}

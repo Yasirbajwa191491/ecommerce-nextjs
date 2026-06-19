@@ -127,17 +127,17 @@ const SATELLITE_SLOTS: Record<
   { className: string; floatDuration: number; floatDelay: number }
 > = {
   "top-right": {
-    className: "right-[2%] top-[3%] z-30 md:right-[4%] md:top-[2%]",
+    className: "right-[0%] top-[0%] z-30 md:right-[2%] md:top-[1%]",
     floatDuration: 5.5,
     floatDelay: 0.2,
   },
   "bottom-left": {
-    className: "bottom-[6%] left-0 z-20 md:bottom-[8%] md:left-[2%]",
+    className: "bottom-[10%] left-[-2%] z-20 md:bottom-[12%] md:left-0",
     floatDuration: 6.2,
     floatDelay: 0.5,
   },
   "bottom-right": {
-    className: "right-0 bottom-0 z-[25] md:right-[2%] md:bottom-[2%] lg:block",
+    className: "right-[-2%] bottom-[4%] z-[25] md:right-0 md:bottom-[6%] lg:block",
     floatDuration: 5.8,
     floatDelay: 0.35,
   },
@@ -225,9 +225,9 @@ function ShowcaseProductCard({
       className={cn(
         "absolute",
         isFeatured
-          ? "left-1/2 top-1/2 z-20 w-[min(240px,56%)] -translate-x-1/2 -translate-y-[52%] sm:w-[min(260px,54%)] md:-translate-y-1/2"
+          ? "left-1/2 top-[46%] z-20 w-[min(210px,52%)] -translate-x-1/2 -translate-y-1/2 sm:w-[min(230px,50%)]"
           : cn(
-              "w-[min(132px,34%)] sm:w-[min(148px,32%)]",
+              "w-[min(120px,30%)] sm:w-[min(136px,28%)]",
               slotConfig?.className,
               slot === "bottom-right" && "hidden lg:block"
             )
@@ -316,8 +316,8 @@ function ShowcaseProductCard({
               className={cn(
                 "border-t border-white/10 bg-[#0a1435]/80 backdrop-blur-md",
                 isFeatured
-                  ? "px-4 py-3.5 sm:px-5 sm:py-4"
-                  : "px-3 py-2.5 sm:px-3.5 sm:py-3"
+                  ? "px-3.5 py-3 sm:px-4 sm:py-3"
+                  : "px-2.5 py-2 sm:px-3 sm:py-2.5"
               )}
             >
               <p
@@ -389,7 +389,7 @@ function DesktopShowcase({
 
   return (
     <div
-      className="relative mx-auto aspect-[4/5] w-full max-w-[420px] lg:max-w-[460px]"
+      className="relative mx-auto min-h-[440px] w-full max-w-[460px] sm:min-h-[480px] lg:max-w-[500px] lg:min-h-[520px]"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
@@ -632,7 +632,7 @@ export function HeroProductShowcase({ products }: HeroProductShowcaseProps) {
   }
 
   return (
-    <div className="relative w-full pb-2 md:justify-self-end md:pb-0">
+    <div className="relative w-full pb-4 md:justify-self-end md:pb-6">
       <div className="md:hidden">
         <MobileShowcaseCarousel products={products} />
       </div>

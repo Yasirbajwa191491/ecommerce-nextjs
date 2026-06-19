@@ -6,12 +6,12 @@ import { AnimatedSectionHeader } from "@/components/home/animated-section-header
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { SHOP_BODY, SHOP_CARD_TITLE } from "@/lib/typography";
 import { WHY_CHOOSE_US_FEATURES } from "@/lib/home-content";
-import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { PAGE_GUTTER, HOME_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
 
 export function WhyChooseUsSection() {
   return (
-    <section className={cn("bg-background", SECTION_PADDING_Y)}>
+    <section className={cn("bg-background", HOME_SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Why Us"

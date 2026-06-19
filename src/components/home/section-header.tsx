@@ -50,7 +50,7 @@ export function SectionHeader({
             {badge}
           </span>
         ) : null}
-        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-4" : "mt-0")}>
+        <h2 className={cn(SHOP_SECTION_TITLE, badge ? "mt-3" : "mt-0")}>
           {title}
         </h2>
         {description ? (

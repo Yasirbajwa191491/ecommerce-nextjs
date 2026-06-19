@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/carousel";
 import { MotionSkeleton } from "@/components/motion";
 import { SHOP_BODY } from "@/lib/typography";
-import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { PAGE_GUTTER, HOME_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { productCardKey } from "@/lib/product-images";
 import type { Product } from "@/types/product";
 import type { LucideIcon } from "lucide-react";
@@ -59,7 +59,7 @@ export function ProductCarouselSection({
   return (
     <section
       className={cn(
-        SECTION_PADDING_Y,
+        HOME_SECTION_PADDING_Y,
         background === "muted" ? "bg-muted/30" : "bg-background",
         className
       )}

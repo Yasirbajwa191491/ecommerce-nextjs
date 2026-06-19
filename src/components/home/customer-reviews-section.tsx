@@ -16,7 +16,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { PAGE_GUTTER, HOME_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
 
 export function CustomerReviewsSection() {
@@ -25,7 +25,7 @@ export function CustomerReviewsSection() {
   });
 
   return (
-    <section className={cn("bg-muted/30", SECTION_PADDING_Y)}>
+    <section className={cn("bg-muted/30", HOME_SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Testimonials"

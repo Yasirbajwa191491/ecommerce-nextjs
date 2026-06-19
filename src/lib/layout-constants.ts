@@ -3,11 +3,17 @@ export const PAGE_GUTTER = {
   paddingRight: "clamp(1rem, 3vw, 3rem)",
 } as const;
 
-/** Generous vertical section padding for marketing pages */
-export const SECTION_PADDING_Y = "py-20 sm:py-24 md:py-28 lg:py-32";
+/** Home page section rhythm — tighter than marketing/legal pages */
+export const HOME_SECTION_PADDING_Y = "py-10 sm:py-12 md:py-14 lg:py-16";
 
-/** Slightly tighter section padding for catalog/transaction pages */
-export const CONTENT_SECTION_PADDING_Y = "py-16 sm:py-20 md:py-24 lg:py-28";
+/** Generous vertical section padding for policy / long-form pages */
+export const SECTION_PADDING_Y = "py-12 sm:py-14 md:py-16 lg:py-20";
+
+/** Catalog / transaction page body */
+export const CONTENT_SECTION_PADDING_Y = "py-5 sm:py-6 lg:py-8";
+
+/** Catalog page title band only — avoids double-stacked huge gaps */
+export const PAGE_HEADER_PADDING_Y = "pt-6 pb-4 sm:pt-8 sm:pb-5 md:pt-10 md:pb-6";
 
 /** Paragraph spacing in prose blocks */
 export const PARAGRAPH_SPACING = "mb-6 sm:mb-8";

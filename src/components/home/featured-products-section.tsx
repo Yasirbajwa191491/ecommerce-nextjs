@@ -9,14 +9,14 @@ import { AnimatedSectionHeader } from "@/components/home/animated-section-header
 import { ScrollReveal, StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { MotionSkeleton } from "@/components/motion";
 import { SHOP_BODY } from "@/lib/typography";
-import { PAGE_GUTTER, SECTION_PADDING_Y } from "@/lib/layout-constants";
+import { PAGE_GUTTER, HOME_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
 
 export function FeaturedProductsSection() {
   const products = useQuery(api.products.featured);
 
   return (
-    <section className={cn("bg-muted/30", SECTION_PADDING_Y)}>
+    <section className={cn("bg-muted/30", HOME_SECTION_PADDING_Y)}>
       <div className="mx-auto w-full max-w-[1600px]" style={PAGE_GUTTER}>
         <AnimatedSectionHeader
           badge="Curated"

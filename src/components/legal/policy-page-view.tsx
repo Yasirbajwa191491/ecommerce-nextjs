@@ -81,7 +81,7 @@ function PolicyPageContent({ variant }: { variant: PolicyVariant }) {
               <Icon className="size-3.5 sm:size-4" />
               {config.eyebrow}
             </span>
-            <h1 className={cn("mt-4", SHOP_PAGE_TITLE)}>{config.title}</h1>
+            <h1 className={cn("mt-3", SHOP_PAGE_TITLE)}>{config.title}</h1>
             <p className={cn("max-w-2xl", SHOP_PAGE_LEAD)}>{config.description}</p>
           </div>
         </div>

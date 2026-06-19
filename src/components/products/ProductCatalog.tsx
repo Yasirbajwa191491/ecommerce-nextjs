@@ -23,7 +23,7 @@ import { ScrollReveal } from "@/components/home/scroll-reveal";
 import { m } from "framer-motion";
 import { fadeIn } from "@/lib/motion";
 import { SHOP_BODY, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
-import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { PAGE_GUTTER, PAGE_HEADER_PADDING_Y, CONTENT_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
@@ -478,7 +478,7 @@ export default function ProductCatalog() {
     <div className="min-h-screen bg-muted/20">
       <div className="border-b border-border/60 bg-background">
         <div
-          className={cn("mx-auto w-full max-w-[1600px]", CONTENT_SECTION_PADDING_Y)}
+          className={cn("mx-auto w-full max-w-[1600px]", PAGE_HEADER_PADDING_Y)}
           style={PAGE_GUTTER}
         >
           <ScrollReveal variant="headline">
