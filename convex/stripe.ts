@@ -259,10 +259,11 @@ async function createCheckoutSessionHandler(
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      allow_promotion_codes: !hasPromotionDiscount,
+      ...(hasPromotionDiscount
+        ? { discounts }
+        : { allow_promotion_codes: true }),
       customer_email: args.customer.email.trim(),
       line_items: lineItems,
-      discounts,
       metadata: {
         orderId,
         orderNumber,
