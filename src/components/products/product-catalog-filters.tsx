@@ -86,18 +86,18 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:min-h-[calc(100vh-8.5rem)] md:p-5 md:max-h-[calc(100vh-5.5rem)] lg:min-h-[calc(100vh-8rem)] lg:p-6",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-5 lg:p-6",
         className
       )}
     >
       {showHeader ? (
-        <div className="mb-6 flex items-center gap-2.5 border-b border-border/60 pb-5">
+        <div className="mb-4 flex shrink-0 items-center gap-2.5 border-b border-border/60 pb-4 md:mb-5 md:pb-5">
           <SlidersHorizontal className="size-4 shrink-0 text-[#6254f3]" />
           <h2 className={SHOP_CARD_TITLE}>Filters</h2>
         </div>
       ) : null}
 
-      <FilterSidebarSections className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <FilterSidebarSections className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
       <FilterSidebarSection title="Category">
         <div className={FILTER_OPTION_LIST_CLASS}>
           <CategoryOption

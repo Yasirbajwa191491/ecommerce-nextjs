@@ -71,19 +71,16 @@ export default function ProductCard({
   if (view === "list") {
     return (
       <m.div
-        className="group flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:p-5 xl:flex-row xl:items-start xl:gap-6"
+        className="group flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:p-5 lg:flex-row lg:items-start lg:gap-5 xl:gap-6"
         {...entranceProps}
-        {...hoverShellProps}
         whileTap={reduceMotion ? undefined : cardTap}
       >
-        <div className="relative w-full shrink-0 sm:mx-auto sm:max-w-[12.5rem] xl:mx-0 xl:max-w-none">
-          <MotionHoverImage className="size-full rounded-xl" zoom="subtle">
-            <ProductImageGallery
-              variant="list"
-              images={displayImages}
-              fallbackAlt={product.name}
-            />
-          </MotionHoverImage>
+        <div className="relative mx-auto w-fit max-w-full shrink-0 overflow-hidden rounded-xl lg:mx-0">
+          <ProductImageGallery
+            variant="list"
+            images={displayImages}
+            fallbackAlt={product.name}
+          />
           {promotionBadge ? (
             <ProductPromotionImageOverlay
               badge={promotionBadge}
@@ -96,7 +93,7 @@ export default function ProductCard({
 
         <Link
           href={productPath(product._id)}
-          className="flex min-w-0 flex-1 flex-col gap-4 xl:flex-row xl:items-center xl:gap-6"
+          className="flex w-full min-w-0 flex-1 flex-col gap-3 sm:gap-4 lg:w-auto lg:flex-row lg:items-center lg:gap-5 xl:gap-6"
         >
           <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-2">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -127,12 +124,12 @@ export default function ProductCard({
             <ProductStockBadge stock={product.stock} variant="list" />
           </div>
 
-          <div className="flex w-full shrink-0 flex-row items-center justify-between gap-3 border-t border-border/50 pt-3 xl:w-40 xl:flex-col xl:items-end xl:justify-center xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6 xl:text-right">
+          <div className="flex w-full min-w-0 shrink-0 flex-row items-center justify-between gap-3 border-t border-border/50 pt-3 lg:w-36 lg:flex-col lg:items-end lg:justify-center lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5 lg:text-right xl:w-40 xl:pl-6">
             <ProductPrice
               price={product.price}
               discountPercent={discountPercent}
               currency={product.currency}
-              className="xl:justify-end"
+              className="lg:justify-end"
             />
             <div className="flex flex-wrap justify-end gap-1">
               <ProductDiscountBadge discountPercent={discountPercent} />
