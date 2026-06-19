@@ -114,48 +114,15 @@ function sumStripeLineItemsCents(
 
 function assertStripeAmountMatchesOrder(
   lineItems: Stripe.Checkout.SessionCreateParams.LineItem[],
-  expectedTotal: number,
-  promotionDiscountCents = 0
+  expectedTotal: number
 ): void {
-  const centsTotal = sumStripeLineItemsCents(lineItems) - promotionDiscountCents;
+  const centsTotal = sumStripeLineItemsCents(lineItems);
   const expectedCents = Math.round(expectedTotal * 100);
   if (centsTotal !== expectedCents) {
     throw new ConvexError(
       `Stripe line items total (${centsTotal}) does not match order total (${expectedCents})`
     );
   }
-}
-
-async function createPromotionDiscountCoupon(
-  stripe: Stripe,
-  priced: {
-    currency: string;
-    promotionSavingsTotal?: number;
-    promotionSummaries?: Array<{ promotionName: string }>;
-  }
-): Promise<Stripe.Checkout.SessionCreateParams.Discount[] | undefined> {
-  const promotionSavings = priced.promotionSavingsTotal ?? 0;
-  if (promotionSavings <= 0) {
-    return undefined;
-  }
-
-  const amountOff = Math.round(promotionSavings * 100);
-  if (amountOff <= 0) {
-    return undefined;
-  }
-
-  const label =
-    priced.promotionSummaries?.map((summary) => summary.promotionName).join(", ") ||
-    "Promotion savings";
-
-  const coupon = await stripe.coupons.create({
-    amount_off: amountOff,
-    currency: priced.currency.toLowerCase(),
-    duration: "once",
-    name: label.slice(0, 40),
-  });
-
-  return [{ coupon: coupon.id }];
 }
 
 export const createCheckoutSession = action({
@@ -245,23 +212,12 @@ async function createCheckoutSessionHandler(
     const appUrl = getSiteUrl();
 
     const lineItems = buildStripeLineItems(priced);
-    const promotionDiscountCents = Math.round(
-      (priced.promotionSavingsTotal ?? 0) * 100
-    );
-    assertStripeAmountMatchesOrder(
-      lineItems,
-      priced.total,
-      promotionDiscountCents
-    );
-    const discounts = await createPromotionDiscountCoupon(stripe, priced);
-    const hasPromotionDiscount = Boolean(discounts?.length);
+    assertStripeAmountMatchesOrder(lineItems, priced.total);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      ...(hasPromotionDiscount
-        ? { discounts }
-        : { allow_promotion_codes: true }),
+      allow_promotion_codes: true,
       customer_email: args.customer.email.trim(),
       line_items: lineItems,
       metadata: {

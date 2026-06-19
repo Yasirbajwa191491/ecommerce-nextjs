@@ -68,8 +68,6 @@ export async function priceCheckoutCart(
   const evaluation = await evaluatePromotionsForCart(ctx, mergedLines, now);
   const items = mergePricedCartWithPromotions(priced.items, evaluation);
 
-  const discountTotal = priced.discountTotal + evaluation.totalPromotionSavings;
-
   let shipping = priced.shipping;
   let deliveryCharge = 0;
   let deliveryEstimate = "3-5 Business Days";
@@ -91,13 +89,14 @@ export async function priceCheckoutCart(
     deliveryMethodLabel = delivery.label;
   }
 
+  // Promotion gifts are $0 line items — do not subtract promotionSavingsTotal again.
   const total = roundMoney(
-    priced.subtotal - discountTotal + shipping + deliveryCharge + priced.tax
+    priced.subtotal - priced.discountTotal + shipping + deliveryCharge + priced.tax
   );
 
   return {
     subtotal: priced.subtotal,
-    discountTotal,
+    discountTotal: priced.discountTotal,
     tax: priced.tax,
     shipping,
     total,
