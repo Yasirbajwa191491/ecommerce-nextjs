@@ -210,17 +210,21 @@ export function ProductCatalogFilters({
         </FilterSidebarSection>
       </FilterSidebarSections>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onClear}
+      <div
         className={cn(
-          "h-9 w-full shrink-0 border-t border-border/60 pt-4 text-sm md:pt-5",
+          "shrink-0 border-t border-border/60 pt-4 md:pt-5",
           isSheet ? "mt-auto" : "mt-4"
         )}
       >
-        Clear filters
-      </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClear}
+          className="h-9 w-full text-sm"
+        >
+          Clear filters
+        </Button>
+      </div>
     </aside>
   );
 }
