@@ -15,7 +15,7 @@ import {
   formatVoiceOrderConfirmationDelivery,
   voiceDeliveryMethodOptionValidator,
 } from "./voiceDeliveryHelpers";
-import { mergeCartLines, quantityByProduct, resolveProductColor } from "../lib/cartLines";
+import { mergeCartLines, quantityByProduct, resolveProductColor, normalizeCartColor } from "../lib/cartLines";
 import {
   formatAddToCartPromotionHint,
   formatAppliedPromotionSummary,
@@ -33,6 +33,8 @@ import {
 } from "../lib/checkoutValidation";
 import { toVapiProductSummary } from "./dtos";
 import { incrementDailyAnalytics } from "./analyticsHelpers";
+import { isProductActive } from "../lib/productActive";
+import { resolveProductReference } from "./lib/resolveProductReference";
 
 const voiceCartItemValidator = v.object({
   productId: v.id("products"),
@@ -56,6 +58,25 @@ type CartLine = {
   color: string;
   quantity: number;
 };
+
+const voiceCartLineInputValidator = v.object({
+  productId: v.id("products"),
+  color: v.string(),
+  quantity: v.number(),
+});
+
+function voiceCartItemsEqual(a: CartLine[], b: CartLine[]): boolean {
+  if (a.length !== b.length) return false;
+  const fingerprint = (lines: CartLine[]) =>
+    [...lines]
+      .map(
+        (line) =>
+          `${line.productId}:${normalizeCartColor(line.color)}:${line.quantity}`
+      )
+      .sort()
+      .join("|");
+  return fingerprint(a) === fingerprint(b);
+}
 
 async function getCartDoc(
   ctx: QueryCtx | MutationCtx,
@@ -207,7 +228,7 @@ export const addToCart = internalMutation({
   }),
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product || !product.active) {
+    if (!product || !isProductActive(product)) {
       throw new ConvexError("Product not found or unavailable");
     }
     if (product.stock <= 0) {
@@ -291,6 +312,94 @@ export const addToCart = internalMutation({
   },
 });
 
+export const resolveProductIdForVoice = internalQuery({
+  args: {
+    reference: v.string(),
+  },
+  returns: v.union(v.id("products"), v.null()),
+  handler: async (ctx, args) => {
+    return await resolveProductReference(ctx, args.reference);
+  },
+});
+
+/** Merge browser cart lines into the voice cart so getCart matches what the customer sees. */
+export const mergeBrowserCartIntoVoice = internalMutation({
+  args: {
+    conversationId: v.id("vapiConversations"),
+    lines: v.array(voiceCartLineInputValidator),
+  },
+  returns: v.object({
+    updated: v.boolean(),
+    updatedAt: v.union(v.number(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    if (!args.lines.length) {
+      return { updated: false, updatedAt: null };
+    }
+
+    const validated: CartLine[] = [];
+    for (const line of args.lines) {
+      const product = await ctx.db.get(line.productId);
+      if (!product || !isProductActive(product) || product.stock <= 0) {
+        continue;
+      }
+
+      const resolvedColor = await resolveDefaultColor(
+        ctx,
+        line.productId,
+        line.color
+      );
+      const quantity = Math.min(
+        Math.max(1, Math.floor(line.quantity)),
+        product.stock
+      );
+      validated.push({
+        productId: line.productId,
+        color: resolvedColor,
+        quantity,
+      });
+    }
+
+    if (!validated.length) {
+      return { updated: false, updatedAt: null };
+    }
+
+    const browserLines = mergeCartLines(
+      validated.map((line) => ({
+        productId: line.productId,
+        color: line.color,
+        quantity: line.quantity,
+      }))
+    );
+
+    const cart = await getOrCreateCartDoc(ctx, args.conversationId);
+    const mergedByKey = new Map<string, CartLine>();
+
+    for (const item of cart.items) {
+      const key = `${item.productId}::${normalizeCartColor(item.color)}`;
+      mergedByKey.set(key, item);
+    }
+
+    for (const item of browserLines) {
+      const key = `${item.productId}::${normalizeCartColor(item.color)}`;
+      mergedByKey.set(key, {
+        productId: item.productId as Id<"products">,
+        color: normalizeCartColor(item.color),
+        quantity: item.quantity,
+      });
+    }
+
+    const items = Array.from(mergedByKey.values());
+    if (voiceCartItemsEqual(cart.items, items)) {
+      return { updated: false, updatedAt: cart.updatedAt };
+    }
+
+    const updatedAt = Date.now();
+    await ctx.db.patch(cart._id, { items, updatedAt });
+    return { updated: true, updatedAt };
+  },
+});
+
 const voiceCartLineSyncValidator = v.object({
   productId: v.id("products"),
   color: v.string(),
@@ -319,7 +428,7 @@ export const addMultipleToCart = internalMutation({
     }> = [];
     for (const productId of args.productIds) {
       const product = await ctx.db.get(productId);
-      if (!product || !product.active || product.stock <= 0) continue;
+      if (!product || !isProductActive(product) || product.stock <= 0) continue;
 
       const resolvedColor = await resolveDefaultColor(ctx, productId);
       const cart = await getOrCreateCartDoc(ctx, args.conversationId);

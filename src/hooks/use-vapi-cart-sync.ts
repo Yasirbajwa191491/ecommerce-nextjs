@@ -48,6 +48,20 @@ export function useVapiCartSync() {
     [addToCart, convex]
   );
 
+  const replaceCartFromVoice = useCallback(
+    async (lines: CartLineSync[], options?: { silent?: boolean }) => {
+      clearCart();
+      if (!lines.length) return;
+      await syncLines(lines);
+      if (!options?.silent && lines.length > 0) {
+        toast.success(
+          `Synced ${lines.length} item${lines.length === 1 ? "" : "s"} to your cart`
+        );
+      }
+    },
+    [clearCart, syncLines]
+  );
+
   const syncToolResult = useCallback(
     async (
       toolName: string,
@@ -181,6 +195,33 @@ export function useVapiCartSync() {
           }
           break;
         }
+        case "getCart": {
+          const items = payload.items;
+          if (!Array.isArray(items) || items.length === 0) break;
+
+          const lines = items
+            .map((item) => {
+              if (typeof item !== "object" || item === null) return null;
+              const record = item as Record<string, unknown>;
+              const productId = record.productId ?? record.id;
+              const color = record.color;
+              if (!isProductId(productId) || typeof color !== "string") {
+                return null;
+              }
+              return {
+                productId,
+                color,
+                quantity:
+                  typeof record.quantity === "number" ? record.quantity : 1,
+              };
+            })
+            .filter((line): line is CartLineSync => line !== null);
+
+          if (lines.length) {
+            await replaceCartFromVoice(lines, { silent: true });
+          }
+          break;
+        }
         case "createCashOrder":
         case "createCheckoutSession": {
           clearCart();
@@ -193,8 +234,8 @@ export function useVapiCartSync() {
           break;
       }
     },
-    [clearCart, removeItem, syncLines]
+    [clearCart, removeItem, replaceCartFromVoice, syncLines]
   );
 
-  return { syncToolResult };
+  return { syncToolResult, replaceCartFromVoice };
 }

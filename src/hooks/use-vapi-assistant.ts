@@ -452,13 +452,30 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
       vapiPromiseRef.current = import("@vapi-ai/web").then(({ default: Vapi }) => {
         const vapi = new Vapi(publicKey);
 
-        vapi.on("call-start", () => {
+        vapi.on("call-start", (payload?: unknown) => {
           if (!mountedRef.current) return;
           hasActiveCallRef.current = true;
           setConnected(true);
           setState("listening");
           setError(null);
           setStripeCheckoutUrl(null);
+
+          const callRecord =
+            typeof payload === "object" && payload !== null
+              ? (payload as Record<string, unknown>)
+              : null;
+          const nextCallId =
+            callRecord?.id ??
+            callRecord?.callId ??
+            (typeof callRecord?.call === "object" &&
+            callRecord.call !== null &&
+            "id" in callRecord.call
+              ? String((callRecord.call as { id?: unknown }).id ?? "")
+              : undefined);
+          if (typeof nextCallId === "string" && nextCallId.trim()) {
+            vapiCallIdRef.current = nextCallId.trim();
+            setVapiCallId(nextCallId.trim());
+          }
         });
 
         vapi.on("call-end", () => {
@@ -466,6 +483,8 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
           hasActiveCallRef.current = false;
           setConnected(false);
           setState("idle");
+          setVapiCallId(null);
+          vapiCallIdRef.current = null;
         });
 
         vapi.on("speech-start", () => {
@@ -659,6 +678,8 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
 
     if (data.chatId) {
       textChatIdRef.current = data.chatId;
+      vapiCallIdRef.current = data.chatId;
+      setVapiCallId(data.chatId);
     }
 
     if (data.reply) {
@@ -781,6 +802,25 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     [assistantId, getVapiClient, sendTextChat, sendViaVoiceSession, applyAssistantState]
   );
 
+  const completeServerTools = useCallback((toolNames: string[]) => {
+    if (!toolNames.length) return;
+    const names = new Set(toolNames);
+    setActivitySteps((prev) =>
+      prev.map((step) =>
+        names.has(step.toolName) && step.status === "active"
+          ? { ...step, status: "complete" as const }
+          : step
+      )
+    );
+  }, []);
+
+  const setResolvedCallId = useCallback((callId: string) => {
+    const trimmed = callId.trim();
+    if (!trimmed) return;
+    vapiCallIdRef.current = trimmed;
+    setVapiCallId(trimmed);
+  }, []);
+
   const clearTranscript = useCallback(() => {
     setTranscript([]);
     setActivitySteps([]);
@@ -807,5 +847,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     stopCall,
     clearTranscript,
     sendMessage,
+    completeServerTools,
+    setResolvedCallId,
   };
 }

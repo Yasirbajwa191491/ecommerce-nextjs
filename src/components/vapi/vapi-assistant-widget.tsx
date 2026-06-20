@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
   Bot,
   MessageSquare,
@@ -18,8 +18,11 @@ import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import { useVapiAssistant } from "@/hooks/use-vapi-assistant";
 import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
+import { useVapiStorefrontSync } from "@/hooks/use-vapi-storefront-sync";
 import { useVapiUiActionExecutor } from "@/hooks/use-vapi-ui-action-executor";
 import { useVapiStorefrontController } from "@/providers/vapi-storefront-controller";
+import { useCartContext } from "@/context/cart_context";
+import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import { VapiChatPanel } from "@/components/vapi/vapi-chat-panel";
 import { VapiActivityPanel } from "@/components/vapi/vapi-activity-panel";
 import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-banner";
@@ -31,7 +34,11 @@ import type { VapiToolEvent } from "@/lib/vapi-activity";
 
 export function VapiAssistantWidget() {
   const configured = isVapiConfigured();
+  const { cart } = useCartContext();
   const { syncToolResult } = useVapiCartSync();
+  const pushBrowserCartToVoice = useMutation(
+    api.vapi.voiceCartSync.pushBrowserCartToVoice
+  );
   const storefront = useVapiStorefrontController();
   const { handleToolStart, handleToolComplete } = useVapiUiActionExecutor();
 
@@ -62,7 +69,25 @@ export function VapiAssistantWidget() {
     startVoiceCall,
     stopCall,
     sendMessage,
+    completeServerTools,
+    setResolvedCallId,
   } = useVapiAssistant({ onToolStart, onToolComplete });
+
+  const onServerToolComplete = useCallback(
+    (event: VapiToolEvent) => {
+      completeServerTools([event.toolName]);
+      void syncToolResult(event.toolName, event.parameters, event.result);
+      handleToolComplete(event);
+    },
+    [completeServerTools, syncToolResult, handleToolComplete]
+  );
+
+  useVapiStorefrontSync({
+    vapiCallId,
+    voiceSessionActive: isConnected,
+    onServerToolComplete,
+    onResolvedCallId: setResolvedCallId,
+  });
 
   const [open, setOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
@@ -120,6 +145,20 @@ export function VapiAssistantWidget() {
     if (!chatInput.trim()) return;
     const message = chatInput;
     setChatInput("");
+
+    const browserLines = cartItemsToCheckoutLines(cart);
+    const sessionCallId = vapiCallId;
+    if (sessionCallId && browserLines.length > 0) {
+      try {
+        await pushBrowserCartToVoice({
+          vapiCallId: sessionCallId,
+          lines: browserLines,
+        });
+      } catch {
+        // Non-blocking — reactive sync will retry
+      }
+    }
+
     await sendMessage(message);
   };
 

@@ -215,5 +215,17 @@ export function resolveUiActions(
   })();
 
   if (fromResult.length) return fromResult;
-  return buildClientUiActions(toolName, parameters, result);
+
+  const normalizedResult =
+    typeof result === "string"
+      ? (() => {
+          try {
+            return JSON.parse(result) as unknown;
+          } catch {
+            return result;
+          }
+        })()
+      : result;
+
+  return buildClientUiActions(toolName, parameters, normalizedResult);
 }

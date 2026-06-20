@@ -4,6 +4,7 @@ import type { Id } from "../_generated/dataModel";
 import type { ReviewCallStatus } from "../lib/reviewCallValidators";
 import { enrichToolResult } from "./lib/uiActions";
 import { parseVoiceDeliveryMethod } from "./voiceDeliveryHelpers";
+import { ConvexError } from "convex/values";
 
 type ToolCall = {
   id: string;
@@ -254,14 +255,30 @@ async function executeTool(
 
       return result;
     }
-    case "getProductDetails":
-      return await ctx.runQuery(internal.vapi.tools.getProductDetails, {
-        productId: String(parameters.productId ?? parameters.id ?? ""),
+    case "getProductDetails": {
+      const productId = await resolveVoiceProductReference(ctx, parameters);
+      if (!productId) {
+        return {
+          error:
+            "Product not found. Search the catalog first, then use the product ID from results.",
+        };
+      }
+      const details = await ctx.runQuery(internal.vapi.tools.getProductDetails, {
+        productId,
         now: Date.now(),
       });
-    case "getProductReviews":
+      if (!details) {
+        return { error: "Product not found or unavailable." };
+      }
+      return details;
+    }
+    case "getProductReviews": {
+      const productId = await resolveVoiceProductReference(ctx, parameters);
+      if (!productId) {
+        return { error: "Product not found. Search the catalog first." };
+      }
       return await ctx.runQuery(internal.vapi.tools.getProductReviews, {
-        productId: String(parameters.productId ?? parameters.id ?? ""),
+        productId,
         limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
         sort:
           parameters.sort === "recent" ||
@@ -271,6 +288,7 @@ async function executeTool(
             ? parameters.sort
             : undefined,
       });
+    }
     case "getBestSellers":
       return await ctx.runQuery(internal.vapi.tools.getBestSellers, {
         limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
@@ -377,20 +395,52 @@ async function executeTool(
       if (!conversationId) {
         return { error: "Voice cart session not ready. Please try again." };
       }
-      if (Array.isArray(parameters.productIds)) {
-        const productIds = parameters.productIds.map((id) => String(id));
-        return await ctx.runMutation(internal.vapi.shoppingTools.addMultipleToCart, {
+      try {
+        if (Array.isArray(parameters.productIds)) {
+          const resolvedIds = (
+            await Promise.all(
+              parameters.productIds.map(async (id) => {
+                const reference = String(id ?? "").trim();
+                if (!reference) return null;
+                return await ctx.runQuery(
+                  internal.vapi.shoppingTools.resolveProductIdForVoice,
+                  { reference }
+                );
+              })
+            )
+          ).filter((id): id is Id<"products"> => id !== null);
+
+          if (resolvedIds.length === 0) {
+            return {
+              error:
+                "I couldn't match those items to in-stock products. Please pick from the latest search results.",
+            };
+          }
+
+          return await ctx.runMutation(internal.vapi.shoppingTools.addMultipleToCart, {
+            conversationId,
+            productIds: resolvedIds,
+          });
+        }
+
+        const resolvedProductId = await resolveVoiceProductReference(ctx, parameters);
+        if (!resolvedProductId) {
+          return {
+            error:
+              "I couldn't match that product to an in-stock item. Please choose a product from the search results.",
+          };
+        }
+
+        return await ctx.runMutation(internal.vapi.shoppingTools.addToCart, {
           conversationId,
-          productIds: productIds as Id<"products">[],
+          productId: resolvedProductId,
+          color: typeof parameters.color === "string" ? parameters.color : undefined,
+          quantity:
+            typeof parameters.quantity === "number" ? parameters.quantity : undefined,
         });
+      } catch (error) {
+        return { error: formatToolExecutionError(error) };
       }
-      return await ctx.runMutation(internal.vapi.shoppingTools.addToCart, {
-        conversationId,
-        productId: String(parameters.productId ?? parameters.id ?? "") as Id<"products">,
-        color: typeof parameters.color === "string" ? parameters.color : undefined,
-        quantity:
-          typeof parameters.quantity === "number" ? parameters.quantity : undefined,
-      });
     }
     case "getCart": {
       if (!conversationId) {
@@ -417,11 +467,16 @@ async function executeTool(
         now: Date.now(),
         limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
       });
-    case "getPromotionsForProduct":
+    case "getPromotionsForProduct": {
+      const productId = await resolveVoiceProductReference(ctx, parameters);
+      if (!productId) {
+        return { error: "Product not found. Search the catalog first." };
+      }
       return await ctx.runQuery(internal.vapi.promotionTools.getPromotionsForProduct, {
-        productId: String(parameters.productId ?? parameters.id ?? "") as Id<"products">,
+        productId,
         now: Date.now(),
       });
+    }
     case "removeFromCart": {
       if (!conversationId) {
         return { error: "Voice cart session not ready. Please try again." };
@@ -478,6 +533,36 @@ function parseVoiceCustomer(parameters: Record<string, unknown>) {
 
 function buildVoiceIdempotencyKey(conversationId: Id<"vapiConversations">) {
   return `vapi-${conversationId}-${Date.now()}`;
+}
+
+async function resolveVoiceProductReference(
+  ctx: Parameters<Parameters<typeof httpAction>[0]>[0],
+  parameters: Record<string, unknown>
+): Promise<Id<"products"> | null> {
+  const reference = String(
+    parameters.productId ??
+      parameters.id ??
+      parameters.productName ??
+      parameters.name ??
+      ""
+  ).trim();
+  if (!reference) return null;
+
+  return await ctx.runQuery(internal.vapi.shoppingTools.resolveProductIdForVoice, {
+    reference,
+  });
+}
+
+function formatToolExecutionError(error: unknown): string {
+  if (error instanceof ConvexError) {
+    const data = error.data;
+    if (typeof data === "string" && data.trim()) return data;
+    return error.message;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return "Unable to complete that store action. Please try again.";
 }
 
 export const vapiWebhook = httpAction(async (ctx, request) => {

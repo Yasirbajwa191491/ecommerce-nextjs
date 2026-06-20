@@ -20,6 +20,11 @@ function pickNestedErrorMessage(record: Record<string, unknown>): string | undef
   for (const key of ["message", "errorMsg", "reason", "errorDetail"] as const) {
     const value = record[key];
     if (typeof value === "string" && value.trim()) return value.trim();
+    const nestedRecord = asErrorRecord(value);
+    if (nestedRecord) {
+      const nested = pickNestedErrorMessage(nestedRecord);
+      if (nested) return nested;
+    }
   }
 
   const nested = record.error;
@@ -33,6 +38,14 @@ function pickNestedErrorMessage(record: Record<string, unknown>): string | undef
 
 function mapKnownVapiMessage(message: string): string {
   const lower = message.toLowerCase();
+
+  if (
+    lower.includes("wallet balance") ||
+    lower.includes("purchase more credits") ||
+    lower.includes("upgrade your plan")
+  ) {
+    return "Vapi credits exhausted (wallet balance is negative). Add credits or a payment method at https://dashboard.vapi.ai/billing — deleting extra assistants will not restore free usage.";
+  }
 
   if (
     lower.includes("microphone") ||

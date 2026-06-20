@@ -116,14 +116,19 @@ export function extractToolResultsFromMessage(
   const events: VapiToolEvent[] = [];
   const seen = new Set<string>();
 
-  const push = (toolCallId: string, toolName: string, result: unknown) => {
+  const push = (
+    toolCallId: string,
+    toolName: string,
+    result: unknown,
+    parameters: Record<string, unknown> = {}
+  ) => {
     if (result === undefined || result === null) return;
     if (seen.has(toolCallId)) return;
     seen.add(toolCallId);
     events.push({
       toolCallId,
       toolName,
-      parameters: {},
+      parameters,
       result,
     });
   };
@@ -151,7 +156,13 @@ export function extractToolResultsFromMessage(
               : "") ??
             "unknown"
         ),
-        record.result ?? record.output ?? nestedToolCall?.result ?? null
+        record.result ?? record.output ?? nestedToolCall?.result ?? null,
+        parseJsonRecord(
+          record.parameters ??
+            record.arguments ??
+            nestedToolCall?.parameters ??
+            nestedToolCall?.arguments
+        )
       );
     }
   }
@@ -180,7 +191,13 @@ export function extractToolResultsFromMessage(
               : "") ??
             "unknown"
         ),
-        result
+        result,
+        parseJsonRecord(
+          record.parameters ??
+            record.arguments ??
+            nestedToolCall?.parameters ??
+            nestedToolCall?.arguments
+        )
       );
     }
   }

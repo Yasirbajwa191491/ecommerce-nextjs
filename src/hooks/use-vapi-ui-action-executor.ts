@@ -191,12 +191,65 @@ export function useVapiUiActionExecutor() {
     (event: VapiToolEvent) => {
       if (
         event.toolName === "searchProducts" ||
-        event.toolName === "searchProductsHybrid"
+        event.toolName === "searchProductsHybrid" ||
+        event.toolName === "recommendProducts" ||
+        event.toolName === "getBestSellers"
       ) {
         controller.applyUiAction({ type: "setAiSearchLoading", loading: true });
+        const filters: CatalogFilterPayload = {};
+        const query =
+          typeof event.parameters.query === "string"
+            ? event.parameters.query.trim()
+            : typeof event.parameters.preference === "string"
+              ? event.parameters.preference.trim()
+              : "";
+        if (query) filters.search = query;
+        const category =
+          typeof event.parameters.categoryName === "string"
+            ? event.parameters.categoryName
+            : typeof event.parameters.category === "string"
+              ? event.parameters.category
+              : undefined;
+        if (category?.trim()) {
+          filters.categorySlug = category.trim().toLowerCase().replace(/\s+/g, "-");
+        }
+        const maxPrice =
+          typeof event.parameters.maxPrice === "number"
+            ? event.parameters.maxPrice
+            : typeof event.parameters.maxBudget === "number"
+              ? event.parameters.maxBudget
+              : typeof event.parameters.budget === "number"
+                ? event.parameters.budget
+                : undefined;
+        if (maxPrice !== undefined) filters.maxPrice = maxPrice;
+
+        enqueueActions([
+          { type: "navigateToProducts", filters },
+          { type: "applySearchFilters", filters },
+        ]);
+      }
+
+      if (event.toolName === "getProductDetails" || event.toolName === "getProductReviews") {
+        const productId = String(
+          event.parameters.productId ?? event.parameters.id ?? ""
+        ).trim();
+        if (productId) {
+          enqueueActions([
+            {
+              type: "openProductDetails",
+              productId,
+              scrollTo:
+                event.toolName === "getProductReviews" ? "reviews" : undefined,
+            },
+          ]);
+        }
+      }
+
+      if (event.toolName === "addToCart" || event.toolName === "addMultipleToCart") {
+        enqueueActions([{ type: "openCart" }]);
       }
     },
-    [controller]
+    [controller, enqueueActions]
   );
 
   const handleToolComplete = useCallback(
