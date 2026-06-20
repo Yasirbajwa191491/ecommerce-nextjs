@@ -75,20 +75,22 @@ export default function ProductCard({
         {...entranceProps}
         whileTap={reduceMotion ? undefined : cardTap}
       >
-        <div className="relative mx-auto w-fit max-w-full shrink-0 overflow-hidden rounded-xl lg:mx-0">
+        <div className="mx-auto w-fit max-w-full shrink-0 lg:mx-0">
           <ProductImageGallery
             variant="list"
             images={displayImages}
             fallbackAlt={product.name}
+            overlay={
+              promotionBadge ? (
+                <ProductPromotionImageOverlay
+                  badge={promotionBadge}
+                  variant="compact"
+                  now={now}
+                  className="rounded-b-xl"
+                />
+              ) : undefined
+            }
           />
-          {promotionBadge ? (
-            <ProductPromotionImageOverlay
-              badge={promotionBadge}
-              variant="compact"
-              now={now}
-              className="rounded-xl"
-            />
-          ) : null}
         </div>
 
         <Link

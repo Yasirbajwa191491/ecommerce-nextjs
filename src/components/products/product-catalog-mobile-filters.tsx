@@ -126,31 +126,30 @@ export function ProductCatalogMobileFilters({
             </SheetClose>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-            <ProductCatalogFilters
-              categories={categories}
-              categoryId={categoryId}
-              onCategoryChange={onCategoryChange}
-              priceBounds={priceBounds}
-              priceRange={priceRange}
-              onPriceRangeChange={onPriceRangeChange}
-              facets={facets}
-              selectedBrandSlugs={selectedBrandSlugs}
-              selectedColorSlugs={selectedColorSlugs}
-              selectedPromotionSlugs={selectedPromotionSlugs}
-              selectedMinRating={selectedMinRating}
-              onToggleBrand={onToggleBrand}
-              onToggleColor={onToggleColor}
-              onTogglePromotion={onTogglePromotion}
-              onSelectRating={onSelectRating}
-              onClear={() => {
-                onClear();
-                onOpenChange(false);
-              }}
-              showHeader={false}
-              className="border-0 bg-transparent p-0 shadow-none"
-            />
-          </div>
+          <ProductCatalogFilters
+            categories={categories}
+            categoryId={categoryId}
+            onCategoryChange={onCategoryChange}
+            priceBounds={priceBounds}
+            priceRange={priceRange}
+            onPriceRangeChange={onPriceRangeChange}
+            facets={facets}
+            selectedBrandSlugs={selectedBrandSlugs}
+            selectedColorSlugs={selectedColorSlugs}
+            selectedPromotionSlugs={selectedPromotionSlugs}
+            selectedMinRating={selectedMinRating}
+            onToggleBrand={onToggleBrand}
+            onToggleColor={onToggleColor}
+            onTogglePromotion={onTogglePromotion}
+            onSelectRating={onSelectRating}
+            onClear={() => {
+              onClear();
+              onOpenChange(false);
+            }}
+            showHeader={false}
+            layout="sheet"
+            className="min-h-0 flex-1 border-0 bg-transparent p-4 shadow-none"
+          />
         </SheetContent>
       </Sheet>
     </div>

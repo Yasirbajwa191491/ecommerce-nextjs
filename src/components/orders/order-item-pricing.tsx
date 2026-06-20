@@ -10,6 +10,7 @@ type OrderItemPricingProps = {
   currency: string;
   className?: string;
   compact?: boolean;
+  hideLineTotal?: boolean;
 };
 
 export function OrderItemPricing({
@@ -17,6 +18,7 @@ export function OrderItemPricing({
   currency,
   className,
   compact = false,
+  hideLineTotal = false,
 }: OrderItemPricingProps) {
   const normalized = normalizeClientOrderItem(item);
   const hasDiscount = normalized.discountPercent > 0;
@@ -70,9 +72,11 @@ export function OrderItemPricing({
           </span>
         ) : null}
       </div>
-      <p className="font-semibold tabular-nums">
-        Line total: {formatCurrencyAmount(normalized.lineTotal, currency)}
-      </p>
+      {!hideLineTotal ? (
+        <p className="font-semibold tabular-nums">
+          Line total: {formatCurrencyAmount(normalized.lineTotal, currency)}
+        </p>
+      ) : null}
     </div>
   );
 }

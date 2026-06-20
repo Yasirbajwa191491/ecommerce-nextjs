@@ -495,7 +495,7 @@ export default function ProductCatalog() {
         style={PAGE_GUTTER}
       >
         <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
-          <div className="hidden md:block md:min-h-0">
+          <div className="hidden md:block md:min-w-0 md:self-start">
             <ProductCatalogFilters
               categories={categories ?? []}
               categoryId={categoryId}
@@ -513,7 +513,7 @@ export default function ProductCatalog() {
               onTogglePromotion={togglePromotion}
               onSelectRating={setMinRating}
               onClear={handleClear}
-              className="md:sticky md:top-24 md:z-10"
+              layout="sidebar"
             />
           </div>
 

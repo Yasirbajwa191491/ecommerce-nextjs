@@ -42,10 +42,12 @@ export function FilterCheckboxList({
             />
             <Label
               htmlFor={`filter-${title}-${item.id}`}
-              className="flex flex-1 cursor-pointer items-center justify-between text-sm font-normal"
+              className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 text-sm font-normal"
             >
-              <span>{item.label}</span>
-              <span className={SHOP_BODY_SM}>({item.count})</span>
+              <span className="truncate">{item.label}</span>
+              <span className={cn("shrink-0 tabular-nums", SHOP_BODY_SM)}>
+                ({item.count})
+              </span>
             </Label>
           </div>
         );

@@ -42,13 +42,13 @@ export function ColorFamilyFilterSection({
             />
             <Label
               htmlFor={`color-${color.slug}`}
-              className="flex flex-1 cursor-pointer items-center justify-between text-sm font-normal"
+              className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 text-sm font-normal"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex min-w-0 items-center gap-2">
                 <ColorSwatch color={hex} showLabel={false} />
-                <span>{color.name}</span>
+                <span className="truncate">{color.name}</span>
               </span>
-              <span className="text-sm text-muted-foreground">
+              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                 ({color.count})
               </span>
             </Label>

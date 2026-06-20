@@ -163,10 +163,10 @@ function CheckoutSuccessContent() {
                     return (
                       <li
                         key={item._id}
-                        className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-start sm:justify-between"
+                        className="space-y-2.5 px-4 py-4 text-sm"
                       >
-                        <div>
-                          <p className="flex flex-wrap items-center gap-2 font-medium text-foreground">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-medium text-foreground">
                             {item.productName} × {item.quantity}
                             {item.isPromotionGift ? (
                               <Badge variant="secondary" className={SHOP_BODY_SM}>
@@ -174,35 +174,33 @@ function CheckoutSuccessContent() {
                               </Badge>
                             ) : null}
                           </p>
-                          <div className="mt-1.5">
-                            <ColorSwatch color={item.color} />
-                          </div>
-                          <div className="mt-2">
-                            <OrderItemPricing
-                              item={{
-                                ...normalized,
-                                productName: item.productName,
-                                color: item.color,
-                                quantity: item.quantity,
-                                lineTotal: item.lineTotal,
-                                imageUrl: item.imageUrl,
-                                unitPrice: normalized.finalUnitPrice,
-                              }}
+                          <span className="shrink-0 text-base font-bold tabular-nums text-foreground">
+                            <FormatPrice
+                              price={item.lineTotal}
                               currency={order.currency}
                             />
-                          </div>
-                          {item.warrantySummary ? (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Warranty: {item.warrantySummary}
-                            </p>
-                          ) : null}
+                          </span>
                         </div>
-                        <span className="font-semibold tabular-nums">
-                          <FormatPrice
-                            price={item.lineTotal}
-                            currency={order.currency}
-                          />
-                        </span>
+                        <ColorSwatch color={item.color} />
+                        <OrderItemPricing
+                          item={{
+                            ...normalized,
+                            productName: item.productName,
+                            color: item.color,
+                            quantity: item.quantity,
+                            lineTotal: item.lineTotal,
+                            imageUrl: item.imageUrl,
+                            unitPrice: normalized.finalUnitPrice,
+                          }}
+                          currency={order.currency}
+                          hideLineTotal
+                          className="text-xs sm:text-sm"
+                        />
+                        {item.warrantySummary ? (
+                          <p className="text-xs text-muted-foreground">
+                            Warranty: {item.warrantySummary}
+                          </p>
+                        ) : null}
                       </li>
                     );
                   })}

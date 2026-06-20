@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,15 @@ type ProductImageGalleryProps = {
   images: ProductImage[];
   fallbackAlt: string;
   variant?: "detail" | "list";
+  /** Rendered only over the main image (e.g. promotion badge), not thumbnails */
+  overlay?: ReactNode;
 };
 
 export function ProductImageGallery({
   images,
   fallbackAlt,
   variant = "detail",
+  overlay,
 }: ProductImageGalleryProps) {
   const isList = variant === "list";
   const galleryImages =
@@ -56,7 +59,7 @@ export function ProductImageGallery({
       className={cn(
         "flex",
         isList
-          ? "flex w-fit max-w-full shrink-0 flex-row gap-2 sm:gap-2.5"
+          ? "w-fit max-w-full shrink-0 flex-row flex-nowrap items-start gap-2 sm:gap-2.5"
           : "flex-col gap-4 lg:flex-row lg:gap-5"
       )}
       onClick={(event) => event.stopPropagation()}
@@ -110,7 +113,7 @@ export function ProductImageGallery({
       <div
         className={cn(
           isList
-            ? "relative shrink-0"
+            ? "relative isolate shrink-0"
             : "relative order-1 min-w-0 flex-1 lg:order-2"
         )}
       >
@@ -137,6 +140,7 @@ export function ProductImageGallery({
                 : "rounded-none bg-gradient-to-br from-muted/50 to-muted/20 sm:min-h-[28rem] lg:min-h-[32rem]"
             }
           />
+          {overlay}
 
           {galleryImages.length > 1 && !isList ? (
             <>

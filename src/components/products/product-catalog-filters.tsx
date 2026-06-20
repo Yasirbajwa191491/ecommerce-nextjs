@@ -49,6 +49,8 @@ type ProductCatalogFiltersProps = {
   onClear: () => void;
   className?: string;
   showHeader?: boolean;
+  /** sidebar = desktop sticky panel; sheet = mobile drawer */
+  layout?: "sidebar" | "sheet";
 };
 
 export function ProductCatalogFilters({
@@ -70,7 +72,9 @@ export function ProductCatalogFilters({
   onClear,
   className,
   showHeader = true,
+  layout = "sidebar",
 }: ProductCatalogFiltersProps) {
+  const isSheet = layout === "sheet";
   const ticks = useMemo(
     () => buildPriceTicks(priceBounds.minPrice, priceBounds.maxPrice),
     [priceBounds.minPrice, priceBounds.maxPrice]
@@ -86,9 +90,10 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex h-auto flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
-        "md:h-[calc(100vh-5.5rem)] md:max-h-[calc(100vh-5.5rem)] md:min-h-[calc(100vh-5.5rem)]",
-        "md:p-5 lg:p-6",
+        "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
+        isSheet
+          ? "h-full min-h-0 flex-1"
+          : "sticky top-24 z-10 h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] md:p-5 lg:p-6",
         className
       )}
     >
@@ -99,7 +104,7 @@ export function ProductCatalogFilters({
         </div>
       ) : null}
 
-      <FilterSidebarSections className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
+      <FilterSidebarSections className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
       <FilterSidebarSection title="Category">
         <div className={FILTER_OPTION_LIST_CLASS}>
           <CategoryOption
