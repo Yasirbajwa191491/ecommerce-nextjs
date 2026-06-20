@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "next dev",
+    "dev:clean": "node scripts/clean-next-cache.mjs",
+    "dev:fresh": "npm run dev:clean && npm run dev",
     "dev:backend": "convex dev",
     "dev:ai-worker": "npm run dev --prefix services/review-ai-worker",
     "ai-worker:install": "npm install --prefix services/review-ai-worker",

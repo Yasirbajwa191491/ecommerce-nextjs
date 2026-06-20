@@ -475,19 +475,23 @@ export default function ProductCatalog() {
     ? hybridSearch.totalCount
     : (totalCount ?? 0);
 
+  const pageIntro = (
+    <ScrollReveal variant="headline">
+      <h1 className={SHOP_PAGE_TITLE}>Ecommerce Products</h1>
+      <p className={SHOP_PAGE_LEAD}>
+        Browse our catalog — search from the header anytime.
+      </p>
+    </ScrollReveal>
+  );
+
   return (
     <div className="min-h-screen bg-muted/20">
-      <div className="border-b border-border/60 bg-background">
+      <div className="border-b border-border/60 bg-background md:hidden">
         <div
           className={cn("mx-auto w-full max-w-[1600px]", PAGE_HEADER_PADDING_Y)}
           style={PAGE_GUTTER}
         >
-          <ScrollReveal variant="headline">
-            <h1 className={SHOP_PAGE_TITLE}>Ecommerce Products</h1>
-            <p className={SHOP_PAGE_LEAD}>
-              Browse our catalog — search from the header anytime.
-            </p>
-          </ScrollReveal>
+          {pageIntro}
         </div>
       </div>
 
@@ -495,30 +499,39 @@ export default function ProductCatalog() {
         className={cn("mx-auto w-full max-w-[1600px]", CONTENT_SECTION_PADDING_Y)}
         style={PAGE_GUTTER}
       >
-        <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
           <CatalogFilterSidebarShell>
             <ProductCatalogFilters
-                categories={categories ?? []}
-                categoryId={categoryId}
-                onCategoryChange={setCategoryId}
-                priceBounds={bounds}
-                priceRange={priceRange}
-                onPriceRangeChange={handlePriceRangeChange}
-                facets={facets}
-                selectedBrandSlugs={filters.brandSlugs}
-                selectedColorSlugs={filters.colorSlugs}
-                selectedPromotionSlugs={filters.promotionSlugs}
-                selectedMinRating={filters.minRating}
-                onToggleBrand={toggleBrand}
-                onToggleColor={toggleColor}
-                onTogglePromotion={togglePromotion}
-                onSelectRating={setMinRating}
-                onClear={handleClear}
-                layout="sidebar"
+              categories={categories ?? []}
+              categoryId={categoryId}
+              onCategoryChange={setCategoryId}
+              priceBounds={bounds}
+              priceRange={priceRange}
+              onPriceRangeChange={handlePriceRangeChange}
+              facets={facets}
+              selectedBrandSlugs={filters.brandSlugs}
+              selectedColorSlugs={filters.colorSlugs}
+              selectedPromotionSlugs={filters.promotionSlugs}
+              selectedMinRating={filters.minRating}
+              onToggleBrand={toggleBrand}
+              onToggleColor={toggleColor}
+              onTogglePromotion={togglePromotion}
+              onSelectRating={setMinRating}
+              onClear={handleClear}
+              layout="sidebar"
             />
           </CatalogFilterSidebarShell>
 
           <section className="min-w-0">
+            <div
+              className={cn(
+                "mb-4 hidden border-b border-border/60 bg-background md:block",
+                PAGE_HEADER_PADDING_Y
+              )}
+            >
+              {pageIntro}
+            </div>
+
             <ProductCatalogMobileFilters
               open={mobileFiltersOpen}
               onOpenChange={setMobileFiltersOpen}

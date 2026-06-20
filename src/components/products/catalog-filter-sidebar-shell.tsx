@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/**
- * Desktop/tablet filter shell — sticky panel with viewport height from globals.css.
- * Filter sections scroll inside the panel; the shell height stays fixed while scrolling.
- */
+/** Desktop/tablet filter shell — sticky column, natural height; page scrolls (not the panel). */
 export function CatalogFilterSidebarShell({
   children,
   className,
@@ -16,8 +13,8 @@ export function CatalogFilterSidebarShell({
     <div
       id="catalog-filter-sidebar"
       className={cn(
-        "hidden min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm",
-        "md:sticky md:top-36 md:z-10 md:flex md:p-5 lg:top-24 lg:p-6",
+        "hidden min-w-0 flex-col rounded-2xl border border-border/60 bg-card shadow-sm",
+        "md:sticky md:top-36 md:z-10 md:flex md:self-start md:p-5 lg:top-24 lg:p-6",
         className
       )}
     >

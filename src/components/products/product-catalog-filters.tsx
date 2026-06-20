@@ -90,11 +90,10 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex min-w-0 flex-col overflow-hidden",
-        isSheet
-          ? "h-full min-h-0 flex-1 rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
-          : "flex h-full min-h-0 flex-1 flex-col overflow-hidden",
-        isSheet ? className : undefined
+        "flex min-w-0 flex-col",
+        isSheet &&
+          "h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
+        className
       )}
     >
       {showHeader ? (
@@ -104,7 +103,13 @@ export function ProductCatalogFilters({
         </div>
       ) : null}
 
-      <FilterSidebarSections className="min-h-0 min-w-0 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+      <FilterSidebarSections
+        className={cn(
+          "min-w-0",
+          isSheet &&
+            "min-h-0 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
+        )}
+      >
         <FilterSidebarSection title="Category">
           <div className={FILTER_OPTION_LIST_CLASS}>
             <CategoryOption
@@ -209,7 +214,10 @@ export function ProductCatalogFilters({
         type="button"
         variant="outline"
         onClick={onClear}
-        className="mt-auto h-9 w-full shrink-0 border-t border-border/60 pt-4 text-sm md:pt-5"
+        className={cn(
+          "h-9 w-full shrink-0 border-t border-border/60 pt-4 text-sm md:pt-5",
+          isSheet ? "mt-auto" : "mt-4"
+        )}
       >
         Clear filters
       </Button>

@@ -8,8 +8,8 @@ export const GlobalStyle = createGlobalStyle`
   box-sizing: border-box;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
-html { font-size: 100%; overflow-x: hidden; }
-body { margin: 0; overflow-x: hidden; }
+html { font-size: 100%; overflow-x: clip; }
+body { margin: 0; overflow-x: clip; }
 a { text-decoration: none; }
 li { list-style: none; }
 .container { max-width: 120rem; margin: 0 auto; }
