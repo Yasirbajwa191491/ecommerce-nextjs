@@ -18,21 +18,36 @@ import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import { useVapiAssistant } from "@/hooks/use-vapi-assistant";
 import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
+import { useVapiUiActionExecutor } from "@/hooks/use-vapi-ui-action-executor";
+import { useVapiStorefrontController } from "@/providers/vapi-storefront-controller";
 import { VapiChatPanel } from "@/components/vapi/vapi-chat-panel";
 import { VapiActivityPanel } from "@/components/vapi/vapi-activity-panel";
 import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-banner";
+import { VapiAssistantStatus } from "@/components/vapi/vapi-assistant-status";
+import { VapiGuidedShoppingBanner } from "@/components/vapi/vapi-guided-shopping-banner";
 import { getStripeCheckoutUrlFromSteps } from "@/lib/vapi-activity";
 import { isCheckoutRelatedMessage, isVapiConfigured } from "@/lib/vapi-config";
+import type { VapiToolEvent } from "@/lib/vapi-activity";
 
 export function VapiAssistantWidget() {
   const configured = isVapiConfigured();
   const { syncToolResult } = useVapiCartSync();
+  const storefront = useVapiStorefrontController();
+  const { handleToolStart, handleToolComplete } = useVapiUiActionExecutor();
+
+  const onToolStart = useCallback(
+    (event: VapiToolEvent) => {
+      handleToolStart(event);
+    },
+    [handleToolStart]
+  );
 
   const onToolComplete = useCallback(
-    (event: { toolName: string; parameters: Record<string, unknown>; result?: unknown }) => {
+    (event: VapiToolEvent) => {
       void syncToolResult(event.toolName, event.parameters, event.result);
+      handleToolComplete(event);
     },
-    [syncToolResult]
+    [syncToolResult, handleToolComplete]
   );
 
   const {
@@ -47,7 +62,7 @@ export function VapiAssistantWidget() {
     startVoiceCall,
     stopCall,
     sendMessage,
-  } = useVapiAssistant({ onToolComplete });
+  } = useVapiAssistant({ onToolStart, onToolComplete });
 
   const [open, setOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
@@ -81,7 +96,7 @@ export function VapiAssistantWidget() {
   );
 
   const shoppingActive =
-    isConnected || state === "processing" || activitySteps.length > 0;
+    isConnected || state !== "idle" || activitySteps.length > 0;
 
   const stripeCheckoutUrl =
     clientCheckoutUrl ??
@@ -159,8 +174,16 @@ export function VapiAssistantWidget() {
                 </div>
                 <div>
                   <SheetTitle>Store Shopping Assistant</SheetTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Voice & chat support for products and orders
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <VapiAssistantStatus
+                      state={state}
+                      isConnected={isConnected}
+                      executorBusy={storefront.executorBusy}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Voice & in-call chat drive live storefront navigation.
+                    Standalone text chat is reply-only (Phase 1).
                   </p>
                 </div>
               </div>
@@ -178,6 +201,18 @@ export function VapiAssistantWidget() {
           </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col px-4 py-4">
+            <VapiGuidedShoppingBanner
+              active={storefront.guidedShopping.active}
+              preferences={storefront.guidedShopping.preferences}
+              className="mb-3"
+              onDismiss={() =>
+                storefront.applyUiAction({
+                  type: "setGuidedShopping",
+                  active: false,
+                })
+              }
+            />
+
             {activitySteps.length > 0 ? (
               <div className="mb-3">
                 <VapiActivityPanel steps={activitySteps} compact />
@@ -223,7 +258,7 @@ export function VapiAssistantWidget() {
                   type="button"
                   variant="outline"
                   className={cn(isConnected && "border-primary text-primary")}
-                  disabled={state === "processing"}
+                  disabled={state === "processing" || state === "thinking"}
                   aria-label="Chat mode — type a message below"
                 >
                   <MessageSquare className="size-4" />
@@ -241,12 +276,16 @@ export function VapiAssistantWidget() {
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
                   placeholder="Type a message…"
-                  disabled={state === "processing"}
+                  disabled={state === "processing" || state === "thinking"}
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  disabled={!chatInput.trim() || state === "processing"}
+                  disabled={
+                    !chatInput.trim() ||
+                    state === "processing" ||
+                    state === "thinking"
+                  }
                   aria-label="Send message"
                 >
                   <Send className="size-4" />

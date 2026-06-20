@@ -3,15 +3,20 @@
 import Link from "next/link";
 import {
   CheckCircle2,
+  CreditCard,
+  GitCompare,
   Loader2,
+  MapPin,
+  Package,
   Search,
   ShoppingCart,
-  CreditCard,
-  Package,
+  Sparkles,
+  Truck,
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VapiActivityStep } from "@/lib/vapi-activity";
+import type { VapiActivityPhase } from "@/lib/vapi-ui-actions/types";
 
 type VapiActivityPanelProps = {
   steps: VapiActivityStep[];
@@ -28,7 +33,31 @@ function stepIcon(step: VapiActivityStep) {
   return <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />;
 }
 
-function categoryIcon(toolName: string) {
+function phaseIcon(phase?: VapiActivityPhase) {
+  switch (phase) {
+    case "understanding":
+      return Sparkles;
+    case "searching":
+      return Search;
+    case "comparing":
+      return GitCompare;
+    case "opening_product":
+      return Package;
+    case "adding_to_cart":
+      return ShoppingCart;
+    case "calculating_delivery":
+      return Truck;
+    case "preparing_checkout":
+      return CreditCard;
+    case "tracking_order":
+      return MapPin;
+    default:
+      return Package;
+  }
+}
+
+function categoryIcon(toolName: string, phase?: VapiActivityPhase) {
+  if (phase) return phaseIcon(phase);
   if (
     toolName === "searchProducts" ||
     toolName === "searchProductsHybrid" ||
@@ -50,35 +79,39 @@ function categoryIcon(toolName: string) {
   return Package;
 }
 
-export function VapiActivityPanel({ steps, compact = false }: VapiActivityPanelProps) {
-  if (!steps.length) return null;
+export function VapiActivityPanel({
+  steps,
+  compact = false,
+}: VapiActivityPanelProps) {
+  const visible = compact ? steps.slice(-8) : steps;
 
-  const visibleSteps = compact ? steps.slice(-4) : steps;
+  if (!visible.length) return null;
 
   return (
     <div
       className={cn(
-        "rounded-xl border bg-background/95",
-        compact ? "px-3 py-2" : "px-3 py-3"
+        "rounded-xl border border-border/60 bg-muted/30",
+        compact ? "p-2.5" : "p-3"
       )}
+      aria-label="AI activity timeline"
     >
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Live shopping steps
-      </p>
-      <ol className="space-y-2">
-        {visibleSteps.map((step) => {
-          const CategoryIcon = categoryIcon(step.toolName);
+      {!compact ? (
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Activity
+        </p>
+      ) : null}
+      <ol className={cn("space-y-2", compact && "max-h-40 overflow-y-auto")}>
+        {visible.map((step) => {
+          const Icon = categoryIcon(step.toolName, step.phase);
           const content = (
             <div className="flex min-w-0 items-start gap-2">
-              <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
-                <CategoryIcon className="size-3 text-muted-foreground" />
+              <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-background">
+                <Icon className="size-3 text-muted-foreground" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   {stepIcon(step)}
-                  <span className="truncate text-xs font-medium text-foreground">
-                    {step.title}
-                  </span>
+                  <span className="truncate text-xs font-medium">{step.title}</span>
                 </div>
                 {step.detail ? (
                   <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -89,27 +122,22 @@ export function VapiActivityPanel({ steps, compact = false }: VapiActivityPanelP
             </div>
           );
 
-          return (
-            <li key={step.id}>
-              {step.href && step.href.startsWith("/") ? (
+          if (step.href && step.href.startsWith("/")) {
+            return (
+              <li key={step.id}>
                 <Link
                   href={step.href}
-                  className="block rounded-lg transition-colors hover:bg-muted/60"
+                  className="block rounded-lg px-1 py-0.5 transition-colors hover:bg-background/80"
                 >
                   {content}
                 </Link>
-              ) : step.href ? (
-                <a
-                  href={step.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-lg transition-colors hover:bg-muted/60"
-                >
-                  {content}
-                </a>
-              ) : (
-                content
-              )}
+              </li>
+            );
+          }
+
+          return (
+            <li key={step.id} className="rounded-lg px-1 py-0.5">
+              {content}
             </li>
           );
         })}

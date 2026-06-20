@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buildActivityStepStart,
+  buildUnderstandingStep,
   extractToolCallsFromMessage,
   extractToolResultsFromMessage,
   finalizeActivityStep,
@@ -14,6 +15,7 @@ import {
   extractCheckoutUrl,
   extractCheckoutUrlFromToolResult,
   formatToolResultForDisplay,
+  formatVapiError,
   getVapiAssistantId,
   getVapiPublicKey,
   isCheckoutRelatedMessage,
@@ -24,10 +26,12 @@ import {
   type VapiAssistantState,
   type VapiTranscriptEntry,
 } from "@/lib/vapi-config";
+import { inferAssistantStateFromTool } from "@/lib/vapi-ui-actions/activity-phases";
 
 export type UseVapiAssistantOptions = {
   onToolStart?: (event: VapiToolEvent) => void;
   onToolComplete?: (event: VapiToolEvent) => void;
+  onStateOverride?: (state: VapiAssistantState | null) => void;
 };
 
 type VapiClient = import("@vapi-ai/web").default;
@@ -178,22 +182,6 @@ function applyCheckoutUrlToTranscript(
   return next;
 }
 
-function formatVapiError(err: unknown): string {
-  if (err instanceof Error && err.message) return err.message;
-  if (typeof err === "object" && err !== null) {
-    const record = err as Record<string, unknown>;
-    for (const key of ["message", "error", "msg", "reason"] as const) {
-      const value = record[key];
-      if (typeof value === "string" && value.trim()) return value;
-    }
-    if (typeof record.type === "string" && record.type.includes("microphone")) {
-      return "Microphone access is required for voice calls. Allow mic permission in your browser and try again.";
-    }
-  }
-  if (typeof err === "string" && err.trim()) return err;
-  return "Voice assistant error. Check microphone permission and try again.";
-}
-
 async function ensureMicrophoneAccess(): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     throw new Error("Microphone is not supported in this browser.");
@@ -202,7 +190,22 @@ async function ensureMicrophoneAccess(): Promise<void> {
   let stream: MediaStream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException) {
+      if (err.name === "NotAllowedError") {
+        throw new Error(
+          "Microphone access denied. In Chrome, open site settings for localhost → Microphone → Allow, then try Voice call again."
+        );
+      }
+      if (err.name === "NotFoundError") {
+        throw new Error("No microphone found. Connect a microphone and try Voice call again.");
+      }
+      if (err.name === "NotReadableError") {
+        throw new Error(
+          "Microphone is in use by another app. Close other apps using the mic and try Voice call again."
+        );
+      }
+    }
     throw new Error(
       "Microphone access denied. Allow microphone permission for localhost in your browser settings, then try Voice call again."
     );
@@ -255,9 +258,12 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const confirmedOrderNumberRef = useRef<string | undefined>(undefined);
   const onToolStartRef = useRef(options?.onToolStart);
   const onToolCompleteRef = useRef(options?.onToolComplete);
+  const onStateOverrideRef = useRef(options?.onStateOverride);
+  const stateOverrideRef = useRef<VapiAssistantState | null>(null);
 
   onToolStartRef.current = options?.onToolStart;
   onToolCompleteRef.current = options?.onToolComplete;
+  onStateOverrideRef.current = options?.onStateOverride;
 
   const [state, setState] = useState<VapiAssistantState>("idle");
   const [isConnected, setIsConnected] = useState(false);
@@ -272,11 +278,25 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   );
   const [error, setError] = useState<string | null>(null);
 
+  const applyAssistantState = useCallback((next: VapiAssistantState) => {
+    if (stateOverrideRef.current) return;
+    setState(next);
+  }, []);
+
   const handleToolStart = useCallback((events: VapiToolEvent[]) => {
     if (!events.length) return;
 
+    const firstTool = events[0]?.toolName;
+    const inferred = firstTool ? inferAssistantStateFromTool(firstTool) : null;
+    if (inferred) applyAssistantState(inferred);
+
     setActivitySteps((prev) => {
-      let next = prev;
+      const completedUnderstanding = prev.map((step) =>
+        step.toolName === "user_request" && step.status === "active"
+          ? { ...step, status: "complete" as const }
+          : step
+      );
+      let next = completedUnderstanding;
       for (const event of events) {
         pendingToolsRef.current.set(event.toolCallId, event);
         next = [...next, buildActivityStepStart(event)];
@@ -287,7 +307,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     for (const event of events) {
       onToolStartRef.current?.(event);
     }
-  }, []);
+  }, [applyAssistantState]);
 
   const setConnected = useCallback((connected: boolean) => {
     isConnectedRef.current = connected;
@@ -390,8 +410,22 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
 
       pendingToolsRef.current.delete(merged.toolCallId);
       onToolCompleteRef.current?.(merged);
+
+      const completeInferred = inferAssistantStateFromTool(merged.toolName);
+      if (completeInferred === "checkout_ready") {
+        applyAssistantState("checkout_ready");
+      }
     }
-  }, []);
+
+    const placedCheckout = mergedEvents.some(
+      (event) =>
+        event.toolName === "createCashOrder" ||
+        event.toolName === "createCheckoutSession"
+    );
+    if (!placedCheckout) {
+      applyAssistantState("thinking");
+    }
+  }, [applyAssistantState]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -693,7 +727,14 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
       if (!trimmed || !assistantId) return;
 
       setTranscript((prev) => [...prev, createEntry("user", trimmed)]);
-      setState("processing");
+      setActivitySteps((prev) => {
+        const understanding = buildUnderstandingStep();
+        const withoutStale = prev.filter(
+          (step) => step.toolName !== "user_request" || step.status !== "active"
+        );
+        return [...withoutStale, understanding];
+      });
+      applyAssistantState("thinking");
       setError(null);
 
       try {
@@ -711,6 +752,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
         }
 
         await sendTextChat(trimmed);
+        setState("processing");
       } catch (err) {
         const billingRequired =
           typeof err === "object" &&
@@ -736,7 +778,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
         setState("idle");
       }
     },
-    [assistantId, getVapiClient, sendTextChat, sendViaVoiceSession]
+    [assistantId, getVapiClient, sendTextChat, sendViaVoiceSession, applyAssistantState]
   );
 
   const clearTranscript = useCallback(() => {

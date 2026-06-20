@@ -625,3 +625,17 @@ a[data-slot="button"].bg-primary {
   max-width: 100%;
   border-radius: 0.75rem;
 }
+
+@keyframes ai-product-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(98 84 243 / 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(98 84 243 / 0.08);
+  }
+}
+
+.ai-product-highlight {
+  animation: ai-product-pulse 2.4s ease-in-out infinite;
+}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
@@ -40,6 +40,7 @@ import {
   type TrackByOrderErrors,
 } from "@/lib/validation/track-order-form";
 import type { PublicOrderSummary } from "@/types/order";
+import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 import {
   ArrowRight,
   Loader2,
@@ -119,6 +120,8 @@ function CustomerOrderCard({ order }: { order: PublicOrderSummary }) {
 
 export function TrackOrderView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const storefront = useVapiStorefrontOptional();
   const trackByOrderNumber = useAction(api.orderTracking.trackByOrderNumber);
   const trackByCustomer = useAction(api.orderTracking.trackByCustomer);
 
@@ -137,6 +140,27 @@ export function TrackOrderView() {
   const [customerResults, setCustomerResults] = useState<
     Awaited<ReturnType<typeof trackByCustomer>> | null
   >(null);
+  const [prefillApplied, setPrefillApplied] = useState(false);
+
+  useEffect(() => {
+    const urlOrderNumber = searchParams.get("orderNumber")?.trim() ?? "";
+    const urlEmail = searchParams.get("email")?.trim() ?? "";
+    const prefill = storefront?.trackOrderPrefill;
+
+    if (urlOrderNumber) setOrderNumber(urlOrderNumber);
+    else if (prefill?.orderNumber) setOrderNumber(prefill.orderNumber);
+
+    if (urlEmail) setCustomerEmail(urlEmail);
+    else if (prefill?.email) setCustomerEmail(prefill.email);
+  }, [searchParams, storefront?.trackOrderPrefill]);
+
+  useEffect(() => {
+    const urlOrderNumber = searchParams.get("orderNumber")?.trim();
+    if (!urlOrderNumber || prefillApplied) return;
+
+    setPrefillApplied(true);
+    router.replace(`/track-order/${encodeURIComponent(urlOrderNumber)}`);
+  }, [searchParams, prefillApplied, router]);
 
   const handleTrackByOrder = async (event: React.FormEvent) => {
     event.preventDefault();

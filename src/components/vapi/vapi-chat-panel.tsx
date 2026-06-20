@@ -30,6 +30,11 @@ const STATE_LABELS: Record<VapiAssistantState, string> = {
   listening: "Listening…",
   speaking: "Speaking…",
   processing: "Processing…",
+  thinking: "Thinking…",
+  searching: "Searching catalog…",
+  navigating: "Navigating storefront…",
+  updating_cart: "Updating cart…",
+  checkout_ready: "Checkout ready",
 };
 
 function resolveCheckoutUrl(raw?: string | null): string | undefined {
@@ -63,7 +68,12 @@ export function VapiChatPanel({
             state === "idle" && "bg-muted-foreground",
             state === "listening" && "animate-pulse bg-emerald-500",
             state === "speaking" && "animate-pulse bg-primary",
-            state === "processing" && "animate-pulse bg-amber-500"
+            (state === "processing" || state === "thinking") &&
+              "animate-pulse bg-amber-500",
+            state === "searching" && "animate-pulse bg-sky-500",
+            state === "navigating" && "animate-pulse bg-violet-500",
+            state === "updating_cart" && "animate-pulse bg-orange-500",
+            state === "checkout_ready" && "bg-emerald-500"
           )}
         />
         <span className="text-xs font-medium text-muted-foreground">

@@ -156,6 +156,7 @@ import type * as vapi_analyticsHelpers from "../vapi/analyticsHelpers.js";
 import type * as vapi_assistantConfig from "../vapi/assistantConfig.js";
 import type * as vapi_bundleBuilder from "../vapi/bundleBuilder.js";
 import type * as vapi_dtos from "../vapi/dtos.js";
+import type * as vapi_lib_uiActions from "../vapi/lib/uiActions.js";
 import type * as vapi_logging from "../vapi/logging.js";
 import type * as vapi_promotionTools from "../vapi/promotionTools.js";
 import type * as vapi_reviewCallTools from "../vapi/reviewCallTools.js";
@@ -322,6 +323,7 @@ declare const fullApi: ApiFromModules<{
   "vapi/assistantConfig": typeof vapi_assistantConfig;
   "vapi/bundleBuilder": typeof vapi_bundleBuilder;
   "vapi/dtos": typeof vapi_dtos;
+  "vapi/lib/uiActions": typeof vapi_lib_uiActions;
   "vapi/logging": typeof vapi_logging;
   "vapi/promotionTools": typeof vapi_promotionTools;
   "vapi/reviewCallTools": typeof vapi_reviewCallTools;

@@ -2,6 +2,7 @@ import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ReviewCallStatus } from "../lib/reviewCallValidators";
+import { enrichToolResult } from "./lib/uiActions";
 import { parseVoiceDeliveryMethod } from "./voiceDeliveryHelpers";
 
 type ToolCall = {
@@ -63,10 +64,19 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function toolResult(toolCallId: string, result: unknown) {
+function toolResult(
+  toolCallId: string,
+  result: unknown,
+  toolName?: string,
+  parameters?: Record<string, unknown>
+) {
+  const enriched =
+    toolName && parameters
+      ? enrichToolResult(toolName, parameters, result)
+      : result;
   return {
     toolCallId,
-    result: JSON.stringify(result),
+    result: JSON.stringify(enriched),
   };
 }
 
@@ -645,7 +655,8 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
           parameters,
           conversationId
         );
-        results.push(toolResult(toolCall.id, output));
+        const enriched = enrichToolResult(toolName, parameters, output);
+        results.push(toolResult(toolCall.id, enriched, toolName, parameters));
 
         if (conversationId) {
           await ctx.runMutation(internal.vapi.logging.appendLog, {
@@ -654,7 +665,7 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
             content: toolName,
             toolName,
             toolInput: JSON.stringify(parameters),
-            toolOutput: JSON.stringify(output),
+            toolOutput: JSON.stringify(enriched),
           });
         }
       } catch (error) {

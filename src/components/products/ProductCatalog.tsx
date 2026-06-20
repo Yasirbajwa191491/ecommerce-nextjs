@@ -28,6 +28,9 @@ import { PAGE_GUTTER, PAGE_HEADER_PADDING_Y, CONTENT_SECTION_PADDING_Y } from "@
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
 import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
+import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
+import { isProductAiHighlighted } from "@/providers/vapi-storefront-controller";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
@@ -76,6 +79,10 @@ function productListFingerprint(products: Product[]) {
 }
 
 export default function ProductCatalog() {
+  const storefront = useVapiStorefrontOptional();
+  const aiSearchLoading = storefront?.aiSearchLoading ?? false;
+  const highlightedProductIds = storefront?.highlightedProductIds ?? new Set<string>();
+
   const categories = useQuery(api.productCategories.listActive);
   const priceBounds = useQuery(api.products.getPublicPriceBounds);
 
@@ -622,13 +629,23 @@ export default function ProductCatalog() {
             ) : (
               <m.div
                 className={cn(
+                  "relative",
                   isRefetching && "pointer-events-none opacity-60"
                 )}
                 initial="hidden"
                 animate="visible"
                 variants={fadeIn}
               >
+                {aiSearchLoading ? (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/60 backdrop-blur-[1px]">
+                    <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm shadow-sm">
+                      <Loader2 className="size-4 animate-spin text-primary" />
+                      AI searching catalog…
+                    </div>
+                  </div>
+                ) : null}
                 <div
+                  id="catalog-product-grid"
                   className={cn(
                     "grid",
                     view === "grid"
@@ -641,6 +658,10 @@ export default function ProductCatalog() {
                       key={productCardKey(product)}
                       {...product}
                       view={view}
+                      aiRecommended={isProductAiHighlighted(
+                        product._id,
+                        highlightedProductIds
+                      )}
                     />
                   ))}
                 </div>

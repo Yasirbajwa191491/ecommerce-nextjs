@@ -263,7 +263,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
           </div>
 
           {productHighlights.length > 0 ? (
-            <ul className={cn("space-y-2 text-foreground", SHOP_BODY)}>
+            <ul
+              id="product-highlights"
+              className={cn("space-y-2 text-foreground", SHOP_BODY)}
+            >
               {productHighlights.map((highlight) => (
                 <li key={highlight} className="flex items-start gap-2">
                   <span className="mt-0.5 text-[#6254f3]" aria-hidden>
@@ -285,7 +288,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
 
           <ProductDeliveryOptions product={singleProduct} />
 
-          <dl className={cn("grid gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:grid-cols-2 sm:p-5", SHOP_BODY_SM)}>
+          <dl
+            id="product-specifications"
+            className={cn("grid gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:grid-cols-2 sm:p-5", SHOP_BODY_SM)}
+          >
             <div>
               <dt className="text-muted-foreground">Brand</dt>
               <dd className="mt-0.5 font-semibold text-foreground">
@@ -350,10 +356,12 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
         </div>
       </div>
 
-      <ProductReviewSection
-        productId={singleProduct._id}
-        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
-      />
+      <div id="product-reviews">
+        <ProductReviewSection
+          productId={singleProduct._id}
+          className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+        />
+      </div>
 
       <SimilarProductsSection
         productId={singleProduct._id}

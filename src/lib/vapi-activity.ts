@@ -1,3 +1,5 @@
+import type { VapiActivityPhase } from "@/lib/vapi-ui-actions/types";
+import { getActivityPhaseForTool, getToolActivityTitle } from "@/lib/vapi-ui-actions/activity-phases";
 import { isValidStripeCheckoutUrl } from "@/lib/vapi-config";
 import { formatCurrencyAmount } from "@/lib/currencies";
 
@@ -11,6 +13,7 @@ export type VapiActivityStep = {
   title: string;
   detail?: string;
   href?: string;
+  phase?: VapiActivityPhase;
   timestamp: number;
 };
 
@@ -234,16 +237,30 @@ function firstProductFromSearch(result: Record<string, unknown>): {
   };
 }
 
+export function buildUnderstandingStep(): VapiActivityStep {
+  return {
+    id: `understanding-${Date.now()}`,
+    toolName: "user_request",
+    status: "active",
+    title: "Understanding request",
+    phase: "understanding",
+    timestamp: Date.now(),
+  };
+}
+
 export function buildActivityStepStart(
   event: VapiToolEvent
 ): VapiActivityStep {
   const { toolName, parameters, toolCallId } = event;
+  const phase = getActivityPhaseForTool(toolName);
 
   const base = {
     id: toolCallId,
     toolCallId,
     toolName,
     status: "active" as const,
+    phase,
+    title: phase ? getToolActivityTitle(toolName, phase) : "Working on your request",
     timestamp: Date.now(),
   };
 
@@ -252,7 +269,6 @@ export function buildActivityStepStart(
     case "searchProductsHybrid":
       return {
         ...base,
-        title: "Searching products",
         detail:
           typeof parameters.query === "string"
             ? `"${parameters.query}"`
@@ -261,13 +277,11 @@ export function buildActivityStepStart(
     case "getProductDetails":
       return {
         ...base,
-        title: "Viewing product details",
         href: productHref(String(parameters.productId ?? "")),
       };
     case "buildProductBundle":
       return {
         ...base,
-        title: "Building product bundle",
         detail:
           typeof parameters.query === "string" ? parameters.query : undefined,
       };
@@ -275,51 +289,40 @@ export function buildActivityStepStart(
       if (Array.isArray(parameters.productIds)) {
         return {
           ...base,
-          title: "Adding bundle to cart",
           detail: `${parameters.productIds.length} products`,
         };
       }
       return {
         ...base,
-        title: "Adding to cart",
         href: productHref(String(parameters.productId ?? "")),
       };
     case "getCart":
-      return {
-        ...base,
-        title: "Checking your cart",
-      };
+      return base;
     case "removeFromCart":
       return {
         ...base,
-        title: parameters.clearAll ? "Clearing cart" : "Removing from cart",
+        detail: parameters.clearAll ? "Clearing all items" : undefined,
       };
     case "createCheckoutSession":
       return {
         ...base,
-        title: "Starting checkout",
         detail: "Card payment (Stripe)",
       };
     case "createCashOrder":
       return {
         ...base,
-        title: "Placing order",
         detail: "Cash on delivery",
       };
     case "trackOrder":
       return {
         ...base,
-        title: "Tracking order",
         detail:
           typeof parameters.orderNumber === "string"
             ? parameters.orderNumber
             : undefined,
       };
     default:
-      return {
-        ...base,
-        title: "Working on your request",
-      };
+      return base;
   }
 }
 

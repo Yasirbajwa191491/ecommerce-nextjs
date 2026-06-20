@@ -15,6 +15,8 @@ import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
+import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 
 type DeliveryMethodType =
   | "standard"
@@ -25,6 +27,7 @@ type DeliveryMethodType =
 
 export function CheckoutView() {
   const router = useRouter();
+  const storefront = useVapiStorefrontOptional();
   const { cart } = useCartContext();
   const [deliveryMethod, setDeliveryMethod] = useState<
     DeliveryMethodType | undefined
@@ -130,8 +133,15 @@ export function CheckoutView() {
           </Alert>
         ) : null}
 
+        <VapiCheckoutProgress
+          phase={storefront?.checkoutProgress ?? null}
+          active={storefront?.assistantCheckoutActive ?? false}
+          className="mb-6"
+        />
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1fr)_440px] 2xl:gap-12">
           <div className="min-w-0 space-y-4 xl:sticky xl:top-24">
+            <div id="checkout-order-summary">
             <PromotionAppliedSection
               gifts={giftItems.map((item) => ({
                 productName: item.productName,
@@ -158,6 +168,7 @@ export function CheckoutView() {
               isLoading={isLoading}
               getPricedLine={getPricedLine}
             />
+            </div>
           </div>
 
           <aside className="min-w-0">

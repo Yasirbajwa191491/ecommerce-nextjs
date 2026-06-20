@@ -28,15 +28,19 @@ import {
   SHOP_BODY_SM,
 } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 
 type ProductCardProps = Product & {
   view?: "grid" | "list";
   animateEntrance?: boolean;
+  aiRecommended?: boolean;
 };
 
 export default function ProductCard({
   view = "grid",
   animateEntrance = true,
+  aiRecommended = false,
   ...product
 }: ProductCardProps) {
   const reduceMotion = useReducedMotion();
@@ -68,14 +72,28 @@ export default function ProductCard({
         variants: hoverOrchestrator,
       };
 
+  const aiHighlightClass = aiRecommended
+    ? "ring-2 ring-primary/50 shadow-md shadow-primary/10 ai-product-highlight"
+    : "";
+
   if (view === "list") {
     return (
       <m.div
-        className="group flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:p-5 lg:flex-row lg:items-start lg:gap-5 xl:gap-6"
+        data-product-id={product._id}
+        className={cn(
+          "group flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:p-5 lg:flex-row lg:items-start lg:gap-5 xl:gap-6",
+          aiHighlightClass
+        )}
         {...entranceProps}
         whileTap={reduceMotion ? undefined : cardTap}
       >
-        <div className="mx-auto w-fit max-w-full shrink-0 lg:mx-0">
+        <div className="mx-auto w-fit max-w-full shrink-0 lg:mx-0 relative">
+          {aiRecommended ? (
+            <Badge className="absolute left-2 top-2 z-20 gap-1 rounded-full bg-primary text-primary-foreground shadow-sm">
+              <Sparkles className="size-3" />
+              Recommended by AI
+            </Badge>
+          ) : null}
           <ProductImageGallery
             variant="list"
             images={displayImages}
@@ -150,9 +168,11 @@ export default function ProductCard({
 
   return (
     <m.div
+      data-product-id={product._id}
       className={cn(
         "group h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm",
-        "transition-[border-color] duration-500 hover:border-[#6254f3]/20"
+        "transition-[border-color] duration-500 hover:border-[#6254f3]/20",
+        aiHighlightClass
       )}
       {...entranceProps}
       whileTap={reduceMotion ? undefined : cardTap}
@@ -173,6 +193,12 @@ export default function ProductCard({
             className="flex h-full flex-col"
           >
             <div className="relative shrink-0 overflow-hidden">
+              {aiRecommended ? (
+                <Badge className="absolute left-3 top-12 z-20 gap-1 rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <Sparkles className="size-3" />
+                  Recommended by AI
+                </Badge>
+              ) : null}
               <MotionHoverImage className="w-full">
                 <ProductImageFrame
                   src={imageUrl}

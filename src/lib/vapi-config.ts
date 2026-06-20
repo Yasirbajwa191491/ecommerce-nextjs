@@ -10,11 +10,121 @@ export function isVapiConfigured(): boolean {
   return Boolean(getVapiPublicKey() && getVapiAssistantId());
 }
 
+function asErrorRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function pickNestedErrorMessage(record: Record<string, unknown>): string | undefined {
+  for (const key of ["message", "errorMsg", "reason", "errorDetail"] as const) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  const nested = record.error;
+  if (typeof nested === "string" && nested.trim()) return nested.trim();
+
+  const nestedRecord = asErrorRecord(nested);
+  if (nestedRecord) return pickNestedErrorMessage(nestedRecord);
+
+  return undefined;
+}
+
+function mapKnownVapiMessage(message: string): string {
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("microphone") ||
+    lower.includes("notallowed") ||
+    lower.includes("permission denied") ||
+    lower.includes("permission")
+  ) {
+    return "Microphone access denied. In Chrome, open site settings for localhost → Microphone → Allow, then try Voice call again.";
+  }
+
+  if (
+    lower.includes("401") ||
+    lower.includes("unauthorized") ||
+    lower.includes("invalid key") ||
+    lower.includes("invalid api key")
+  ) {
+    return "Invalid Vapi public key. Set NEXT_PUBLIC_VAPI_PUBLIC_KEY to your Public Key (not VAPI_API_KEY) in .env.local and restart npm run dev.";
+  }
+
+  if (
+    lower.includes("404") ||
+    lower.includes("not found") ||
+    lower.includes("assistant")
+  ) {
+    return "Assistant not found or not published. Run npm run vapi:setup, set NEXT_PUBLIC_VAPI_ASSISTANT_ID in .env.local, click Publish in the Vapi dashboard, then restart npm run dev.";
+  }
+
+  if (lower.includes("billing") || lower.includes("payment")) {
+    return "Vapi billing is required for voice calls. Add a payment method in your Vapi dashboard.";
+  }
+
+  return message;
+}
+
+/** Turn Vapi SDK / Daily.co errors into actionable user-facing text. */
+export function formatVapiError(err: unknown): string {
+  if (process.env.NODE_ENV === "development") {
+    console.error("[Vapi voice error]", err);
+  }
+
+  if (err instanceof Error && err.message.trim()) {
+    return mapKnownVapiMessage(err.message.trim());
+  }
+
+  const record = asErrorRecord(err);
+  if (record) {
+    const type = typeof record.type === "string" ? record.type : "";
+    const nestedMessage = pickNestedErrorMessage(record);
+
+    if (nestedMessage) {
+      return mapKnownVapiMessage(nestedMessage);
+    }
+
+    if (type === "validation-error") {
+      return "Voice assistant is misconfigured. Set NEXT_PUBLIC_VAPI_ASSISTANT_ID in .env.local and restart npm run dev.";
+    }
+
+    if (
+      type === "daily-call-join-error" ||
+      type === "daily-call-object-creation-error" ||
+      type === "daily-error"
+    ) {
+      return "Could not connect the voice call. Confirm NEXT_PUBLIC_VAPI_PUBLIC_KEY and NEXT_PUBLIC_VAPI_ASSISTANT_ID, publish the assistant in Vapi, allow microphone access, then restart npm run dev.";
+    }
+
+    try {
+      const serialized = JSON.stringify(record);
+      if (serialized.length > 2 && serialized.length < 400) {
+        return `Voice assistant error: ${serialized}`;
+      }
+    } catch {
+      // Ignore JSON serialization failures.
+    }
+  }
+
+  if (typeof err === "string" && err.trim()) {
+    return mapKnownVapiMessage(err.trim());
+  }
+
+  return "Voice call failed to start. Allow microphone for localhost, verify NEXT_PUBLIC_VAPI_PUBLIC_KEY and NEXT_PUBLIC_VAPI_ASSISTANT_ID in .env.local, publish the assistant in Vapi, then restart npm run dev.";
+}
+
 export type VapiAssistantState =
   | "idle"
   | "listening"
   | "speaking"
-  | "processing";
+  | "processing"
+  | "thinking"
+  | "searching"
+  | "navigating"
+  | "updating_cart"
+  | "checkout_ready";
 
 export type VapiTranscriptEntry = {
   id: string;
