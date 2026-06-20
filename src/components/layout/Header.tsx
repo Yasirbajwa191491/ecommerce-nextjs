@@ -34,7 +34,7 @@ export default function Header() {
   ) : null;
 
   const desktopSearch = searchReady && isLg ? (
-    <HeaderSearch className="w-full max-w-2xl xl:max-w-3xl" />
+    <HeaderSearch className="w-full max-w-[25rem] xl:max-w-[30rem]" />
   ) : null;
 
   useEffect(() => {

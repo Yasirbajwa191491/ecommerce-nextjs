@@ -58,7 +58,7 @@ export function HeaderNav({
           ? "flex w-full flex-col gap-2"
           : vertical
             ? "flex flex-col gap-1"
-            : "flex items-center gap-7 lg:gap-9 xl:gap-10"
+            : "flex items-center lg:gap-4 xl:gap-5"
       )}
     >
       {NAV_LINKS.map(({ href, label }) => {

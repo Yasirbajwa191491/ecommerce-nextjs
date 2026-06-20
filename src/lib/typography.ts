@@ -162,9 +162,9 @@ export const HEADER_STORE_NAME_MOBILE =
 export const HEADER_STORE_NAME_DESKTOP =
   "shrink-0 text-xl xl:text-2xl";
 
-/** Desktop header nav links */
+/** Desktop header nav links (lg+ inline nav only; drawer uses HEADER_NAV_DRAWER_LABEL) */
 export const HEADER_NAV_LINK =
-  "text-sm font-medium tracking-tight sm:text-base lg:text-[1.0625rem]";
+  "text-sm font-medium tracking-tight lg:text-[0.875rem] xl:text-[0.9375rem]";
 
 /** Mobile drawer nav link label */
 export const HEADER_NAV_DRAWER_LABEL =
