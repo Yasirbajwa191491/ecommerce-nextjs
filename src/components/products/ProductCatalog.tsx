@@ -13,6 +13,7 @@ import type { Product } from "@/types/product";
 import type { ProductSort } from "@/lib/shop/product-sort";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { ProductCatalogFilters } from "@/components/products/product-catalog-filters";
+import { CatalogFilterSidebarShell } from "@/components/products/catalog-filter-sidebar-shell";
 import { ProductCatalogMobileFilters } from "@/components/products/product-catalog-mobile-filters";
 import { ProductCatalogToolbar } from "@/components/products/product-catalog-toolbar";
 import { ProductCatalogLoadMore } from "@/components/products/product-catalog-load-more";
@@ -124,13 +125,13 @@ export default function ProductCatalog() {
       minRating: filters.minRating,
       promotions: filters.promotionSlugs.length
         ? (filters.promotionSlugs as Array<
-            | "on_sale"
-            | "discounted"
-            | "bogo"
-            | "free_gift"
-            | "buy_x_get_y"
-            | "limited_time"
-          >)
+          | "on_sale"
+          | "discounted"
+          | "bogo"
+          | "free_gift"
+          | "buy_x_get_y"
+          | "limited_time"
+        >)
         : undefined,
       now: facetNow,
     }),
@@ -255,13 +256,13 @@ export default function ProductCatalog() {
       minRating: filters.minRating,
       promotions: filters.promotionSlugs.length
         ? (filters.promotionSlugs as Array<
-            | "on_sale"
-            | "discounted"
-            | "bogo"
-            | "free_gift"
-            | "buy_x_get_y"
-            | "limited_time"
-          >)
+          | "on_sale"
+          | "discounted"
+          | "bogo"
+          | "free_gift"
+          | "buy_x_get_y"
+          | "limited_time"
+        >)
         : undefined,
       sort,
       now,
@@ -295,21 +296,21 @@ export default function ProductCatalog() {
     isHybridSearch
       ? "skip"
       : {
-          paginationOpts: { numItems: PAGE_SIZE, cursor: null },
-          ...filterArgs,
-        }
+        paginationOpts: { numItems: PAGE_SIZE, cursor: null },
+        ...filterArgs,
+      }
   );
 
   const morePage = useQuery(
     api.products.listPublicPaginated,
     !isHybridSearch && page > 0
       ? {
-          paginationOpts: {
-            numItems: PAGE_SIZE,
-            cursor: String(page * PAGE_SIZE),
-          },
-          ...filterArgs,
-        }
+        paginationOpts: {
+          numItems: PAGE_SIZE,
+          cursor: String(page * PAGE_SIZE),
+        },
+        ...filterArgs,
+      }
       : "skip"
   );
 
@@ -361,14 +362,14 @@ export default function ProductCatalog() {
 
   const isInitialLoading = isHybridSearch
     ? (categories === undefined ||
-        priceBounds === undefined ||
-        isSearchLoading) &&
-      hybridDisplayProducts.length === 0
+      priceBounds === undefined ||
+      isSearchLoading) &&
+    hybridDisplayProducts.length === 0
     : (categories === undefined ||
-        priceBounds === undefined ||
-        totalCount === undefined ||
-        firstPage === undefined) &&
-      allProducts.length === 0;
+      priceBounds === undefined ||
+      totalCount === undefined ||
+      firstPage === undefined) &&
+    allProducts.length === 0;
 
   const isRefetching = isHybridSearch
     ? isSearchLoading && hybridDisplayProducts.length > 0
@@ -461,13 +462,13 @@ export default function ProductCatalog() {
 
   const showNoResults = isHybridSearch
     ? !isInitialLoading &&
-      !isSearchLoading &&
-      hybridSearch.totalCount === 0 &&
-      hybridDisplayProducts.length === 0
+    !isSearchLoading &&
+    hybridSearch.totalCount === 0 &&
+    hybridDisplayProducts.length === 0
     : !isInitialLoading &&
-      !isRefetching &&
-      firstPage !== undefined &&
-      (totalCount ?? 0) === 0;
+    !isRefetching &&
+    firstPage !== undefined &&
+    (totalCount ?? 0) === 0;
 
   const displayProducts = isHybridSearch ? hybridDisplayProducts : allProducts;
   const displayTotalCount = isHybridSearch
@@ -495,28 +496,27 @@ export default function ProductCatalog() {
         style={PAGE_GUTTER}
       >
         <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] md:gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
-          <div className="hidden md:block md:min-h-[calc(100dvh-7rem)] md:min-w-0 md:self-start">
+          <CatalogFilterSidebarShell>
             <ProductCatalogFilters
-              className="h-full w-full"
-              categories={categories ?? []}
-              categoryId={categoryId}
-              onCategoryChange={setCategoryId}
-              priceBounds={bounds}
-              priceRange={priceRange}
-              onPriceRangeChange={handlePriceRangeChange}
-              facets={facets}
-              selectedBrandSlugs={filters.brandSlugs}
-              selectedColorSlugs={filters.colorSlugs}
-              selectedPromotionSlugs={filters.promotionSlugs}
-              selectedMinRating={filters.minRating}
-              onToggleBrand={toggleBrand}
-              onToggleColor={toggleColor}
-              onTogglePromotion={togglePromotion}
-              onSelectRating={setMinRating}
-              onClear={handleClear}
-              layout="sidebar"
+                categories={categories ?? []}
+                categoryId={categoryId}
+                onCategoryChange={setCategoryId}
+                priceBounds={bounds}
+                priceRange={priceRange}
+                onPriceRangeChange={handlePriceRangeChange}
+                facets={facets}
+                selectedBrandSlugs={filters.brandSlugs}
+                selectedColorSlugs={filters.colorSlugs}
+                selectedPromotionSlugs={filters.promotionSlugs}
+                selectedMinRating={filters.minRating}
+                onToggleBrand={toggleBrand}
+                onToggleColor={toggleColor}
+                onTogglePromotion={togglePromotion}
+                onSelectRating={setMinRating}
+                onClear={handleClear}
+                layout="sidebar"
             />
-          </div>
+          </CatalogFilterSidebarShell>
 
           <section className="min-w-0">
             <ProductCatalogMobileFilters

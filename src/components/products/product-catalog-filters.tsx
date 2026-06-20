@@ -90,11 +90,11 @@ export function ProductCatalogFilters({
   return (
     <aside
       className={cn(
-        "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
+        "flex min-w-0 flex-col overflow-hidden",
         isSheet
-          ? "h-full min-h-0 flex-1"
-          : "sticky top-24 z-10 h-full min-h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] md:p-5 lg:p-6",
-        className
+          ? "h-full min-h-0 flex-1 rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+          : "flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+        isSheet ? className : undefined
       )}
     >
       {showHeader ? (
@@ -104,107 +104,112 @@ export function ProductCatalogFilters({
         </div>
       ) : null}
 
-      <FilterSidebarSections className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
-      <FilterSidebarSection title="Category">
-        <div className={FILTER_OPTION_LIST_CLASS}>
-          <CategoryOption
-            optionId="category-all"
-            label="All categories"
-            checked={categoryId === "all"}
-            onSelect={() => onCategoryChange("all")}
-          />
-          {sortedCategories.map((category) => (
+      <FilterSidebarSections className="min-h-0 min-w-0 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+        <FilterSidebarSection title="Category">
+          <div className={FILTER_OPTION_LIST_CLASS}>
             <CategoryOption
-              key={category._id}
-              optionId={`category-${category._id}`}
-              label={category.name}
-              checked={categoryId === category._id}
-              onSelect={() => onCategoryChange(category._id)}
+              optionId="category-all"
+              label="All categories"
+              checked={categoryId === "all"}
+              onSelect={() => onCategoryChange("all")}
             />
-          ))}
-        </div>
-      </FilterSidebarSection>
-
-      {facets !== undefined ? (
-        <>
-          <FilterCheckboxList
-            title="Brand"
-            section
-            items={facets.brands.map((brand) => ({
-              id: brand.slug,
-              label: brand.name,
-              count: brand.count,
-            }))}
-            selected={selectedBrandSlugs}
-            onToggle={onToggleBrand}
-          />
-          <FilterCheckboxList
-            title="Promotions"
-            section
-            items={facets.promotions.map((promotion) => ({
-              id: promotion.slug,
-              label: promotion.label,
-              count: promotion.count,
-            }))}
-            selected={selectedPromotionSlugs}
-            onToggle={onTogglePromotion}
-          />
-          <RatingFilterSection
-            section
-            buckets={facets.ratingBuckets}
-            selected={selectedMinRating}
-            onSelect={onSelectRating}
-          />
-          <ColorFamilyFilterSection
-            section
-            colors={facets.colorFamilies}
-            selected={selectedColorSlugs}
-            onToggle={onToggleColor}
-          />
-        </>
-      ) : null}
-
-      <FilterSidebarSection title="Price range">
-        <div className="space-y-3">
-          <div className="flex justify-end">
-            <span
-              className={cn(
-                "w-fit rounded-full bg-muted px-2.5 py-1 text-foreground tabular-nums",
-                SHOP_BADGE
-              )}
-            >
-              {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
-              {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
-            </span>
-          </div>
-          <Slider
-            min={priceBounds.minPrice}
-            max={priceBounds.maxPrice}
-            step={1}
-            value={priceRange}
-            onValueChange={(value) => {
-              const next = value as number[];
-              if (next.length >= 2) {
-                onPriceRangeChange([next[0], next[1]]);
-              }
-            }}
-            disabled={sliderDisabled}
-            className="py-2 lg:py-3"
-          />
-          <div className={cn("hidden justify-between gap-1 tabular-nums md:flex", SHOP_BODY_SM)}>
-            {ticks.map((tick) => (
-              <span key={tick}>{formatCompactPrice(tick)}</span>
+            {sortedCategories.map((category) => (
+              <CategoryOption
+                key={category._id}
+                optionId={`category-${category._id}`}
+                label={category.name}
+                checked={categoryId === category._id}
+                onSelect={() => onCategoryChange(category._id)}
+              />
             ))}
           </div>
-        </div>
-      </FilterSidebarSection>
+        </FilterSidebarSection>
+
+        {facets !== undefined ? (
+          <>
+            <FilterCheckboxList
+              title="Brand"
+              section
+              items={facets.brands.map((brand) => ({
+                id: brand.slug,
+                label: brand.name,
+                count: brand.count,
+              }))}
+              selected={selectedBrandSlugs}
+              onToggle={onToggleBrand}
+            />
+            <FilterCheckboxList
+              title="Promotions"
+              section
+              items={facets.promotions.map((promotion) => ({
+                id: promotion.slug,
+                label: promotion.label,
+                count: promotion.count,
+              }))}
+              selected={selectedPromotionSlugs}
+              onToggle={onTogglePromotion}
+            />
+            <RatingFilterSection
+              section
+              buckets={facets.ratingBuckets}
+              selected={selectedMinRating}
+              onSelect={onSelectRating}
+            />
+            <ColorFamilyFilterSection
+              section
+              colors={facets.colorFamilies}
+              selected={selectedColorSlugs}
+              onToggle={onToggleColor}
+            />
+          </>
+        ) : null}
+
+        <FilterSidebarSection title="Price range">
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <span
+                className={cn(
+                  "w-fit rounded-full bg-muted px-2.5 py-1 text-foreground tabular-nums",
+                  SHOP_BADGE
+                )}
+              >
+                {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
+                {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
+              </span>
+            </div>
+            {sliderDisabled ? (
+              <p className={cn("rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground", SHOP_BODY_SM)}>
+                Price filters appear once products are available.
+              </p>
+            ) : (
+              <Slider
+                min={priceBounds.minPrice}
+                max={priceBounds.maxPrice}
+                step={1}
+                value={priceRange}
+                onValueChange={(value) => {
+                  const next = value as number[];
+                  if (next.length >= 2) {
+                    onPriceRangeChange([next[0], next[1]]);
+                  }
+                }}
+                className="py-2 lg:py-3"
+              />
+            )}
+            <div className={cn("hidden justify-between gap-1 tabular-nums md:flex", SHOP_BODY_SM)}>
+              {ticks.map((tick) => (
+                <span key={tick}>{formatCompactPrice(tick)}</span>
+              ))}
+            </div>
+          </div>
+        </FilterSidebarSection>
       </FilterSidebarSections>
 
       <Button
         type="button"
         variant="outline"
         onClick={onClear}
-        className="mt-auto h-9 w-full shrink-0 pt-4 text-sm md:pt-5"
+        className="mt-auto h-9 w-full shrink-0 border-t border-border/60 pt-4 text-sm md:pt-5"
       >
         Clear filters
       </Button>
