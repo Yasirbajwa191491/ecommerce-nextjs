@@ -5,7 +5,8 @@ export type ScrollTarget =
   | "reviews"
   | "specifications"
   | "highlights"
-  | "checkoutSummary";
+  | "checkoutSummary"
+  | "checkoutDelivery";
 
 export type CheckoutProgressPhase =
   | "understanding"
@@ -62,6 +63,7 @@ export type UiAction =
   | { type: "prefillTrackOrder"; orderNumber?: string; email?: string }
   | { type: "setAiSearchLoading"; loading: boolean }
   | { type: "setCheckoutProgress"; phase: CheckoutProgressPhase }
+  | { type: "prefillCheckoutDelivery"; method: string }
   | {
       type: "setGuidedShopping";
       active: boolean;
@@ -91,6 +93,7 @@ const UI_ACTION_TYPES = new Set([
   "prefillTrackOrder",
   "setAiSearchLoading",
   "setCheckoutProgress",
+  "prefillCheckoutDelivery",
   "setGuidedShopping",
 ]);
 
@@ -123,4 +126,5 @@ export const SCROLL_TARGET_IDS: Record<ScrollTarget, string> = {
   specifications: "product-specifications",
   highlights: "product-highlights",
   checkoutSummary: "checkout-order-summary",
+  checkoutDelivery: "checkout-delivery-methods",
 };

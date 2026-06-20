@@ -63,6 +63,50 @@ function buildSearchFilters(
   return filters;
 }
 
+function resolveDeliveryMethod(
+  parameters: Record<string, unknown>,
+  payload: Record<string, unknown>
+): string | undefined {
+  if (
+    typeof parameters.deliveryMethod === "string" &&
+    parameters.deliveryMethod.trim()
+  ) {
+    return parameters.deliveryMethod.trim();
+  }
+  if (
+    typeof payload.selectedDeliveryMethod === "string" &&
+    payload.selectedDeliveryMethod.trim()
+  ) {
+    return payload.selectedDeliveryMethod.trim();
+  }
+  if (
+    typeof payload.deliveryMethod === "string" &&
+    payload.deliveryMethod.trim()
+  ) {
+    return payload.deliveryMethod.trim();
+  }
+  return undefined;
+}
+
+function buildGetCartActions(
+  parameters: Record<string, unknown>,
+  payload: Record<string, unknown>
+): UiAction[] {
+  const deliveryMethod = resolveDeliveryMethod(parameters, payload);
+  if (deliveryMethod) {
+    return [
+      { type: "openCheckout", phase: "payment" },
+      { type: "setCheckoutProgress", phase: "payment" },
+      { type: "prefillCheckoutDelivery", method: deliveryMethod },
+      { type: "scrollToTarget", target: "checkoutSummary" },
+    ];
+  }
+  return [
+    { type: "openCart" },
+    { type: "setCheckoutProgress", phase: "cart_review" },
+  ];
+}
+
 export function buildClientUiActions(
   toolName: string,
   parameters: Record<string, unknown>,
@@ -134,9 +178,18 @@ export function buildClientUiActions(
         { type: "setCheckoutProgress", phase: "cart_review" },
       ];
     case "getCart":
-      return [{ type: "setCheckoutProgress", phase: "cart_review" }];
-    case "getDeliveryOptions":
-      return [{ type: "setCheckoutProgress", phase: "delivery" }];
+      return buildGetCartActions(parameters, payload);
+    case "getDeliveryOptions": {
+      const deliveryMethod = resolveDeliveryMethod(parameters, payload);
+      return [
+        { type: "openCheckout", phase: "delivery" },
+        { type: "setCheckoutProgress", phase: "delivery" },
+        ...(deliveryMethod
+          ? [{ type: "prefillCheckoutDelivery" as const, method: deliveryMethod }]
+          : []),
+        { type: "scrollToTarget", target: "checkoutDelivery" },
+      ];
+    }
     case "removeFromCart":
       return [{ type: "openCart" }];
     case "createCheckoutSession":
@@ -149,7 +202,10 @@ export function buildClientUiActions(
       return [
         { type: "setCheckoutProgress", phase: "ready" },
         ...(typeof payload.orderNumber === "string"
-          ? [{ type: "openTrackOrder" as const, orderNumber: payload.orderNumber }]
+          ? [
+              { type: "openTrackOrder" as const, orderNumber: payload.orderNumber },
+              { type: "prefillTrackOrder" as const, orderNumber: payload.orderNumber },
+            ]
           : []),
       ];
     case "trackOrder": {

@@ -37,8 +37,11 @@ import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { fadeUp } from "@/lib/motion";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
+import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
+import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 
 export function CartView() {
+  const storefront = useVapiStorefrontOptional();
   const {
     cart,
     total_item,
@@ -112,6 +115,12 @@ export function CartView() {
                 <AlertDescription>{pricingError}</AlertDescription>
               </Alert>
             ) : null}
+
+            <VapiCheckoutProgress
+              phase={storefront?.checkoutProgress ?? null}
+              active={storefront?.assistantCheckoutActive ?? false}
+              className="mb-6"
+            />
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-12">
               <div className="min-w-0 space-y-4">

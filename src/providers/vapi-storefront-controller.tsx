@@ -24,6 +24,7 @@ export type VapiStorefrontState = {
   compareSheetOpen: boolean;
   checkoutProgress: CheckoutProgressPhase | null;
   checkoutActive: boolean;
+  voiceDeliveryMethod: string | null;
   guidedShopping: {
     active: boolean;
     preferences: GuidedShoppingPreferences;
@@ -52,6 +53,7 @@ const initialState: VapiStorefrontState = {
   compareSheetOpen: false,
   checkoutProgress: null,
   checkoutActive: false,
+  voiceDeliveryMethod: null,
   guidedShopping: { active: false, preferences: defaultPreferences },
   pendingScroll: null,
   trackOrderPrefill: null,
@@ -97,6 +99,14 @@ export function VapiStorefrontControllerProvider({
           assistantCheckoutActive: true,
         }));
         break;
+      case "prefillCheckoutDelivery":
+        setState((prev) => ({
+          ...prev,
+          voiceDeliveryMethod: action.method,
+          checkoutActive: true,
+          assistantCheckoutActive: true,
+        }));
+        break;
       case "setGuidedShopping":
         mergePrefsRef.current = action.preferences ?? mergePrefsRef.current;
         setState((prev) => ({
@@ -127,6 +137,16 @@ export function VapiStorefrontControllerProvider({
       case "openProductDetails":
       case "openCart":
       case "openCheckout":
+        setState((prev) => ({
+          ...prev,
+          checkoutActive: action.type === "openCheckout" ? true : prev.checkoutActive,
+          assistantCheckoutActive: true,
+          checkoutProgress:
+            action.type === "openCheckout" && action.phase
+              ? action.phase
+              : prev.checkoutProgress,
+        }));
+        break;
       case "openTrackOrder":
         break;
       default:

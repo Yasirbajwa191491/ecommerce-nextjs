@@ -344,6 +344,7 @@ export function CheckoutForm({
           </CheckoutFormField>
 
           {deliveryMethods.length > 0 ? (
+            <div id="checkout-delivery-methods">
             <DeliveryMethodSelector
               methods={deliveryMethods}
               value={deliveryMethod}
@@ -351,6 +352,7 @@ export function CheckoutForm({
               currency={currency}
               disabled={submitting || pricingLoading}
             />
+            </div>
           ) : null}
 
           <PaymentMethodSelector

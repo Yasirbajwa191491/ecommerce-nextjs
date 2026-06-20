@@ -24,6 +24,14 @@ const storefrontSyncValidator = v.object({
   lastProductId: v.union(v.string(), v.null()),
   lastCatalogSearch: v.union(v.string(), v.null()),
   lastCartActionAt: v.union(v.number(), v.null()),
+  lastCheckoutNavAt: v.union(v.number(), v.null()),
+  lastCheckoutPhase: v.union(
+    v.literal("delivery"),
+    v.literal("payment"),
+    v.literal("ready"),
+    v.null()
+  ),
+  lastSelectedDeliveryMethod: v.union(v.string(), v.null()),
   resolvedCallId: v.union(v.string(), v.null()),
   completedTools: v.array(completedToolValidator),
 });
@@ -38,6 +46,9 @@ type StorefrontSync = {
   lastProductId: string | null;
   lastCatalogSearch: string | null;
   lastCartActionAt: number | null;
+  lastCheckoutNavAt: number | null;
+  lastCheckoutPhase: "delivery" | "payment" | "ready" | null;
+  lastSelectedDeliveryMethod: string | null;
   resolvedCallId: string | null;
   completedTools: Array<{
     logId: Id<"vapiConversationLogs">;
@@ -54,6 +65,9 @@ const emptySync = (): StorefrontSync => ({
   lastProductId: null,
   lastCatalogSearch: null,
   lastCartActionAt: null,
+  lastCheckoutNavAt: null,
+  lastCheckoutPhase: null,
+  lastSelectedDeliveryMethod: null,
   resolvedCallId: null,
   completedTools: [],
 });
@@ -147,6 +161,9 @@ async function buildStorefrontSyncFromConversation(
   let lastProductId: string | null = null;
   let lastCatalogSearch: string | null = null;
   let lastCartActionAt: number | null = null;
+  let lastCheckoutNavAt: number | null = null;
+  let lastCheckoutPhase: "delivery" | "payment" | "ready" | null = null;
+  let lastSelectedDeliveryMethod: string | null = null;
 
   const logs = await ctx.db
     .query("vapiConversationLogs")
@@ -193,14 +210,48 @@ async function buildStorefrontSyncFromConversation(
 
     if (
       lastCartActionAt === null &&
-      (log.toolName === "getCart" ||
-        log.toolName === "addToCart" ||
-        log.toolName === "addMultipleToCart") &&
+      (log.toolName === "addToCart" ||
+        log.toolName === "addMultipleToCart" ||
+        (log.toolName === "getCart" &&
+          typeof parseToolInputRecord(log.toolInput ?? undefined).deliveryMethod !==
+            "string")) &&
       log.toolOutput
     ) {
       const payload = parseToolOutputRecord(log.toolOutput);
-      if (payload && typeof payload.error !== "string") {
+      if (payload && typeof payload.error !== "string" && payload.isEmpty !== true) {
         lastCartActionAt = log.createdAt;
+      }
+    }
+
+    if (log.toolOutput) {
+      const payload = parseToolOutputRecord(log.toolOutput);
+      const input = parseToolInputRecord(log.toolInput ?? undefined);
+      const hasError = !payload || typeof payload.error === "string";
+      const isEmpty = payload?.isEmpty === true;
+
+      if (lastCheckoutNavAt === null && !hasError) {
+        if (log.toolName === "createCashOrder" || log.toolName === "createCheckoutSession") {
+          lastCheckoutNavAt = log.createdAt;
+          lastCheckoutPhase = "ready";
+        } else if (
+          !isEmpty &&
+          log.toolName === "getCart" &&
+          typeof input.deliveryMethod === "string"
+        ) {
+          lastCheckoutNavAt = log.createdAt;
+          lastCheckoutPhase = "payment";
+          lastSelectedDeliveryMethod = input.deliveryMethod;
+        } else if (!isEmpty && log.toolName === "getDeliveryOptions") {
+          lastCheckoutNavAt = log.createdAt;
+          lastCheckoutPhase = "delivery";
+          const selected =
+            typeof payload.selectedDeliveryMethod === "string"
+              ? payload.selectedDeliveryMethod
+              : typeof input.deliveryMethod === "string"
+                ? input.deliveryMethod
+                : null;
+          if (selected) lastSelectedDeliveryMethod = selected;
+        }
       }
     }
 
@@ -242,6 +293,9 @@ async function buildStorefrontSyncFromConversation(
     lastProductId,
     lastCatalogSearch,
     lastCartActionAt,
+    lastCheckoutNavAt,
+    lastCheckoutPhase,
+    lastSelectedDeliveryMethod,
     resolvedCallId: conversation.vapiCallId,
     completedTools,
   };

@@ -31,6 +31,7 @@ import { VapiGuidedShoppingBanner } from "@/components/vapi/vapi-guided-shopping
 import { getStripeCheckoutUrlFromSteps } from "@/lib/vapi-activity";
 import { isCheckoutRelatedMessage, isVapiConfigured } from "@/lib/vapi-config";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
+import type { UiAction } from "@/lib/vapi-ui-actions/types";
 
 export function VapiAssistantWidget() {
   const configured = isVapiConfigured();
@@ -82,11 +83,19 @@ export function VapiAssistantWidget() {
     [completeServerTools, syncToolResult, handleToolComplete]
   );
 
+  const onCheckoutBackupActions = useCallback(
+    (actions: UiAction[]) => {
+      storefront.applyUiActions(actions);
+    },
+    [storefront.applyUiActions]
+  );
+
   useVapiStorefrontSync({
     vapiCallId,
     voiceSessionActive: isConnected,
     onServerToolComplete,
     onResolvedCallId: setResolvedCallId,
+    onCheckoutBackupActions,
   });
 
   const [open, setOpen] = useState(false);

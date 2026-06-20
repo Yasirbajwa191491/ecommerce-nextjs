@@ -246,7 +246,48 @@ export function useVapiUiActionExecutor() {
       }
 
       if (event.toolName === "addToCart" || event.toolName === "addMultipleToCart") {
-        enqueueActions([{ type: "openCart" }]);
+        enqueueActions([
+          { type: "openCart" },
+          { type: "setCheckoutProgress", phase: "cart_review" },
+        ]);
+      }
+
+      if (event.toolName === "getCart") {
+        const hasDelivery =
+          typeof event.parameters.deliveryMethod === "string" &&
+          event.parameters.deliveryMethod.trim();
+        if (hasDelivery) {
+          enqueueActions([
+            { type: "openCheckout", phase: "payment" },
+            { type: "setCheckoutProgress", phase: "payment" },
+            {
+              type: "prefillCheckoutDelivery",
+              method: String(event.parameters.deliveryMethod).trim(),
+            },
+          ]);
+        } else {
+          enqueueActions([
+            { type: "openCart" },
+            { type: "setCheckoutProgress", phase: "cart_review" },
+          ]);
+        }
+      }
+
+      if (event.toolName === "getDeliveryOptions") {
+        enqueueActions([
+          { type: "openCheckout", phase: "delivery" },
+          { type: "setCheckoutProgress", phase: "delivery" },
+        ]);
+      }
+
+      if (
+        event.toolName === "createCheckoutSession" ||
+        event.toolName === "createCashOrder"
+      ) {
+        enqueueActions([
+          { type: "openCheckout", phase: "ready" },
+          { type: "setCheckoutProgress", phase: "ready" },
+        ]);
       }
     },
     [controller, enqueueActions]

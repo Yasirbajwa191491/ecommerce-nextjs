@@ -10,6 +10,7 @@ import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
 import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import { productPath } from "@/lib/product-url";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
+import type { CheckoutProgressPhase, UiAction } from "@/lib/vapi-ui-actions/types";
 
 type CartLineSnapshot = {
   productId: Id<"products">;
@@ -53,6 +54,7 @@ export function useVapiStorefrontSync(options: {
   voiceSessionActive: boolean;
   onServerToolComplete?: (event: ServerToolCompleteEvent) => void;
   onResolvedCallId?: (callId: string) => void;
+  onCheckoutBackupActions?: (actions: UiAction[]) => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -66,9 +68,16 @@ export function useVapiStorefrontSync(options: {
   const lastCartSyncRef = useRef<number | null>(null);
   const lastProductNavRef = useRef<string | null>(null);
   const lastCartNavRef = useRef<number | null>(null);
+  const lastCheckoutNavRef = useRef<number | null>(null);
   const lastBrowserPushRef = useRef<string | null>(null);
   const processedToolLogIdsRef = useRef<Set<string>>(new Set());
   const syncingFromVoiceRef = useRef(false);
+  const onCheckoutBackupRef = useRef(options.onCheckoutBackupActions);
+  onCheckoutBackupRef.current = options.onCheckoutBackupActions;
+  const onServerToolCompleteRef = useRef(options.onServerToolComplete);
+  onServerToolCompleteRef.current = options.onServerToolComplete;
+  const onResolvedCallIdRef = useRef(options.onResolvedCallId);
+  onResolvedCallIdRef.current = options.onResolvedCallId;
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
 
   useEffect(() => {
@@ -111,6 +120,7 @@ export function useVapiStorefrontSync(options: {
       lastCartSyncRef.current = null;
       lastProductNavRef.current = null;
       lastCartNavRef.current = null;
+      lastCheckoutNavRef.current = null;
       lastBrowserPushRef.current = null;
       processedToolLogIdsRef.current = new Set();
     }
@@ -122,12 +132,12 @@ export function useVapiStorefrontSync(options: {
       !options.vapiCallId &&
       options.voiceSessionActive
     ) {
-      options.onResolvedCallId?.(sync.resolvedCallId);
+      onResolvedCallIdRef.current?.(sync.resolvedCallId);
     }
-  }, [options, sync?.resolvedCallId]);
+  }, [options.vapiCallId, options.voiceSessionActive, sync?.resolvedCallId]);
 
   useEffect(() => {
-    if (!sync?.completedTools?.length || !options.onServerToolComplete) return;
+    if (!sync?.completedTools?.length || !onServerToolCompleteRef.current) return;
 
     for (const tool of sync.completedTools) {
       const logKey = String(tool.logId);
@@ -136,14 +146,14 @@ export function useVapiStorefrontSync(options: {
 
       const parameters = parseToolInputRecord(tool.toolInput);
       const result = parseToolOutputValue(tool.toolOutput);
-      options.onServerToolComplete({
+      onServerToolCompleteRef.current({
         toolCallId: logKey,
         toolName: tool.toolName,
         parameters,
         result,
       });
     }
-  }, [options, sync?.completedTools]);
+  }, [sync?.completedTools]);
 
   useEffect(() => {
     if (!sessionActive || !effectiveCallId) {
@@ -152,6 +162,7 @@ export function useVapiStorefrontSync(options: {
         lastCartSyncRef.current = null;
         lastProductNavRef.current = null;
         lastCartNavRef.current = null;
+        lastCheckoutNavRef.current = null;
         lastBrowserPushRef.current = null;
         processedToolLogIdsRef.current = new Set();
       }
@@ -187,6 +198,39 @@ export function useVapiStorefrontSync(options: {
       lastCartNavRef.current = sync.lastCartActionAt;
       if (pathname !== "/cart") {
         router.push("/cart");
+      }
+    }
+
+    if (
+      sync.lastCheckoutNavAt !== null &&
+      sync.lastCheckoutNavAt !== lastCheckoutNavRef.current
+    ) {
+      lastCheckoutNavRef.current = sync.lastCheckoutNavAt;
+      if (pathname !== "/checkout") {
+        router.push("/checkout");
+      }
+
+      const backupActions: UiAction[] = [];
+      if (sync.lastCheckoutPhase) {
+        backupActions.push({
+          type: "setCheckoutProgress",
+          phase: sync.lastCheckoutPhase as CheckoutProgressPhase,
+        });
+      }
+      if (sync.lastSelectedDeliveryMethod) {
+        backupActions.push({
+          type: "prefillCheckoutDelivery",
+          method: sync.lastSelectedDeliveryMethod,
+        });
+      }
+      if (sync.lastCheckoutPhase === "delivery") {
+        backupActions.push({
+          type: "scrollToTarget",
+          target: "checkoutDelivery",
+        });
+      }
+      if (backupActions.length) {
+        onCheckoutBackupRef.current?.(backupActions);
       }
     }
   }, [

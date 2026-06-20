@@ -61,9 +61,15 @@ export function CheckoutView() {
   }, []);
 
   useEffect(() => {
+    if (!storefront?.voiceDeliveryMethod) return;
+    setDeliveryMethod(storefront.voiceDeliveryMethod as DeliveryMethodType);
+  }, [storefront?.voiceDeliveryMethod]);
+
+  useEffect(() => {
+    if (storefront?.voiceDeliveryMethod) return;
     if (deliveryMethod || !priced?.deliveryMethod) return;
     setDeliveryMethod(priced.deliveryMethod as DeliveryMethodType);
-  }, [deliveryMethod, priced?.deliveryMethod]);
+  }, [deliveryMethod, priced?.deliveryMethod, storefront?.voiceDeliveryMethod]);
 
   const availableDeliveryMethods = priced?.availableDeliveryMethods ?? [];
 
