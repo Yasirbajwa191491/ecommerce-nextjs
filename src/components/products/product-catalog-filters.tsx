@@ -93,7 +93,7 @@ export function ProductCatalogFilters({
         "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
         isSheet
           ? "h-full min-h-0 flex-1"
-          : "sticky top-24 z-10 h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] md:p-5 lg:p-6",
+          : "sticky top-24 z-10 h-full min-h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] md:p-5 lg:p-6",
         className
       )}
     >
