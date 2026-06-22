@@ -59,6 +59,7 @@ export type UiAction =
   | { type: "scrollToTarget"; target: ScrollTarget; productId?: string }
   | { type: "openCart" }
   | { type: "openCheckout"; phase?: CheckoutProgressPhase }
+  | { type: "openOrderConfirmed"; orderNumber?: string; email?: string }
   | { type: "openTrackOrder"; orderNumber?: string; email?: string }
   | { type: "prefillTrackOrder"; orderNumber?: string; email?: string }
   | { type: "setAiSearchLoading"; loading: boolean }
@@ -207,6 +208,15 @@ function searchActions(
     });
   }
   return actions;
+}
+
+function resolveCustomerEmail(
+  parameters: Record<string, unknown>
+): string | undefined {
+  const customer = parameters.customer;
+  if (typeof customer !== "object" || customer === null) return undefined;
+  const email = (customer as Record<string, unknown>).email;
+  return typeof email === "string" && email.trim() ? email.trim() : undefined;
 }
 
 function resolveDeliveryMethod(
@@ -362,12 +372,9 @@ export function buildUiActions(
         ...(typeof payload.orderNumber === "string"
           ? [
               {
-                type: "openTrackOrder" as const,
+                type: "openOrderConfirmed" as const,
                 orderNumber: payload.orderNumber,
-              },
-              {
-                type: "prefillTrackOrder" as const,
-                orderNumber: payload.orderNumber,
+                email: resolveCustomerEmail(parameters),
               },
             ]
           : []),

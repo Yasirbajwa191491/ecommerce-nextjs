@@ -32,6 +32,8 @@ const storefrontSyncValidator = v.object({
     v.null()
   ),
   lastSelectedDeliveryMethod: v.union(v.string(), v.null()),
+  lastOrderConfirmedAt: v.union(v.number(), v.null()),
+  lastConfirmedOrderNumber: v.union(v.string(), v.null()),
   resolvedCallId: v.union(v.string(), v.null()),
   completedTools: v.array(completedToolValidator),
 });
@@ -49,6 +51,8 @@ type StorefrontSync = {
   lastCheckoutNavAt: number | null;
   lastCheckoutPhase: "delivery" | "payment" | "ready" | null;
   lastSelectedDeliveryMethod: string | null;
+  lastOrderConfirmedAt: number | null;
+  lastConfirmedOrderNumber: string | null;
   resolvedCallId: string | null;
   completedTools: Array<{
     logId: Id<"vapiConversationLogs">;
@@ -68,6 +72,8 @@ const emptySync = (): StorefrontSync => ({
   lastCheckoutNavAt: null,
   lastCheckoutPhase: null,
   lastSelectedDeliveryMethod: null,
+  lastOrderConfirmedAt: null,
+  lastConfirmedOrderNumber: null,
   resolvedCallId: null,
   completedTools: [],
 });
@@ -164,6 +170,8 @@ async function buildStorefrontSyncFromConversation(
   let lastCheckoutNavAt: number | null = null;
   let lastCheckoutPhase: "delivery" | "payment" | "ready" | null = null;
   let lastSelectedDeliveryMethod: string | null = null;
+  let lastOrderConfirmedAt: number | null = null;
+  let lastConfirmedOrderNumber: string | null = null;
 
   const logs = await ctx.db
     .query("vapiConversationLogs")
@@ -229,28 +237,37 @@ async function buildStorefrontSyncFromConversation(
       const hasError = !payload || typeof payload.error === "string";
       const isEmpty = payload?.isEmpty === true;
 
-      if (lastCheckoutNavAt === null && !hasError) {
-        if (log.toolName === "createCashOrder" || log.toolName === "createCheckoutSession") {
-          lastCheckoutNavAt = log.createdAt;
-          lastCheckoutPhase = "ready";
-        } else if (
-          !isEmpty &&
-          log.toolName === "getCart" &&
-          typeof input.deliveryMethod === "string"
+      if (!hasError) {
+        if (
+          lastOrderConfirmedAt === null &&
+          log.toolName === "createCashOrder" &&
+          typeof payload.orderNumber === "string"
         ) {
-          lastCheckoutNavAt = log.createdAt;
-          lastCheckoutPhase = "payment";
-          lastSelectedDeliveryMethod = input.deliveryMethod;
-        } else if (!isEmpty && log.toolName === "getDeliveryOptions") {
-          lastCheckoutNavAt = log.createdAt;
-          lastCheckoutPhase = "delivery";
-          const selected =
-            typeof payload.selectedDeliveryMethod === "string"
-              ? payload.selectedDeliveryMethod
-              : typeof input.deliveryMethod === "string"
-                ? input.deliveryMethod
-                : null;
-          if (selected) lastSelectedDeliveryMethod = selected;
+          lastOrderConfirmedAt = log.createdAt;
+          lastConfirmedOrderNumber = payload.orderNumber;
+        } else if (lastCheckoutNavAt === null) {
+          if (log.toolName === "createCheckoutSession") {
+            lastCheckoutNavAt = log.createdAt;
+            lastCheckoutPhase = "ready";
+          } else if (
+            !isEmpty &&
+            log.toolName === "getCart" &&
+            typeof input.deliveryMethod === "string"
+          ) {
+            lastCheckoutNavAt = log.createdAt;
+            lastCheckoutPhase = "payment";
+            lastSelectedDeliveryMethod = input.deliveryMethod;
+          } else if (!isEmpty && log.toolName === "getDeliveryOptions") {
+            lastCheckoutNavAt = log.createdAt;
+            lastCheckoutPhase = "delivery";
+            const selected =
+              typeof payload.selectedDeliveryMethod === "string"
+                ? payload.selectedDeliveryMethod
+                : typeof input.deliveryMethod === "string"
+                  ? input.deliveryMethod
+                  : null;
+            if (selected) lastSelectedDeliveryMethod = selected;
+          }
         }
       }
     }
@@ -296,6 +313,8 @@ async function buildStorefrontSyncFromConversation(
     lastCheckoutNavAt,
     lastCheckoutPhase,
     lastSelectedDeliveryMethod,
+    lastOrderConfirmedAt,
+    lastConfirmedOrderNumber,
     resolvedCallId: conversation.vapiCallId,
     completedTools,
   };

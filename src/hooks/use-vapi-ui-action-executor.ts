@@ -24,8 +24,17 @@ const NAV_ACTIONS = new Set([
   "openProductDetails",
   "openCart",
   "openCheckout",
+  "openOrderConfirmed",
   "openTrackOrder",
 ]);
+
+function buildToolDedupeKey(event: VapiToolEvent): string {
+  const result =
+    typeof event.result === "string"
+      ? event.result
+      : JSON.stringify(event.result ?? null);
+  return `${event.toolName}:${result}`;
+}
 
 function mergeCatalogFilters(
   current: CatalogFilterState,
@@ -67,6 +76,7 @@ export function useVapiUiActionExecutor() {
   const controller = useVapiStorefrontController();
   const queueRef = useRef<UiAction[]>([]);
   const flushTimerRef = useRef<number | null>(null);
+  const processedToolResultsRef = useRef<Set<string>>(new Set());
   const pendingFiltersRef = useRef<CatalogFilterPayload | null>(null);
   const pendingScrollRef = useRef<{ target: keyof typeof SCROLL_TARGET_IDS; productId?: string } | null>(null);
 
@@ -120,6 +130,24 @@ export function useVapiUiActionExecutor() {
         case "openCheckout":
           router.push("/checkout");
           break;
+        case "openOrderConfirmed": {
+          if (action.orderNumber?.trim()) {
+            sessionStorage.setItem("lastOrderNumber", action.orderNumber.trim());
+          }
+          if (action.email?.trim()) {
+            sessionStorage.setItem("lastOrderEmail", action.email.trim());
+          }
+          const params = new URLSearchParams();
+          if (action.orderNumber?.trim()) {
+            params.set("orderNumber", action.orderNumber.trim());
+          }
+          if (action.email?.trim()) {
+            params.set("email", action.email.trim());
+          }
+          const query = params.toString();
+          router.push(query ? `/checkout/success?${query}` : "/checkout/success");
+          break;
+        }
         case "openTrackOrder": {
           if (action.orderNumber?.trim()) {
             router.push(
@@ -146,6 +174,15 @@ export function useVapiUiActionExecutor() {
         executeNavigationAction(action);
       }
       controller.applyUiAction(action);
+
+      if (
+        action.type === "setCheckoutProgress" &&
+        (action.phase === "delivery" ||
+          action.phase === "payment" ||
+          action.phase === "ready")
+      ) {
+        executeNavigationAction({ type: "openCheckout", phase: action.phase });
+      }
 
       if (action.type === "scrollToTarget") {
         pendingScrollRef.current = {
@@ -281,8 +318,7 @@ export function useVapiUiActionExecutor() {
       }
 
       if (
-        event.toolName === "createCheckoutSession" ||
-        event.toolName === "createCashOrder"
+        event.toolName === "createCheckoutSession"
       ) {
         enqueueActions([
           { type: "openCheckout", phase: "ready" },
@@ -295,6 +331,10 @@ export function useVapiUiActionExecutor() {
 
   const handleToolComplete = useCallback(
     (event: VapiToolEvent) => {
+      const dedupeKey = buildToolDedupeKey(event);
+      if (processedToolResultsRef.current.has(dedupeKey)) return;
+      processedToolResultsRef.current.add(dedupeKey);
+
       const actions = resolveUiActions(
         event.toolName,
         event.parameters,

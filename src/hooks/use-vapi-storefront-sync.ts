@@ -69,6 +69,7 @@ export function useVapiStorefrontSync(options: {
   const lastProductNavRef = useRef<string | null>(null);
   const lastCartNavRef = useRef<number | null>(null);
   const lastCheckoutNavRef = useRef<number | null>(null);
+  const lastOrderConfirmedRef = useRef<number | null>(null);
   const lastBrowserPushRef = useRef<string | null>(null);
   const processedToolLogIdsRef = useRef<Set<string>>(new Set());
   const syncingFromVoiceRef = useRef(false);
@@ -121,6 +122,7 @@ export function useVapiStorefrontSync(options: {
       lastProductNavRef.current = null;
       lastCartNavRef.current = null;
       lastCheckoutNavRef.current = null;
+      lastOrderConfirmedRef.current = null;
       lastBrowserPushRef.current = null;
       processedToolLogIdsRef.current = new Set();
     }
@@ -163,6 +165,7 @@ export function useVapiStorefrontSync(options: {
         lastProductNavRef.current = null;
         lastCartNavRef.current = null;
         lastCheckoutNavRef.current = null;
+      lastOrderConfirmedRef.current = null;
         lastBrowserPushRef.current = null;
         processedToolLogIdsRef.current = new Set();
       }
@@ -196,14 +199,39 @@ export function useVapiStorefrontSync(options: {
       sync.lastCartActionAt !== lastCartNavRef.current
     ) {
       lastCartNavRef.current = sync.lastCartActionAt;
-      if (pathname !== "/cart") {
+      const inCheckoutFlow =
+        sync.lastCheckoutNavAt !== null &&
+        (sync.lastCartActionAt === null ||
+          sync.lastCheckoutNavAt >= sync.lastCartActionAt);
+      if (!inCheckoutFlow && pathname !== "/cart") {
         router.push("/cart");
       }
     }
 
     if (
+      sync.lastOrderConfirmedAt !== null &&
+      sync.lastOrderConfirmedAt !== lastOrderConfirmedRef.current
+    ) {
+      lastOrderConfirmedRef.current = sync.lastOrderConfirmedAt;
+      if (sync.lastConfirmedOrderNumber) {
+        sessionStorage.setItem("lastOrderNumber", sync.lastConfirmedOrderNumber);
+      }
+      const params = new URLSearchParams();
+      if (sync.lastConfirmedOrderNumber) {
+        params.set("orderNumber", sync.lastConfirmedOrderNumber);
+      }
+      const successPath = params.toString()
+        ? `/checkout/success?${params}`
+        : "/checkout/success";
+      if (pathname !== successPath) {
+        router.push(successPath);
+      }
+    }
+
+    if (
       sync.lastCheckoutNavAt !== null &&
-      sync.lastCheckoutNavAt !== lastCheckoutNavRef.current
+      sync.lastCheckoutNavAt !== lastCheckoutNavRef.current &&
+      sync.lastOrderConfirmedAt === null
     ) {
       lastCheckoutNavRef.current = sync.lastCheckoutNavAt;
       if (pathname !== "/checkout") {

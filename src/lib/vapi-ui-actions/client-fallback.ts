@@ -88,6 +88,15 @@ function resolveDeliveryMethod(
   return undefined;
 }
 
+function resolveCustomerEmail(
+  parameters: Record<string, unknown>
+): string | undefined {
+  const customer = parameters.customer;
+  if (typeof customer !== "object" || customer === null) return undefined;
+  const email = (customer as Record<string, unknown>).email;
+  return typeof email === "string" && email.trim() ? email.trim() : undefined;
+}
+
 function buildGetCartActions(
   parameters: Record<string, unknown>,
   payload: Record<string, unknown>
@@ -203,8 +212,11 @@ export function buildClientUiActions(
         { type: "setCheckoutProgress", phase: "ready" },
         ...(typeof payload.orderNumber === "string"
           ? [
-              { type: "openTrackOrder" as const, orderNumber: payload.orderNumber },
-              { type: "prefillTrackOrder" as const, orderNumber: payload.orderNumber },
+              {
+                type: "openOrderConfirmed" as const,
+                orderNumber: payload.orderNumber,
+                email: resolveCustomerEmail(parameters),
+              },
             ]
           : []),
       ];

@@ -73,46 +73,7 @@ export function useVapiCartSync() {
 
       switch (toolName) {
         case "addToCart": {
-          if (Array.isArray(payload.addedItems) && payload.addedItems.length > 0) {
-            const lines = payload.addedItems
-              .map((item) => {
-                if (typeof item !== "object" || item === null) return null;
-                const record = item as Record<string, unknown>;
-                if (
-                  !isProductId(record.productId) ||
-                  typeof record.color !== "string"
-                ) {
-                  return null;
-                }
-                return {
-                  productId: record.productId,
-                  color: record.color,
-                  quantity:
-                    typeof record.quantity === "number" ? record.quantity : 1,
-                };
-              })
-              .filter((line): line is CartLineSync => line !== null);
-
-            await syncLines(lines);
-            toast.success(
-              `Added ${lines.length} item${lines.length === 1 ? "" : "s"} to your cart`
-            );
-            break;
-          }
-
-          const productId = payload.productId ?? parameters.productId;
-          const color = payload.color ?? parameters.color;
-          const quantity = payload.quantity ?? parameters.quantity ?? 1;
-          if (!isProductId(productId) || typeof color !== "string") return;
-
-          await syncLines([
-            {
-              productId,
-              color,
-              quantity: typeof quantity === "number" ? quantity : 1,
-            },
-          ]);
-
+          // Voice cart is synced via replaceCartFromVoice — only show feedback here.
           if (typeof payload.productName === "string") {
             if (
               typeof payload.promotionHint === "string" &&
@@ -129,48 +90,11 @@ export function useVapiCartSync() {
           break;
         }
         case "addMultipleToCart": {
-          const addedItems = payload.addedItems;
-          if (Array.isArray(addedItems) && addedItems.length > 0) {
-            const lines = addedItems
-              .map((item) => {
-                if (typeof item !== "object" || item === null) return null;
-                const record = item as Record<string, unknown>;
-                if (
-                  !isProductId(record.productId) ||
-                  typeof record.color !== "string"
-                ) {
-                  return null;
-                }
-                return {
-                  productId: record.productId,
-                  color: record.color,
-                  quantity:
-                    typeof record.quantity === "number" ? record.quantity : 1,
-                };
-              })
-              .filter((line): line is CartLineSync => line !== null);
-
-            await syncLines(lines);
+          const added = payload.added;
+          if (Array.isArray(added) && added.length > 0) {
             toast.success(
-              `Added ${lines.length} item${lines.length === 1 ? "" : "s"} to your cart`
+              `Added ${added.length} item${added.length === 1 ? "" : "s"} to your cart`
             );
-            break;
-          }
-
-          if (Array.isArray(parameters.productIds)) {
-            const ids = parameters.productIds.filter(isProductId);
-            if (!ids.length) break;
-
-            const products = await convex.query(api.products.listByIds, { ids });
-            for (const product of products) {
-              const color = product.colors[0] ?? "default";
-              addToCart(product._id, color, 1, product as Product);
-            }
-            if (products.length) {
-              toast.success(
-                `Added ${products.length} item${products.length === 1 ? "" : "s"} to your cart`
-              );
-            }
           }
           break;
         }

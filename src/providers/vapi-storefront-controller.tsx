@@ -137,6 +137,7 @@ export function VapiStorefrontControllerProvider({
       case "openProductDetails":
       case "openCart":
       case "openCheckout":
+      case "openOrderConfirmed":
         setState((prev) => ({
           ...prev,
           checkoutActive: action.type === "openCheckout" ? true : prev.checkoutActive,

@@ -59,6 +59,7 @@ export type UiAction =
   | { type: "scrollToTarget"; target: ScrollTarget; productId?: string }
   | { type: "openCart" }
   | { type: "openCheckout"; phase?: CheckoutProgressPhase }
+  | { type: "openOrderConfirmed"; orderNumber?: string; email?: string }
   | { type: "openTrackOrder"; orderNumber?: string; email?: string }
   | { type: "prefillTrackOrder"; orderNumber?: string; email?: string }
   | { type: "setAiSearchLoading"; loading: boolean }
@@ -89,6 +90,7 @@ const UI_ACTION_TYPES = new Set([
   "scrollToTarget",
   "openCart",
   "openCheckout",
+  "openOrderConfirmed",
   "openTrackOrder",
   "prefillTrackOrder",
   "setAiSearchLoading",

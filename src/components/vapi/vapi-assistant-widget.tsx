@@ -33,6 +33,15 @@ import { isCheckoutRelatedMessage, isVapiConfigured } from "@/lib/vapi-config";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
 import type { UiAction } from "@/lib/vapi-ui-actions/types";
 
+const VOICE_CART_SYNC_TOOLS = new Set([
+  "addToCart",
+  "addMultipleToCart",
+  "removeFromCart",
+  "getCart",
+  "createCashOrder",
+  "createCheckoutSession",
+]);
+
 export function VapiAssistantWidget() {
   const configured = isVapiConfigured();
   const { cart } = useCartContext();
@@ -52,7 +61,10 @@ export function VapiAssistantWidget() {
 
   const onToolComplete = useCallback(
     (event: VapiToolEvent) => {
-      void syncToolResult(event.toolName, event.parameters, event.result);
+      // Cart mutations are applied once from Convex server tool logs.
+      if (!VOICE_CART_SYNC_TOOLS.has(event.toolName)) {
+        void syncToolResult(event.toolName, event.parameters, event.result);
+      }
       handleToolComplete(event);
     },
     [syncToolResult, handleToolComplete]
