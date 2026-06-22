@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
@@ -125,6 +125,9 @@ export function TrackOrderView() {
   const trackByOrderNumber = useAction(api.orderTracking.trackByOrderNumber);
   const trackByCustomer = useAction(api.orderTracking.trackByCustomer);
 
+  const [activeTab, setActiveTab] = useState<"order-number" | "customer">(
+    "order-number"
+  );
   const [orderNumber, setOrderNumber] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -141,10 +144,12 @@ export function TrackOrderView() {
     Awaited<ReturnType<typeof trackByCustomer>> | null
   >(null);
   const [prefillApplied, setPrefillApplied] = useState(false);
+  const lastAutoSubmitRef = useRef<number | null>(null);
 
   useEffect(() => {
     const urlOrderNumber = searchParams.get("orderNumber")?.trim() ?? "";
     const urlEmail = searchParams.get("email")?.trim() ?? "";
+    const urlPhone = searchParams.get("phone")?.trim() ?? "";
     const prefill = storefront?.trackOrderPrefill;
 
     if (urlOrderNumber) setOrderNumber(urlOrderNumber);
@@ -152,6 +157,14 @@ export function TrackOrderView() {
 
     if (urlEmail) setCustomerEmail(urlEmail);
     else if (prefill?.email) setCustomerEmail(prefill.email);
+
+    if (urlPhone) setCustomerPhone(urlPhone);
+    else if (prefill?.phone) setCustomerPhone(prefill.phone);
+
+    if (prefill?.activeTab) setActiveTab(prefill.activeTab);
+    else if (urlEmail || urlPhone || prefill?.email || prefill?.phone) {
+      setActiveTab("customer");
+    }
   }, [searchParams, storefront?.trackOrderPrefill]);
 
   useEffect(() => {
@@ -162,54 +175,105 @@ export function TrackOrderView() {
     router.replace(`/track-order/${encodeURIComponent(urlOrderNumber)}`);
   }, [searchParams, prefillApplied, router]);
 
+  const runOrderSearch = useCallback(
+    async (value: string) => {
+      const trimmed = value.trim();
+      const errors = validateTrackByOrderForm({ orderNumber: trimmed });
+      setOrderErrors(errors);
+      if (hasTrackByOrderErrors(errors)) return;
+
+      setIsSearchingOrder(true);
+      setOrderResult(null);
+      try {
+        const result = await trackByOrderNumber({ orderNumber: trimmed });
+        setOrderResult(result);
+        if (!result.found) {
+          toastError(result.message);
+          return;
+        }
+        router.push(`/track-order/${encodeURIComponent(result.order.orderNumber)}`);
+      } catch {
+        toastError("We couldn't find any orders matching your details.");
+      } finally {
+        setIsSearchingOrder(false);
+      }
+    },
+    [router, trackByOrderNumber]
+  );
+
+  const runCustomerSearch = useCallback(
+    async (email: string, phone: string) => {
+      const errors = validateTrackByCustomerForm({ email, phone });
+      setCustomerErrors(errors);
+      if (hasTrackByCustomerErrors(errors)) return;
+
+      setIsSearchingCustomer(true);
+      setCustomerResults(null);
+      try {
+        const result = await trackByCustomer({
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+        });
+        setCustomerResults(result);
+        if (!result.found) {
+          toastError(result.message);
+          return;
+        }
+        if (result.orders.length === 1) {
+          router.push(
+            `/track-order/${encodeURIComponent(result.orders[0]!.orderNumber)}`
+          );
+        }
+      } catch {
+        toastError("We couldn't find any orders matching your details.");
+      } finally {
+        setIsSearchingCustomer(false);
+      }
+    },
+    [router, trackByCustomer]
+  );
+
+  useEffect(() => {
+    const prefill = storefront?.trackOrderPrefill;
+    if (!prefill?.autoSubmit || prefill.requestId === undefined) return;
+    if (lastAutoSubmitRef.current === prefill.requestId) return;
+    lastAutoSubmitRef.current = prefill.requestId;
+
+    if (
+      prefill.activeTab === "customer" ||
+      prefill.email ||
+      prefill.phone
+    ) {
+      const email = prefill.email ?? customerEmail;
+      const phone = prefill.phone ?? customerPhone;
+      if (prefill.email) setCustomerEmail(prefill.email);
+      if (prefill.phone) setCustomerPhone(prefill.phone);
+      setActiveTab("customer");
+      void runCustomerSearch(email, phone);
+      return;
+    }
+
+    if (prefill.orderNumber) {
+      setOrderNumber(prefill.orderNumber);
+      setActiveTab("order-number");
+      void runOrderSearch(prefill.orderNumber);
+    }
+  }, [
+    customerEmail,
+    customerPhone,
+    runCustomerSearch,
+    runOrderSearch,
+    storefront?.trackOrderPrefill,
+  ]);
+
   const handleTrackByOrder = async (event: React.FormEvent) => {
     event.preventDefault();
-    const errors = validateTrackByOrderForm({ orderNumber });
-    setOrderErrors(errors);
-    if (hasTrackByOrderErrors(errors)) return;
-
-    setIsSearchingOrder(true);
-    setOrderResult(null);
-    try {
-      const result = await trackByOrderNumber({
-        orderNumber: orderNumber.trim(),
-      });
-      setOrderResult(result);
-      if (!result.found) {
-        toastError(result.message);
-      }
-    } catch {
-      toastError("We couldn't find any orders matching your details.");
-    } finally {
-      setIsSearchingOrder(false);
-    }
+    await runOrderSearch(orderNumber);
   };
 
   const handleTrackByCustomer = async (event: React.FormEvent) => {
     event.preventDefault();
-    const errors = validateTrackByCustomerForm({
-      email: customerEmail,
-      phone: customerPhone,
-    });
-    setCustomerErrors(errors);
-    if (hasTrackByCustomerErrors(errors)) return;
-
-    setIsSearchingCustomer(true);
-    setCustomerResults(null);
-    try {
-      const result = await trackByCustomer({
-        email: customerEmail.trim() || undefined,
-        phone: (customerPhone ?? "").trim() || undefined,
-      });
-      setCustomerResults(result);
-      if (!result.found) {
-        toastError(result.message);
-      }
-    } catch {
-      toastError("We couldn't find any orders matching your details.");
-    } finally {
-      setIsSearchingCustomer(false);
-    }
+    await runCustomerSearch(customerEmail, customerPhone);
   };
 
   return (
@@ -225,7 +289,13 @@ export function TrackOrderView() {
         </p>
       </div>
 
-      <Tabs defaultValue="order-number" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setActiveTab(value as "order-number" | "customer")
+        }
+        className="space-y-6"
+      >
         <div className="flex justify-center">
           <TabsList className="inline-flex h-auto w-fit gap-1 rounded-2xl bg-muted/50 p-1.5">
             <TabsTrigger

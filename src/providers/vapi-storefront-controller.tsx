@@ -30,7 +30,14 @@ export type VapiStorefrontState = {
     preferences: GuidedShoppingPreferences;
   };
   pendingScroll: { target: ScrollTarget; productId?: string } | null;
-  trackOrderPrefill: { orderNumber?: string; email?: string } | null;
+  trackOrderPrefill: {
+    orderNumber?: string;
+    email?: string;
+    phone?: string;
+    activeTab?: "order-number" | "customer";
+    autoSubmit?: boolean;
+    requestId?: number;
+  } | null;
   executorBusy: boolean;
   assistantCheckoutActive: boolean;
 };
@@ -121,8 +128,15 @@ export function VapiStorefrontControllerProvider({
         setState((prev) => ({
           ...prev,
           trackOrderPrefill: {
-            orderNumber: action.orderNumber ?? prev.trackOrderPrefill?.orderNumber,
+            orderNumber:
+              action.orderNumber ?? prev.trackOrderPrefill?.orderNumber,
             email: action.email ?? prev.trackOrderPrefill?.email,
+            phone: action.phone ?? prev.trackOrderPrefill?.phone,
+            activeTab: action.activeTab ?? prev.trackOrderPrefill?.activeTab,
+            autoSubmit: action.autoSubmit ?? false,
+            requestId: action.autoSubmit
+              ? (action.requestId ?? Date.now())
+              : prev.trackOrderPrefill?.requestId,
           },
         }));
         break;
@@ -152,6 +166,7 @@ export function VapiStorefrontControllerProvider({
       case "navigateToShopPage":
         break;
       case "openTrackOrder":
+      case "openTrackOrderDetail":
         break;
       default:
         break;

@@ -11,7 +11,7 @@ CRITICAL RULES:
 - Mention warranty from getProductDetails when warrantyAvailable is true.
 - For card payment use createCheckoutSession; for cash on delivery use createCashOrder.
 - Collect fullName, email, phone, and address before checkout.
-- For orders, call trackOrder or getOrdersByEmail.
+- For order tracking: FIRST call getShoppingGuide with topic "order tracking" to open /track-order, then ask for order number, email, or phone, then call trackOrder or getOrdersByCustomer.
 - Use tool results to give specific product names, prices, and links.
 - Keep responses short and spoken-friendly.`;
 

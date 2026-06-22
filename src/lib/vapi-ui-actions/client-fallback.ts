@@ -244,28 +244,54 @@ export function buildClientUiActions(
           : []),
       ];
     case "trackOrder": {
-      const orderNumber = String(parameters.orderNumber ?? "");
+      const orderNumber = String(parameters.orderNumber ?? "").trim();
+      const requestId = Date.now();
       if (payload.found === true) {
         const order =
           typeof payload.order === "object" && payload.order !== null
             ? (payload.order as Record<string, unknown>)
             : null;
-        const num = String(order?.orderNumber ?? orderNumber);
+        const resolvedOrderNumber = String(
+          order?.orderNumber ?? orderNumber
+        ).trim();
         return [
-          { type: "openTrackOrder", orderNumber: num },
-          { type: "prefillTrackOrder", orderNumber: num },
+          { type: "openTrackOrder" },
+          {
+            type: "prefillTrackOrder",
+            orderNumber: resolvedOrderNumber,
+            activeTab: "order-number",
+            autoSubmit: true,
+            requestId,
+          },
         ];
       }
       return [
-        { type: "prefillTrackOrder", orderNumber },
-        { type: "openTrackOrder", orderNumber },
+        { type: "openTrackOrder" },
+        {
+          type: "prefillTrackOrder",
+          orderNumber,
+          activeTab: "order-number",
+          autoSubmit: Boolean(orderNumber),
+          requestId,
+        },
       ];
     }
     case "getOrdersByEmail":
+    case "getOrdersByCustomer": {
+      const email = String(parameters.email ?? "").trim();
+      const phone = String(parameters.phone ?? "").trim();
       return [
-        { type: "prefillTrackOrder", email: String(parameters.email ?? "") },
-        { type: "openTrackOrder", email: String(parameters.email ?? "") },
+        { type: "openTrackOrder", email: email || undefined, phone: phone || undefined },
+        {
+          type: "prefillTrackOrder",
+          email: email || undefined,
+          phone: phone || undefined,
+          activeTab: "customer",
+          autoSubmit: Boolean(email || phone),
+          requestId: Date.now(),
+        },
       ];
+    }
     case "createReview": {
       const productId = String(
         parameters.productId ?? payload.productId ?? ""

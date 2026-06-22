@@ -62,8 +62,17 @@ export type UiAction =
   | { type: "openOrderConfirmed"; orderNumber?: string; email?: string }
   | { type: "openStripeCheckout"; url: string }
   | { type: "navigateToShopPage"; path: string }
-  | { type: "openTrackOrder"; orderNumber?: string; email?: string }
-  | { type: "prefillTrackOrder"; orderNumber?: string; email?: string }
+  | { type: "openTrackOrder"; email?: string; phone?: string }
+  | {
+      type: "prefillTrackOrder";
+      orderNumber?: string;
+      email?: string;
+      phone?: string;
+      activeTab?: "order-number" | "customer";
+      autoSubmit?: boolean;
+      requestId?: number;
+    }
+  | { type: "openTrackOrderDetail"; orderNumber: string }
   | { type: "setAiSearchLoading"; loading: boolean }
   | { type: "setCheckoutProgress"; phase: CheckoutProgressPhase }
   | { type: "prefillCheckoutDelivery"; method: string }
@@ -96,6 +105,7 @@ const UI_ACTION_TYPES = new Set([
   "openStripeCheckout",
   "navigateToShopPage",
   "openTrackOrder",
+  "openTrackOrderDetail",
   "prefillTrackOrder",
   "setAiSearchLoading",
   "setCheckoutProgress",

@@ -10,7 +10,7 @@ const VAPI_DELIVERY_METHOD_PROPERTY = {
 export const VAPI_SYSTEM_PROMPT = `You are a professional ecommerce shopping assistant for our online store.
 
 VISUAL STOREFRONT (IMPORTANT):
-- When you use tools, the website navigates automatically: product search opens /products, product details open the product page, addToCart and cart review open /cart, checkout steps (delivery/payment) open /checkout only after the customer proceeds to checkout, cash-on-delivery orders open the order-confirmed page, Stripe checkout opens the secure payment page, trackOrder opens order tracking when asked, and store guides open the relevant shop pages (shipping, returns, contact, about).
+- When you use tools, the website navigates automatically: product search opens /products, product details open the product page, addToCart and cart review open /cart, checkout steps (delivery/payment) open /checkout only after the customer proceeds to checkout, cash-on-delivery orders open the order-confirmed page, Stripe checkout opens the secure payment page, order tracking opens /track-order first then the order detail page when a match is found, and store guides open the relevant shop pages (shipping, returns, contact, about).
 - Tell the customer what you are showing on screen (e.g. "I'm opening the catalog filtered for chairs under $200" or "I've added that to your cart — you can see it on the cart page").
 - Voice and in-call text drive live storefront navigation. Standalone text-only chat (without an active call) does not navigate the site yet.
 
@@ -91,7 +91,8 @@ CHECKOUT (only after customer confirms they want to proceed to checkout):
 
 Store & shopping help:
 - getBestSellers, getPaymentMethods, getShoppingGuide, getStoreInfo, getShippingPolicy, getReturnPolicy.
-- trackOrder (order number) or getOrdersByEmail (email) for order status — only when the customer explicitly wants to track or look up an order.
+- trackOrder (order number) or getOrdersByCustomer (email and/or phone) for order status — only when the customer explicitly wants to track or look up an order.
+- When the customer wants to track an order: FIRST call getShoppingGuide with topic "order tracking" to open the track-order page, THEN ask for their order number, email, or phone, THEN call trackOrder or getOrdersByCustomer.
 
 When explaining how to buy on the website:
 1. Open the product link from tool results.
@@ -238,7 +239,8 @@ export const VAPI_TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "trackOrder",
-      description: "Track an order by order number.",
+      description:
+        "Track an order by order number. Opens the track-order page and shows full order details.",
       parameters: {
         type: "object",
         properties: {
@@ -251,8 +253,24 @@ export const VAPI_TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "getOrdersByCustomer",
+      description:
+        "Look up customer orders by email address and/or phone number used at checkout. Provide at least one.",
+      parameters: {
+        type: "object",
+        properties: {
+          email: { type: "string" },
+          phone: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "getOrdersByEmail",
-      description: "Look up customer order history by email address.",
+      description:
+        "Look up customer order history by email address. Prefer getOrdersByCustomer when phone may be used.",
       parameters: {
         type: "object",
         properties: {

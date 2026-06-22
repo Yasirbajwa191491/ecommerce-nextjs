@@ -319,8 +319,26 @@ async function executeTool(
         orderNumber: String(parameters.orderNumber ?? ""),
       });
     case "getOrdersByEmail":
-      return await ctx.runMutation(internal.vapi.tools.getOrdersByEmail, {
-        email: String(parameters.email ?? ""),
+      return await ctx.runMutation(internal.vapi.tools.getOrdersByCustomer, {
+        email:
+          typeof parameters.email === "string" && parameters.email.trim()
+            ? parameters.email
+            : undefined,
+        phone:
+          typeof parameters.phone === "string" && parameters.phone.trim()
+            ? parameters.phone
+            : undefined,
+      });
+    case "getOrdersByCustomer":
+      return await ctx.runMutation(internal.vapi.tools.getOrdersByCustomer, {
+        email:
+          typeof parameters.email === "string" && parameters.email.trim()
+            ? parameters.email
+            : undefined,
+        phone:
+          typeof parameters.phone === "string" && parameters.phone.trim()
+            ? parameters.phone
+            : undefined,
       });
     case "getStoreInfo":
       return await ctx.runQuery(internal.vapi.tools.getStoreInfo, {});

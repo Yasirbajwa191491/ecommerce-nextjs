@@ -662,6 +662,64 @@ export const trackOrder = internalMutation({
   },
 });
 
+async function lookupCustomerOrdersForVapi(
+  ctx: MutationCtx,
+  args: { email?: string; phone?: string }
+) {
+  const email = args.email?.trim() ? normalizeEmail(args.email) : undefined;
+  const phone = args.phone?.trim() || undefined;
+
+  if (!email && !phone) {
+    return { found: false as const, message: TRACKING_NOT_FOUND };
+  }
+
+  if (email && !isValidEmail(email)) {
+    return { found: false as const, message: TRACKING_NOT_FOUND };
+  }
+
+  const identifier = email ?? phone!;
+  const rateLimit = await checkAndIncrementRateLimit(
+    ctx,
+    buildTrackingBucketKey("customer", identifier)
+  );
+  if (!rateLimit.allowed) {
+    return {
+      found: false as const,
+      message: "Too many lookup attempts. Please try again later.",
+    };
+  }
+
+  const orders = await ctx.runQuery(internal.orders.lookupOrdersByCustomer, {
+    email,
+    phone,
+  });
+  if (!orders.length) {
+    return { found: false as const, message: TRACKING_NOT_FOUND };
+  }
+
+  await incrementDailyAnalytics(ctx, "orderTrackingRequests");
+
+  return {
+    found: true as const,
+    orders: orders.map((order) =>
+      toVapiOrderSummary(toPublicOrderSummary(order))
+    ),
+  };
+}
+
+export const getOrdersByCustomer = internalMutation({
+  args: {
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+  },
+  returns: v.object({
+    found: v.boolean(),
+    message: v.optional(v.string()),
+    orders: v.optional(v.array(v.any())),
+  }),
+  handler: async (ctx, args) => lookupCustomerOrdersForVapi(ctx, args),
+});
+
 export const getOrdersByEmail = internalMutation({
   args: { email: v.string() },
   returns: v.object({
@@ -669,35 +727,8 @@ export const getOrdersByEmail = internalMutation({
     message: v.optional(v.string()),
     orders: v.optional(v.array(v.any())),
   }),
-  handler: async (ctx, args) => {
-    const email = normalizeEmail(args.email);
-    if (!isValidEmail(email)) {
-      return { found: false, message: TRACKING_NOT_FOUND };
-    }
-
-    const rateLimit = await checkAndIncrementRateLimit(
-      ctx,
-      buildTrackingBucketKey("customer", email)
-    );
-    if (!rateLimit.allowed) {
-      return {
-        found: false,
-        message: "Too many lookup attempts. Please try again later.",
-      };
-    }
-
-    const orders = await lookupOrdersByEmail(ctx, email);
-    if (!orders.length) {
-      return { found: false, message: TRACKING_NOT_FOUND };
-    }
-
-    await incrementDailyAnalytics(ctx, "orderTrackingRequests");
-
-    return {
-      found: true,
-      orders: orders.map((order) => toVapiOrderSummary(toPublicOrderSummary(order))),
-    };
-  },
+  handler: async (ctx, args) =>
+    lookupCustomerOrdersForVapi(ctx, { email: args.email }),
 });
 
 export const getStoreInfo = internalQuery({

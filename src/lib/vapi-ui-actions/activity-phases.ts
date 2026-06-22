@@ -17,6 +17,7 @@ const TOOL_PHASE_MAP: Record<string, VapiActivityPhase> = {
   createCashOrder: "preparing_checkout",
   trackOrder: "tracking_order",
   getOrdersByEmail: "tracking_order",
+  getOrdersByCustomer: "tracking_order",
 };
 
 export function getActivityPhaseForTool(toolName: string): VapiActivityPhase | undefined {

@@ -62,8 +62,17 @@ export type UiAction =
   | { type: "openOrderConfirmed"; orderNumber?: string; email?: string }
   | { type: "openStripeCheckout"; url: string }
   | { type: "navigateToShopPage"; path: string }
-  | { type: "openTrackOrder"; orderNumber?: string; email?: string }
-  | { type: "prefillTrackOrder"; orderNumber?: string; email?: string }
+  | { type: "openTrackOrder"; email?: string; phone?: string }
+  | {
+      type: "prefillTrackOrder";
+      orderNumber?: string;
+      email?: string;
+      phone?: string;
+      activeTab?: "order-number" | "customer";
+      autoSubmit?: boolean;
+      requestId?: number;
+    }
+  | { type: "openTrackOrderDetail"; orderNumber: string }
   | { type: "setAiSearchLoading"; loading: boolean }
   | { type: "setCheckoutProgress"; phase: CheckoutProgressPhase }
   | { type: "prefillCheckoutDelivery"; method: string }
@@ -406,35 +415,55 @@ export function buildUiActions(
       ];
 
     case "trackOrder": {
+      const orderNumber = String(parameters.orderNumber ?? "").trim();
+      const requestId = Date.now();
       if (payload.found !== true) {
         return [
+          { type: "openTrackOrder" },
           {
             type: "prefillTrackOrder",
-            orderNumber: String(parameters.orderNumber ?? ""),
+            orderNumber,
+            activeTab: "order-number",
+            autoSubmit: Boolean(orderNumber),
+            requestId,
           },
-          { type: "openTrackOrder", orderNumber: String(parameters.orderNumber ?? "") },
         ];
       }
       const order =
         typeof payload.order === "object" && payload.order !== null
           ? (payload.order as Record<string, unknown>)
           : null;
-      const orderNumber = String(order?.orderNumber ?? parameters.orderNumber ?? "");
+      const resolvedOrderNumber = String(
+        order?.orderNumber ?? orderNumber
+      ).trim();
       return [
-        { type: "openTrackOrder", orderNumber },
-        { type: "prefillTrackOrder", orderNumber },
-        { type: "setCheckoutProgress", phase: "understanding" },
+        { type: "openTrackOrder" },
+        {
+          type: "prefillTrackOrder",
+          orderNumber: resolvedOrderNumber,
+          activeTab: "order-number",
+          autoSubmit: true,
+          requestId,
+        },
       ];
     }
 
     case "getOrdersByEmail":
+    case "getOrdersByCustomer": {
+      const email = String(parameters.email ?? "").trim();
+      const phone = String(parameters.phone ?? "").trim();
       return [
+        { type: "openTrackOrder", email: email || undefined, phone: phone || undefined },
         {
           type: "prefillTrackOrder",
-          email: String(parameters.email ?? ""),
+          email: email || undefined,
+          phone: phone || undefined,
+          activeTab: "customer",
+          autoSubmit: Boolean(email || phone),
+          requestId: Date.now(),
         },
-        { type: "openTrackOrder", email: String(parameters.email ?? "") },
       ];
+    }
 
     case "createReview": {
       const productId = String(

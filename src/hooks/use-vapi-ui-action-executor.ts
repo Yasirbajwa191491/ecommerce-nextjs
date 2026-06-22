@@ -29,6 +29,7 @@ const NAV_ACTIONS = new Set([
   "openStripeCheckout",
   "navigateToShopPage",
   "openTrackOrder",
+  "openTrackOrderDetail",
 ]);
 
 function buildToolDedupeKey(event: VapiToolEvent): string {
@@ -166,15 +167,18 @@ export function useVapiUiActionExecutor() {
           break;
         }
         case "openTrackOrder": {
+          const params = new URLSearchParams();
+          if (action.email?.trim()) params.set("email", action.email.trim());
+          if (action.phone?.trim()) params.set("phone", action.phone.trim());
+          const q = params.toString();
+          router.push(q ? `/track-order?${q}` : "/track-order");
+          break;
+        }
+        case "openTrackOrderDetail": {
           if (action.orderNumber?.trim()) {
             router.push(
               `/track-order/${encodeURIComponent(action.orderNumber.trim())}`
             );
-          } else {
-            const params = new URLSearchParams();
-            if (action.email?.trim()) params.set("email", action.email.trim());
-            const q = params.toString();
-            router.push(q ? `/track-order?${q}` : "/track-order");
           }
           break;
         }
@@ -332,6 +336,24 @@ export function useVapiUiActionExecutor() {
           { type: "openCheckout", phase: "delivery" },
           { type: "setCheckoutProgress", phase: "delivery" },
         ]);
+      }
+
+      if (
+        event.toolName === "trackOrder" ||
+        event.toolName === "getOrdersByEmail" ||
+        event.toolName === "getOrdersByCustomer"
+      ) {
+        enqueueActions([{ type: "openTrackOrder" }]);
+      }
+
+      if (event.toolName === "getShoppingGuide") {
+        const topic =
+          typeof event.parameters.topic === "string"
+            ? event.parameters.topic.trim().toLowerCase()
+            : "";
+        if (topic.includes("track") || topic.includes("order")) {
+          enqueueActions([{ type: "openTrackOrder" }]);
+        }
       }
     },
     [controller, enqueueActions]
