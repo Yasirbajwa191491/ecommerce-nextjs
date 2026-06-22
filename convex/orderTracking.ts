@@ -1,5 +1,6 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { buildTrackingBucketKey } from "./lib/rateLimit";
 import {
@@ -110,7 +111,7 @@ export const trackByCustomer = action({
 
     return {
       found: true,
-      orders: orders.map((order) => toPublicOrderSummary(order)),
+      orders: orders.map((order: Doc<"orders">) => toPublicOrderSummary(order)),
     };
   },
 });

@@ -4,6 +4,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Twilio from "twilio";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { getSiteUrl } from "./lib/siteUrl";
 
@@ -271,7 +272,7 @@ export const sendOrderConfirmationSms = internalAction({
         paymentMethod: order.paymentMethod,
         paymentStatus: order.paymentStatus,
         trackOrderUrl,
-        items: items.map((item) => ({
+        items: items.map((item: Doc<"orderItems">) => ({
           productName: item.productName,
           color: item.color,
           quantity: item.quantity,
