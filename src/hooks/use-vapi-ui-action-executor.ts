@@ -15,6 +15,7 @@ import {
   type CatalogFilterPayload,
   type UiAction,
 } from "@/lib/vapi-ui-actions/types";
+import { isValidStripeCheckoutUrl } from "@/lib/vapi-config";
 import { useVapiStorefrontController } from "@/providers/vapi-storefront-controller";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
 
@@ -25,6 +26,8 @@ const NAV_ACTIONS = new Set([
   "openCart",
   "openCheckout",
   "openOrderConfirmed",
+  "openStripeCheckout",
+  "navigateToShopPage",
   "openTrackOrder",
 ]);
 
@@ -146,6 +149,20 @@ export function useVapiUiActionExecutor() {
           }
           const query = params.toString();
           router.push(query ? `/checkout/success?${query}` : "/checkout/success");
+          break;
+        }
+        case "openStripeCheckout": {
+          const base = action.url.split("#")[0] ?? action.url;
+          if (isValidStripeCheckoutUrl(base)) {
+            window.location.href = action.url;
+          }
+          break;
+        }
+        case "navigateToShopPage": {
+          const path = action.path.startsWith("/") ? action.path : `/${action.path}`;
+          if (pathname !== path) {
+            router.push(path);
+          }
           break;
         }
         case "openTrackOrder": {
@@ -314,15 +331,6 @@ export function useVapiUiActionExecutor() {
         enqueueActions([
           { type: "openCheckout", phase: "delivery" },
           { type: "setCheckoutProgress", phase: "delivery" },
-        ]);
-      }
-
-      if (
-        event.toolName === "createCheckoutSession"
-      ) {
-        enqueueActions([
-          { type: "openCheckout", phase: "ready" },
-          { type: "setCheckoutProgress", phase: "ready" },
         ]);
       }
     },

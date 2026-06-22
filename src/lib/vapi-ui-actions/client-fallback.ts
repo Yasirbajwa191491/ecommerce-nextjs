@@ -63,6 +63,18 @@ function buildSearchFilters(
   return filters;
 }
 
+function deliveryMethodFromParameters(
+  parameters: Record<string, unknown>
+): string | undefined {
+  if (
+    typeof parameters.deliveryMethod === "string" &&
+    parameters.deliveryMethod.trim()
+  ) {
+    return parameters.deliveryMethod.trim();
+  }
+  return undefined;
+}
+
 function resolveDeliveryMethod(
   parameters: Record<string, unknown>,
   payload: Record<string, unknown>
@@ -99,9 +111,9 @@ function resolveCustomerEmail(
 
 function buildGetCartActions(
   parameters: Record<string, unknown>,
-  payload: Record<string, unknown>
+  _payload: Record<string, unknown>
 ): UiAction[] {
-  const deliveryMethod = resolveDeliveryMethod(parameters, payload);
+  const deliveryMethod = deliveryMethodFromParameters(parameters);
   if (deliveryMethod) {
     return [
       { type: "openCheckout", phase: "payment" },
@@ -201,12 +213,23 @@ export function buildClientUiActions(
     }
     case "removeFromCart":
       return [{ type: "openCart" }];
-    case "createCheckoutSession":
+    case "createCheckoutSession": {
+      const checkoutUrl =
+        typeof payload.checkoutUrl === "string"
+          ? payload.checkoutUrl
+          : typeof payload.url === "string"
+            ? payload.url
+            : undefined;
       return [
-        { type: "openCheckout", phase: "ready" },
         { type: "setCheckoutProgress", phase: "ready" },
-        { type: "scrollToTarget", target: "checkoutSummary" },
+        ...(checkoutUrl
+          ? [{ type: "openStripeCheckout" as const, url: checkoutUrl }]
+          : [
+              { type: "openCheckout" as const, phase: "ready" as const },
+              { type: "scrollToTarget" as const, target: "checkoutSummary" as const },
+            ]),
       ];
+    }
     case "createCashOrder":
       return [
         { type: "setCheckoutProgress", phase: "ready" },
@@ -243,6 +266,46 @@ export function buildClientUiActions(
         { type: "prefillTrackOrder", email: String(parameters.email ?? "") },
         { type: "openTrackOrder", email: String(parameters.email ?? "") },
       ];
+    case "createReview": {
+      const productId = String(
+        parameters.productId ?? payload.productId ?? ""
+      ).trim();
+      if (!productId) {
+        return [{ type: "scrollToTarget", target: "reviews" }];
+      }
+      return [
+        { type: "openProductDetails", productId, scrollTo: "reviews" },
+        { type: "scrollToTarget", target: "reviews", productId },
+      ];
+    }
+    case "getShippingPolicy":
+      return [{ type: "navigateToShopPage", path: "/shipping" }];
+    case "getReturnPolicy":
+      return [{ type: "navigateToShopPage", path: "/return" }];
+    case "getStoreInfo":
+      return [{ type: "navigateToShopPage", path: "/contact" }];
+    case "getShoppingGuide": {
+      const topic =
+        typeof parameters.topic === "string"
+          ? parameters.topic.trim().toLowerCase()
+          : "";
+      if (topic.includes("track") || topic.includes("order")) {
+        return [{ type: "navigateToShopPage", path: "/track-order" }];
+      }
+      if (topic.includes("contact") || topic.includes("support")) {
+        return [{ type: "navigateToShopPage", path: "/contact" }];
+      }
+      if (topic.includes("about")) {
+        return [{ type: "navigateToShopPage", path: "/about" }];
+      }
+      if (topic.includes("ship")) {
+        return [{ type: "navigateToShopPage", path: "/shipping" }];
+      }
+      if (topic.includes("return")) {
+        return [{ type: "navigateToShopPage", path: "/return" }];
+      }
+      return [{ type: "navigateToShopPage", path: "/products" }];
+    }
     default:
       return [];
   }

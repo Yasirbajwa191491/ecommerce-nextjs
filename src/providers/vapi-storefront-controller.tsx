@@ -137,7 +137,6 @@ export function VapiStorefrontControllerProvider({
       case "openProductDetails":
       case "openCart":
       case "openCheckout":
-      case "openOrderConfirmed":
         setState((prev) => ({
           ...prev,
           checkoutActive: action.type === "openCheckout" ? true : prev.checkoutActive,
@@ -147,6 +146,10 @@ export function VapiStorefrontControllerProvider({
               ? action.phase
               : prev.checkoutProgress,
         }));
+        break;
+      case "openOrderConfirmed":
+      case "openStripeCheckout":
+      case "navigateToShopPage":
         break;
       case "openTrackOrder":
         break;
