@@ -251,7 +251,7 @@ export const sendReviewInvitation = internalAction({
           supportEmail: branding.email,
           supportPhone: branding.phone,
           supportAddress: branding.address,
-          products: items.map((item) => ({
+          products: items.map((item: Doc<"orderItems">) => ({
             name: item.productName,
             imageUrl: item.imageUrl,
             color: item.color,
