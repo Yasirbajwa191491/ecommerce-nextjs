@@ -8,6 +8,10 @@ const browserCartLineValidator = v.object({
   quantity: v.number(),
 });
 
+type PushBrowserCartToVoiceResult = {
+  updated: boolean;
+};
+
 /** Push the browser cart into the active voice session so getCart matches the UI. */
 export const pushBrowserCartToVoice = mutation({
   args: {
@@ -15,7 +19,7 @@ export const pushBrowserCartToVoice = mutation({
     lines: v.array(browserCartLineValidator),
   },
   returns: v.object({ updated: v.boolean() }),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<PushBrowserCartToVoiceResult> => {
     const callId = args.vapiCallId.trim();
     if (!callId || args.lines.length === 0) {
       return { updated: false };
