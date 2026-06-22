@@ -4,6 +4,7 @@ import { LayoutGrid, List } from "lucide-react";
 import type { ProductSort } from "@/lib/shop/product-sort";
 import { PRODUCT_SORT_OPTIONS } from "@/lib/shop/product-sort";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,8 @@ import { cn } from "@/lib/utils";
 type ViewMode = "grid" | "list";
 
 type ProductCatalogToolbarProps = {
-  totalCount: number;
+  totalCount?: number;
+  isCountLoading?: boolean;
   searchQuery?: string;
   isSearching?: boolean;
   view: ViewMode;
@@ -28,6 +30,7 @@ type ProductCatalogToolbarProps = {
 
 export function ProductCatalogToolbar({
   totalCount,
+  isCountLoading = false,
   searchQuery,
   isSearching = false,
   view,
@@ -41,10 +44,12 @@ export function ProductCatalogToolbar({
         <p className={SHOP_BODY_SM}>
           {isSearching ? (
             <span className="font-medium text-foreground">Searching…</span>
+          ) : isCountLoading ? (
+            <Skeleton className="inline-block h-4 w-24 align-middle" aria-label="Loading product count" />
           ) : (
             <>
               <span className="font-semibold text-foreground tabular-nums">
-                {totalCount}
+                {totalCount ?? 0}
               </span>{" "}
               {totalCount === 1 ? "product" : "products"}
               {searchQuery ? (

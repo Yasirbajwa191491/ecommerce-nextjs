@@ -478,9 +478,14 @@ export default function ProductCatalog() {
     (totalCount ?? 0) === 0;
 
   const displayProducts = isHybridSearch ? hybridDisplayProducts : allProducts;
+  const isCountLoading = isHybridSearch
+    ? isSearchLoading
+    : totalCount === undefined;
   const displayTotalCount = isHybridSearch
-    ? hybridSearch.totalCount
-    : (totalCount ?? 0);
+    ? isCountLoading
+      ? undefined
+      : hybridSearch.totalCount
+    : totalCount;
 
   const pageIntro = (
     <ScrollReveal variant="headline">
@@ -580,6 +585,7 @@ export default function ProductCatalog() {
 
             <ProductCatalogToolbar
               totalCount={displayTotalCount}
+              isCountLoading={isCountLoading}
               searchQuery={urlSearch.trim() || undefined}
               isSearching={isSearchLoading}
               view={view}
