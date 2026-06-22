@@ -50,7 +50,8 @@ export function VapiAssistantWidget() {
     api.vapi.voiceCartSync.pushBrowserCartToVoice
   );
   const storefront = useVapiStorefrontController();
-  const { handleToolStart, handleToolComplete } = useVapiUiActionExecutor();
+  const { handleToolStart, handleToolComplete, handleUserMessage } =
+    useVapiUiActionExecutor();
 
   const onToolStart = useCallback(
     (event: VapiToolEvent) => {
@@ -84,7 +85,11 @@ export function VapiAssistantWidget() {
     sendMessage,
     completeServerTools,
     setResolvedCallId,
-  } = useVapiAssistant({ onToolStart, onToolComplete });
+  } = useVapiAssistant({
+    onToolStart,
+    onToolComplete,
+    onUserMessage: handleUserMessage,
+  });
 
   const onServerToolComplete = useCallback(
     (event: VapiToolEvent) => {

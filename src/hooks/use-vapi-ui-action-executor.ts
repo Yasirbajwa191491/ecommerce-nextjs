@@ -15,7 +15,7 @@ import {
   type CatalogFilterPayload,
   type UiAction,
 } from "@/lib/vapi-ui-actions/types";
-import { isValidStripeCheckoutUrl } from "@/lib/vapi-config";
+import { isTrackOrderIntent, isValidStripeCheckoutUrl } from "@/lib/vapi-config";
 import { useVapiStorefrontController } from "@/providers/vapi-storefront-controller";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
 
@@ -388,9 +388,19 @@ export function useVapiUiActionExecutor() {
     return () => window.clearTimeout(timer);
   }, [pathname, controller.pendingScroll]);
 
+  const handleUserMessage = useCallback(
+    (text: string) => {
+      if (!isTrackOrderIntent(text)) return;
+      if (pathname.startsWith("/track-order")) return;
+      enqueueActions([{ type: "openTrackOrder" }]);
+    },
+    [enqueueActions, pathname]
+  );
+
   return {
     handleToolStart,
     handleToolComplete,
+    handleUserMessage,
     enqueueActions,
   };
 }

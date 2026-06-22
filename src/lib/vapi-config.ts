@@ -361,6 +361,23 @@ export function isCheckoutRelatedMessage(text: string): boolean {
   );
 }
 
+const ORDER_NUMBER_ONLY = /^ord-\d{8}-[a-z0-9]{6}$/i;
+
+/** User wants to start order tracking (not already providing an order number). */
+export function isTrackOrderIntent(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || ORDER_NUMBER_ONLY.test(trimmed)) return false;
+
+  const lower = trimmed.toLowerCase();
+  return (
+    /\b(track|tracking|check|find|look\s*up|where\s+is)\b.*\b(order|parcel|shipment|package|delivery)\b/.test(
+      lower
+    ) ||
+    /\b(order|parcel|package)\b.*\b(status|track|tracking)\b/.test(lower) ||
+    /\bwant\s+to\s+track\b/.test(lower)
+  );
+}
+
 export function formatToolResultForDisplay(
   toolName: string,
   result: unknown

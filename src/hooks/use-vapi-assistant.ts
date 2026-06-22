@@ -31,6 +31,7 @@ import { inferAssistantStateFromTool } from "@/lib/vapi-ui-actions/activity-phas
 export type UseVapiAssistantOptions = {
   onToolStart?: (event: VapiToolEvent) => void;
   onToolComplete?: (event: VapiToolEvent) => void;
+  onUserMessage?: (text: string) => void;
   onStateOverride?: (state: VapiAssistantState | null) => void;
 };
 
@@ -258,11 +259,13 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const confirmedOrderNumberRef = useRef<string | undefined>(undefined);
   const onToolStartRef = useRef(options?.onToolStart);
   const onToolCompleteRef = useRef(options?.onToolComplete);
+  const onUserMessageRef = useRef(options?.onUserMessage);
   const onStateOverrideRef = useRef(options?.onStateOverride);
   const stateOverrideRef = useRef<VapiAssistantState | null>(null);
 
   onToolStartRef.current = options?.onToolStart;
   onToolCompleteRef.current = options?.onToolComplete;
+  onUserMessageRef.current = options?.onUserMessage;
   onStateOverrideRef.current = options?.onStateOverride;
 
   const [state, setState] = useState<VapiAssistantState>("idle");
@@ -537,6 +540,10 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
               return;
             }
 
+            if (role === "user") {
+              onUserMessageRef.current?.(transcriptText);
+            }
+
             setTranscript((prev) => [
               ...prev,
               createEntry(
@@ -748,6 +755,7 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
       if (!trimmed || !assistantId) return;
 
       setTranscript((prev) => [...prev, createEntry("user", trimmed)]);
+      onUserMessageRef.current?.(trimmed);
       setActivitySteps((prev) => {
         const understanding = buildUnderstandingStep();
         const withoutStale = prev.filter(
