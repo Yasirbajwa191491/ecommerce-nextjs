@@ -662,10 +662,16 @@ export const trackOrder = internalMutation({
   },
 });
 
+type VapiCustomerOrdersLookupResult = {
+  found: boolean;
+  message?: string;
+  orders?: ReturnType<typeof toVapiOrderSummary>[];
+};
+
 async function lookupCustomerOrdersForVapi(
   ctx: MutationCtx,
   args: { email?: string; phone?: string }
-) {
+): Promise<VapiCustomerOrdersLookupResult> {
   const email = args.email?.trim() ? normalizeEmail(args.email) : undefined;
   const phone = args.phone?.trim() || undefined;
 
