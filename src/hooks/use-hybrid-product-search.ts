@@ -38,6 +38,7 @@ type HybridSearchState = {
   loading: boolean;
   isSimilarFallback: boolean;
   nextCursor?: number;
+  resultProductIds: string[];
 };
 
 export function useHybridProductSearch({
@@ -52,6 +53,7 @@ export function useHybridProductSearch({
     totalCount: 0,
     loading: false,
     isSimilarFallback: false,
+    resultProductIds: [],
   });
   const requestIdRef = useRef(0);
 
@@ -63,6 +65,7 @@ export function useHybridProductSearch({
         totalCount: 0,
         loading: false,
         isSimilarFallback: false,
+        resultProductIds: [],
       });
       return;
     }
@@ -73,6 +76,7 @@ export function useHybridProductSearch({
       totalCount: 0,
       loading: true,
       isSimilarFallback: false,
+      resultProductIds: [],
     });
 
     void searchHybrid({
@@ -90,6 +94,7 @@ export function useHybridProductSearch({
           loading: false,
           isSimilarFallback: result.isSimilarFallback,
           nextCursor: result.nextCursor,
+          resultProductIds: result.resultProductIds,
         });
       })
       .catch(() => {
@@ -99,6 +104,7 @@ export function useHybridProductSearch({
           totalCount: 0,
           loading: false,
           isSimilarFallback: false,
+          resultProductIds: [],
         });
       });
   }, [debouncedQuery, enabled, limit, searchHybrid, source]);
@@ -122,6 +128,7 @@ export function useHybridProductSearchPaginated({
   const [loadingMore, setLoadingMore] = useState(false);
   const [isSimilarFallback, setIsSimilarFallback] = useState(false);
   const [nextCursor, setNextCursor] = useState<number | undefined>();
+  const [resultProductIds, setResultProductIds] = useState<string[]>([]);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -132,6 +139,7 @@ export function useHybridProductSearchPaginated({
       setLoading(false);
       setIsSimilarFallback(false);
       setNextCursor(undefined);
+      setResultProductIds([]);
       return;
     }
 
@@ -141,6 +149,7 @@ export function useHybridProductSearchPaginated({
     setTotalCount(0);
     setIsSimilarFallback(false);
     setNextCursor(undefined);
+    setResultProductIds([]);
 
     void searchHybrid({
       query: trimmed,
@@ -155,6 +164,7 @@ export function useHybridProductSearchPaginated({
         setTotalCount(result.totalCount);
         setIsSimilarFallback(result.isSimilarFallback);
         setNextCursor(result.nextCursor);
+        setResultProductIds(result.resultProductIds);
       })
       .catch(() => {
         if (requestId !== requestIdRef.current) return;
@@ -162,6 +172,7 @@ export function useHybridProductSearchPaginated({
         setTotalCount(0);
         setIsSimilarFallback(false);
         setNextCursor(undefined);
+        setResultProductIds([]);
       })
       .finally(() => {
         if (requestId === requestIdRef.current) {
@@ -195,6 +206,7 @@ export function useHybridProductSearchPaginated({
     loadingMore,
     isSimilarFallback,
     hasMore: nextCursor !== undefined,
+    resultProductIds,
     loadMore,
   };
 }

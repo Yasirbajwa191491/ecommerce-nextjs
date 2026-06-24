@@ -43,6 +43,8 @@ type HybridSearchResult = {
   totalCount: number;
   nextCursor?: number;
   isSimilarFallback: boolean;
+  /** All ranked product ids — used to scope catalog sidebar facets during search. */
+  resultProductIds: Id<"products">[];
 };
 
 type SearchCandidatesResult = {
@@ -75,6 +77,7 @@ const hybridSearchResultValidator = v.object({
   totalCount: v.number(),
   nextCursor: v.optional(v.number()),
   isSimilarFallback: v.boolean(),
+  resultProductIds: v.array(v.id("products")),
 });
 
 async function getQueryEmbedding(
@@ -138,7 +141,12 @@ export const searchHybrid = action({
   handler: async (ctx, args): Promise<HybridSearchResult> => {
     const trimmed = args.query.trim();
     if (!trimmed) {
-      return { products: [], totalCount: 0, isSimilarFallback: false };
+      return {
+        products: [],
+        totalCount: 0,
+        isSimilarFallback: false,
+        resultProductIds: [],
+      };
     }
 
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 50);
@@ -271,6 +279,7 @@ export const searchHybrid = action({
       totalCount,
       nextCursor,
       isSimilarFallback,
+      resultProductIds: ranked.map((p) => p._id as Id<"products">),
     };
   },
 });

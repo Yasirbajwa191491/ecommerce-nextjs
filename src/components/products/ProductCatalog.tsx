@@ -42,6 +42,9 @@ type CatalogFilterFacets = FunctionReturnType<
 /** Persists facet sidebar data across remounts so Brand/Promotions don't flash away. */
 let catalogFacetsCache: CatalogFilterFacets | undefined;
 
+/** Persists product count across remounts so the toolbar doesn't flash skeleton. */
+let catalogTotalCountCache: { filterKey: string; count: number } | undefined;
+
 function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
   const sorted = [...products];
   switch (sort) {
@@ -116,14 +119,27 @@ export default function ProductCatalog() {
   const [priceInitialized, setPriceInitialized] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const facetNow = useMemo(
+  // Minute bucket — promotion windows don't need sub-minute precision; avoids
+  // re-querying (and count skeleton flash) when useStableNow syncs on tab focus.
+  const catalogNow = useMemo(
     () => Math.floor(now / 60_000) * 60_000,
     [now]
   );
 
+  const hybridSearch = useHybridProductSearchPaginated({
+    debouncedQuery: urlSearch,
+    limit: PAGE_SIZE,
+    source: "catalog",
+  });
+
   const facetArgs = useMemo(
     () => ({
-      search: urlSearch.trim() || undefined,
+      // Hybrid search uses AI ranking — substring match on NL queries yields empty facets.
+      search: isHybridSearch ? undefined : urlSearch.trim() || undefined,
+      productIds:
+        isHybridSearch && hybridSearch.resultProductIds.length > 0
+          ? (hybridSearch.resultProductIds as Id<"products">[])
+          : undefined,
       categoryId: categoryId === "all" ? undefined : categoryId,
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
@@ -140,9 +156,16 @@ export default function ProductCatalog() {
           | "limited_time"
         >)
         : undefined,
-      now: facetNow,
+      now: catalogNow,
     }),
-    [urlSearch, categoryId, filters, facetNow]
+    [
+      isHybridSearch,
+      urlSearch,
+      hybridSearch.resultProductIds,
+      categoryId,
+      filters,
+      catalogNow,
+    ]
   );
 
   const facetsQuery = useQuery(api.products.getPublicFilterFacets, facetArgs);
@@ -218,12 +241,6 @@ export default function ProductCatalog() {
     setPriceRangeLocal(range);
   };
 
-  const hybridSearch = useHybridProductSearchPaginated({
-    debouncedQuery: urlSearch,
-    limit: PAGE_SIZE,
-    source: "catalog",
-  });
-
   const hybridProductIds = useMemo(
     () => hybridSearch.products.map((product) => product._id as Id<"products">),
     [hybridSearch.products]
@@ -272,7 +289,7 @@ export default function ProductCatalog() {
         >)
         : undefined,
       sort,
-      now,
+      now: catalogNow,
     }),
     [
       urlSearch,
@@ -281,7 +298,7 @@ export default function ProductCatalog() {
       priceFilterReady,
       filters,
       sort,
-      now,
+      catalogNow,
     ]
   );
 
@@ -293,10 +310,18 @@ export default function ProductCatalog() {
     catalogSignatureRef.current = "";
   }, [filterKey]);
 
-  const totalCount = useQuery(
+  const totalCountQuery = useQuery(
     api.products.countPublicFiltered,
     isHybridSearch ? "skip" : filterArgs
   );
+  if (totalCountQuery !== undefined) {
+    catalogTotalCountCache = { filterKey, count: totalCountQuery };
+  }
+  const totalCount =
+    totalCountQuery ??
+    (catalogTotalCountCache?.filterKey === filterKey
+      ? catalogTotalCountCache.count
+      : undefined);
 
   const firstPage = useQuery(
     api.products.listPublicPaginated,

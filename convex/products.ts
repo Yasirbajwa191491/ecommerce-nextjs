@@ -354,6 +354,8 @@ export const countPublicFiltered = query({
 export const getPublicFilterFacets = query({
   args: {
     search: v.optional(v.string()),
+    /** Scope facets to these products (e.g. hybrid search result set). Ignores `search`. */
+    productIds: v.optional(v.array(v.id("products"))),
     categoryId: v.optional(v.id("productCategories")),
     minPrice: v.optional(v.number()),
     maxPrice: v.optional(v.number()),
@@ -391,10 +393,18 @@ export const getPublicFilterFacets = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const products = await loadActiveProducts(ctx);
+    let products = await loadActiveProducts(ctx);
+    if (args.productIds?.length) {
+      const allowedIds = new Set(args.productIds);
+      products = products.filter((product) => allowedIds.has(product._id));
+    }
     const promotions = await loadActivePromotions(ctx);
     const promotionIndex = buildPromotionIndex(products, promotions, args.now);
-    const facets = computeFilterFacets(products, promotionIndex, args);
+    const { productIds: _productIds, ...facetArgs } = args;
+    const facets = computeFilterFacets(products, promotionIndex, {
+      ...facetArgs,
+      search: args.productIds?.length ? undefined : facetArgs.search,
+    });
     return {
       ...facets,
       colorFamilies: facets.colorFamilies.map((color) => ({
