@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { CartPricedLine } from "@/components/cart/cart-line-pricing";
-import { useStableNow } from "@/hooks/use-stable-now";
+import { useCatalogNow } from "@/hooks/use-stable-now";
 import { cartItemsToCheckoutLines, cartLineKey } from "@/lib/cart-lines";
 import { resolveCartProductId, type CartItem } from "@/reducer/cartReducer";
 
@@ -20,6 +21,12 @@ type PricedCartItem = {
   lineTotal: number;
   lineShippingTotal: number;
 };
+
+type CartPricingResult = FunctionReturnType<
+  typeof api.orders.validateCartForCheckout
+>;
+
+let cartPricingCache: { key: string; result: CartPricingResult } | undefined;
 
 export function toCartPricedLine(item: PricedCartItem): CartPricedLine {
   return {
@@ -37,10 +44,18 @@ export function useCartPricing(
   cart: CartItem[],
   deliveryMethod?: string
 ) {
-  const now = useStableNow();
+  const now = useCatalogNow();
   const lines = useMemo(() => cartItemsToCheckoutLines(cart), [cart]);
 
-  const result = useQuery(
+  const pricingCacheKey = useMemo(
+    () =>
+      cart.length > 0
+        ? JSON.stringify({ lines, now, deliveryMethod: deliveryMethod ?? null })
+        : "",
+    [cart.length, lines, now, deliveryMethod]
+  );
+
+  const resultQuery = useQuery(
     api.orders.validateCartForCheckout,
     cart.length > 0
       ? {
@@ -56,6 +71,16 @@ export function useCartPricing(
         }
       : "skip"
   );
+
+  if (resultQuery !== undefined && pricingCacheKey) {
+    cartPricingCache = { key: pricingCacheKey, result: resultQuery };
+  }
+
+  const result =
+    resultQuery ??
+    (pricingCacheKey && cartPricingCache?.key === pricingCacheKey
+      ? cartPricingCache.result
+      : undefined);
 
   const priced = result?.status === "ok" ? result : undefined;
   const pricingError =
@@ -79,7 +104,10 @@ export function useCartPricing(
   return {
     priced,
     pricingError,
-    isLoading: cart.length > 0 && result === undefined,
+    isLoading:
+      cart.length > 0 &&
+      result === undefined &&
+      !(pricingCacheKey && cartPricingCache?.key === pricingCacheKey),
     getPricedItem,
   };
 }

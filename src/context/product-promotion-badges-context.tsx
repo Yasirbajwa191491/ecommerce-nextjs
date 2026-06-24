@@ -6,10 +6,8 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { useStableNow } from "@/hooks/use-stable-now";
+import { useStorefrontPromotionsList } from "@/hooks/use-storefront-promotions";
 import {
   formatPromotionBadgeShort,
   getPromotionDisplay,
@@ -58,10 +56,8 @@ export function ProductPromotionBadgesProvider({
 }: {
   children: ReactNode;
 }) {
-  const now = useStableNow();
-  const promotions = useQuery(api.productPromotions.listActiveForStorefront, {
-    now,
-  });
+  const promotionsQuery = useStorefrontPromotionsList();
+  const promotions = promotionsQuery;
 
   const badgeByProductId = useMemo(() => {
     const map = new Map<string, ProductPromotionBadge>();

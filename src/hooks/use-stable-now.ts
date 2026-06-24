@@ -1,9 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const TICK_MS = 60_000;
+const CATALOG_NOW_BUCKET_MS = 60_000;
 
 /**
  * Timestamp for promotion/cart date-window queries.
@@ -45,4 +46,13 @@ export function useStableNow(): number {
   }, [syncNow]);
 
   return now;
+}
+
+/** Minute bucket for Convex catalog/promotion queries — avoids re-fetch flash on tab focus. */
+export function useCatalogNow(): number {
+  const now = useStableNow();
+  return useMemo(
+    () => Math.floor(now / CATALOG_NOW_BUCKET_MS) * CATALOG_NOW_BUCKET_MS,
+    [now]
+  );
 }

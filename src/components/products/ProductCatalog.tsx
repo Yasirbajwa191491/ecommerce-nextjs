@@ -30,6 +30,7 @@ import { getPrimaryImageUrl, productCardKey } from "@/lib/product-images";
 import { countActiveCatalogFilters } from "@/lib/shop/catalog-filter-url";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 import { isProductAiHighlighted } from "@/providers/vapi-storefront-controller";
+import { useCatalogNow } from "@/hooks/use-stable-now";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -93,7 +94,6 @@ export default function ProductCatalog() {
     filters,
     categoryId,
     sort,
-    now,
     setCategoryId,
     setSort,
     toggleBrand,
@@ -119,12 +119,7 @@ export default function ProductCatalog() {
   const [priceInitialized, setPriceInitialized] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  // Minute bucket — promotion windows don't need sub-minute precision; avoids
-  // re-querying (and count skeleton flash) when useStableNow syncs on tab focus.
-  const catalogNow = useMemo(
-    () => Math.floor(now / 60_000) * 60_000,
-    [now]
-  );
+  const catalogNow = useCatalogNow();
 
   const hybridSearch = useHybridProductSearchPaginated({
     debouncedQuery: urlSearch,
@@ -265,16 +260,26 @@ export default function ProductCatalog() {
     return sortProductsClient(products, sort);
   }, [isHybridSearch, hybridSearch.products, hybridProductIds, sort]);
 
+  const isCatalogDefaultPriceRange =
+    priceFilterReady &&
+    priceBounds !== undefined &&
+    activePriceRange[0] === priceBounds.minPrice &&
+    activePriceRange[1] === priceBounds.maxPrice;
+
   const filterArgs = useMemo(
     () => ({
       search: urlSearch.trim() || undefined,
       categoryId: categoryId === "all" ? undefined : categoryId,
       minPrice:
         filters.minPrice ??
-        (priceFilterReady ? activePriceRange[0] : undefined),
+        (priceFilterReady && !isCatalogDefaultPriceRange
+          ? activePriceRange[0]
+          : undefined),
       maxPrice:
         filters.maxPrice ??
-        (priceFilterReady ? activePriceRange[1] : undefined),
+        (priceFilterReady && !isCatalogDefaultPriceRange
+          ? activePriceRange[1]
+          : undefined),
       brands: filters.brandSlugs.length ? filters.brandSlugs : undefined,
       colors: filters.colorSlugs.length ? filters.colorSlugs : undefined,
       minRating: filters.minRating,
@@ -296,6 +301,7 @@ export default function ProductCatalog() {
       categoryId,
       activePriceRange,
       priceFilterReady,
+      isCatalogDefaultPriceRange,
       filters,
       sort,
       catalogNow,

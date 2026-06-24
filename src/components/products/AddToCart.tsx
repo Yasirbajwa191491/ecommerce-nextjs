@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
 import { m, useReducedMotion } from "framer-motion";
 import { Minus, Plus, ShoppingBag, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "../../../convex/_generated/api";
 import { useCartContext } from "@/context/cart_context";
+import { useActivePromotionsForProduct } from "@/hooks/use-storefront-promotions";
+import type { ActiveProductPromotions } from "@/hooks/use-storefront-promotions";
 import { useStableNow } from "@/hooks/use-stable-now";
 import { getPromotionDisplay } from "@/lib/promotion-display";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
@@ -22,11 +22,16 @@ import { cn } from "@/lib/utils";
 type AddToCartProps = {
   product: Product;
   variant?: "default" | "detail";
+  /** Preloaded promotions — avoids duplicate query and tab-focus flash on PDP. */
+  promotions?: ActiveProductPromotions;
+  hidePromotionBanner?: boolean;
 };
 
 export default function AddToCart({
   product,
   variant = "default",
+  promotions: promotionsProp,
+  hidePromotionBanner = false,
 }: AddToCartProps) {
   const router = useRouter();
   const { addToCart, total_item } = useCartContext();
@@ -38,11 +43,10 @@ export default function AddToCart({
   const reduceMotion = useReducedMotion();
   const hasColors = product.colors.length > 0;
   const now = useStableNow();
-
-  const activePromotions = useQuery(api.productPromotions.getActiveForProduct, {
-    productId: product._id,
-    now,
-  });
+  const queriedPromotions = useActivePromotionsForProduct(
+    promotionsProp === undefined ? product._id : null
+  );
+  const activePromotions = promotionsProp ?? queriedPromotions;
 
   const handleAdd = () => {
     addToCart(product._id, color, amount, product);
@@ -143,7 +147,7 @@ export default function AddToCart({
           : "mt-6"
       )}
     >
-      {activePromotions && activePromotions.length > 0 ? (
+      {activePromotions && activePromotions.length > 0 && !hidePromotionBanner ? (
         <PromotionOfferBanner
           promotion={activePromotions[0]!}
           variant="compact"

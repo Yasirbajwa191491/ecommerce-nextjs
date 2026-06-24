@@ -10,12 +10,12 @@ import {
   parseCatalogFilters,
   type CatalogFilterState,
 } from "@/lib/shop/catalog-filter-url";
-import { useStableNow } from "@/hooks/use-stable-now";
+import { useCatalogNow } from "@/hooks/use-stable-now";
 
 export function useCatalogFilters(categories: ProductCategory[] | undefined) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const now = useStableNow();
+  const now = useCatalogNow();
 
   const filters = useMemo(
     () => parseCatalogFilters(searchParams),

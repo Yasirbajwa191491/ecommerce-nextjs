@@ -1,19 +1,14 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { AnimatedSectionHeader } from "@/components/home/animated-section-header";
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { PromotionStorefrontCard } from "@/components/promotions/promotion-storefront-card";
+import { useStorefrontPromotionsList } from "@/hooks/use-storefront-promotions";
 import { PAGE_GUTTER, HOME_SECTION_PADDING_Y } from "@/lib/layout-constants";
 import { cn } from "@/lib/utils";
-import { useStableNow } from "@/hooks/use-stable-now";
 
 export function SpecialPromotionsSection() {
-  const now = useStableNow();
-  const promotions = useQuery(api.productPromotions.listActiveForStorefront, {
-    now,
-  });
+  const promotions = useStorefrontPromotionsList();
 
   if (!promotions?.length || promotions.length <= 1) {
     return null;
