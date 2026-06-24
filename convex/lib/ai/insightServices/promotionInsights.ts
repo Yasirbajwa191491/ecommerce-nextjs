@@ -27,9 +27,18 @@ type ConfiguredPromotion = {
 };
 
 type PromotionContext = {
-  candidates?: PromotionCandidate[];
+  candidates?: PromotionCandidate[] | { candidates?: PromotionCandidate[] };
   configured?: { promotions?: ConfiguredPromotion[] };
 };
+
+function resolvePromotionCandidates(
+  promotion: PromotionContext
+): PromotionCandidate[] {
+  const raw = promotion.candidates;
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.candidates)) return raw.candidates;
+  return [];
+}
 
 export function computePromotionCards(
   promotion: PromotionContext | undefined
@@ -71,7 +80,7 @@ export function computePromotionCards(
     });
   }
 
-  for (const candidate of (promotion.candidates ?? []).slice(0, 4)) {
+  for (const candidate of resolvePromotionCandidates(promotion).slice(0, 4)) {
     cards.push({
       type: "promotion",
       title: "Promotion Recommendation",

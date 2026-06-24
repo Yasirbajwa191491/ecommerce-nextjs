@@ -1129,7 +1129,7 @@ export async function buildBusinessContext(
         return [
           "promotionRecommendations",
           {
-            candidates: await getPromotionCandidates(ctx, referenceNow),
+            ...(await getPromotionCandidates(ctx, referenceNow)),
             configured: await getConfiguredPromotionPerformance(ctx),
           },
         ] as const;
