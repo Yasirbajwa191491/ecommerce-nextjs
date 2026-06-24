@@ -167,14 +167,6 @@ export function TrackOrderView() {
     }
   }, [searchParams, storefront?.trackOrderPrefill]);
 
-  useEffect(() => {
-    const urlOrderNumber = searchParams.get("orderNumber")?.trim();
-    if (!urlOrderNumber || prefillApplied) return;
-
-    setPrefillApplied(true);
-    router.replace(`/track-order/${encodeURIComponent(urlOrderNumber)}`);
-  }, [searchParams, prefillApplied, router]);
-
   const runOrderSearch = useCallback(
     async (value: string) => {
       const trimmed = value.trim();
@@ -189,16 +181,14 @@ export function TrackOrderView() {
         setOrderResult(result);
         if (!result.found) {
           toastError(result.message);
-          return;
         }
-        router.push(`/track-order/${encodeURIComponent(result.order.orderNumber)}`);
       } catch {
         toastError("We couldn't find any orders matching your details.");
       } finally {
         setIsSearchingOrder(false);
       }
     },
-    [router, trackByOrderNumber]
+    [trackByOrderNumber]
   );
 
   const runCustomerSearch = useCallback(
@@ -217,12 +207,6 @@ export function TrackOrderView() {
         setCustomerResults(result);
         if (!result.found) {
           toastError(result.message);
-          return;
-        }
-        if (result.orders.length === 1) {
-          router.push(
-            `/track-order/${encodeURIComponent(result.orders[0]!.orderNumber)}`
-          );
         }
       } catch {
         toastError("We couldn't find any orders matching your details.");
@@ -230,8 +214,18 @@ export function TrackOrderView() {
         setIsSearchingCustomer(false);
       }
     },
-    [router, trackByCustomer]
+    [trackByCustomer]
   );
+
+  useEffect(() => {
+    const urlOrderNumber = searchParams.get("orderNumber")?.trim();
+    if (!urlOrderNumber || prefillApplied) return;
+
+    setPrefillApplied(true);
+    setOrderNumber(urlOrderNumber);
+    setActiveTab("order-number");
+    void runOrderSearch(urlOrderNumber);
+  }, [searchParams, prefillApplied, runOrderSearch]);
 
   useEffect(() => {
     const prefill = storefront?.trackOrderPrefill;
