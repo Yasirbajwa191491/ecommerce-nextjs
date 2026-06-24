@@ -215,6 +215,158 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
     />
   );
 
+  const longFormContent = (
+    <>
+      {productHighlights.length > 0 ? (
+        <ul
+          id="product-highlights"
+          className={cn("space-y-2 text-foreground", SHOP_BODY)}
+        >
+          {productHighlights.map((highlight) => (
+            <li key={highlight} className="flex items-start gap-2">
+              <span className="mt-0.5 text-[#6254f3]" aria-hidden>
+                ✓
+              </span>
+              <span>{highlight}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {singleProduct.description ? (
+        <p className={cn("whitespace-pre-line text-foreground", SHOP_BODY)}>
+          {singleProduct.description}
+        </p>
+      ) : null}
+
+      <ProductWarrantyBadge product={singleProduct} showDetails />
+    </>
+  );
+
+  const purchasePanel = (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge
+          variant="secondary"
+          className={cn(
+            "rounded-full bg-[#6254f3]/10 px-3 py-0.5 font-semibold text-[#6254f3]",
+            SHOP_BADGE
+          )}
+        >
+          {categoryName}
+        </Badge>
+        {singleProduct.featured ? (
+          <Badge
+            className={cn(
+              "rounded-full bg-amber-500/15 px-3 py-0.5 font-semibold text-amber-700 hover:bg-amber-500/15",
+              SHOP_BADGE
+            )}
+          >
+            Featured
+          </Badge>
+        ) : null}
+        <Badge
+          variant="outline"
+          className={cn(
+            "rounded-full px-3 py-0.5 font-semibold uppercase",
+            SHOP_BADGE,
+            inStock
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-600"
+          )}
+        >
+          {inStock ? "In stock" : "Out of stock"}
+        </Badge>
+      </div>
+
+      {highlightedPromo ? (
+        <PromotionOfferBanner
+          promotion={highlightedPromo}
+          variant="hero"
+          now={now}
+        />
+      ) : null}
+
+      {storefrontPromotions.length > 0 ? (
+        <div className="space-y-2">
+          {storefrontPromotions.map((promotion) => (
+            <PromotionOfferBanner
+              key={promotion._id}
+              promotion={promotion}
+              variant="compact"
+              now={now}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <div>
+        <p className={SHOP_META_LABEL}>{singleProduct.company}</p>
+        <h1 className={cn("mt-3", SHOP_PRODUCT_TITLE)}>
+          {singleProduct.name}
+        </h1>
+      </div>
+
+      <ProductRatingDisplay
+        rating={singleProduct.stars}
+        reviewCount={singleProduct.reviews}
+      />
+
+      <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className={SHOP_META_LABEL}>Price</p>
+          <ProductDiscountBadge discountPercent={discountPercent} />
+        </div>
+        <ProductPrice
+          price={singleProduct.price}
+          discountPercent={discountPercent}
+          currency={singleProduct.currency}
+          className="mt-1"
+          size="md"
+        />
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <Truck className="size-4 shrink-0 text-[#6254f3]" />
+          {freeShipping ? (
+            <span className="font-medium text-emerald-600">Free Shipping</span>
+          ) : (
+            <span className="font-medium text-foreground">
+              Shipping Charges:{" "}
+              {formatCurrencyAmount(
+                singleProduct.shippingCharges ?? 0,
+                singleProduct.currency ?? DEFAULT_CURRENCY
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {inStock ? (
+        <AddToCart
+          product={singleProduct}
+          variant="detail"
+          promotions={activePromotions}
+          hidePromotionBanner={
+            Boolean(highlightedPromo) || storefrontPromotions.length > 0
+          }
+        />
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-5 py-6 text-center">
+          <p className="font-semibold text-foreground">Out of stock</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This item is currently unavailable. Check back soon or browse similar
+            products.
+          </p>
+          <Link
+            href="/products"
+            className="mt-4 inline-flex h-10 items-center rounded-full border border-border bg-background px-5 text-sm font-medium hover:bg-muted"
+          >
+            View all products
+          </Link>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div
       className={cn("mx-auto w-full max-w-7xl", CONTENT_SECTION_PADDING_Y)}
@@ -242,167 +394,30 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
         </span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-16">
-        <div className="flex flex-col gap-5 lg:gap-6">
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
+        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
           <ProductImageGallery
             images={galleryImages}
             fallbackAlt={singleProduct.name}
           />
           <div className="hidden flex-col gap-5 lg:flex lg:gap-6">
-            {secondaryInfo}
+            {longFormContent}
           </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
-          <div className="flex flex-col gap-5 lg:sticky lg:top-24 lg:z-10 lg:gap-6 lg:self-start">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="secondary"
-                className={cn(
-                  "rounded-full bg-[#6254f3]/10 px-3 py-0.5 font-semibold text-[#6254f3]",
-                  SHOP_BADGE
-                )}
-              >
-                {categoryName}
-              </Badge>
-              {singleProduct.featured ? (
-                <Badge
-                  className={cn(
-                    "rounded-full bg-amber-500/15 px-3 py-0.5 font-semibold text-amber-700 hover:bg-amber-500/15",
-                    SHOP_BADGE
-                  )}
-                >
-                  Featured
-                </Badge>
-              ) : null}
-              <Badge
-                variant="outline"
-                className={cn(
-                  "rounded-full px-3 py-0.5 font-semibold uppercase",
-                  SHOP_BADGE,
-                  inStock
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-red-200 bg-red-50 text-red-600"
-                )}
-              >
-                {inStock ? "In stock" : "Out of stock"}
-              </Badge>
-            </div>
-
-            {highlightedPromo ? (
-              <PromotionOfferBanner
-                promotion={highlightedPromo}
-                variant="hero"
-                now={now}
-              />
-            ) : null}
-
-            {storefrontPromotions.length > 0 ? (
-              <div className="space-y-2">
-                {storefrontPromotions.map((promotion) => (
-                  <PromotionOfferBanner
-                    key={promotion._id}
-                    promotion={promotion}
-                    variant="compact"
-                    now={now}
-                  />
-                ))}
-              </div>
-            ) : null}
-
-            <div>
-              <p className={SHOP_META_LABEL}>{singleProduct.company}</p>
-              <h1 className={cn("mt-3", SHOP_PRODUCT_TITLE)}>
-                {singleProduct.name}
-              </h1>
-            </div>
-
-            <ProductRatingDisplay
-              rating={singleProduct.stars}
-              reviewCount={singleProduct.reviews}
-            />
-
-            <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className={SHOP_META_LABEL}>Price</p>
-                <ProductDiscountBadge discountPercent={discountPercent} />
-              </div>
-              <ProductPrice
-                price={singleProduct.price}
-                discountPercent={discountPercent}
-                currency={singleProduct.currency}
-                className="mt-1"
-                size="md"
-              />
-              <div className="mt-3 flex items-center gap-2 text-sm">
-                <Truck className="size-4 shrink-0 text-[#6254f3]" />
-                {freeShipping ? (
-                  <span className="font-medium text-emerald-600">
-                    Free Shipping
-                  </span>
-                ) : (
-                  <span className="font-medium text-foreground">
-                    Shipping Charges:{" "}
-                    {formatCurrencyAmount(
-                      singleProduct.shippingCharges ?? 0,
-                      singleProduct.currency ?? DEFAULT_CURRENCY
-                    )}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {inStock ? (
-              <AddToCart
-                product={singleProduct}
-                variant="detail"
-                promotions={activePromotions}
-                hidePromotionBanner={
-                  Boolean(highlightedPromo) || storefrontPromotions.length > 0
-                }
-              />
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-5 py-6 text-center">
-                <p className="font-semibold text-foreground">Out of stock</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  This item is currently unavailable. Check back soon or browse
-                  similar products.
-                </p>
-                <Link
-                  href="/products"
-                  className="mt-4 inline-flex h-10 items-center rounded-full border border-border bg-background px-5 text-sm font-medium hover:bg-muted"
-                >
-                  View all products
-                </Link>
-              </div>
-            )}
+          {purchasePanel}
+          <div className="hidden flex-col gap-5 lg:flex lg:gap-6">
+            {secondaryInfo}
           </div>
+        </div>
 
-          <div className="flex flex-col gap-5 lg:hidden">{secondaryInfo}</div>
+        <div className="flex flex-col gap-5 lg:hidden lg:gap-6">
+          {longFormContent}
+        </div>
 
-          {productHighlights.length > 0 ? (
-            <ul
-              id="product-highlights"
-              className={cn("space-y-2 text-foreground", SHOP_BODY)}
-            >
-              {productHighlights.map((highlight) => (
-                <li key={highlight} className="flex items-start gap-2">
-                  <span className="mt-0.5 text-[#6254f3]" aria-hidden>
-                    ✓
-                  </span>
-                  <span>{highlight}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {singleProduct.description ? (
-            <p className={cn("max-w-2xl whitespace-pre-line", SHOP_BODY)}>
-              {singleProduct.description}
-            </p>
-          ) : null}
-
-          <ProductWarrantyBadge product={singleProduct} showDetails />
+        <div className="flex flex-col gap-5 lg:hidden lg:gap-6">
+          {secondaryInfo}
         </div>
       </div>
 
