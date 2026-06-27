@@ -85,7 +85,13 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+          "mode": "id"
+        },
+        "mode": "once",
         "options": {}
       },
       "id": "notify-backlog",

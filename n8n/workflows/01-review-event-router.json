@@ -121,7 +121,13 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $vars.N8N_AI_GENERATION_WORKFLOW_ID }}",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $vars.N8N_AI_GENERATION_WORKFLOW_ID }}",
+          "mode": "id"
+        },
+        "mode": "once",
         "options": {}
       },
       "id": "run-ai-generation",
@@ -129,17 +135,6 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [760, 60]
-    },
-    {
-      "parameters": {
-        "workflowId": "={{ $vars.N8N_AI_GENERATION_WORKFLOW_ID }}",
-        "options": {}
-      },
-      "id": "run-manual-generation",
-      "name": "Run Manual AI Generation",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
-      "position": [760, 200]
     },
     {
       "parameters": {
@@ -201,7 +196,13 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+          "mode": "id"
+        },
+        "mode": "once",
         "options": {}
       },
       "id": "notify-flagged",
@@ -212,7 +213,13 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+          "mode": "id"
+        },
+        "mode": "once",
         "options": {}
       },
       "id": "notify-failed",
@@ -223,7 +230,13 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $vars.N8N_BULK_PROCESS_WORKFLOW_ID }}",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $vars.N8N_BULK_PROCESS_WORKFLOW_ID }}",
+          "mode": "id"
+        },
+        "mode": "once",
         "options": {}
       },
       "id": "bulk-process",
@@ -243,7 +256,7 @@
         [{ "node": "If Flagged", "type": "main", "index": 0 }],
         [{ "node": "Notify Admin Failed", "type": "main", "index": 0 }],
         [{ "node": "Run AI Generation Router", "type": "main", "index": 0 }],
-        [{ "node": "Run Manual AI Generation", "type": "main", "index": 0 }],
+        [{ "node": "Run AI Generation Router", "type": "main", "index": 0 }],
         [{ "node": "Run Bulk Processor", "type": "main", "index": 0 }]
       ]
     },

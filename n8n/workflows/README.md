@@ -62,6 +62,27 @@ All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 5. Configure fallback API keys in n8n variables
 6. Test review submission; verify Gemini primary path in Convex logs
 
+## Troubleshooting
+
+### "No information about the workflow to execute found"
+
+This happens when the **Execute Workflow** node cannot resolve the sub-workflow ID.
+
+**Quick fix in n8n UI (no re-import):**
+1. Open the failing **Execute Workflow** node (e.g. "Run AI Generation Router")
+2. Set **Source** → **Database**
+3. For **Workflow**, click the gear icon → **Add Expression**
+4. Use: `{{ $vars.N8N_AI_GENERATION_WORKFLOW_ID }}`
+5. Ensure **Mode** is `id` (not "From list" with a broken reference)
+6. **Or** pick **Review AI - AI Generation Router** directly from the workflow dropdown
+
+**Verify:**
+- Workflow **06** exists and is imported (`Review AI - AI Generation Router`)
+- `N8N_AI_GENERATION_WORKFLOW_ID` matches workflow 06's ID (from the URL: `/workflow/XXXX`)
+- Workflow 06 **Execute Workflow Trigger** is set to **Accept all data** / passthrough
+
+**After pulling repo updates:** Re-import `01-review-event-router.json` — Execute nodes now use the correct `workflowId` resource-locator format for n8n 1.2+.
+
 ## Events
 
 `review.created`, `review.updated`, `review.approved`, `review.bulk_process`, `review.ai.retry_scheduled`, `review.ai.completed`, `review.ai.failed`, `review.ai.fallback_requested`, `review.ai.manual_generate`
