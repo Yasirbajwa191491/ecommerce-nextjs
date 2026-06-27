@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
 import { buildReviewHighlights } from "./lib/ai/productIntelligenceHelpers";
+import { aiAnalysisStatusValidator } from "./lib/aiValidators";
 import {
   deliveryOptionValidator,
   formatWarrantySummary,
@@ -24,14 +25,7 @@ export const getProductForIntelligence = internalQuery({
       categoryName: v.string(),
       active: v.boolean(),
       embeddingContentHash: v.optional(v.string()),
-      embeddingStatus: v.optional(
-        v.union(
-          v.literal("pending"),
-          v.literal("processing"),
-          v.literal("complete"),
-          v.literal("failed")
-        )
-      ),
+      embeddingStatus: v.optional(aiAnalysisStatusValidator),
       reviewHighlights: v.array(v.string()),
       discountPercent: v.number(),
       warrantyAvailable: v.boolean(),
