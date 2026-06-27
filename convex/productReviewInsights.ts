@@ -1,11 +1,11 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import { requireAdmin } from "./lib/requireAdmin";
 import {
   productInsightsStatusValidator,
   reviewTopicValidator,
 } from "./lib/aiValidators";
+import { enqueueReviewAiJob, REVIEW_AI_PRIORITY } from "./lib/reviewAiQueue";
 
 const insightsValidator = v.union(
   v.object({
@@ -106,11 +106,13 @@ export const regenerate = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.reviewAiActions.regenerateProductInsights,
-      { productId: args.productId, force: true }
-    );
+    await enqueueReviewAiJob(ctx, {
+      jobType: "regenerate_insights",
+      productId: args.productId,
+      priority: REVIEW_AI_PRIORITY.high,
+      idempotencyKey: `regenerate_insights:${args.productId}:force:${Date.now()}`,
+      payload: { force: true },
+    });
 
     return null;
   },

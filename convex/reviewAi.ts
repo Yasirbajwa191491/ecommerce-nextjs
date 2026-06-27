@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import {
   aiAnalysisStatusValidator,
   aiModerationValidator,
@@ -12,6 +13,8 @@ import {
   syncTagIndexApproval as syncTagIndexApprovalHelper,
   syncTagIndexForReview as syncTagIndexForReviewHelper,
 } from "./lib/ai/tagIndex";
+import { isVersioningEnabled } from "./lib/ai/featureFlags";
+import { recordGeneration } from "./lib/ai/generationHistory";
 
 const reviewAnalysisResultValidator = v.object({
   sentiment: aiSentimentValidator,
@@ -19,6 +22,10 @@ const reviewAnalysisResultValidator = v.object({
   tags: v.array(v.string()),
   moderation: aiModerationValidator,
   embedding: v.array(v.float64()),
+  provider: v.optional(v.string()),
+  model: v.optional(v.string()),
+  durationMs: v.optional(v.number()),
+  jobId: v.optional(v.id("reviewAiJobs")),
 });
 
 export const setAnalysisStatus = internalMutation({
@@ -71,6 +78,47 @@ export const applyReviewResults = internalMutation({
       tags: args.results.tags,
     });
 
+    if (isVersioningEnabled()) {
+      const content = JSON.stringify({
+        sentiment: args.results.sentiment,
+        sentimentConfidence: args.results.sentimentConfidence,
+        tags: args.results.tags,
+        moderation: args.results.moderation,
+      });
+      await recordGeneration(ctx, {
+        reviewId: args.reviewId,
+        productId: review.productId,
+        type: "full_analysis",
+        content,
+        provider: args.results.provider ?? "gemini",
+        model: args.results.model ?? "unknown",
+        source: "automatic",
+        triggeredBy: "system",
+        jobId: args.results.jobId,
+        durationMs: args.results.durationMs,
+        mode: "version",
+      });
+
+      await ctx.db.patch(args.reviewId, {
+        aiActiveGenerationVersion: (
+          await ctx.db
+            .query("reviewAiGenerations")
+            .withIndex("by_review_type_version", (q) =>
+              q.eq("reviewId", args.reviewId).eq("type", "full_analysis")
+            )
+            .order("desc")
+            .take(1)
+        )[0]?.version,
+      });
+    }
+
+    await ctx.scheduler.runAfter(0, internal.reviewAiMetrics.recordMetric, {
+      provider: args.results.provider ?? "gemini",
+      type: "full_analysis",
+      success: true,
+      durationMs: args.results.durationMs,
+    });
+
     return null;
   },
 });
@@ -113,6 +161,25 @@ export const setReplyDraft = internalMutation({
 
     await ctx.db.patch(args.reviewId, {
       adminReplyDraft: args.draft,
+      adminReplyError: undefined,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const setReplyError = internalMutation({
+  args: {
+    reviewId: v.id("productReviews"),
+    error: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const review = await ctx.db.get(args.reviewId);
+    if (!review) return null;
+
+    await ctx.db.patch(args.reviewId, {
+      adminReplyError: args.error,
       updatedAt: Date.now(),
     });
     return null;

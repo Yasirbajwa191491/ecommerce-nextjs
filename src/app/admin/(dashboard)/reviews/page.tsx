@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -29,8 +29,9 @@ import {
 } from "@/components/ui/table";
 import { ProductStars } from "@/components/products/product-stars";
 import { toastError, toastSuccess } from "@/lib/app-toast";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertTriangle,
   Check,
@@ -62,6 +63,8 @@ export default function AdminReviewsPage() {
   const [status, setStatus] = useState<"all" | "pending" | "approved">("all");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [deleteId, setDeleteId] = useState<Id<"productReviews"> | null>(null);
+  const [selected, setSelected] = useState<Set<Id<"productReviews">>>(new Set());
+  const [bulkProcessing, setBulkProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const { results, status: loadStatus, loadMore } = usePaginatedQuery(
@@ -77,6 +80,8 @@ export default function AdminReviewsPage() {
   const approve = useMutation(api.adminReviews.approve);
   const reject = useMutation(api.adminReviews.reject);
   const remove = useMutation(api.adminReviews.remove);
+  const bulkReprocess = useMutation(api.adminReviewAi.bulkReprocessReviews);
+  const queueStats = useQuery(api.adminReviewAi.getQueueStats);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), 300);
@@ -123,12 +128,54 @@ export default function AdminReviewsPage() {
     }
   };
 
+  const toggleSelect = (id: Id<"productReviews">) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkReprocess = async () => {
+    if (selected.size === 0) return;
+    setBulkProcessing(true);
+    try {
+      const result = await bulkReprocess({
+        reviewIds: [...selected],
+      });
+      toastSuccess(`Queued ${result.enqueued} reviews for reprocessing`);
+      setSelected(new Set());
+    } catch (error) {
+      toastError(error, { title: "Bulk reprocess failed" });
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="Reviews"
         description="Moderate customer product reviews before they appear on the storefront."
       />
+
+      {queueStats &&
+      (queueStats.pending > 0 ||
+        queueStats.retryScheduled > 0 ||
+        queueStats.processing > 0) ? (
+        <div className="flex flex-wrap gap-2 text-sm">
+          {queueStats.processing > 0 ? (
+            <Badge variant="secondary">{queueStats.processing} AI processing</Badge>
+          ) : null}
+          {queueStats.pending > 0 ? (
+            <Badge variant="outline">{queueStats.pending} AI queued</Badge>
+          ) : null}
+          {queueStats.retryScheduled > 0 ? (
+            <Badge variant="outline">{queueStats.retryScheduled} AI retry scheduled</Badge>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
@@ -160,12 +207,22 @@ export default function AdminReviewsPage() {
           />
           <Label htmlFor="flagged-only">Flagged by AI</Label>
         </div>
+        {selected.size > 0 ? (
+          <Button
+            variant="outline"
+            disabled={bulkProcessing}
+            onClick={() => void handleBulkReprocess()}
+          >
+            Reprocess Selected ({selected.size})
+          </Button>
+        ) : null}
       </div>
 
       <AdminTableCard>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10" />
               <TableHead>Product</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Rating</TableHead>
@@ -180,13 +237,20 @@ export default function AdminReviewsPage() {
           <TableBody>
             {reviews.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                   No reviews found.
                 </TableCell>
               </TableRow>
             ) : (
               reviews.map((review) => (
                 <TableRow key={review._id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(review._id)}
+                      onCheckedChange={() => toggleSelect(review._id)}
+                      aria-label={`Select review ${review.title}`}
+                    />
+                  </TableCell>
                   <TableCell className="max-w-[160px] truncate font-medium">
                     {review.productName}
                   </TableCell>

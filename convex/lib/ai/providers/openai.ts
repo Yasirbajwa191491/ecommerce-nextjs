@@ -7,6 +7,11 @@ import type {
   SentimentResult,
 } from "../types";
 import {
+  buildReviewReplySystemPrompt,
+  buildReviewReplyUserPrompt,
+  resolveReviewReplyStoreContext,
+} from "../reviewReplyPrompt";
+import {
   heuristicModeration,
   normalizeSentiment,
   parseSentimentFromJson,
@@ -152,6 +157,8 @@ export function createOpenAIProvider(
   };
 
   return {
+    name: "openai" as const,
+    model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       const content = await openaiChat(
         resolved,
@@ -208,13 +215,15 @@ export function createOpenAIProvider(
     },
 
     async generateReply(review: ReviewForReply): Promise<string> {
+      const store = resolveReviewReplyStoreContext({
+        storeName: review.storeName,
+        storeEmail: review.storeEmail,
+        storeAddress: review.storeAddress,
+      });
       return await openaiChat(
         resolved,
-        "You are a professional ecommerce support manager. Write empathetic, concise replies (80-120 words). Do not promise refunds unless explicitly requested.",
-        `Customer: ${review.customerName ?? "Customer"}
-Rating: ${review.rating}/5
-Title: ${review.title}
-Review: ${review.content}`
+        buildReviewReplySystemPrompt(store, review.customerName),
+        buildReviewReplyUserPrompt(review)
       );
     },
   };

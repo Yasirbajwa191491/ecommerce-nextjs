@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -36,27 +36,29 @@ const REMEMBERED_EMAIL_KEY = "admin_login_email";
 export function AdminLoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/admin/home";
-  const initialRememberMe =
-    typeof window !== "undefined" &&
-    window.localStorage.getItem(REMEMBER_ME_KEY) === "true";
-  const initialRememberedEmail =
-    typeof window !== "undefined" && initialRememberMe
-      ? window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? ""
-      : "";
 
   const navigateAfterLogin = () => {
-    // Force a full navigation so middleware sees the freshly set auth cookie.
+    // Force a full navigation so the auth proxy sees the freshly set auth cookie.
     window.location.assign(redirect);
   };
 
   const [step, setStep] = useState<Step>("credentials");
-  const [email, setEmail] = useState(initialRememberedEmail);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(initialRememberMe);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const savedRememberMe =
+      window.localStorage.getItem(REMEMBER_ME_KEY) === "true";
+    setRememberMe(savedRememberMe);
+    if (savedRememberMe) {
+      setEmail(window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? "");
+    }
+  }, []);
 
   const startOtpStep = () => {
     setOtpSentAt(Date.now());

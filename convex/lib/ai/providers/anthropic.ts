@@ -6,6 +6,11 @@ import type {
   ReviewTopic,
   SentimentResult,
 } from "../types";
+import {
+  buildReviewReplySystemPrompt,
+  buildReviewReplyUserPrompt,
+  resolveReviewReplyStoreContext,
+} from "../reviewReplyPrompt";
 import { geminiEmbed } from "./gemini";
 import { openaiEmbed } from "./openai";
 import {
@@ -91,6 +96,8 @@ export function createAnthropicProvider(
   };
 
   return {
+    name: "anthropic" as const,
+    model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       const content = await anthropicMessage(
         resolved,
@@ -156,10 +163,15 @@ export function createAnthropicProvider(
     },
 
     async generateReply(review: ReviewForReply): Promise<string> {
+      const store = resolveReviewReplyStoreContext({
+        storeName: review.storeName,
+        storeEmail: review.storeEmail,
+        storeAddress: review.storeAddress,
+      });
       return await anthropicMessage(
         resolved,
-        "Write a professional, empathetic store reply (80-120 words).",
-        `Rating ${review.rating}/5 — ${review.title}\n${review.content}`
+        buildReviewReplySystemPrompt(store, review.customerName),
+        buildReviewReplyUserPrompt(review)
       );
     },
   };

@@ -131,20 +131,37 @@ function fallbackTopics(text) {
 }
 
 export async function generateReply(review) {
-  const prompt = `Customer review (${review.rating}/5 stars):
-Title: ${review.title}
-Content: ${review.content}
-Customer: ${review.customerName ?? "Customer"}
+  const storeName = review.storeName?.trim() || "Ecommerce Store";
+  const storeEmail = review.storeEmail?.trim() || "yasir.sohail@savari.io";
+  const storeAddress =
+    review.storeAddress?.trim() || "DHA Phase 6 Lahore, Pakistan, 54000";
+  const customerName = review.customerName?.trim() || "Customer";
+  const firstName = customerName.split(/\s+/)[0] || customerName;
 
-Write a professional, empathetic store reply (80-120 words). Do not offer refunds unless the review explicitly requests one.`;
+  const system = `You are a professional ecommerce customer support manager for ${storeName}.
+Write an empathetic, professional reply (80-120 words) to a product review.
+
+Requirements:
+- Greet the customer by their first name ("${firstName}").
+- Never use placeholders such as "[Store Name]", "Dear valued customer", or similar generic openings.
+- End with a professional sign-off using exactly this store name: ${storeName}
+- After the sign-off, include contact details on separate lines: ${storeEmail} and ${storeAddress}
+- Do not promise refunds unless the review explicitly requests one.
+- Return only the reply text, no JSON or markdown fences.`;
+
+  const prompt = `Customer name: ${customerName} (use first name "${firstName}" in greeting)
+Rating: ${review.rating}/5
+Title: ${review.title}
+Review: ${review.content}
+
+Store name: ${storeName}
+Store email: ${storeEmail}
+Store address: ${storeAddress}`;
 
   try {
-    return await ollamaChat(
-      prompt,
-      "You are a professional ecommerce customer support manager."
-    );
+    return await ollamaChat(prompt, system);
   } catch (error) {
     console.warn("Ollama reply failed:", error.message);
-    return `Thank you for your ${review.rating}-star review, ${review.customerName ?? "valued customer"}. We appreciate you sharing your experience about "${review.title}". Your feedback helps us improve our products and service.`;
+    return `Dear ${firstName},\n\nThank you for your ${review.rating}-star review of "${review.title}". We appreciate you sharing your experience.\n\nBest regards,\n${storeName}\n${storeEmail}\n${storeAddress}`;
   }
 }

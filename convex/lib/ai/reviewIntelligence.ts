@@ -49,11 +49,31 @@ export async function embedReviewText(
   return await provider.embed(text);
 }
 
+function shouldSerializeCalls(): boolean {
+  const provider = process.env.AI_PROVIDER?.toLowerCase();
+  if (provider && provider !== "gemini") return false;
+  return process.env.GEMINI_SERIALIZE_CALLS !== "false";
+}
+
 export async function analyzeReview(
   provider: ReviewAIProvider,
   input: ReviewAnalysisInput
 ): Promise<ReviewAnalysisResult> {
   const text = buildReviewText(input.title, input.content);
+
+  if (shouldSerializeCalls()) {
+    const sentiment = await analyzeReviewSentiment(provider, text);
+    const tags = await generateReviewTags(provider, text);
+    const moderation = await detectSpamReview(provider, text);
+    const embedding = await embedReviewText(provider, text);
+    return {
+      sentiment: sentiment.sentiment,
+      sentimentConfidence: sentiment.confidence,
+      tags,
+      moderation,
+      embedding,
+    };
+  }
 
   const [sentiment, tags, moderation, embedding] = await Promise.all([
     analyzeReviewSentiment(provider, text),

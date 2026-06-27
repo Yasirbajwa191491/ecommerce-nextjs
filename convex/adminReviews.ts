@@ -11,6 +11,12 @@ import {
   syncTagIndexForReview,
 } from "./lib/ai/tagIndex";
 import {
+  buildInsightsIdempotencyKey,
+  buildManualRetryIdempotencyKey,
+  enqueueReviewAiJob,
+  REVIEW_AI_PRIORITY,
+} from "./lib/reviewAiQueue";
+import {
   resolveReviewImageUrls,
   syncProductReviewStats,
 } from "./lib/reviews";
@@ -176,11 +182,33 @@ export const approve = mutation({
 
     await syncProductReviewStats(ctx, review.productId);
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.reviewAiActions.regenerateProductInsights,
-      { productId: review.productId, force: false }
-    );
+    const approvedCount = (
+      await ctx.db
+        .query("productReviews")
+        .withIndex("by_product_approved_created", (q) =>
+          q.eq("productId", review.productId).eq("isApproved", true)
+        )
+        .take(500)
+    ).length;
+
+    await enqueueReviewAiJob(ctx, {
+      jobType: "regenerate_insights",
+      productId: review.productId,
+      idempotencyKey: buildInsightsIdempotencyKey(
+        review.productId,
+        approvedCount,
+        false
+      ),
+      payload: { force: false },
+    });
+
+    await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {
+      event: "review.approved",
+      payload: JSON.stringify({
+        reviewId: args.id,
+        productId: review.productId,
+      }),
+    });
 
     return { success: true as const };
   },
@@ -203,11 +231,24 @@ export const reject = mutation({
 
     if (wasApproved) {
       await syncProductReviewStats(ctx, review.productId);
-      await ctx.scheduler.runAfter(
-        0,
-        internal.reviewAiActions.regenerateProductInsights,
-        { productId: review.productId, force: false }
-      );
+      const approvedCount = (
+        await ctx.db
+          .query("productReviews")
+          .withIndex("by_product_approved_created", (q) =>
+            q.eq("productId", review.productId).eq("isApproved", true)
+          )
+          .take(500)
+      ).length;
+      await enqueueReviewAiJob(ctx, {
+        jobType: "regenerate_insights",
+        productId: review.productId,
+        idempotencyKey: buildInsightsIdempotencyKey(
+          review.productId,
+          approvedCount,
+          false
+        ),
+        payload: { force: false },
+      });
     }
 
     return { success: true as const };
@@ -237,11 +278,24 @@ export const remove = mutation({
 
     if (wasApproved) {
       await syncProductReviewStats(ctx, productId);
-      await ctx.scheduler.runAfter(
-        0,
-        internal.reviewAiActions.regenerateProductInsights,
-        { productId, force: false }
-      );
+      const approvedCount = (
+        await ctx.db
+          .query("productReviews")
+          .withIndex("by_product_approved_created", (q) =>
+            q.eq("productId", productId).eq("isApproved", true)
+          )
+          .take(500)
+      ).length;
+      await enqueueReviewAiJob(ctx, {
+        jobType: "regenerate_insights",
+        productId,
+        idempotencyKey: buildInsightsIdempotencyKey(
+          productId,
+          approvedCount,
+          false
+        ),
+        payload: { force: false },
+      });
     }
 
     return { success: true as const };
@@ -262,8 +316,15 @@ export const retryAiAnalysis = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.scheduler.runAfter(0, internal.reviewAiActions.processReview, {
+    await enqueueReviewAiJob(ctx, {
+      jobType: "analyze_review",
       reviewId: args.id,
+      priority: REVIEW_AI_PRIORITY.high,
+      idempotencyKey: buildManualRetryIdempotencyKey(
+        args.id,
+        review.title,
+        review.content
+      ),
     });
 
     return null;
@@ -278,8 +339,16 @@ export const generateReplyDraft = mutation({
     const review = await ctx.db.get(args.id);
     if (!review) throw new ConvexError("Review not found");
 
-    await ctx.scheduler.runAfter(0, internal.reviewAiActions.generateReply, {
+    await ctx.db.patch(args.id, {
+      adminReplyError: undefined,
+      updatedAt: Date.now(),
+    });
+
+    await enqueueReviewAiJob(ctx, {
+      jobType: "generate_reply",
       reviewId: args.id,
+      priority: REVIEW_AI_PRIORITY.high,
+      idempotencyKey: `generate_reply:${args.id}:${Date.now()}`,
     });
 
     return null;

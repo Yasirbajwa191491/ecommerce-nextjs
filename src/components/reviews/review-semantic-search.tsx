@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import type { PublicReview } from "@/components/reviews/review-card";
 import { Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toastError } from "@/lib/app-toast";
 
 type ReviewSemanticSearchProps = {
   productId: Id<"products">;
@@ -60,7 +61,12 @@ export function ReviewSemanticSearch({
         }
       })
       .catch(() => {
-        if (!cancelled) onResults([]);
+        if (!cancelled) {
+          onResults([]);
+          toastError("Search temporarily unavailable. Try again in a moment.", {
+            title: "Review search",
+          });
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

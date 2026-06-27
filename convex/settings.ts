@@ -4,7 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { validateEmailFromValue } from "./lib/emailFrom";
-import { getEmailFromValue, getLowStockThresholdValue, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
+import { getEmailFromValue, getLowStockThresholdValue, getReviewReplyStoreContext, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
 import { slugify } from "./lib/products";
 
 export const SYSTEM_SETTING_KEYS = [
@@ -333,6 +333,18 @@ export const getReviewCallAutoDelayDays = internalQuery({
       .unique();
     const parsed = Number.parseInt(row?.value ?? "5", 10);
     return [3, 5, 7].includes(parsed) ? parsed : 5;
+  },
+});
+
+export const getReviewReplyStoreContextQuery = internalQuery({
+  args: {},
+  returns: v.object({
+    storeName: v.string(),
+    storeEmail: v.string(),
+    storeAddress: v.string(),
+  }),
+  handler: async (ctx) => {
+    return await getReviewReplyStoreContext(ctx);
   },
 });
 

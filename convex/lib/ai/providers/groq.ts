@@ -6,6 +6,11 @@ import type {
   ReviewTopic,
   SentimentResult,
 } from "../types";
+import {
+  buildReviewReplySystemPrompt,
+  buildReviewReplyUserPrompt,
+  resolveReviewReplyStoreContext,
+} from "../reviewReplyPrompt";
 import { geminiEmbed } from "./gemini";
 import { openaiEmbed } from "./openai";
 import {
@@ -87,6 +92,8 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
   };
 
   return {
+    name: "groq" as const,
+    model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       const content = await groqChat(
         resolved,
@@ -152,10 +159,15 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
     },
 
     async generateReply(review: ReviewForReply): Promise<string> {
+      const store = resolveReviewReplyStoreContext({
+        storeName: review.storeName,
+        storeEmail: review.storeEmail,
+        storeAddress: review.storeAddress,
+      });
       return await groqChat(
         resolved,
-        "Write a professional, empathetic store reply (80-120 words).",
-        `Rating ${review.rating}/5 — ${review.title}\n${review.content}`
+        buildReviewReplySystemPrompt(store, review.customerName),
+        buildReviewReplyUserPrompt(review)
       );
     },
   };
