@@ -81,20 +81,31 @@ export async function findExistingActiveJob(
   ctx: MutationCtx,
   idempotencyKey: string
 ) {
-  const existing = await ctx.db
+  const matches = await ctx.db
     .query("reviewAiJobs")
     .withIndex("by_idempotency", (q) => q.eq("idempotencyKey", idempotencyKey))
-    .unique();
+    .take(50);
 
-  if (!existing) return null;
-  if (
-    existing.status === "pending" ||
-    existing.status === "processing" ||
-    existing.status === "retry_scheduled"
-  ) {
-    return existing;
-  }
-  return null;
+  const active = matches.filter(
+    (job) =>
+      job.status === "pending" ||
+      job.status === "processing" ||
+      job.status === "retry_scheduled"
+  );
+
+  if (active.length === 0) return null;
+
+  return active.sort(
+    (a, b) => a.priority - b.priority || b.updatedAt - a.updatedAt
+  )[0];
+}
+
+export function buildManualRetryIdempotencyKey(
+  reviewId: Id<"productReviews">,
+  title: string,
+  content: string
+): string {
+  return `${buildAnalyzeReviewIdempotencyKey(reviewId, title, content)}:manual:${Date.now()}`;
 }
 
 export function buildAnalyzeReviewIdempotencyKey(

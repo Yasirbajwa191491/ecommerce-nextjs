@@ -11,8 +11,8 @@ import {
   syncTagIndexForReview,
 } from "./lib/ai/tagIndex";
 import {
-  buildAnalyzeReviewIdempotencyKey,
   buildInsightsIdempotencyKey,
+  buildManualRetryIdempotencyKey,
   enqueueReviewAiJob,
   REVIEW_AI_PRIORITY,
 } from "./lib/reviewAiQueue";
@@ -320,7 +320,7 @@ export const retryAiAnalysis = mutation({
       jobType: "analyze_review",
       reviewId: args.id,
       priority: REVIEW_AI_PRIORITY.high,
-      idempotencyKey: buildAnalyzeReviewIdempotencyKey(
+      idempotencyKey: buildManualRetryIdempotencyKey(
         args.id,
         review.title,
         review.content

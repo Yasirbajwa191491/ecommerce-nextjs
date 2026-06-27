@@ -22,13 +22,13 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.CONVEX_SITE_URL }}/n8n/review-ai/weekly-stats",
+        "url": "={{ $vars.CONVEX_SITE_URL }}/n8n/review-ai/weekly-stats",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-N8N-Secret",
-              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+              "value": "={{ $vars.N8N_WEBHOOK_SECRET }}"
             }
           ]
         }
@@ -51,8 +51,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.EMAIL_FROM || 'noreply@example.com' }}",
-        "toEmail": "={{ $env.ADMIN_EMAIL }}",
+        "fromEmail": "={{ $vars.EMAIL_FROM || 'noreply@example.com' }}",
+        "toEmail": "={{ $vars.ADMIN_EMAIL }}",
         "subject": "={{ $json.subject }}",
         "text": "={{ $json.body }}",
         "options": {}

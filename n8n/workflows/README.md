@@ -10,11 +10,15 @@ Set these environment variables:
 - `N8N_REVIEW_WEBHOOK_URL` — Webhook URL from Workflow 1
 - `N8N_WEBHOOK_SECRET` — Shared secret for inbound/outbound auth
 
-### n8n credentials / variables
+### n8n Variables (Settings → Variables)
+Workflows use `$vars.*` (not `$env.*`) for n8n Cloud trial compatibility.
+
 - `CONVEX_SITE_URL` — Your Convex HTTP base (e.g. `https://your-deployment.convex.site`)
 - `N8N_WEBHOOK_SECRET` — Same secret as Convex
 - `ADMIN_EMAIL` — Admin notification recipient
-- `RESEND_API_KEY` — Optional, for email notifications
+- `EMAIL_FROM` — Verified sender address (e.g. Resend `onboarding@resend.dev`)
+- `N8N_ADMIN_NOTIFY_WORKFLOW_ID` — Workflow ID for `04-admin-notifications`
+- `N8N_BULK_PROCESS_WORKFLOW_ID` — Workflow ID for `05-bulk-review-processor`
 
 ## Convex HTTP endpoints (n8n calls these)
 
@@ -33,8 +37,8 @@ All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 1. `01-review-event-router.json` — Main webhook router for Convex events
 2. `02-retry-safety-net-cron.json` — Cron every 15 min to process due jobs
 3. `03-weekly-review-report.json` — Monday 9 AM weekly stats email
-4. `04-admin-notifications.json` — Sub-workflow for flagged/failed alerts
-5. `05-bulk-review-processor.json` — Throttled bulk reprocess handler
+4. `04-admin-notifications.json` — Sub-workflow for flagged/failed alerts (trigger: **Accept all data**)
+5. `05-bulk-review-processor.json` — Throttled bulk reprocess handler (trigger: **Accept all data**)
 
 ## Setup steps
 

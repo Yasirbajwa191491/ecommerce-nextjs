@@ -2,7 +2,9 @@
   "name": "Review AI - Admin Notifications",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "inputSource": "passthrough"
+      },
       "id": "execute-trigger",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
@@ -11,7 +13,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst event = input.event || input.body?.event || 'review.ai.alert';\nconst reviewId = input.reviewId || input.body?.reviewId;\nconst error = input.error || input.body?.error;\nconst flagged = input.flagged || input.body?.flagged;\n\nlet subject = 'Review AI Alert';\nlet body = `Event: ${event}\\n`;\n\nif (reviewId) body += `Review ID: ${reviewId}\\n`;\nif (flagged) body += 'A review was flagged by AI moderation.\\n';\nif (error) body += `Error: ${error}\\n`;\nif (input.body?.nextRetryAt) {\n  body += `Next retry: ${new Date(input.body.nextRetryAt).toLocaleString()}\\n`;\n}\n\nif (event === 'review.ai.failed') subject = 'Review AI processing failed';\nif (flagged) subject = 'Review flagged for moderation';\nif (event === 'backlog') subject = 'Review AI queue backlog alert';\n\nreturn [{ json: { subject, body, adminEmail: $env.ADMIN_EMAIL } }];"
+        "jsCode": "const input = $input.first().json;\nconst event = input.event || input.body?.event || 'review.ai.alert';\nconst reviewId = input.reviewId || input.body?.reviewId;\nconst error = input.error || input.body?.error;\nconst flagged = input.flagged || input.body?.flagged;\n\nlet subject = 'Review AI Alert';\nlet body = `Event: ${event}\\n`;\n\nif (reviewId) body += `Review ID: ${reviewId}\\n`;\nif (flagged) body += 'A review was flagged by AI moderation.\\n';\nif (error) body += `Error: ${error}\\n`;\nif (input.body?.nextRetryAt) {\n  body += `Next retry: ${new Date(input.body.nextRetryAt).toLocaleString()}\\n`;\n}\n\nif (event === 'review.ai.failed') subject = 'Review AI processing failed';\nif (flagged) subject = 'Review flagged for moderation';\nif (event === 'backlog') subject = 'Review AI queue backlog alert';\n\nreturn [{ json: { subject, body } }];"
       },
       "id": "format-notification",
       "name": "Format Notification",
@@ -21,8 +23,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.EMAIL_FROM || 'noreply@example.com' }}",
-        "toEmail": "={{ $json.adminEmail }}",
+        "fromEmail": "={{ $vars.EMAIL_FROM || 'noreply@example.com' }}",
+        "toEmail": "={{ $vars.ADMIN_EMAIL }}",
         "subject": "={{ $json.subject }}",
         "text": "={{ $json.body }}",
         "options": {}

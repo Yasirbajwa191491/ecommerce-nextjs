@@ -103,13 +103,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.CONVEX_SITE_URL }}/n8n/review-ai/process-job",
+        "url": "={{ $vars.CONVEX_SITE_URL }}/n8n/review-ai/process-job",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-N8N-Secret",
-              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+              "value": "={{ $vars.N8N_WEBHOOK_SECRET }}"
             },
             {
               "name": "Content-Type",
@@ -149,7 +149,7 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $env.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+        "workflowId": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
         "options": {}
       },
       "id": "notify-flagged",
@@ -160,7 +160,7 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $env.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
+        "workflowId": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
         "options": {}
       },
       "id": "notify-failed",
@@ -171,7 +171,7 @@
     },
     {
       "parameters": {
-        "workflowId": "={{ $env.N8N_BULK_PROCESS_WORKFLOW_ID }}",
+        "workflowId": "={{ $vars.N8N_BULK_PROCESS_WORKFLOW_ID }}",
         "options": {}
       },
       "id": "bulk-process",
