@@ -7,6 +7,11 @@ import type {
   SentimentResult,
 } from "../types";
 import {
+  buildReviewReplySystemPrompt,
+  buildReviewReplyUserPrompt,
+  resolveReviewReplyStoreContext,
+} from "../reviewReplyPrompt";
+import {
   heuristicModeration,
   normalizeEmbedding,
   normalizeSentiment,
@@ -204,10 +209,15 @@ export function createGeminiProvider(
     },
 
     async generateReply(review: ReviewForReply): Promise<string> {
+      const store = resolveReviewReplyStoreContext({
+        storeName: review.storeName,
+        storeEmail: review.storeEmail,
+        storeAddress: review.storeAddress,
+      });
       return await geminiGenerateWithConfig(
         resolved,
-        "Write a professional, empathetic store reply (80-120 words).",
-        `Rating ${review.rating}/5 — ${review.title}\n${review.content}`
+        buildReviewReplySystemPrompt(store, review.customerName),
+        buildReviewReplyUserPrompt(review)
       );
     },
   };

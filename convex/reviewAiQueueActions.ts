@@ -176,12 +176,20 @@ async function executeGenerateReply(
   });
   if (!review) return;
 
+  const storeContext = await ctx.runQuery(
+    internal.settings.getReviewReplyStoreContextQuery,
+    {}
+  );
+
   const provider = getReviewAIProvider();
   const reply = await generateReviewReply(provider, {
     rating: review.rating,
     title: review.title,
     content: review.content,
     customerName: review.customerName,
+    storeName: storeContext.storeName,
+    storeEmail: storeContext.storeEmail,
+    storeAddress: storeContext.storeAddress,
   });
 
   await ctx.runMutation(internal.reviewAi.setReplyDraft, {

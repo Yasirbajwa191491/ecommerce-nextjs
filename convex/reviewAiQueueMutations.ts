@@ -18,6 +18,7 @@ import {
   getPrimaryProviderName,
   isN8nFallbackEnabled,
 } from "./lib/ai/featureFlags";
+import { getReviewReplyStoreContext } from "./lib/settingsHelpers";
 
 const enqueueArgsValidator = {
   jobType: reviewAiJobTypeValidator,
@@ -223,6 +224,27 @@ export const markJobFailed = internalMutation({
           updatedAt: now,
         });
 
+        const storeContext = await getReviewReplyStoreContext(ctx);
+        let reviewText:
+          | {
+              title: string;
+              content: string;
+              rating: number;
+              customerName: string;
+            }
+          | undefined;
+        if (job.reviewId) {
+          const review = await ctx.db.get(job.reviewId);
+          if (review) {
+            reviewText = {
+              title: review.title,
+              content: review.content,
+              rating: review.rating,
+              customerName: review.customerName,
+            };
+          }
+        }
+
         await ctx.scheduler.runAfter(
           0,
           internal.n8nWebhooks.emitReviewEvent,
@@ -239,6 +261,8 @@ export const markJobFailed = internalMutation({
               types: ["sentiment", "tags", "moderation", "full_analysis"],
               source: "fallback",
               regenerationMode: "version",
+              storeContext,
+              reviewText,
             }),
           }
         );

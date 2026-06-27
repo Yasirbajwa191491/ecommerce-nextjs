@@ -20,6 +20,9 @@ export type ReviewForReply = {
   title: string;
   content: string;
   customerName?: string;
+  storeName?: string;
+  storeEmail?: string;
+  storeAddress?: string;
 };
 
 export type AiProviderName =

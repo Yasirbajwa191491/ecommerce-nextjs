@@ -1,4 +1,11 @@
 import type { QueryCtx, MutationCtx } from "../_generated/server";
+import {
+  REVIEW_REPLY_STORE_NAME,
+  type ReviewReplyStoreContext,
+} from "./ai/reviewReplyPrompt";
+
+const DEFAULT_STORE_EMAIL = "yasir.sohail@savari.io";
+const DEFAULT_STORE_ADDRESS = "DHA Phase 6 Lahore, Pakistan, 54000";
 
 async function findSettingByKey(
   ctx: QueryCtx | MutationCtx,
@@ -30,4 +37,16 @@ export async function getSmsOrderConfirmationEnabledValue(
 ): Promise<boolean> {
   const row = await findSettingByKey(ctx, "sms_order_confirmation_enabled");
   return row?.value.trim().toLowerCase() === "true";
+}
+
+export async function getReviewReplyStoreContext(
+  ctx: QueryCtx | MutationCtx
+): Promise<ReviewReplyStoreContext> {
+  const emailRow = await findSettingByKey(ctx, "email");
+  const addressRow = await findSettingByKey(ctx, "address");
+  return {
+    storeName: REVIEW_REPLY_STORE_NAME,
+    storeEmail: emailRow?.value?.trim() || DEFAULT_STORE_EMAIL,
+    storeAddress: addressRow?.value?.trim() || DEFAULT_STORE_ADDRESS,
+  };
 }

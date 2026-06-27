@@ -4,6 +4,7 @@ import { v, ConvexError } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/requireAdmin";
+import { getReviewReplyStoreContext } from "./lib/settingsHelpers";
 import { computeReviewAiQueueStats } from "./lib/reviewAiQueueStats";
 import {
   buildAnalyzeReviewIdempotencyKey,
@@ -35,6 +36,7 @@ async function emitManualGeneration(
   if (!review) throw new ConvexError("Review not found");
 
   const user = await requireAdmin(ctx);
+  const storeContext = await getReviewReplyStoreContext(ctx);
 
   await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {
     event: "review.ai.manual_generate",
@@ -46,6 +48,7 @@ async function emitManualGeneration(
       source: "manual",
       regenerationMode: args.mode ?? "version",
       triggeredBy: user._id,
+      storeContext,
       reviewText: {
         title: review.title,
         content: review.content,

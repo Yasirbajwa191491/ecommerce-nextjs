@@ -72,6 +72,7 @@ import type * as lib_ai_providers_openrouter from "../lib/ai/providers/openroute
 import type * as lib_ai_providers_remoteWorker from "../lib/ai/providers/remoteWorker.js";
 import type * as lib_ai_providers_shared from "../lib/ai/providers/shared.js";
 import type * as lib_ai_reviewIntelligence from "../lib/ai/reviewIntelligence.js";
+import type * as lib_ai_reviewReplyPrompt from "../lib/ai/reviewReplyPrompt.js";
 import type * as lib_ai_scheduleProductIntelligence from "../lib/ai/scheduleProductIntelligence.js";
 import type * as lib_ai_tagIndex from "../lib/ai/tagIndex.js";
 import type * as lib_ai_tagUtils from "../lib/ai/tagUtils.js";
@@ -260,6 +261,7 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/providers/remoteWorker": typeof lib_ai_providers_remoteWorker;
   "lib/ai/providers/shared": typeof lib_ai_providers_shared;
   "lib/ai/reviewIntelligence": typeof lib_ai_reviewIntelligence;
+  "lib/ai/reviewReplyPrompt": typeof lib_ai_reviewReplyPrompt;
   "lib/ai/scheduleProductIntelligence": typeof lib_ai_scheduleProductIntelligence;
   "lib/ai/tagIndex": typeof lib_ai_tagIndex;
   "lib/ai/tagUtils": typeof lib_ai_tagUtils;

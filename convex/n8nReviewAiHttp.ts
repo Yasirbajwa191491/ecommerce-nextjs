@@ -223,6 +223,11 @@ async function queueManualGeneration(
     return json({ error: "Review not found" }, 404);
   }
 
+  const storeContext = await ctx.runQuery(
+    internal.settings.getReviewReplyStoreContextQuery,
+    {}
+  );
+
   await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {
     event: "review.ai.manual_generate",
     payload: JSON.stringify({
@@ -233,6 +238,7 @@ async function queueManualGeneration(
       source: "manual",
       regenerationMode: body.mode ?? "version",
       triggeredBy: body.triggeredBy ?? "n8n",
+      storeContext,
       reviewText: {
         title: review.title,
         content: review.content,
