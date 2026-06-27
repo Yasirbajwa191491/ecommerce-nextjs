@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -77,6 +77,7 @@ export default function AdminReviewsPage() {
   const approve = useMutation(api.adminReviews.approve);
   const reject = useMutation(api.adminReviews.reject);
   const remove = useMutation(api.adminReviews.remove);
+  const queueStats = useQuery(api.adminReviewAi.getQueueStats);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), 300);
@@ -129,6 +130,23 @@ export default function AdminReviewsPage() {
         title="Reviews"
         description="Moderate customer product reviews before they appear on the storefront."
       />
+
+      {queueStats &&
+      (queueStats.pending > 0 ||
+        queueStats.retryScheduled > 0 ||
+        queueStats.processing > 0) ? (
+        <div className="flex flex-wrap gap-2 text-sm">
+          {queueStats.processing > 0 ? (
+            <Badge variant="secondary">{queueStats.processing} AI processing</Badge>
+          ) : null}
+          {queueStats.pending > 0 ? (
+            <Badge variant="outline">{queueStats.pending} AI queued</Badge>
+          ) : null}
+          {queueStats.retryScheduled > 0 ? (
+            <Badge variant="outline">{queueStats.retryScheduled} AI retry scheduled</Badge>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input

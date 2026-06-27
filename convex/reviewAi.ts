@@ -113,6 +113,25 @@ export const setReplyDraft = internalMutation({
 
     await ctx.db.patch(args.reviewId, {
       adminReplyDraft: args.draft,
+      adminReplyError: undefined,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const setReplyError = internalMutation({
+  args: {
+    reviewId: v.id("productReviews"),
+    error: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const review = await ctx.db.get(args.reviewId);
+    if (!review) return null;
+
+    await ctx.db.patch(args.reviewId, {
+      adminReplyError: args.error,
       updatedAt: Date.now(),
     });
     return null;

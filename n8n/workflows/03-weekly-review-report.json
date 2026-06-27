@@ -1,0 +1,86 @@
+{
+  "name": "Review AI - Weekly Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [1],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "cron-weekly",
+      "name": "Monday 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.CONVEX_SITE_URL }}/n8n/review-ai/weekly-stats",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        }
+      },
+      "id": "fetch-stats",
+      "name": "Fetch Weekly Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $input.first().json;\nconst start = new Date(s.periodStart).toLocaleDateString();\nconst end = new Date(s.periodEnd).toLocaleDateString();\nconst body = [\n  `Weekly Review Report (${start} - ${end})`,\n  '',\n  `New reviews: ${s.newReviews}`,\n  `Approved: ${s.approvedReviews}`,\n  `Pending moderation: ${s.pendingReviews}`,\n  `Average rating: ${s.averageRating}`,\n  '',\n  'Sentiment breakdown:',\n  `  Positive: ${s.sentimentBreakdown.positive}`,\n  `  Neutral: ${s.sentimentBreakdown.neutral}`,\n  `  Negative: ${s.sentimentBreakdown.negative}`,\n  `  Unanalyzed: ${s.sentimentBreakdown.unanalyzed}`,\n  '',\n  `Flagged by AI: ${s.flaggedCount}`,\n  '',\n  'AI queue:',\n  `  Pending: ${s.aiQueue.pending}`,\n  `  Retry scheduled: ${s.aiQueue.retryScheduled}`,\n  `  Failed: ${s.aiQueue.failed}`,\n].join('\\n');\nreturn [{ json: { subject: `Weekly Review Report - ${end}`, body } }];"
+      },
+      "id": "format-report",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.EMAIL_FROM || 'noreply@example.com' }}",
+        "toEmail": "={{ $env.ADMIN_EMAIL }}",
+        "subject": "={{ $json.subject }}",
+        "text": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Report Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [960, 300],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Monday 9 AM": {
+      "main": [[{ "node": "Fetch Weekly Stats", "type": "main", "index": 0 }]]
+    },
+    "Fetch Weekly Stats": {
+      "main": [[{ "node": "Format Report", "type": "main", "index": 0 }]]
+    },
+    "Format Report": {
+      "main": [[{ "node": "Send Report Email", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

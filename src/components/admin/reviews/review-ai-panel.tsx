@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toastError, toastSuccess } from "@/lib/app-toast";
+import { getFriendlyAiErrorMessage } from "@/lib/ai-error-messages";
 import {
   AlertTriangle,
+  Clock,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -49,6 +51,13 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
   const isAnalyzing =
     review.aiAnalysisStatus === "pending" ||
     review.aiAnalysisStatus === "processing";
+
+  const isRetryScheduled = review.aiAnalysisStatus === "retry_scheduled";
+
+  const friendlyError = getFriendlyAiErrorMessage(
+    review.aiError,
+    review.aiAnalysisStatus
+  );
 
   const handleRetry = async () => {
     try {
@@ -109,10 +118,30 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
           </div>
         ) : null}
 
+        {review.aiAnalysisStatus === "pending" && !isAnalyzing ? (
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-muted-foreground dark:border-slate-800 dark:bg-slate-950/30">
+            <Clock className="size-4 shrink-0" />
+            AI analysis queued…
+          </div>
+        ) : null}
+
+        {isRetryScheduled ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/30">
+            <Clock className="size-4 shrink-0 text-blue-700 dark:text-blue-300" />
+            <span className="text-blue-900 dark:text-blue-100">
+              {friendlyError}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => void handleRetry()}>
+              <RefreshCw className="size-3.5" />
+              Retry now
+            </Button>
+          </div>
+        ) : null}
+
         {review.aiAnalysisStatus === "failed" ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/30">
             <span className="text-amber-800 dark:text-amber-200">
-              {review.aiError ?? "AI analysis failed"}
+              {friendlyError}
             </span>
             <Button size="sm" variant="outline" onClick={() => void handleRetry()}>
               <RefreshCw className="size-3.5" />
@@ -184,6 +213,11 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
               Generate Reply
             </Button>
           </div>
+          {review.adminReplyError ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              {getFriendlyAiErrorMessage(review.adminReplyError)}
+            </p>
+          ) : null}
           <Textarea
             value={replyDraft}
             onChange={(e) => setReplyDraft(e.target.value)}

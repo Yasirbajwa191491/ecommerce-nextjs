@@ -16,6 +16,10 @@ import {
   validateReviewContent,
   validateReviewTitle,
 } from "../lib/reviews";
+import {
+  buildAnalyzeReviewIdempotencyKey,
+  enqueueReviewAiJob,
+} from "../lib/reviewAiQueue";
 
 function titleFromReviewContent(content: string): string {
   const sanitized = sanitizeReviewText(content);
@@ -245,8 +249,19 @@ export const createProductReview = internalMutation({
         aiAnalysisStatus: "pending",
       });
 
-      await ctx.scheduler.runAfter(0, internal.reviewAiActions.processReview, {
+      await enqueueReviewAiJob(ctx, {
+        jobType: "analyze_review",
         reviewId,
+        idempotencyKey: buildAnalyzeReviewIdempotencyKey(
+          reviewId,
+          title,
+          content
+        ),
+      });
+
+      await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {
+        event: "review.created",
+        payload: JSON.stringify({ reviewId, productId, source: "vapi" }),
       });
 
       const collectedEntry = {

@@ -24,6 +24,10 @@ import {
   validateReviewContent,
   validateReviewTitle,
 } from "./lib/reviews";
+import {
+  buildAnalyzeReviewIdempotencyKey,
+  enqueueReviewAiJob,
+} from "./lib/reviewAiQueue";
 
 const reviewSortValidator = v.union(
   v.literal("recent"),
@@ -417,8 +421,15 @@ export const createReview = mutation({
       aiAnalysisStatus: "pending",
     });
 
-    await ctx.scheduler.runAfter(0, internal.reviewAiActions.processReview, {
+    await enqueueReviewAiJob(ctx, {
+      jobType: "analyze_review",
       reviewId,
+      idempotencyKey: buildAnalyzeReviewIdempotencyKey(reviewId, title, content),
+    });
+
+    await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {
+      event: "review.created",
+      payload: JSON.stringify({ reviewId, productId: args.productId }),
     });
 
     return reviewId;
@@ -487,8 +498,22 @@ export const updateReview = mutation({
       await ctx.db.delete(row._id);
     }
 
-    await ctx.scheduler.runAfter(0, internal.reviewAiActions.processReview, {
+    await enqueueReviewAiJob(ctx, {
+      jobType: "analyze_review",
       reviewId: args.reviewId,
+      idempotencyKey: buildAnalyzeReviewIdempotencyKey(
+        args.reviewId,
+        title,
+        content
+      ),
+    });
+
+    await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {
+      event: "review.updated",
+      payload: JSON.stringify({
+        reviewId: args.reviewId,
+        productId: review.productId,
+      }),
     });
 
     return args.reviewId;

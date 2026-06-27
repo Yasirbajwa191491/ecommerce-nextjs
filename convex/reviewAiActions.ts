@@ -3,65 +3,23 @@
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  MIN_REVIEWS_FOR_SUMMARY,
-  shouldRegenerateInsights,
-} from "./lib/ai/constants";
-import { getReviewAIProvider } from "./lib/ai/getProvider";
-import {
-  analyzeReview,
-  extractReviewTopics,
-  generateReviewReply,
-  summarizeReviews,
-} from "./lib/ai/reviewIntelligence";
 
+/** @deprecated Use reviewAiQueueActions via enqueueReviewAiJob. Kept for scheduler compatibility. */
 export const processReview = internalAction({
   args: { reviewId: v.id("productReviews") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const review = await ctx.runQuery(internal.reviewAiQueries.getReviewForAi, {
+    await ctx.runMutation(internal.reviewAiQueueMutations.enqueueJob, {
+      jobType: "analyze_review",
       reviewId: args.reviewId,
+      priority: 5,
+      idempotencyKey: `analyze_review:${args.reviewId}:legacy:${Date.now()}`,
     });
-
-    if (!review) return null;
-
-    await ctx.runMutation(internal.reviewAi.setAnalysisStatus, {
-      reviewId: args.reviewId,
-      status: "processing",
-    });
-
-    try {
-      const provider = getReviewAIProvider();
-      const results = await analyzeReview(provider, {
-        title: review.title,
-        content: review.content,
-      });
-
-      await ctx.runMutation(internal.reviewAi.applyReviewResults, {
-        reviewId: args.reviewId,
-        results,
-      });
-
-      if (review.isApproved) {
-        await ctx.runAction(internal.reviewAiActions.regenerateProductInsights, {
-          productId: review.productId,
-          force: false,
-        });
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "AI analysis failed";
-      await ctx.runMutation(internal.reviewAi.setAnalysisStatus, {
-        reviewId: args.reviewId,
-        status: "failed",
-        error: message,
-      });
-    }
-
     return null;
   },
 });
 
+/** @deprecated Use reviewAiQueueActions via enqueueReviewAiJob. */
 export const regenerateProductInsights = internalAction({
   args: {
     productId: v.id("products"),
@@ -69,99 +27,27 @@ export const regenerateProductInsights = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const data = await ctx.runQuery(
-      internal.reviewAiQueries.getApprovedReviewTexts,
-      { productId: args.productId }
-    );
-
-    if (data.texts.length < MIN_REVIEWS_FOR_SUMMARY) {
-      return null;
-    }
-
-    if (
-      !args.force &&
-      !shouldRegenerateInsights(
-        data.texts.length,
-        data.previousReviewCount
-      )
-    ) {
-      return null;
-    }
-
-    await ctx.runMutation(internal.reviewAi.setProductInsightsPending, {
+    await ctx.runMutation(internal.reviewAiQueueMutations.enqueueJob, {
+      jobType: "regenerate_insights",
       productId: args.productId,
+      idempotencyKey: `regenerate_insights:${args.productId}:${args.force ? "force" : "auto"}:${Date.now()}`,
+      payload: JSON.stringify({ force: args.force ?? false }),
     });
-
-    try {
-      const provider = getReviewAIProvider();
-      const [summary, topics] = await Promise.all([
-        summarizeReviews(provider, data.texts),
-        extractReviewTopics(provider, data.texts),
-      ]);
-
-      await ctx.runMutation(internal.reviewAi.upsertProductInsights, {
-        productId: args.productId,
-        summary,
-        topics,
-        reviewCountAtGeneration: data.texts.length,
-        status: "complete",
-      });
-
-      await ctx.scheduler.runAfter(
-        0,
-        internal.productAiActions.processProductIntelligence,
-        { productId: args.productId, force: false }
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Insights generation failed";
-      await ctx.runMutation(internal.reviewAi.upsertProductInsights, {
-        productId: args.productId,
-        summary: "",
-        topics: [],
-        reviewCountAtGeneration: data.texts.length,
-        status: "failed",
-      });
-      console.error("Product insights failed:", message);
-    }
-
     return null;
   },
 });
 
+/** @deprecated Use reviewAiQueueActions via enqueueReviewAiJob. */
 export const generateReply = internalAction({
   args: { reviewId: v.id("productReviews") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const review = await ctx.runQuery(internal.reviewAiQueries.getReviewForAi, {
+    await ctx.runMutation(internal.reviewAiQueueMutations.enqueueJob, {
+      jobType: "generate_reply",
       reviewId: args.reviewId,
+      priority: 1,
+      idempotencyKey: `generate_reply:${args.reviewId}:${Date.now()}`,
     });
-
-    if (!review) return null;
-
-    try {
-      const provider = getReviewAIProvider();
-      const reply = await generateReviewReply(provider, {
-        rating: review.rating,
-        title: review.title,
-        content: review.content,
-        customerName: review.customerName,
-      });
-
-      await ctx.runMutation(internal.reviewAi.setReplyDraft, {
-        reviewId: args.reviewId,
-        draft: reply.trim(),
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Reply generation failed";
-      const friendly = message.includes("503") || message.includes("429")
-        ? "The AI provider is temporarily busy. Please click Generate Reply again in a minute."
-        : message;
-      console.error("Reply generation failed:", message);
-      throw new Error(friendly);
-    }
-
     return null;
   },
 });

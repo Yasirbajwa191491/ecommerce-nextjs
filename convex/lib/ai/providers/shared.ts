@@ -39,6 +39,19 @@ export function isGeminiQuotaError(message: string): boolean {
   );
 }
 
+/** Parse retry delay from Gemini error JSON (seconds → ms). */
+export function parseRetryDelayFromGeminiError(message: string): number | undefined {
+  const retryMatch = message.match(/"retryDelay"\s*:\s*"(\d+)s"/i);
+  if (retryMatch) {
+    return Number(retryMatch[1]) * 1000;
+  }
+  const retryInfoMatch = message.match(/retry in ([\d.]+)s/i);
+  if (retryInfoMatch) {
+    return Math.ceil(Number(retryInfoMatch[1]) * 1000);
+  }
+  return undefined;
+}
+
 /** Retry transient LLM API failures (rate limits, overload). */
 export async function fetchWithRetry(
   url: string,

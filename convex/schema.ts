@@ -11,6 +11,9 @@ import {
   aiModerationValidator,
   aiSentimentValidator,
   productInsightsStatusValidator,
+  reviewAiJobErrorCodeValidator,
+  reviewAiJobStatusValidator,
+  reviewAiJobTypeValidator,
   reviewTopicValidator,
 } from "./lib/aiValidators";
 import {
@@ -386,6 +389,7 @@ export default defineSchema({
     adminReplyDraft: v.optional(v.string()),
     adminReplyPublished: v.optional(v.string()),
     adminReplyPublishedAt: v.optional(v.number()),
+    adminReplyError: v.optional(v.string()),
     source: v.optional(v.union(v.literal("web"), v.literal("vapi"))),
     recommendationScore: v.optional(v.number()),
   })
@@ -425,6 +429,28 @@ export default defineSchema({
     voterKey: v.string(),
     createdAt: v.number(),
   }).index("by_review_voter", ["reviewId", "voterKey"]),
+
+  reviewAiJobs: defineTable({
+    jobType: reviewAiJobTypeValidator,
+    reviewId: v.optional(v.id("productReviews")),
+    productId: v.optional(v.id("products")),
+    status: reviewAiJobStatusValidator,
+    priority: v.number(),
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    nextRetryAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    lastErrorCode: v.optional(reviewAiJobErrorCodeValidator),
+    idempotencyKey: v.string(),
+    payload: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_status_priority", ["status", "priority"])
+    .index("by_status_next_retry", ["status", "nextRetryAt"])
+    .index("by_review_id", ["reviewId"])
+    .index("by_idempotency", ["idempotencyKey"]),
 
   orderStatusLogs: defineTable({
     orderId: v.id("orders"),
