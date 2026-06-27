@@ -21,6 +21,7 @@ import { ProductStars } from "@/components/products/product-stars";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import { ReviewAiPanel } from "@/components/admin/reviews/review-ai-panel";
+import { ReviewAiHistory } from "@/components/admin/reviews/review-ai-history";
 import { ArrowLeft, Check, Trash2, X } from "lucide-react";
 
 function formatDate(timestamp: number) {
@@ -243,6 +244,7 @@ export default function AdminReviewDetailPage() {
       </Card>
 
       <ReviewAiPanel review={review} />
+      <ReviewAiHistory reviewId={review._id} />
 
       <Card>
         <CardHeader>

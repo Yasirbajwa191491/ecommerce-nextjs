@@ -1,0 +1,33 @@
+{
+  "name": "Review AI - AI Generation Router",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "execute-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst types = body.types || ['sentiment', 'tags', 'moderation'];\nconst reviewText = body.reviewText || {};\nconst text = `${reviewText.title || ''}\\n\\n${reviewText.content || ''}`.trim();\nconst providerOrder = ($vars.AI_FALLBACK_PROVIDER_ORDER || 'groq,openrouter,openai').split(',').map((s) => s.trim());\nconst models = {\n  groq: $vars.GROQ_MODEL || 'llama-3.3-70b-versatile',\n  openrouter: $vars.OPENROUTER_MODEL || 'google/gemini-2.5-flash',\n  openai: $vars.OPENAI_MODEL || 'gpt-4o-mini'\n};\nconst keys = {\n  groq: $vars.GROQ_API_KEY,\n  openrouter: $vars.OPENROUTER_API_KEY,\n  openai: $vars.OPENAI_API_KEY\n};\n\nasync function chat(provider, system, user) {\n  if (provider === 'groq') {\n    const res = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.groq.com/openai/v1/chat/completions',\n      headers: { Authorization: `Bearer ${keys.groq}`, 'Content-Type': 'application/json' },\n      body: { model: models.groq, temperature: 0.3, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] },\n      json: true\n    });\n    return res.choices?.[0]?.message?.content || '';\n  }\n  if (provider === 'openrouter') {\n    const res = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://openrouter.ai/api/v1/chat/completions',\n      headers: { Authorization: `Bearer ${keys.openrouter}`, 'Content-Type': 'application/json' },\n      body: { model: models.openrouter, temperature: 0.3, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] },\n      json: true\n    });\n    return res.choices?.[0]?.message?.content || '';\n  }\n  const res = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/chat/completions',\n    headers: { Authorization: `Bearer ${keys.openai}`, 'Content-Type': 'application/json' },\n    body: { model: models.openai, temperature: 0.3, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] },\n    json: true\n  });\n  return res.choices?.[0]?.message?.content || '';\n}\n\nconst prompts = {\n  sentiment: 'Reply JSON only: {\"sentiment\":\"positive|neutral|negative\",\"confidence\":0.95}',\n  tags: 'Return JSON array of 2-5 short tags, e.g. [\"Good Quality\",\"Fast Delivery\"]',\n  moderation: 'Reply JSON only: {\"flagged\":true|false,\"reason\":\"...\"}',\n  reply: 'Write a professional, empathetic store reply (80-120 words).',\n  summary: 'Write a balanced 2-3 sentence product review summary for shoppers.'\n};\n\nconst results = [];\nconst startAll = Date.now();\n\nfor (const type of types) {\n  if (type === 'full_analysis') continue;\n  let lastError = null;\n  let saved = false;\n  for (const provider of providerOrder) {\n    if (!keys[provider]) continue;\n    const t0 = Date.now();\n    try {\n      const system = prompts[type] || prompts.sentiment;\n      const user = type === 'reply' ? `Rating ${reviewText.rating}/5 — ${reviewText.title}\\n${reviewText.content}` : text;\n      const raw = await chat.call(this, provider, system, user);\n      let content;\n      if (type === 'sentiment') {\n        const parsed = JSON.parse(raw.match(/\\{[\\s\\S]*\\}/)?.[0] || '{}');\n        content = JSON.stringify(parsed);\n      } else if (type === 'tags') {\n        const parsed = JSON.parse(raw.match(/\\[[\\s\\S]*\\]/)?.[0] || '[]');\n        content = JSON.stringify({ tags: parsed });\n      } else if (type === 'moderation') {\n        const parsed = JSON.parse(raw.match(/\\{[\\s\\S]*\\}/)?.[0] || '{\"flagged\":false}');\n        content = JSON.stringify(parsed);\n      } else if (type === 'reply') {\n        content = JSON.stringify({ reply: raw.trim() });\n      } else if (type === 'summary') {\n        content = JSON.stringify({ summary: raw.trim() });\n      } else {\n        content = JSON.stringify({ raw });\n      }\n      await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${$vars.CONVEX_SITE_URL}/n8n/review-ai/save-generation`,\n        headers: { 'X-N8N-Secret': $vars.N8N_WEBHOOK_SECRET, 'Content-Type': 'application/json' },\n        body: {\n          reviewId: body.reviewId,\n          productId: body.productId,\n          type,\n          content,\n          provider,\n          model: models[provider],\n          source: body.source || 'fallback',\n          triggeredBy: body.triggeredBy || 'n8n',\n          jobId: body.jobId,\n          durationMs: Date.now() - t0,\n          mode: body.regenerationMode || 'version',\n          title: reviewText.title\n        },\n        json: true\n      });\n      results.push({ type, provider, ok: true });\n      saved = true;\n      break;\n    } catch (e) {\n      lastError = e.message;\n      await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${$vars.CONVEX_SITE_URL}/n8n/review-ai/report-failure`,\n        headers: { 'X-N8N-Secret': $vars.N8N_WEBHOOK_SECRET, 'Content-Type': 'application/json' },\n        body: {\n          reviewId: body.reviewId,\n          type,\n          provider,\n          model: models[provider],\n          source: body.source || 'fallback',\n          error: lastError,\n          durationMs: Date.now() - t0\n        },\n        json: true\n      }).catch(() => {});\n    }\n  }\n  if (!saved) {\n    results.push({ type, ok: false, error: lastError });\n  }\n}\n\nif (types.includes('full_analysis')) {\n  const merged = {};\n  for (const r of results) {\n    if (!r.ok) continue;\n  }\n  const sentimentRes = results.find((r) => r.type === 'sentiment' && r.ok);\n  const tagsRes = results.find((r) => r.type === 'tags' && r.ok);\n  const modRes = results.find((r) => r.type === 'moderation' && r.ok);\n}\n\nreturn [{ json: { ok: true, results, durationMs: Date.now() - startAll, reviewId: body.reviewId } }];"
+      },
+      "id": "generate-ai",
+      "name": "Generate via Provider Chain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Generate via Provider Chain", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true }
+}

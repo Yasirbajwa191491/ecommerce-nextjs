@@ -50,3 +50,25 @@ export const productInsightsStatusValidator = v.union(
   v.literal("complete"),
   v.literal("failed")
 );
+
+export const reviewAiGenerationTypeValidator = v.union(
+  v.literal("sentiment"),
+  v.literal("tags"),
+  v.literal("moderation"),
+  v.literal("reply"),
+  v.literal("summary"),
+  v.literal("topics"),
+  v.literal("full_analysis")
+);
+
+export const reviewAiGenerationSourceValidator = v.union(
+  v.literal("automatic"),
+  v.literal("manual"),
+  v.literal("fallback")
+);
+
+export const reviewAiGenerationModeValidator = v.union(
+  v.literal("replace"),
+  v.literal("version"),
+  v.literal("history_only")
+);

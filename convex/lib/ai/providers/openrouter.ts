@@ -1,4 +1,3 @@
-import { GEMINI_EMBEDDING_MODEL_DEFAULT } from "../constants";
 import type {
   ModerationResult,
   ReviewAIProvider,
@@ -8,6 +7,7 @@ import type {
 } from "../types";
 import { geminiEmbed } from "./gemini";
 import { openaiEmbed } from "./openai";
+import { GEMINI_EMBEDDING_MODEL_DEFAULT } from "../constants";
 import {
   heuristicModeration,
   normalizeSentiment,
@@ -17,35 +17,40 @@ import {
   truncate,
 } from "./shared";
 
-type GroqConfig = {
+type OpenRouterConfig = {
   apiKey: string;
   model: string;
 };
 
-async function groqChat(
-  config: GroqConfig,
+async function openRouterChat(
+  config: OpenRouterConfig,
   system: string,
   user: string
 ): Promise<string> {
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
+  const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.CONVEX_SITE_URL ?? "https://localhost",
+        "X-Title": "Ecommerce Review AI",
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    }
+  );
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Groq chat failed (${response.status}): ${text}`);
+    throw new Error(`OpenRouter chat failed (${response.status}): ${text}`);
   }
 
   const data = (await response.json()) as {
@@ -70,27 +75,33 @@ async function embedWithFallback(text: string): Promise<number[]> {
     );
   }
   throw new Error(
-    "Semantic search requires OPENAI_API_KEY or GEMINI_API_KEY for embeddings when using Groq"
+    "Semantic search requires OPENAI_API_KEY or GEMINI_API_KEY for embeddings when using OpenRouter"
   );
 }
 
-export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvider {
-  const apiKey = config?.apiKey ?? process.env.GROQ_API_KEY;
+export function createOpenRouterProvider(
+  config?: Partial<OpenRouterConfig>
+): ReviewAIProvider {
+  const apiKey = config?.apiKey ?? process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    throw new Error("GROQ_API_KEY is not set in Convex environment variables");
+    throw new Error(
+      "OPENROUTER_API_KEY is not set in Convex environment variables"
+    );
   }
 
-  const resolved: GroqConfig = {
+  const resolved: OpenRouterConfig = {
     apiKey,
     model:
-      config?.model ?? process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
+      config?.model ??
+      process.env.OPENROUTER_MODEL ??
+      "google/gemini-2.5-flash",
   };
 
   return {
-    name: "groq" as const,
+    name: "openrouter" as const,
     model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
-      const content = await groqChat(
+      const content = await openRouterChat(
         resolved,
         'Reply JSON only: {"sentiment":"positive|neutral|negative","confidence":0.95}',
         truncate(text)
@@ -102,7 +113,7 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
     },
 
     async generateTags(text: string): Promise<string[]> {
-      const content = await groqChat(
+      const content = await openRouterChat(
         resolved,
         'Return JSON array of 2-5 short tags, e.g. ["Good Quality","Fast Delivery"]',
         truncate(text)
@@ -114,7 +125,7 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
       const heuristic = heuristicModeration(text);
       if (heuristic) return heuristic;
 
-      const content = await groqChat(
+      const content = await openRouterChat(
         resolved,
         'Reply JSON only: {"flagged":true|false,"reason":"..."}',
         truncate(text)
@@ -134,7 +145,7 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
     },
 
     async summarizeReviews(reviews: string[]): Promise<string> {
-      return await groqChat(
+      return await openRouterChat(
         resolved,
         "Write a balanced 2-3 sentence product review summary for shoppers.",
         reviews
@@ -145,7 +156,7 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
     },
 
     async extractTopics(reviews: string[]): Promise<ReviewTopic[]> {
-      const content = await groqChat(
+      const content = await openRouterChat(
         resolved,
         'Return JSON array: [{"name":"Quality","mentionCount":12}]',
         reviews.slice(0, 40).join("\n")
@@ -154,7 +165,7 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
     },
 
     async generateReply(review: ReviewForReply): Promise<string> {
-      return await groqChat(
+      return await openRouterChat(
         resolved,
         "Write a professional, empathetic store reply (80-120 words).",
         `Rating ${review.rating}/5 — ${review.title}\n${review.content}`

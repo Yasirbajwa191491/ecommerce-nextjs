@@ -4,9 +4,17 @@ import { stripeWebhook } from "./stripeWebhooks";
 import { vapiWebhook } from "./vapi/webhook";
 import {
   n8nDueJobs,
+  n8nGenerateReply,
+  n8nGenerateSentiment,
+  n8nGenerateSummary,
+  n8nGenerateTags,
+  n8nGenerationStats,
   n8nProcessDue,
   n8nProcessJob,
   n8nQueueHealth,
+  n8nReportFailure,
+  n8nReprocessReview,
+  n8nSaveGeneration,
   n8nWeeklyStats,
 } from "./n8nReviewAiHttp";
 
@@ -54,6 +62,54 @@ http.route({
   path: "/n8n/review-ai/health",
   method: "GET",
   handler: n8nQueueHealth,
+});
+
+http.route({
+  path: "/n8n/review-ai/save-generation",
+  method: "POST",
+  handler: n8nSaveGeneration,
+});
+
+http.route({
+  path: "/n8n/review-ai/report-failure",
+  method: "POST",
+  handler: n8nReportFailure,
+});
+
+http.route({
+  path: "/n8n/review-ai/generation-stats",
+  method: "GET",
+  handler: n8nGenerationStats,
+});
+
+http.route({
+  path: "/n8n/review-ai/generate-sentiment",
+  method: "POST",
+  handler: n8nGenerateSentiment,
+});
+
+http.route({
+  path: "/n8n/review-ai/generate-tags",
+  method: "POST",
+  handler: n8nGenerateTags,
+});
+
+http.route({
+  path: "/n8n/review-ai/generate-reply",
+  method: "POST",
+  handler: n8nGenerateReply,
+});
+
+http.route({
+  path: "/n8n/review-ai/generate-summary",
+  method: "POST",
+  handler: n8nGenerateSummary,
+});
+
+http.route({
+  path: "/n8n/review-ai/reprocess-review",
+  method: "POST",
+  handler: n8nReprocessReview,
 });
 
 export default http;

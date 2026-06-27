@@ -36,6 +36,8 @@ async function postJson<T>(
 
 export function createRemoteWorkerProvider(config: WorkerConfig): ReviewAIProvider {
   return {
+    name: "remote" as const,
+    model: "remote-worker",
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       return await postJson<SentimentResult>(config, "/sentiment", { text });
     },

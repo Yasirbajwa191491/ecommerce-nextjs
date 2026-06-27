@@ -91,6 +91,8 @@ export function createAnthropicProvider(
   };
 
   return {
+    name: "anthropic" as const,
+    model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       const content = await anthropicMessage(
         resolved,

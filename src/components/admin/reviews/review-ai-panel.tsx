@@ -12,6 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import { getFriendlyAiErrorMessage } from "@/lib/ai-error-messages";
@@ -28,6 +36,8 @@ type ReviewAiPanelProps = {
   review: Doc<"productReviews">;
 };
 
+type RegenerationMode = "replace" | "version" | "history_only";
+
 const sentimentStyles = {
   positive: "bg-emerald-600",
   neutral: "bg-slate-500",
@@ -36,13 +46,20 @@ const sentimentStyles = {
 
 export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
   const [replyDraft, setReplyDraft] = useState(review.adminReplyDraft ?? "");
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [mode, setMode] = useState<RegenerationMode>("version");
 
   const retryAi = useMutation(api.adminReviews.retryAiAnalysis);
-  const generateReply = useMutation(api.adminReviews.generateReplyDraft);
   const publishReply = useMutation(api.adminReviews.publishReply);
   const clearDraft = useMutation(api.adminReviews.clearReplyDraft);
+
+  const triggerSentiment = useMutation(api.adminReviewAi.triggerSentimentGeneration);
+  const triggerTags = useMutation(api.adminReviewAi.triggerTagsGeneration);
+  const triggerReply = useMutation(api.adminReviewAi.triggerReplyGeneration);
+  const triggerSummary = useMutation(api.adminReviewAi.triggerSummaryGeneration);
+  const reprocessReview = useMutation(api.adminReviewAi.reprocessReview);
+  const regenerateAll = useMutation(api.adminReviewAi.regenerateAll);
 
   useEffect(() => {
     setReplyDraft(review.adminReplyDraft ?? "");
@@ -59,26 +76,31 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
     review.aiAnalysisStatus
   );
 
-  const handleRetry = async () => {
+  const runAction = async (
+    key: string,
+    fn: () => Promise<unknown>,
+    successMessage: string
+  ) => {
+    setGenerating(key);
     try {
-      await retryAi({ id: review._id });
-      toastSuccess("AI analysis queued");
+      await fn();
+      toastSuccess(successMessage);
     } catch (error) {
-      toastError(error, { title: "Couldn't retry AI analysis" });
+      toastError(error, { title: "AI action failed" });
+    } finally {
+      setGenerating(null);
     }
   };
 
-  const handleGenerateReply = async () => {
-    setGenerating(true);
-    try {
-      await generateReply({ id: review._id });
-      toastSuccess("Generating reply… refresh in a moment");
-    } catch (error) {
-      toastError(error, { title: "Couldn't generate reply" });
-    } finally {
-      setGenerating(false);
-    }
-  };
+  const handleRetry = () =>
+    void runAction("retry", () => retryAi({ id: review._id }), "AI analysis queued");
+
+  const handleGenerateReply = () =>
+    void runAction(
+      "reply",
+      () => triggerReply({ reviewId: review._id, mode }),
+      "Generating reply via n8n…"
+    );
 
   const handlePublishReply = async () => {
     setPublishing(true);
@@ -102,6 +124,8 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
     }
   };
 
+  const modeArgs = { reviewId: review._id, mode };
+
   return (
     <Card>
       <CardHeader>
@@ -111,6 +135,83 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1.5">
+            <Label htmlFor="regeneration-mode">Regeneration mode</Label>
+            <Select
+              value={mode}
+              onValueChange={(v) => setMode(v as RegenerationMode)}
+            >
+              <SelectTrigger id="regeneration-mode" className="w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="version">Create new version</SelectItem>
+                <SelectItem value="replace">Replace existing</SelectItem>
+                <SelectItem value="history_only">Keep history only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <AiActionButton
+            label="Generate Sentiment"
+            loading={generating === "sentiment"}
+            onClick={() =>
+              runAction(
+                "sentiment",
+                () => triggerSentiment(modeArgs),
+                "Sentiment generation queued"
+              )
+            }
+          />
+          <AiActionButton
+            label="Generate AI Tags"
+            loading={generating === "tags"}
+            onClick={() =>
+              runAction(
+                "tags",
+                () => triggerTags(modeArgs),
+                "Tags generation queued"
+              )
+            }
+          />
+          <AiActionButton
+            label="Generate Summary"
+            loading={generating === "summary"}
+            onClick={() =>
+              runAction(
+                "summary",
+                () => triggerSummary(modeArgs),
+                "Summary generation queued"
+              )
+            }
+          />
+          <AiActionButton
+            label="Reprocess Review"
+            loading={generating === "reprocess"}
+            onClick={() =>
+              runAction(
+                "reprocess",
+                () => reprocessReview(modeArgs),
+                "Reprocess queued"
+              )
+            }
+          />
+          <AiActionButton
+            label="Regenerate All"
+            loading={generating === "all"}
+            onClick={() =>
+              runAction(
+                "all",
+                () => regenerateAll(modeArgs),
+                "Full regeneration queued"
+              )
+            }
+          />
+        </div>
+
         {isAnalyzing ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -203,14 +304,14 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
               size="sm"
               variant="outline"
               onClick={() => void handleGenerateReply()}
-              disabled={generating}
+              disabled={generating !== null}
             >
-              {generating ? (
+              {generating === "reply" ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
                 <Wand2 className="size-3.5" />
               )}
-              Generate Reply
+              Generate AI Reply
             </Button>
           </div>
           {review.adminReplyError ? (
@@ -250,5 +351,22 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function AiActionButton({
+  label,
+  loading,
+  onClick,
+}: {
+  label: string;
+  loading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button size="sm" variant="outline" onClick={onClick} disabled={loading}>
+      {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
+      {label}
+    </Button>
   );
 }

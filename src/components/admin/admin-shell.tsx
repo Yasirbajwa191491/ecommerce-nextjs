@@ -46,6 +46,7 @@ const NAV = [
   { href: "/admin/promotions", label: "Promotions", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
+  { href: "/admin/review-ai", label: "Review AI", icon: Sparkles },
   { href: "/admin/review-calls", label: "Review Calls", icon: Phone },
   { href: "/admin/product-categories", label: "Categories", icon: FolderTree },
   { href: "/admin/email-marketing", label: "Email Marketing", icon: Mail },

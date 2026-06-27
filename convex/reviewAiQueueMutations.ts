@@ -14,6 +14,10 @@ import {
 } from "./lib/reviewAiQueue";
 import type { ReviewAiJobErrorCode } from "./lib/reviewAiQueueTypes";
 import { computeReviewAiQueueStats } from "./lib/reviewAiQueueStats";
+import {
+  getPrimaryProviderName,
+  isN8nFallbackEnabled,
+} from "./lib/ai/featureFlags";
 
 const enqueueArgsValidator = {
   jobType: reviewAiJobTypeValidator,
@@ -69,7 +73,12 @@ export const claimNextJob = internalMutation({
       .take(50);
 
     const dueRetry = dueRetries
-      .filter((job) => job.nextRetryAt != null && job.nextRetryAt <= now)
+      .filter(
+        (job) =>
+          job.nextRetryAt != null &&
+          job.nextRetryAt <= now &&
+          !job.fallbackTriggered
+      )
       .sort((a, b) => (a.nextRetryAt ?? 0) - (b.nextRetryAt ?? 0))[0];
 
     if (dueRetry) {
@@ -116,13 +125,44 @@ export const claimJobById = internalMutation({
     if (
       job.status === "retry_scheduled" &&
       job.nextRetryAt != null &&
-      job.nextRetryAt <= now
+      job.nextRetryAt <= now &&
+      !job.fallbackTriggered
     ) {
       await ctx.db.patch(args.jobId, { status: "processing", updatedAt: now });
       return true;
     }
 
     return false;
+  },
+});
+
+export const setJobProvider = internalMutation({
+  args: {
+    jobId: v.id("reviewAiJobs"),
+    provider: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.jobId, {
+      lastAttemptedProvider: args.provider,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const markJobProviderSuccess = internalMutation({
+  args: {
+    jobId: v.id("reviewAiJobs"),
+    provider: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.jobId, {
+      successfulProvider: args.provider,
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 
@@ -160,11 +200,52 @@ export const markJobFailed = internalMutation({
       args.errorCode !== "permanent" && nextRetryCount <= job.maxRetries;
 
     if (canRetry) {
+      const useN8nFallback =
+        isN8nFallbackEnabled() &&
+        args.errorCode !== "permanent" &&
+        getPrimaryProviderName() === "gemini";
+
       const delayMs = computeRetryDelayMs(
         job.retryCount,
         args.errorCode as ReviewAiJobErrorCode,
         args.retryAfterMs
       );
+
+      if (useN8nFallback) {
+        await ctx.db.patch(args.jobId, {
+          status: "retry_scheduled",
+          retryCount: nextRetryCount,
+          nextRetryAt: now + delayMs,
+          lastError: args.error,
+          lastErrorCode: args.errorCode,
+          fallbackTriggered: true,
+          lastAttemptedProvider: getPrimaryProviderName(),
+          updatedAt: now,
+        });
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.n8nWebhooks.emitReviewEvent,
+          {
+            event: "review.ai.fallback_requested",
+            payload: JSON.stringify({
+              jobId: args.jobId,
+              jobType: job.jobType,
+              reviewId: job.reviewId,
+              productId: job.productId,
+              errorCode: args.errorCode,
+              error: args.error,
+              retryCount: nextRetryCount,
+              types: ["sentiment", "tags", "moderation", "full_analysis"],
+              source: "fallback",
+              regenerationMode: "version",
+            }),
+          }
+        );
+
+        return null;
+      }
+
       await ctx.db.patch(args.jobId, {
         status: "retry_scheduled",
         retryCount: nextRetryCount,

@@ -152,6 +152,8 @@ export function createOpenAIProvider(
   };
 
   return {
+    name: "openai" as const,
+    model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       const content = await openaiChat(
         resolved,

@@ -133,6 +133,8 @@ export function createGeminiProvider(
   };
 
   return {
+    name: "gemini" as const,
+    model: resolved.model,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       const content = await geminiGenerateWithConfig(
         resolved,

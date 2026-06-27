@@ -75,6 +75,16 @@
     },
     {
       "parameters": {
+        "jsCode": "const health = $input.first().json;\nreturn [{ json: {\n  event: 'backlog',\n  pending: health.pending,\n  retryScheduled: health.retryScheduled,\n  failed: health.failed,\n  message: `Review AI queue backlog: ${health.pending + health.retryScheduled} jobs pending`\n} }];"
+      },
+      "id": "format-backlog",
+      "name": "Format Backlog Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 460]
+    },
+    {
+      "parameters": {
         "workflowId": "={{ $vars.N8N_ADMIN_NOTIFY_WORKFLOW_ID }}",
         "options": {}
       },
@@ -98,7 +108,10 @@
       "main": [[{ "node": "If Backlog High", "type": "main", "index": 0 }]]
     },
     "If Backlog High": {
-      "main": [[{ "node": "Notify Backlog Alert", "type": "main", "index": 0 }], []]
+      "main": [[{ "node": "Format Backlog Alert", "type": "main", "index": 0 }], []]
+    },
+    "Format Backlog Alert": {
+      "main": [[{ "node": "Notify Backlog Alert", "type": "main", "index": 0 }]]
     }
   },
   "active": false,

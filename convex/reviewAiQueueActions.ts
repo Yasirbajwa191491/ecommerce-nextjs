@@ -2,6 +2,7 @@
 
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import {
   MIN_REVIEWS_FOR_SUMMARY,
@@ -25,8 +26,10 @@ import {
 } from "./lib/reviewAiQueue";
 import type { Id } from "./_generated/dataModel";
 
+type JobActionCtx = Pick<ActionCtx, "runQuery" | "runMutation" | "scheduler">;
+
 async function handleJobFailure(
-  ctx: { runMutation: (ref: unknown, args: unknown) => Promise<unknown> },
+  ctx: Pick<JobActionCtx, "runMutation">,
   jobId: Id<"reviewAiJobs">,
   message: string
 ) {
@@ -44,8 +47,9 @@ async function handleJobFailure(
 }
 
 async function executeAnalyzeReview(
-  ctx: { runQuery: typeof internalAction.prototype; runMutation: typeof internalAction.prototype },
-  reviewId: Id<"productReviews">
+  ctx: JobActionCtx,
+  reviewId: Id<"productReviews">,
+  jobId?: Id<"reviewAiJobs">
 ) {
   const review = await ctx.runQuery(internal.reviewAiQueries.getReviewForAi, {
     reviewId,
@@ -58,6 +62,14 @@ async function executeAnalyzeReview(
   });
 
   const provider = getReviewAIProvider();
+  if (jobId) {
+    await ctx.runMutation(internal.reviewAiQueueMutations.setJobProvider, {
+      jobId,
+      provider: provider.name,
+    });
+  }
+
+  const start = Date.now();
   const results = await analyzeReview(provider, {
     title: review.title,
     content: review.content,
@@ -65,8 +77,21 @@ async function executeAnalyzeReview(
 
   await ctx.runMutation(internal.reviewAi.applyReviewResults, {
     reviewId,
-    results,
+    results: {
+      ...results,
+      provider: provider.name,
+      model: provider.model,
+      durationMs: Date.now() - start,
+      jobId,
+    },
   });
+
+  if (jobId) {
+    await ctx.runMutation(internal.reviewAiQueueMutations.markJobProviderSuccess, {
+      jobId,
+      provider: provider.name,
+    });
+  }
 
   if (review.isApproved) {
     const data = await ctx.runQuery(
@@ -97,7 +122,7 @@ async function executeAnalyzeReview(
 }
 
 async function executeRegenerateInsights(
-  ctx: { runQuery: typeof internalAction.prototype; runMutation: typeof internalAction.prototype; scheduler: { runAfter: Function } },
+  ctx: JobActionCtx,
   productId: Id<"products">,
   force: boolean
 ) {
@@ -143,7 +168,7 @@ async function executeRegenerateInsights(
 }
 
 async function executeGenerateReply(
-  ctx: { runQuery: typeof internalAction.prototype; runMutation: typeof internalAction.prototype },
+  ctx: Pick<JobActionCtx, "runQuery" | "runMutation">,
   reviewId: Id<"productReviews">
 ) {
   const review = await ctx.runQuery(internal.reviewAiQueries.getReviewForAi, {
@@ -165,10 +190,7 @@ async function executeGenerateReply(
   });
 }
 
-async function executeJob(
-  ctx: Parameters<typeof processNextJob.handler>[0],
-  jobId: Id<"reviewAiJobs">
-) {
+async function executeJob(ctx: JobActionCtx, jobId: Id<"reviewAiJobs">) {
   const job = await ctx.runQuery(internal.reviewAiQueueMutations.getJob, {
     jobId,
   });
@@ -177,7 +199,7 @@ async function executeJob(
   try {
     if (job.jobType === "analyze_review") {
       if (!job.reviewId) throw new Error("Missing reviewId for analyze_review");
-      await executeAnalyzeReview(ctx, job.reviewId);
+      await executeAnalyzeReview(ctx, job.reviewId, jobId);
     } else if (job.jobType === "regenerate_insights") {
       if (!job.productId) {
         throw new Error("Missing productId for regenerate_insights");
@@ -189,7 +211,7 @@ async function executeJob(
       await executeGenerateReply(ctx, job.reviewId);
     } else if (job.jobType === "bulk_reprocess") {
       if (!job.reviewId) throw new Error("Missing reviewId for bulk_reprocess");
-      await executeAnalyzeReview(ctx, job.reviewId);
+      await executeAnalyzeReview(ctx, job.reviewId, jobId);
     } else {
       throw new Error(`Unknown job type: ${job.jobType}`);
     }

@@ -70,6 +70,36 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "review.ai.fallback_requested",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fallback_requested"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "review.ai.manual_generate",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "manual_generate"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event }}",
                     "rightValue": "review.bulk_process",
                     "operator": { "type": "string", "operation": "equals" }
                   }
@@ -88,6 +118,28 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $vars.N8N_AI_GENERATION_WORKFLOW_ID }}",
+        "options": {}
+      },
+      "id": "run-ai-generation",
+      "name": "Run AI Generation Router",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [760, 60]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $vars.N8N_AI_GENERATION_WORKFLOW_ID }}",
+        "options": {}
+      },
+      "id": "run-manual-generation",
+      "name": "Run Manual AI Generation",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [760, 200]
     },
     {
       "parameters": {
@@ -190,6 +242,8 @@
         [{ "node": "Wait Until Retry", "type": "main", "index": 0 }],
         [{ "node": "If Flagged", "type": "main", "index": 0 }],
         [{ "node": "Notify Admin Failed", "type": "main", "index": 0 }],
+        [{ "node": "Run AI Generation Router", "type": "main", "index": 0 }],
+        [{ "node": "Run Manual AI Generation", "type": "main", "index": 0 }],
         [{ "node": "Run Bulk Processor", "type": "main", "index": 0 }]
       ]
     },

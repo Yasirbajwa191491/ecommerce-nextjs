@@ -14,6 +14,9 @@ import {
   reviewAiJobErrorCodeValidator,
   reviewAiJobStatusValidator,
   reviewAiJobTypeValidator,
+  reviewAiGenerationModeValidator,
+  reviewAiGenerationSourceValidator,
+  reviewAiGenerationTypeValidator,
   reviewTopicValidator,
 } from "./lib/aiValidators";
 import {
@@ -390,6 +393,7 @@ export default defineSchema({
     adminReplyPublished: v.optional(v.string()),
     adminReplyPublishedAt: v.optional(v.number()),
     adminReplyError: v.optional(v.string()),
+    aiActiveGenerationVersion: v.optional(v.number()),
     source: v.optional(v.union(v.literal("web"), v.literal("vapi"))),
     recommendationScore: v.optional(v.number()),
   })
@@ -441,6 +445,10 @@ export default defineSchema({
     nextRetryAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
     lastErrorCode: v.optional(reviewAiJobErrorCodeValidator),
+    lastAttemptedProvider: v.optional(v.string()),
+    successfulProvider: v.optional(v.string()),
+    fallbackTriggered: v.optional(v.boolean()),
+    generationMode: v.optional(reviewAiGenerationModeValidator),
     idempotencyKey: v.string(),
     payload: v.optional(v.string()),
     createdAt: v.number(),
@@ -451,6 +459,38 @@ export default defineSchema({
     .index("by_status_next_retry", ["status", "nextRetryAt"])
     .index("by_review_id", ["reviewId"])
     .index("by_idempotency", ["idempotencyKey"]),
+
+  reviewAiGenerations: defineTable({
+    reviewId: v.id("productReviews"),
+    productId: v.optional(v.id("products")),
+    type: reviewAiGenerationTypeValidator,
+    content: v.string(),
+    provider: v.string(),
+    model: v.string(),
+    version: v.number(),
+    isActive: v.boolean(),
+    source: reviewAiGenerationSourceValidator,
+    triggeredBy: v.optional(v.string()),
+    jobId: v.optional(v.id("reviewAiJobs")),
+    durationMs: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_review_type_version", ["reviewId", "type", "version"])
+    .index("by_review_active", ["reviewId", "isActive"])
+    .index("by_provider_created", ["provider", "createdAt"])
+    .index("by_source_created", ["source", "createdAt"]),
+
+  reviewAiMetrics: defineTable({
+    date: v.string(),
+    provider: v.string(),
+    type: v.string(),
+    successCount: v.number(),
+    failureCount: v.number(),
+    fallbackCount: v.number(),
+    totalDurationMs: v.number(),
+    sampleCount: v.number(),
+  }).index("by_date_provider_type", ["date", "provider", "type"]),
 
   orderStatusLogs: defineTable({
     orderId: v.id("orders"),
