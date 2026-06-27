@@ -1,5 +1,3 @@
-"use client";
-
 import { Suspense } from "react";
 import { AdminForgotPasswordForm } from "@/components/admin/admin-forgot-password-form";
 import { Spinner } from "@/components/ui/spinner";
