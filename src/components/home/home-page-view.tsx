@@ -42,6 +42,11 @@ export function HomePageView() {
   return (
     <>
       <HomeHeroSection />
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <div className="mx-auto w-full max-w-[1600px]">
+          <RecommendationSection sectionType="recommended_for_you" />
+        </div>
+      </div>
       <ShopByCategorySection />
       <AboutStorySection />
       <FeaturedProductsSection />
@@ -49,9 +54,6 @@ export function HomePageView() {
       <PromoBannerSection />
       <BestSellersSection />
       <NewArrivalsSection />
-      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
-        <RecommendationSection sectionType="recommended_for_you" />
-      </div>
       <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
         <RecommendationSection sectionType="trending_in_interests" />
       </div>

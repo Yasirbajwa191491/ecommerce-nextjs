@@ -16,6 +16,14 @@ import Image from "next/image";
 
 export default function ImageEmbeddingsAdminPage() {
   const metrics = useQuery(api.imageEmbeddingMutations.getEmbeddingMetrics, {});
+  const visualMetrics = useQuery(
+    api.imageEmbeddingMutations.getVisualSearchMetrics,
+    {}
+  );
+  const visualSearches = useQuery(
+    api.imageEmbeddingMutations.listRecentVisualSearchEvents,
+    { limit: 20 }
+  );
   const queueStats = useQuery(api.imageEmbeddingMutations.getQueueStats, {});
   const products = useQuery(api.imageEmbeddingMutations.listEmbeddingStatus, {
     limit: 30,
@@ -27,7 +35,7 @@ export default function ImageEmbeddingsAdminPage() {
   const handleBackfill = async () => {
     await scheduleBackfill({ limit: 20 });
     toastSuccess("Backfill scheduled", {
-      description: "Image embeddings will be generated in the background.",
+      description: "Product catalog images will be indexed for visual search.",
     });
   };
 
@@ -44,7 +52,8 @@ export default function ImageEmbeddingsAdminPage() {
         <div>
           <h1 className="text-2xl font-semibold">Image embeddings</h1>
           <p className="text-sm text-muted-foreground">
-            Visual search vectors, queue health, and regeneration tools.
+            Product catalog indexing for visual search, plus customer search
+            activity.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -56,16 +65,73 @@ export default function ImageEmbeddingsAdminPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total products" value={metrics?.totalProducts ?? "—"} />
+        <MetricCard title="Catalog products" value={metrics?.totalProducts ?? "—"} />
         <MetricCard title="SigLIP indexed" value={metrics?.withSiglip ?? "—"} />
-        <MetricCard title="Complete" value={metrics?.complete ?? "—"} />
-        <MetricCard title="Failed" value={metrics?.failed ?? "—"} />
+        <MetricCard title="Indexing complete" value={metrics?.complete ?? "—"} />
+        <MetricCard
+          title="Visual searches (7d)"
+          value={visualMetrics?.last7Days ?? "—"}
+        />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Processing queue</CardTitle>
-          <CardDescription>n8n optional — Convex processes automatically</CardDescription>
+          <CardTitle>Customer visual searches</CardTitle>
+          <CardDescription>
+            Uploads from the storefront visual search page (not order records).
+            New searches include matched product names.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!visualSearches ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : visualSearches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No visual searches logged yet. Run a search on{" "}
+              <span className="font-medium">/products/visual-search</span>.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {visualSearches.map((event) => (
+                <li
+                  key={event._id}
+                  className="flex flex-wrap items-start justify-between gap-3 py-3"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-medium">
+                      {event.resultCount} result
+                      {event.resultCount === 1 ? "" : "s"}
+                      {event.textQuery ? (
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          · &ldquo;{event.textQuery}&rdquo;
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(event.searchedAt).toLocaleString()}
+                      {event.fallbackUsed ? ` · fallback: ${event.fallbackUsed}` : ""}
+                    </p>
+                    {event.topProductNames.length > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Top matches: {event.topProductNames.join(", ")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Badge variant="outline">{event.provider}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Indexing queue</CardTitle>
+          <CardDescription>
+            Background jobs that vectorize product photos for visual search
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <QueueBadge label="Pending" count={queueStats?.pending} />
@@ -77,8 +143,12 @@ export default function ImageEmbeddingsAdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent products</CardTitle>
-          <CardDescription>Embedding status and provider</CardDescription>
+          <CardTitle>Product catalog indexing</CardTitle>
+          <CardDescription>
+            Each product photo needs an embedding before visual search can match
+            it. Status &ldquo;none&rdquo; means not indexed yet — use Backfill
+            pending.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!products ? (
