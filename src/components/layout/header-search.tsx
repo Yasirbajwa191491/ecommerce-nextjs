@@ -5,7 +5,13 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { AnimatePresence } from "framer-motion";
-import { Loader2, Search, ImageIcon } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { VisualSearchLensIcon } from "@/components/search/visual-search-lens-icon";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "../../../convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -130,8 +136,8 @@ function HeaderSearchForm({
 
   const inputStyle =
     inputPadding === "comfortable"
-      ? { paddingLeft: "1.75rem", paddingRight: "1rem" }
-      : { paddingLeft: "1.5rem", paddingRight: "1rem" };
+      ? { paddingLeft: "1.75rem", paddingRight: "0.5rem" }
+      : { paddingLeft: "1.5rem", paddingRight: "0.5rem" };
 
   const showDropdown =
     dropdownOpen && (showSearchResults || showEmptySuggestions);
@@ -160,26 +166,35 @@ function HeaderSearchForm({
             className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent py-0 text-sm shadow-none focus-visible:ring-0"
             style={inputStyle}
           />
-          <Link
-            href="/products/visual-search"
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-none border-l border-border/80 text-muted-foreground hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:size-11"
-            aria-label="Search by image"
-          >
-            <ImageIcon className="size-[1.125rem]" />
-          </Link>
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="size-10 shrink-0 rounded-none border-l border-border/80 text-muted-foreground hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:size-11"
-            aria-label="Search"
-          >
-            {loading && showSearchResults ? (
-              <Loader2 className="size-[1.125rem] animate-spin" />
-            ) : (
-              <Search className="size-[1.125rem]" />
-            )}
-          </Button>
+          <div className="flex shrink-0 items-center gap-0.5 pr-1.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    href="/products/visual-search"
+                    className="inline-flex size-10 items-center justify-center rounded-full transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6254f3]/40 sm:size-11"
+                    aria-label="Search by image"
+                  >
+                    <VisualSearchLensIcon />
+                  </Link>
+                }
+              />
+              <TooltipContent side="bottom">Search by image</TooltipContent>
+            </Tooltip>
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              className="size-10 rounded-full text-muted-foreground hover:bg-muted hover:text-[#6254f3] sm:size-11"
+              aria-label="Search"
+            >
+              {loading && showSearchResults ? (
+                <Loader2 className="size-[1.125rem] animate-spin" />
+              ) : (
+                <Search className="size-[1.125rem]" />
+              )}
+            </Button>
+          </div>
         </div>
       </form>
 
