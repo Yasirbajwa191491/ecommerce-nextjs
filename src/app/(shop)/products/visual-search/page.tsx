@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ScanSearch } from "lucide-react";
+import { ArrowLeft, Camera } from "lucide-react";
 import { VisualSearchUpload } from "@/components/search/visual-search-upload";
 import { VisualSearchResults } from "@/components/search/visual-search-results";
 import { useVisualProductSearch } from "@/hooks/use-visual-product-search";
@@ -81,7 +81,7 @@ function VisualSearchPageContent() {
 
           <div className="flex items-start gap-3">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#6254f3]/10 text-[#6254f3]">
-              <ScanSearch className="size-5" />
+              <Camera className="size-5" strokeWidth={1.75} />
             </div>
             <div>
               <h1 className={SHOP_PAGE_TITLE}>Search by image</h1>

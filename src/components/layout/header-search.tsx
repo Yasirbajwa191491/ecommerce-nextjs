@@ -5,8 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { AnimatePresence } from "framer-motion";
-import { Loader2, Search } from "lucide-react";
-import { VisualSearchLensIcon } from "@/components/search/visual-search-lens-icon";
+import { Loader2, Search, Camera } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -172,10 +171,10 @@ function HeaderSearchForm({
                 render={
                   <Link
                     href="/products/visual-search"
-                    className="inline-flex size-10 items-center justify-center rounded-full transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6254f3]/40 sm:size-11"
+                    className="inline-flex size-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6254f3]/40 sm:size-11"
                     aria-label="Search by image"
                   >
-                    <VisualSearchLensIcon />
+                    <Camera className="size-[1.375rem] sm:size-6" strokeWidth={1.75} />
                   </Link>
                 }
               />

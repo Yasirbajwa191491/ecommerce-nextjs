@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, ImageIcon, Loader2, Search, Upload, X } from "lucide-react";
-import { VisualSearchCameraSheet } from "@/components/search/visual-search-camera-sheet";
+import { Camera, Loader2, Search, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,10 +37,10 @@ export function VisualSearchUpload({
   isLoading,
   className,
 }: VisualSearchUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
   const [textQuery, setTextQuery] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -98,7 +97,8 @@ export function VisualSearchUpload({
     setPreviewUrl(null);
     setSelectedFile(null);
     setError(null);
-    if (inputRef.current) inputRef.current.value = "";
+    if (uploadInputRef.current) uploadInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
     onClear?.();
   };
 
@@ -107,9 +107,10 @@ export function VisualSearchUpload({
     onSearch(selectedFile, textQuery.trim() || undefined);
   };
 
-  const hasCameraApi =
-    typeof navigator !== "undefined" &&
-    Boolean(navigator.mediaDevices?.getUserMedia);
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFile(e.target.files?.[0]);
+    e.target.value = "";
+  };
 
   return (
     <>
@@ -165,7 +166,7 @@ export function VisualSearchUpload({
             ) : (
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex size-14 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
-                  <ImageIcon className="size-7" />
+                  <Upload className="size-7" strokeWidth={1.75} />
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">
@@ -182,7 +183,7 @@ export function VisualSearchUpload({
                 variant="outline"
                 size="default"
                 className={OUTLINE_BUTTON_CLASS}
-                onClick={() => inputRef.current?.click()}
+                onClick={() => uploadInputRef.current?.click()}
                 disabled={isLoading}
               >
                 <Upload className="size-4" />
@@ -193,30 +194,28 @@ export function VisualSearchUpload({
                 variant="outline"
                 size="default"
                 className={OUTLINE_BUTTON_CLASS}
-                onClick={() => {
-                  if (hasCameraApi) {
-                    setCameraOpen(true);
-                  } else if (inputRef.current) {
-                    inputRef.current.setAttribute("capture", "environment");
-                    inputRef.current.click();
-                  }
-                }}
+                onClick={() => cameraInputRef.current?.click()}
                 disabled={isLoading}
               >
                 <Camera className="size-4" />
-                {hasCameraApi ? "Use camera" : "Camera"}
+                Take photo
               </Button>
             </div>
 
             <input
-              ref={inputRef}
+              ref={uploadInputRef}
               type="file"
               accept={ACCEPT}
               className="hidden"
-              onChange={(e) => {
-                handleFile(e.target.files?.[0]);
-                e.target.value = "";
-              }}
+              onChange={onFileInputChange}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={onFileInputChange}
             />
           </div>
 
@@ -278,12 +277,6 @@ export function VisualSearchUpload({
           </div>
         </CardContent>
       </Card>
-
-      <VisualSearchCameraSheet
-        open={cameraOpen}
-        onOpenChange={setCameraOpen}
-        onCapture={handleFile}
-      />
     </>
   );
 }
