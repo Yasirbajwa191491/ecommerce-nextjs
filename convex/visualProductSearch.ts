@@ -313,6 +313,8 @@ export const searchByImage = action({
         resultCount: 0,
         fallbackUsed,
         source: "visual",
+        textQuery: args.textQuery?.trim() || undefined,
+        imageHash,
       });
 
       return {
@@ -371,6 +373,9 @@ export const searchByImage = action({
       resultCount: totalCount,
       fallbackUsed,
       source: "visual",
+      textQuery: args.textQuery?.trim() || undefined,
+      imageHash,
+      topProductIds: rankedIds.slice(0, 5),
     });
 
     if (args.storageId) {

@@ -197,6 +197,9 @@ export const logVisualSearchEvent = internalMutation({
     source: v.optional(
       v.union(v.literal("header"), v.literal("catalog"), v.literal("visual"))
     ),
+    textQuery: v.optional(v.string()),
+    imageHash: v.optional(v.string()),
+    topProductIds: v.optional(v.array(v.id("products"))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -207,6 +210,9 @@ export const logVisualSearchEvent = internalMutation({
       fallbackUsed: args.fallbackUsed,
       searchedAt: Date.now(),
       source: args.source ?? "visual",
+      textQuery: args.textQuery,
+      imageHash: args.imageHash,
+      topProductIds: args.topProductIds,
     });
     return null;
   },
@@ -261,7 +267,20 @@ export const listEmbeddingStatus = query({
       ? products.filter((p) => p.imageEmbeddingStatus === args.status)
       : products;
 
-    return filtered.slice(0, limit).map((p) => ({
+    const statusOrder = (status: string | undefined) => {
+      if (!status || status === "none") return 0;
+      if (status === "pending" || status === "processing") return 1;
+      if (status === "failed" || status === "retry_scheduled") return 2;
+      return 3;
+    };
+
+    return filtered
+      .sort(
+        (a, b) =>
+          statusOrder(a.imageEmbeddingStatus) - statusOrder(b.imageEmbeddingStatus)
+      )
+      .slice(0, limit)
+      .map((p) => ({
       _id: p._id,
       name: p.name,
       imageEmbeddingStatus: p.imageEmbeddingStatus,
@@ -303,5 +322,71 @@ export const getEmbeddingMetrics = query({
       complete: products.filter((p) => p.imageEmbeddingStatus === "complete")
         .length,
     };
+  },
+});
+
+export const getVisualSearchMetrics = query({
+  args: {},
+  returns: v.object({
+    totalSearches: v.number(),
+    withResults: v.number(),
+    last7Days: v.number(),
+  }),
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const events = await ctx.db
+      .query("visualSearchEvents")
+      .withIndex("by_searched_at")
+      .order("desc")
+      .take(500);
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return {
+      totalSearches: events.length,
+      withResults: events.filter((e) => e.resultCount > 0).length,
+      last7Days: events.filter((e) => e.searchedAt >= weekAgo).length,
+    };
+  },
+});
+
+export const listRecentVisualSearchEvents = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("visualSearchEvents"),
+      searchedAt: v.number(),
+      provider: v.string(),
+      resultCount: v.number(),
+      fallbackUsed: v.optional(v.string()),
+      textQuery: v.optional(v.string()),
+      topProductNames: v.array(v.string()),
+    })
+  ),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const limit = Math.min(args.limit ?? 20, 50);
+    const events = await ctx.db
+      .query("visualSearchEvents")
+      .withIndex("by_searched_at")
+      .order("desc")
+      .take(limit);
+
+    const rows = [];
+    for (const event of events) {
+      const topProductNames: string[] = [];
+      for (const productId of event.topProductIds ?? []) {
+        const product = await ctx.db.get(productId);
+        if (product) topProductNames.push(product.name);
+      }
+      rows.push({
+        _id: event._id,
+        searchedAt: event.searchedAt,
+        provider: event.provider,
+        resultCount: event.resultCount,
+        fallbackUsed: event.fallbackUsed,
+        textQuery: event.textQuery,
+        topProductNames,
+      });
+    }
+    return rows;
   },
 });

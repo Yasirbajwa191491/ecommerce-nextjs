@@ -15,7 +15,6 @@ import {
   type RecommendationSectionType,
 } from "@/lib/recommendations/section-copy";
 import { setRecommendationAttribution } from "@/lib/recommendations/visitor-id";
-import { cn } from "@/lib/utils";
 
 type RecommendationSectionProps = {
   sectionType: RecommendationSectionType;
@@ -70,8 +69,8 @@ export function RecommendationSection({
 
   const gridClass =
     columns === "3"
-      ? "mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3"
-      : "mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4";
+      ? "mt-8 grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:grid-cols-3 lg:gap-6"
+      : "mt-8 grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-4";
 
   return (
     <section className={className}>
@@ -83,14 +82,19 @@ export function RecommendationSection({
       {loading ? (
         <div className={gridClass}>
           {Array.from({ length: Math.min(limit, 4) }).map((_, index) => (
-            <Skeleton key={index} className="h-[18rem] rounded-2xl" />
+            <Skeleton key={index} className="h-[22rem] rounded-2xl" />
           ))}
         </div>
       ) : (
-        <StaggerGroup className={cn(gridClass, "auto-rows-fr items-stretch")}>
+        <StaggerGroup className={gridClass}>
           {(products as Product[]).map((product, index) => (
-            <StaggerItem key={productCardKey(product)} index={index}>
+            <StaggerItem
+              key={productCardKey(product)}
+              index={index}
+              className="h-full"
+            >
               <div
+                className="h-full"
                 onClick={() => {
                   void trackClick(sectionType, product._id, cacheKey);
                   setRecommendationAttribution({

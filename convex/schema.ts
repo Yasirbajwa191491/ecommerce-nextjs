@@ -191,6 +191,9 @@ export default defineSchema({
     fallbackUsed: v.optional(v.string()),
     searchedAt: v.number(),
     source: v.optional(v.union(v.literal("header"), v.literal("catalog"), v.literal("visual"))),
+    textQuery: v.optional(v.string()),
+    imageHash: v.optional(v.string()),
+    topProductIds: v.optional(v.array(v.id("products"))),
   }).index("by_searched_at", ["searchedAt"]),
 
   imageEmbeddingJobs: defineTable({
