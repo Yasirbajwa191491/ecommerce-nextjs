@@ -34,6 +34,7 @@ import type { ProductForm } from "@/lib/product-form-state";
 import { getProductFormWarnings } from "@/lib/validation/admin-forms";
 import { cn } from "@/lib/utils";
 import type { Product, ProductCategory } from "@/types/product";
+import type { ProductAiContentProvider } from "@/lib/product-ai-provider";
 import type { useFormValidation } from "@/hooks/use-form-validation";
 
 type Validation = ReturnType<typeof useFormValidation<ProductForm>>;
@@ -45,6 +46,8 @@ type ProductFormFieldsProps = {
   categoryOptions: ProductCategory[];
   product?: Product | null;
   onApplyAiContent: (payload: ProductAiApplyPayload) => void;
+  aiContentProvider: ProductAiContentProvider;
+  onAiContentProviderChange: (provider: ProductAiContentProvider) => void;
 };
 
 export function ProductFormFields({
@@ -54,6 +57,8 @@ export function ProductFormFields({
   categoryOptions,
   product,
   onApplyAiContent,
+  aiContentProvider,
+  onAiContentProviderChange,
 }: ProductFormFieldsProps) {
   const selectedCategory = categoryOptions.find((c) => c._id === form.categoryId);
   const seoWarnings = getProductFormWarnings(form);
@@ -351,6 +356,8 @@ export function ProductFormFields({
           imageAlts: form.imageAlts,
         }}
         onApply={onApplyAiContent}
+        provider={aiContentProvider}
+        onProviderChange={onAiContentProviderChange}
       />
         </TabsContent>
 

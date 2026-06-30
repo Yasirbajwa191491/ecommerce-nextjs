@@ -1,0 +1,97 @@
+{
+  "name": "Product AI - Content Generation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    requestId: 'manual-test-' + Date.now(),\n    mode: 'description',\n    context: {\n      name: 'Wireless Headphones',\n      company: 'Acme',\n      categoryName: 'Electronics',\n      price: 79.99,\n      currency: 'USD',\n      colors: ['Black'],\n      imageUrls: [],\n    },\n  },\n}];"
+      },
+      "id": "set-test-payload",
+      "name": "Set Test Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "execute-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractPayload(input) {\n  if (!input || typeof input !== \"object\") return {};\n  if (input.requestId) return input;\n  const envelope = input.body && typeof input.body === \"object\" ? input.body : input;\n  if (envelope.requestId) return envelope;\n  if (envelope.body && typeof envelope.body === \"object\" && envelope.body.requestId) {\n    return envelope.body;\n  }\n  return envelope;\n}\n\nconst input = $input.first()?.json ?? {};\nconst body = extractPayload(input);\nconst requestId = body.requestId;\nconst mode = body.mode || \"description\";\nconst context = body.context || {};\nif (!requestId) {\n  const keys = Object.keys(input).join(\", \") || \"(empty input)\";\n  throw new Error(\n    \"requestId required. Use Manual Test Trigger in workflow 07, or run via workflow 01. Received: \" + keys\n  );\n}\nfunction convexSiteUrl() {\r\n  const raw = String($vars.CONVEX_SITE_URL || \"\").trim().replace(/\\/$/, \"\");\r\n  if (!raw) {\r\n    throw new Error(\r\n      \"Set CONVEX_SITE_URL in n8n Settings → Variables (use https://YOUR-DEPLOYMENT.convex.site, not .convex.cloud)\"\r\n    );\r\n  }\r\n  return raw.replace(\".convex.cloud\", \".convex.site\");\r\n}\r\n\r\nfunction providerMeta(provider, model) {\r\n  const meta = {};\r\n  if (provider) meta.provider = provider;\r\n  if (model) meta.model = model;\r\n  return meta;\r\n}\r\n\r\nfunction buildContextPrompt(ctx) {\r\n  const discountLine =\r\n    ctx.discountPercent && ctx.discountPercent > 0\r\n      ? \"Discount: \" + ctx.discountPercent + \"% off\"\r\n      : \"\";\r\n  let shippingLine = \"\";\r\n  if (ctx.shipping) shippingLine = \"Shipping: Free shipping\";\r\n  else if (ctx.shippingCharges && ctx.shippingCharges > 0)\r\n    shippingLine = \"Shipping: \" + ctx.shippingCharges + \" \" + ctx.currency;\r\n  const lines = [\r\n    \"Product name: \" + ctx.name,\r\n    \"Brand: \" + ctx.company,\r\n    \"Category: \" + ctx.categoryName,\r\n    ctx.sku ? \"SKU: \" + ctx.sku : \"\",\r\n    \"Price: \" + ctx.price + \" \" + ctx.currency,\r\n    discountLine,\r\n    shippingLine,\r\n    ctx.colors && ctx.colors.length ? \"Colors: \" + ctx.colors.join(\", \") : \"\",\r\n    ctx.description && ctx.description.trim()\r\n      ? \"Existing description: \" + ctx.description.trim()\r\n      : \"\",\r\n    ctx.imageUrls && ctx.imageUrls.length\r\n      ? \"Number of product images: \" + ctx.imageUrls.length\r\n      : \"\",\r\n  ].filter(Boolean);\r\n  return lines.join(\"\\n\").slice(0, 6000);\r\n}\r\n\r\nfunction stripCodeFences(raw) {\r\n  return String(raw || \"\")\r\n    .replace(/^```(?:json)?\\s*/i, \"\")\r\n    .replace(/```\\s*$/g, \"\")\r\n    .trim();\r\n}\r\n\r\nfunction parseJsonObjectLoose(raw) {\r\n  const stripped = stripCodeFences(raw);\r\n  if (!stripped) return {};\r\n  try {\r\n    return JSON.parse(stripped);\r\n  } catch {\r\n    // try brace slicing below\r\n  }\r\n  const start = stripped.indexOf(\"{\");\r\n  if (start < 0) return {};\r\n  for (let end = stripped.length; end > start; end--) {\r\n    if (stripped[end - 1] !== \"}\") continue;\r\n    try {\r\n      return JSON.parse(stripped.slice(start, end));\r\n    } catch {\r\n      continue;\r\n    }\r\n  }\r\n  return {};\r\n}\r\n\r\nfunction parseTypeResult(type, raw) {\r\n  const parsed = parseJsonObjectLoose(raw);\r\n  if (type === \"description\") {\r\n    const description =\r\n      typeof parsed.description === \"string\" ? parsed.description.trim() : \"\";\r\n    if (description) return { description };\r\n    const plain = stripCodeFences(raw);\r\n    if (plain && !plain.startsWith(\"{\")) return { description: plain };\r\n    return null;\r\n  }\r\n  if (type === \"seo\") {\r\n    const seoTitle =\r\n      typeof parsed.seoTitle === \"string\" ? parsed.seoTitle.trim() : \"\";\r\n    const seoDescription =\r\n      typeof parsed.seoDescription === \"string\"\r\n        ? parsed.seoDescription.trim()\r\n        : \"\";\r\n    const seoKeywords = Array.isArray(parsed.seoKeywords)\r\n      ? parsed.seoKeywords.map((k) => String(k).trim()).filter(Boolean)\r\n      : [];\r\n    if (seoTitle || seoDescription || seoKeywords.length) {\r\n      return { seoTitle, seoDescription, seoKeywords };\r\n    }\r\n    return null;\r\n  }\r\n  if (type === \"highlights\") {\r\n    const highlights = Array.isArray(parsed.highlights)\r\n      ? parsed.highlights.map((h) => String(h).trim()).filter(Boolean)\r\n      : [];\r\n    if (highlights.length) return { highlights };\r\n    return null;\r\n  }\r\n  return null;\r\n}\r\n\r\nconst prompts = {\r\n  description: {\r\n    system:\r\n      'You are an expert ecommerce copywriter. Reply with JSON only, no markdown fences: {\"description\":\"...\"}. Write persuasive, benefit-led product copy in multiple short paragraphs. Escape quotes inside the description string.',\r\n  },\r\n  seo: {\r\n    system:\r\n      'You are an ecommerce SEO specialist. Reply with JSON only, no markdown fences: {\"seoTitle\":\"...\",\"seoDescription\":\"...\",\"seoKeywords\":[\"keyword1\"]}.',\r\n  },\r\n  highlights: {\r\n    system:\r\n      'You are an ecommerce merchandising expert. Reply with JSON only, no markdown fences: {\"highlights\":[\"Point one\",\"Point two\"]}. Generate 3-8 short selling points.',\r\n  },\r\n};\r\n\r\nasync function runProductContentGeneration(requestId, mode, context) {\r\n  const isManualTest = String(requestId).startsWith(\"manual-test-\");\r\n\r\n  const typesToRun =\r\n    mode === \"all\" ? [\"description\", \"seo\", \"highlights\"] : [mode];\r\n\r\n  if (mode === \"altText\") {\r\n    if (isManualTest) {\r\n      return { ok: false, error: \"Alt text is not supported in n8n mode\" };\r\n    }\r\n    await this.helpers.httpRequest({\r\n      method: \"POST\",\r\n      url: convexSiteUrl() + \"/n8n/product-ai/report-failure\",\r\n      headers: {\r\n        \"X-N8N-Secret\": $vars.N8N_WEBHOOK_SECRET,\r\n        \"Content-Type\": \"application/json\",\r\n      },\r\n      body: { requestId, error: \"Alt text is not supported in n8n mode\" },\r\n      json: true,\r\n    });\r\n    return { ok: false, error: \"altText not supported\" };\r\n  }\r\n\r\n  const providerOrder = String(\r\n    $vars.AI_FALLBACK_PROVIDER_ORDER || \"groq,openrouter,openai\"\r\n  )\r\n    .split(\",\")\r\n    .map((s) => s.trim());\r\n  const models = {\r\n    groq: $vars.GROQ_MODEL || \"llama-3.3-70b-versatile\",\r\n    openrouter: $vars.OPENROUTER_MODEL || \"google/gemini-2.5-flash\",\r\n    openai: $vars.OPENAI_MODEL || \"gpt-4o-mini\",\r\n  };\r\n  const keys = {\r\n    groq: $vars.GROQ_API_KEY,\r\n    openrouter: $vars.OPENROUTER_API_KEY,\r\n    openai: $vars.OPENAI_API_KEY,\r\n  };\r\n\r\n  async function httpRequestWithRetry(requestOptions, maxAttempts = 4) {\r\n    let lastError = null;\r\n    for (let attempt = 1; attempt <= maxAttempts; attempt++) {\r\n      try {\r\n        return await this.helpers.httpRequest(requestOptions);\r\n      } catch (e) {\r\n        lastError = e;\r\n        const msg = String(e.message || e);\r\n        const retryable = /\\bstatus code (429|500|502|503|504)\\b/i.test(msg);\r\n        if (!retryable || attempt >= maxAttempts) throw e;\r\n        const delayMs = Math.min(1000 * 2 ** (attempt - 1), 8000);\r\n        await new Promise((resolve) => setTimeout(resolve, delayMs));\r\n      }\r\n    }\r\n    throw lastError;\r\n  }\r\n\r\n  const configuredProviders = providerOrder.filter((p) => keys[p]);\r\n  if (configuredProviders.length === 0) {\r\n    throw new Error(\r\n      \"No AI provider API keys in n8n variables. Set at least one: GROQ_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY.\"\r\n    );\r\n  }\r\n\r\n  async function chat(provider, system, user) {\r\n    if (provider === \"groq\") {\r\n      const res = await httpRequestWithRetry.call(this, {\r\n        method: \"POST\",\r\n        url: \"https://api.groq.com/openai/v1/chat/completions\",\r\n        headers: {\r\n          Authorization: \"Bearer \" + keys.groq,\r\n          \"Content-Type\": \"application/json\",\r\n        },\r\n        body: {\r\n          model: models.groq,\r\n          temperature: 0.4,\r\n          messages: [\r\n            { role: \"system\", content: system },\r\n            { role: \"user\", content: user },\r\n          ],\r\n        },\r\n        json: true,\r\n      });\r\n      return res.choices?.[0]?.message?.content || \"\";\r\n    }\r\n    if (provider === \"openrouter\") {\r\n      const res = await httpRequestWithRetry.call(this, {\r\n        method: \"POST\",\r\n        url: \"https://openrouter.ai/api/v1/chat/completions\",\r\n        headers: {\r\n          Authorization: \"Bearer \" + keys.openrouter,\r\n          \"Content-Type\": \"application/json\",\r\n        },\r\n        body: {\r\n          model: models.openrouter,\r\n          temperature: 0.4,\r\n          messages: [\r\n            { role: \"system\", content: system },\r\n            { role: \"user\", content: user },\r\n          ],\r\n        },\r\n        json: true,\r\n      });\r\n      return res.choices?.[0]?.message?.content || \"\";\r\n    }\r\n    const res = await httpRequestWithRetry.call(this, {\r\n      method: \"POST\",\r\n      url: \"https://api.openai.com/v1/chat/completions\",\r\n      headers: {\r\n        Authorization: \"Bearer \" + keys.openai,\r\n        \"Content-Type\": \"application/json\",\r\n      },\r\n      body: {\r\n        model: models.openai,\r\n        temperature: 0.4,\r\n        messages: [\r\n          { role: \"system\", content: system },\r\n          { role: \"user\", content: user },\r\n        ],\r\n      },\r\n      json: true,\r\n    });\r\n    return res.choices?.[0]?.message?.content || \"\";\r\n  }\r\n\r\n  function parseJsonObject(raw) {\r\n    return parseJsonObjectLoose(raw);\r\n  }\r\n\r\n  const contextPrompt = buildContextPrompt(context);\r\n  const mergedResult = {};\r\n  let usedProvider = null;\r\n  let usedModel = null;\r\n  const startAll = Date.now();\r\n  let lastError = null;\r\n\r\n  for (const type of typesToRun) {\r\n    const promptDef = prompts[type];\r\n    if (!promptDef) continue;\r\n    let saved = false;\r\n    for (const provider of providerOrder) {\r\n      if (!keys[provider]) continue;\r\n      try {\r\n        const raw = await chat.call(this, provider, promptDef.system, contextPrompt);\r\n        const partial = parseTypeResult(type, raw);\r\n        if (!partial) {\r\n          lastError = \"Could not parse \" + type + \" from AI response\";\r\n          continue;\r\n        }\r\n        Object.assign(mergedResult, partial);\r\n        usedProvider = provider;\r\n        usedModel = models[provider];\r\n        saved = true;\r\n        break;\r\n      } catch (e) {\r\n        lastError = e.message;\r\n      }\r\n    }\r\n    if (!saved) {\r\n      if (isManualTest) {\r\n        return {\r\n          ok: false,\r\n          error: lastError || \"Failed to generate \" + type,\r\n          type,\r\n          manualTest: true,\r\n        };\r\n      }\r\n      await this.helpers.httpRequest({\r\n        method: \"POST\",\r\n        url: convexSiteUrl() + \"/n8n/product-ai/report-failure\",\r\n        headers: {\r\n          \"X-N8N-Secret\": $vars.N8N_WEBHOOK_SECRET,\r\n          \"Content-Type\": \"application/json\",\r\n        },\r\n        body: {\r\n          requestId,\r\n          error: lastError || \"Failed to generate \" + type,\r\n          ...providerMeta(usedProvider, usedModel),\r\n          durationMs: Date.now() - startAll,\r\n        },\r\n        json: true,\r\n      });\r\n      return { ok: false, error: lastError, type };\r\n    }\r\n  }\r\n\r\n  if (isManualTest) {\r\n    return {\r\n      ok: true,\r\n      requestId,\r\n      result: mergedResult,\r\n      provider: usedProvider,\r\n      model: usedModel,\r\n      durationMs: Date.now() - startAll,\r\n      manualTest: true,\r\n    };\r\n  }\r\n\r\n  await this.helpers.httpRequest({\r\n    method: \"POST\",\r\n    url: convexSiteUrl() + \"/n8n/product-ai/complete\",\r\n    headers: {\r\n      \"X-N8N-Secret\": $vars.N8N_WEBHOOK_SECRET,\r\n      \"Content-Type\": \"application/json\",\r\n    },\r\n    body: {\r\n      requestId,\r\n      result: mergedResult,\r\n      ...providerMeta(usedProvider, usedModel),\r\n      durationMs: Date.now() - startAll,\r\n    },\r\n    json: true,\r\n  });\r\n\r\n  return {\r\n    ok: true,\r\n    requestId,\r\n    provider: usedProvider,\r\n    durationMs: Date.now() - startAll,\r\n  };\r\n}\r\n\nconst outcome = await runProductContentGeneration.call(this, requestId, mode, context);\nreturn [{ json: outcome }];\n"
+      },
+      "id": "generate-product-content",
+      "name": "Generate Product Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Test Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Test Payload": {
+      "main": [
+        [
+          {
+            "node": "Generate Product Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Product Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

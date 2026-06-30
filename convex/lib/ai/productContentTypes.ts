@@ -62,3 +62,14 @@ export type ProductContentResult = {
   highlights?: string[];
   imageAlts?: string[];
 };
+
+export const productContentJobStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("completed"),
+  v.literal("failed")
+);
+
+export type ProductContentJobStatus =
+  | "pending"
+  | "completed"
+  | "failed";

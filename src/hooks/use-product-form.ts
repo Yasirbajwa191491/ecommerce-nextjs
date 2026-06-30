@@ -6,6 +6,11 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { ProductAiApplyPayload } from "@/components/admin/product-form-ai-section";
+import {
+  readProductAiProvider,
+  writeProductAiProvider,
+  type ProductAiContentProvider,
+} from "@/lib/product-ai-provider";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import {
@@ -54,6 +59,20 @@ export function useProductForm({
   const [initialSnapshot, setInitialSnapshot] = useState(serializeProductForm(emptyForm()));
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [aiContentProvider, setAiContentProviderState] =
+    useState<ProductAiContentProvider>("gemini");
+
+  useEffect(() => {
+    setAiContentProviderState(readProductAiProvider());
+  }, []);
+
+  const setAiContentProvider = useCallback(
+    (provider: ProductAiContentProvider) => {
+      setAiContentProviderState(provider);
+      writeProductAiProvider(provider);
+    },
+    []
+  );
 
   const loadKey = productId ?? `new:${defaultCategoryId ?? ""}`;
 
@@ -140,7 +159,12 @@ export function useProductForm({
       }
       return next;
     });
-  }, []);
+    if (payload.description !== undefined) validation.touch("description");
+    if (payload.seoTitle !== undefined) validation.touch("seoTitle");
+    if (payload.seoDescription !== undefined) validation.touch("seoDescription");
+    if (payload.seoKeywords !== undefined) validation.touch("seoKeywords");
+    if (payload.highlights !== undefined) validation.touch("highlights");
+  }, [validation]);
 
   const save = useCallback(
     async (options?: { stayOnPage?: boolean }) => {
@@ -202,6 +226,8 @@ export function useProductForm({
     isDirty,
     save,
     applyAiContent,
+    aiContentProvider,
+    setAiContentProvider,
     handleCancel,
     discardOpen,
     confirmDiscard,

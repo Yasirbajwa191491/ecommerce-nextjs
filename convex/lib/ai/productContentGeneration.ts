@@ -304,3 +304,29 @@ export async function generateProductContent(
 
   return result;
 }
+
+/** Normalize raw AI output (Gemini or n8n) into validated product content fields. */
+export function sanitizeProductContentResult(
+  mode: ProductContentMode,
+  raw: ProductContentResult,
+  imageCount = 0
+): ProductContentResult {
+  const result: ProductContentResult = {};
+
+  if (mode === "description" || mode === "all") {
+    result.description = normalizeDescription(raw.description);
+  }
+  if (mode === "seo" || mode === "all") {
+    result.seoTitle = normalizeSeoTitle(raw.seoTitle);
+    result.seoDescription = normalizeSeoDescription(raw.seoDescription);
+    result.seoKeywords = normalizeKeywords(raw.seoKeywords);
+  }
+  if (mode === "highlights" || mode === "all") {
+    result.highlights = normalizeHighlights(raw.highlights);
+  }
+  if (mode === "altText" || mode === "all") {
+    result.imageAlts = normalizeImageAlts(raw.imageAlts, imageCount);
+  }
+
+  return result;
+}

@@ -17,6 +17,10 @@ import {
   n8nSaveGeneration,
   n8nWeeklyStats,
 } from "./n8nReviewAiHttp";
+import {
+  n8nProductContentComplete,
+  n8nProductContentReportFailure,
+} from "./n8nProductAiHttp";
 
 const http = httpRouter();
 
@@ -110,6 +114,18 @@ http.route({
   path: "/n8n/review-ai/reprocess-review",
   method: "POST",
   handler: n8nReprocessReview,
+});
+
+http.route({
+  path: "/n8n/product-ai/complete",
+  method: "POST",
+  handler: n8nProductContentComplete,
+});
+
+http.route({
+  path: "/n8n/product-ai/report-failure",
+  method: "POST",
+  handler: n8nProductContentReportFailure,
 });
 
 export default http;
