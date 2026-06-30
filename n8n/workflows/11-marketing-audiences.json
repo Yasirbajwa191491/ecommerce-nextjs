@@ -1,0 +1,78 @@
+{
+  "name": "WF11 Marketing Audiences",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 120]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [1],
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "cron-weekly",
+      "name": "Monday 10 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.CONVEX_SITE_URL }}/n8n/recommendations/export-audiences?limit=500",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Secret",
+              "value": "={{ $vars.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-audiences",
+      "name": "Export Recommendation Audiences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst exportedAt = new Date(data.exportedAt || Date.now()).toLocaleString();\nconst summary = data.segmentSummary || {};\nconst topSegments = Object.entries(summary)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 15)\n  .map(([name, count]) => `  ${name}: ${count}`)\n  .join('\\n');\nconst sample = (data.audiences || [])\n  .slice(0, 10)\n  .map((row) => {\n    const tags = [...(row.segments || []), ...(row.interestTags || [])].slice(0, 4).join(', ');\n    return `  ${row.email || row.identityKey} | orders ${row.orderCount} | spent ${row.totalSpent} | ${tags}`;\n  })\n  .join('\\n');\nconst body = [\n  `Recommendation Marketing Audiences (${exportedAt})`,\n  '',\n  `Identified customers with email: ${data.audienceCount || 0}`,\n  '',\n  'Top segments / interest tags:',\n  topSegments || '  (none yet)',\n  '',\n  'Sample audience rows:',\n  sample || '  (none yet — shoppers need checkout email + profile activity)',\n  '',\n  'Connect an Email / HTTP node here to sync audiences[] to your ESP.',\n].join('\\n');\nreturn [{\n  json: {\n    subject: `Marketing Audiences Export - ${data.audienceCount || 0} customers`,\n    body,\n    audienceCount: data.audienceCount || 0,\n    audiences: data.audiences || [],\n    segmentSummary: summary,\n  },\n}];"
+      },
+      "id": "format-report",
+      "name": "Format Audience Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 240]
+    }
+  ],
+  "connections": {
+    "Manual Test Trigger": {
+      "main": [[{ "node": "Export Recommendation Audiences", "type": "main", "index": 0 }]]
+    },
+    "Monday 10 AM": {
+      "main": [[{ "node": "Export Recommendation Audiences", "type": "main", "index": 0 }]]
+    },
+    "Export Recommendation Audiences": {
+      "main": [[{ "node": "Format Audience Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Export customer recommendation segments and interest tags. Ends at Format Audience Report (see audiences[] in output). Optionally add Email Send or HTTP node after Format Audience Report for weekly delivery."
+  }
+}

@@ -8,6 +8,7 @@ import {
   IMAGE_EMBEDDING_SIGLIP_DIMENSIONS,
   IMAGE_EMBEDDING_VERSION,
 } from "./lib/ai/constants";
+import { getPrimaryImageUrl } from "./lib/productImages";
 
 export const setImageEmbeddingStatus = internalMutation({
   args: {
@@ -260,7 +261,6 @@ export const listEmbeddingStatus = query({
       ? products.filter((p) => p.imageEmbeddingStatus === args.status)
       : products;
 
-    const { getPrimaryImageUrl } = await import("./lib/productImages");
     return filtered.slice(0, limit).map((p) => ({
       _id: p._id,
       name: p.name,

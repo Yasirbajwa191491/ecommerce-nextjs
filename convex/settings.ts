@@ -6,6 +6,7 @@ import { requireAdmin } from "./lib/requireAdmin";
 import { validateEmailFromValue } from "./lib/emailFrom";
 import { getEmailFromValue, getLowStockThresholdValue, getReviewReplyStoreContext, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
 import { slugify } from "./lib/products";
+import { RECOMMENDATION_SYSTEM_DEFAULTS } from "./lib/recommendations/constants";
 
 export const SYSTEM_SETTING_KEYS = [
   "address",
@@ -21,6 +22,7 @@ export const SYSTEM_SETTING_KEYS = [
   "sms_order_confirmation_enabled",
   "review_call_auto_enabled",
   "review_call_auto_delay_days",
+  ...RECOMMENDATION_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -153,6 +155,7 @@ export const SYSTEM_DEFAULTS: {
     name: "Review Call Delay (Days)",
     value: "5",
   },
+  ...RECOMMENDATION_SYSTEM_DEFAULTS,
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -186,6 +189,37 @@ function assertValidSettingValue(key: string, value: string) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || ![3, 5, 7].includes(parsed)) {
       throw new ConvexError("Review call delay must be 3, 5, or 7 days");
+    }
+  }
+  if (key.startsWith("recommendation_")) {
+    if (
+      key.endsWith("_enabled") &&
+      value.trim().toLowerCase() !== "true" &&
+      value.trim().toLowerCase() !== "false"
+    ) {
+      throw new ConvexError("Recommendation toggle must be true or false");
+    }
+    if (key === "recommendation_refresh_hours") {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        throw new ConvexError("Refresh hours must be a positive integer");
+      }
+    }
+    if (key === "recommendation_max_per_section") {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed < 1 || parsed > 16) {
+        throw new ConvexError("Max recommendations must be between 1 and 16");
+      }
+    }
+    if (
+      key === "recommendation_scoring_weights" ||
+      key === "recommendation_ai_fallback_order"
+    ) {
+      try {
+        JSON.parse(value);
+      } catch {
+        throw new ConvexError("Recommendation setting must be valid JSON");
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
+import { VISUAL_SEARCH_CACHE_TTL_MS } from "./lib/ai/constants";
 import { getPrimaryImageUrl } from "./lib/productImages";
 import { computeImageContentHash } from "./lib/ai/imageEmbeddingHelpers";
 
@@ -164,9 +165,6 @@ export const getCachedVisualSearchEmbedding = internalQuery({
       .unique();
 
     if (!row) return null;
-    const { VISUAL_SEARCH_CACHE_TTL_MS } = await import(
-      "./lib/ai/constants"
-    );
     if (Date.now() - row.createdAt > VISUAL_SEARCH_CACHE_TTL_MS) return null;
 
     return {

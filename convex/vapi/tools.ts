@@ -542,6 +542,8 @@ export const recommendProducts = internalQuery({
     maxBudget: v.optional(v.number()),
     preference: v.optional(v.string()),
     limit: v.optional(v.number()),
+    visitorId: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
   },
   returns: v.object({
     products: v.array(
@@ -559,11 +561,49 @@ export const recommendProducts = internalQuery({
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 5, 1), 8);
     const category = await findCategoryByName(ctx, args.category);
+
+    const customerKey = args.customerEmail?.trim().toLowerCase();
+    const profile = customerKey
+      ? await ctx.db
+          .query("customerRecommendationProfiles")
+          .withIndex("by_identity", (q) =>
+            q.eq("identityType", "customer").eq("identityKey", customerKey)
+          )
+          .unique()
+      : args.visitorId
+        ? await ctx.db
+            .query("customerRecommendationProfiles")
+            .withIndex("by_identity", (q) =>
+              q.eq("identityType", "visitor").eq("identityKey", args.visitorId!)
+            )
+            .unique()
+        : null;
+
     let products = filterProducts(await loadActiveProducts(ctx), {
       categoryId: category?._id,
       maxPrice: args.maxBudget,
-      preference: args.preference,
+      preference: args.preference ?? profile?.aiInterestSummary,
     });
+
+    if (profile?.preferredCategoryIds) {
+      try {
+        const affinities = JSON.parse(profile.preferredCategoryIds) as Record<
+          string,
+          number
+        >;
+        const topCategories = Object.entries(affinities)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([id]) => id);
+        if (topCategories.length > 0 && products.length === 0) {
+          products = (await loadActiveProducts(ctx)).filter((product) =>
+            topCategories.includes(product.categoryId as string)
+          );
+        }
+      } catch {
+        // ignore malformed affinity data
+      }
+    }
 
     if (products.length === 0) {
       products = filterProducts(await loadActiveProducts(ctx), {

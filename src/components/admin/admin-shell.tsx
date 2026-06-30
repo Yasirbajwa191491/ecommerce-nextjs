@@ -55,6 +55,7 @@ const NAV = [
   { href: "/admin/contact-messages", label: "Contact", icon: MessageSquare },
   { href: "/admin/ai-assistant", label: "AI Assistant", icon: Bot },
   { href: "/admin/ai-copilot", label: "AI Business Copilot", icon: Sparkles },
+  { href: "/admin/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/users", label: "Users", icon: Users },
 ];

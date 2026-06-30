@@ -29,6 +29,16 @@ import {
   n8nImageEmbeddingReportFailure,
   n8nImageEmbeddingSave,
 } from "./n8nImageEmbeddingHttp";
+import {
+  n8nRecommendationDueJobs,
+  n8nRecommendationHealth,
+  n8nRecommendationProcessDue,
+  n8nRecommendationProcessJob,
+  n8nRecommendationReportFailure,
+  n8nRecommendationSaveCache,
+  n8nRecommendationSaveProfile,
+  n8nRecommendationExportAudiences,
+} from "./n8nRecommendationHttp";
 
 const http = httpRouter();
 
@@ -170,6 +180,54 @@ http.route({
   path: "/n8n/image-embedding/report-failure",
   method: "POST",
   handler: n8nImageEmbeddingReportFailure,
+});
+
+http.route({
+  path: "/n8n/recommendations/health",
+  method: "POST",
+  handler: n8nRecommendationHealth,
+});
+
+http.route({
+  path: "/n8n/recommendations/due-jobs",
+  method: "POST",
+  handler: n8nRecommendationDueJobs,
+});
+
+http.route({
+  path: "/n8n/recommendations/process-due",
+  method: "POST",
+  handler: n8nRecommendationProcessDue,
+});
+
+http.route({
+  path: "/n8n/recommendations/process-job",
+  method: "POST",
+  handler: n8nRecommendationProcessJob,
+});
+
+http.route({
+  path: "/n8n/recommendations/save-profile",
+  method: "POST",
+  handler: n8nRecommendationSaveProfile,
+});
+
+http.route({
+  path: "/n8n/recommendations/save-cache",
+  method: "POST",
+  handler: n8nRecommendationSaveCache,
+});
+
+http.route({
+  path: "/n8n/recommendations/report-failure",
+  method: "POST",
+  handler: n8nRecommendationReportFailure,
+});
+
+http.route({
+  path: "/n8n/recommendations/export-audiences",
+  method: "POST",
+  handler: n8nRecommendationExportAudiences,
 });
 
 export default http;

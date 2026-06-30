@@ -29,6 +29,8 @@ import { getWarrantyLabel } from "@/lib/product-display-helpers";
 import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
 import { ProductReviewSection } from "@/components/reviews/product-review-section";
 import { SimilarProductsSection } from "@/components/products/similar-products-section";
+import { RecommendationSection } from "@/components/products/recommendation-section";
+import { ProductViewTracker } from "@/components/products/product-view-tracker";
 import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
 import AddToCart from "@/components/products/AddToCart";
 import { PromotionOfferBanner } from "@/components/promotions/promotion-offer-banner";
@@ -432,6 +434,35 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
         productId={singleProduct._id}
         className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
       />
+
+      <RecommendationSection
+        sectionType="recommended_for_you"
+        productId={singleProduct._id}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
+      <RecommendationSection
+        sectionType="customers_like_you_bought"
+        productId={singleProduct._id}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
+      <RecommendationSection
+        sectionType="recommended_alternatives"
+        productId={singleProduct._id}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
+      <RecommendationSection
+        sectionType="ai_suggested_accessories"
+        productId={singleProduct._id}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
+      <RecommendationSection
+        sectionType="frequently_bought_together"
+        productId={singleProduct._id}
+        cartProductIds={[singleProduct._id]}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
+
+      <ProductViewTracker productId={singleProduct._id} />
     </div>
   );
 }

@@ -53,17 +53,6 @@ Import these workflows into your n8n instance.
 
 All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 
-## Workflow files
-
-1. `01-review-event-router.json` — Main webhook router (retry, fallback, manual, bulk)
-2. `02-retry-safety-net-cron.json` — Cron every 15 min
-3. `03-weekly-review-report.json` — Monday 9 AM weekly email
-4. `04-admin-notifications.json` — Sub-workflow for alerts
-5. `05-bulk-review-processor.json` — Throttled bulk reprocess
-6. `06-ai-generation-router.json` — Fallback/manual AI provider chain
-7. `07-product-content-generation.json` — Admin product form content (description, SEO, highlights)
-8. `08-product-image-embedding.json` — Cron safety net for visual search image embeddings (optional)
-
 ## Visual product search / image embeddings (Workflow 08)
 
 **n8n is optional.** Convex schedules image embedding jobs on product save and processes them automatically after ~30s, even if n8n is off.
@@ -169,3 +158,55 @@ This happens when the **Execute Workflow** node cannot resolve the sub-workflow 
 `review.created`, `review.updated`, `review.approved`, `review.bulk_process`, `review.ai.retry_scheduled`, `review.ai.completed`, `review.ai.failed`, `review.ai.fallback_requested`, `review.ai.manual_generate`, `product.ai.generate_content`, `product.image.embedding_requested`, `product.image.embedding_retry`
 
 See [docs/review-ai-architecture.md](../../docs/review-ai-architecture.md) for full technical reference.
+
+## Recommendation platform (Workflows 09–11)
+
+**n8n is optional.** Convex schedules recommendation jobs and processes them after ~30s even when n8n is off.
+
+### What to import
+
+| Workflow | File | Action | Required? |
+|----------|------|--------|-----------|
+| **09** | `09-recommendation-cron.json` | **Import** and activate | Optional (cron safety net) |
+| **10** | `10-recommendation-processor.json` | Import if calling single jobs | Optional (sub-workflow) |
+| **11** | `11-marketing-audiences.json` | **Import** and activate (optional weekly email) | Optional |
+
+If you already imported an **empty** WF09, delete that workflow in n8n and re-import `09-recommendation-cron.json` from the repo.
+
+### Convex env
+
+- `N8N_WEBHOOK_SECRET` — Required for n8n → Convex HTTP auth
+- Admin setting `recommendation_n8n_enabled` — Set `true` only if n8n should be primary processor
+
+### n8n variables
+
+- `CONVEX_SITE_URL` — `https://YOUR-DEPLOYMENT.convex.site` (not `.convex.cloud`)
+- `N8N_WEBHOOK_SECRET` — Same as Convex
+
+### Convex HTTP endpoints (all POST, header `X-N8N-Secret`)
+
+| Path | Purpose |
+|------|---------|
+| `/n8n/recommendations/process-due?limit=10` | Process due profile/cache jobs (WF09) |
+| `/n8n/recommendations/health` | Queue stats |
+| `/n8n/recommendations/process-job` | Process one job by `{ jobId }` (WF10) |
+| `/n8n/recommendations/save-profile` | Callback: save enriched profile |
+| `/n8n/recommendations/save-cache` | Callback: save recommendation cache |
+| `/n8n/recommendations/report-failure` | Callback: mark job failed |
+| `/n8n/recommendations/export-audiences?limit=500` | Export segments/tags for marketing (WF11) |
+
+See [docs/recommendation-platform.md](../../docs/recommendation-platform.md) for full reference.
+
+## Workflow files
+
+1. `01-review-event-router.json` — Main webhook router (retry, fallback, manual, bulk)
+2. `02-retry-safety-net-cron.json` — Cron every 15 min
+3. `03-weekly-review-report.json` — Monday 9 AM weekly email
+4. `04-admin-notifications.json` — Sub-workflow for alerts
+5. `05-bulk-review-processor.json` — Throttled bulk reprocess
+6. `06-ai-generation-router.json` — Fallback/manual AI provider chain
+7. `07-product-content-generation.json` — Admin product form content (description, SEO, highlights)
+8. `08-product-image-embedding.json` — Cron safety net for visual search image embeddings (optional)
+9. `09-recommendation-cron.json` — Cron safety net for recommendation jobs (optional)
+10. `10-recommendation-processor.json` — Single-job processor sub-workflow (optional)
+11. `11-marketing-audiences.json` — Weekly marketing audience export (optional Email node — add SMTP yourself)

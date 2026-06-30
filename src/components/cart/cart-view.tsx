@@ -38,6 +38,9 @@ import { fadeUp } from "@/lib/motion";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
 import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
+import { RecommendationSection } from "@/components/products/recommendation-section";
+import { resolveCartProductId } from "@/lib/cart-lines";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 
 export function CartView() {
@@ -277,6 +280,35 @@ export function CartView() {
                 />
               </m.aside>
             </div>
+
+            <RecommendationSection
+              sectionType="frequently_bought_together"
+              cartProductIds={cart.map(
+                (item) => resolveCartProductId(item) as Id<"products">
+              )}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
+            <RecommendationSection
+              sectionType="complete_your_setup"
+              cartProductIds={cart.map(
+                (item) => resolveCartProductId(item) as Id<"products">
+              )}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
+            <RecommendationSection
+              sectionType="customers_also_purchased"
+              cartProductIds={cart.map(
+                (item) => resolveCartProductId(item) as Id<"products">
+              )}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
+            <RecommendationSection
+              sectionType="recommended_accessories"
+              cartProductIds={cart.map(
+                (item) => resolveCartProductId(item) as Id<"products">
+              )}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
           </>
         )}
       </section>
