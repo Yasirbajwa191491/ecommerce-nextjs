@@ -33,7 +33,10 @@ export function useVisualProductSearch() {
   );
 
   const reset = useCallback(() => {
-    setState(initialState);
+    setState((s) => {
+      if (s.previewUrl) URL.revokeObjectURL(s.previewUrl);
+      return initialState;
+    });
   }, []);
 
   const search = useCallback(

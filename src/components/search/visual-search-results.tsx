@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, PackageSearch } from "lucide-react";
 import ProductCard from "@/components/products/ProductCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { VisualSearchProduct } from "@/hooks/use-visual-product-search";
 import { mapHybridSearchProductsToCatalog } from "@/lib/map-hybrid-search-product";
+import { OUTLINE_BUTTON_CLASS } from "@/lib/layout-constants";
+import { SHOP_BODY_SM, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 
 type VisualSearchResultsProps = {
   products: VisualSearchProduct[];
@@ -32,18 +35,24 @@ export function VisualSearchResults({
 }: VisualSearchResultsProps) {
   if (!hasSearched && !isLoading) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Upload a photo to find visually similar products in our catalog.
-      </p>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 px-6 py-10 text-center">
+        <PackageSearch className="size-10 text-muted-foreground/70" />
+        <p className={SHOP_BODY_SM}>
+          Your similar products will appear here after you search.
+        </p>
+      </div>
     );
   }
 
   if (isLoading && products.length === 0) {
     return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="aspect-[3/4] w-full rounded-xl" />
-        ))}
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-48" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[3/4] w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -57,18 +66,12 @@ export function VisualSearchResults({
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/products"
-            className="inline-flex h-9 items-center justify-center rounded-lg border px-4 text-sm font-medium"
-          >
+          <ButtonLink href="/products" variant="outline" className={OUTLINE_BUTTON_CLASS}>
             Browse products
-          </Link>
-          <Link
-            href="/products?search="
-            className="inline-flex h-9 items-center justify-center rounded-lg border px-4 text-sm font-medium"
-          >
+          </ButtonLink>
+          <ButtonLink href="/products?search=" variant="outline" className={OUTLINE_BUTTON_CLASS}>
             Keyword search
-          </Link>
+          </ButtonLink>
         </div>
       </div>
     );
@@ -76,16 +79,13 @@ export function VisualSearchResults({
 
   if (hasSearched && products.length === 0) {
     return (
-      <div className="space-y-4 text-center">
+      <div className="space-y-4 rounded-xl border border-border/80 bg-background p-8 text-center shadow-sm">
         <p className="text-muted-foreground">
-          No similar products found. Try a different image or use text search.
+          No similar products found. Try a different image or add text keywords.
         </p>
-        <Link
-          href="/products"
-          className="inline-flex h-9 items-center justify-center rounded-lg border px-4 text-sm font-medium"
-        >
+        <ButtonLink href="/products" variant="outline" className={OUTLINE_BUTTON_CLASS}>
           Browse all products
-        </Link>
+        </ButtonLink>
       </div>
     );
   }
@@ -93,12 +93,17 @@ export function VisualSearchResults({
   const catalogProducts = mapHybridSearchProductsToCatalog(products);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          {totalCount} similar {totalCount === 1 ? "product" : "products"}
-          {fallbackUsed ? ` (via ${fallbackUsed.replace(/_/g, " ")})` : ""}
-        </p>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className={SHOP_SUBSECTION_TITLE}>Similar products</h2>
+        <Badge variant="secondary" className="font-normal">
+          {totalCount} {totalCount === 1 ? "match" : "matches"}
+        </Badge>
+        {fallbackUsed ? (
+          <Badge variant="outline" className="font-normal capitalize">
+            via {fallbackUsed.replace(/_/g, " ")}
+          </Badge>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -108,8 +113,13 @@ export function VisualSearchResults({
       </div>
 
       {hasMore && onLoadMore ? (
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={onLoadMore} disabled={isLoading}>
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            className={OUTLINE_BUTTON_CLASS}
+            onClick={onLoadMore}
+            disabled={isLoading}
+          >
             {isLoading ? "Loading…" : "Load more"}
           </Button>
         </div>

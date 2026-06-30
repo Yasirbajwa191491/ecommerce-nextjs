@@ -3,13 +3,20 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ScanSearch } from "lucide-react";
 import { VisualSearchUpload } from "@/components/search/visual-search-upload";
 import { VisualSearchResults } from "@/components/search/visual-search-results";
 import { useVisualProductSearch } from "@/hooks/use-visual-product-search";
 import { getSearchSessionId } from "@/lib/search/recent-searches";
 import { parseCatalogFilters } from "@/lib/shop/catalog-filter-url";
-import { Button } from "@/components/ui/button";
+import {
+  CONTENT_SECTION_PADDING_Y,
+  PAGE_GUTTER,
+  PAGE_HEADER_PADDING_Y,
+} from "@/lib/layout-constants";
+import { SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 function VisualSearchPageContent() {
   const searchParams = useSearchParams();
@@ -24,8 +31,8 @@ function VisualSearchPageContent() {
     isLoading,
     errorMessage,
     fallbackUsed,
-    previewUrl,
     search,
+    reset,
   } = useVisualProductSearch();
 
   const runSearch = async (file: File, textQuery?: string, cursor?: number) => {
@@ -50,32 +57,49 @@ function VisualSearchPageContent() {
     });
   };
 
+  const handleClear = () => {
+    reset();
+    setHasSearched(false);
+    setLastFile(null);
+    setLastTextQuery(undefined);
+  };
+
   return (
-    <div className="min-h-screen bg-muted/20 px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-5xl space-y-8">
-        <div className="flex flex-wrap items-center gap-4">
+    <div className="min-h-screen bg-muted/20">
+      <div
+        className={cn(CONTENT_SECTION_PADDING_Y, "mx-auto max-w-5xl")}
+        style={PAGE_GUTTER}
+      >
+        <header className={cn(PAGE_HEADER_PADDING_Y, "space-y-4")}>
           <Link
             href="/products"
-            className="inline-flex h-8 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-muted"
+            className="inline-flex h-8 items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
             Back to products
           </Link>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Search by image
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Find visually similar products. Combine with text to refine results.
-            </p>
+
+          <div className="flex items-start gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#6254f3]/10 text-[#6254f3]">
+              <ScanSearch className="size-5" />
+            </div>
+            <div>
+              <h1 className={SHOP_PAGE_TITLE}>Search by image</h1>
+              <p className={SHOP_PAGE_LEAD}>
+                Find visually similar products. Upload a photo or use your camera,
+                then optionally add text to refine results.
+              </p>
+            </div>
           </div>
-        </div>
+        </header>
 
         <VisualSearchUpload
           onSearch={(file, textQuery) => void runSearch(file, textQuery)}
+          onClear={handleClear}
           isLoading={isLoading}
-          previewUrl={previewUrl}
         />
+
+        <Separator className="my-8" />
 
         <VisualSearchResults
           products={products}
