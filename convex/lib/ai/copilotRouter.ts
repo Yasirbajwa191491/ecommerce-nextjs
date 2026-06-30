@@ -87,6 +87,10 @@ const INTENT_RULES: IntentRule[] = [
       /should (receive|get) additional discounts?/,
       /should not be promoted/,
       /already sell well/,
+      /recommendation potential/,
+      /frequently recommended/,
+      /customers interested in/,
+      /recommendation intelligence/,
     ],
   },
   {

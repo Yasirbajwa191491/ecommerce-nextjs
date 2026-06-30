@@ -40,6 +40,15 @@ import {
   productContentModeValidator,
   productContentJobStatusValidator,
 } from "./lib/ai/productContentTypes";
+import {
+  customerBehaviorEventTypeValidator,
+  recommendationIdentityTypeValidator,
+  recommendationInteractionTypeValidator,
+  recommendationJobStatusValidator,
+  recommendationJobTypeValidator,
+  recommendationSectionTypeValidator,
+  recommendationSourceValidator,
+} from "./lib/recommendations/validators";
 
 export const productImageValidator = v.object({
   url: v.string(),
@@ -153,10 +162,13 @@ export default defineSchema({
     searchedAt: v.number(),
     resultCount: v.number(),
     sessionId: v.optional(v.string()),
+    visitorId: v.optional(v.string()),
+    customerKey: v.optional(v.string()),
     source: v.union(v.literal("header"), v.literal("catalog")),
   })
     .index("by_searched_at", ["searchedAt"])
-    .index("by_query_normalized_time", ["queryNormalized", "searchedAt"]),
+    .index("by_query_normalized_time", ["queryNormalized", "searchedAt"])
+    .index("by_visitor_searched_at", ["visitorId", "searchedAt"]),
 
   searchEmbeddingCache: defineTable({
     queryNormalized: v.string(),
@@ -925,4 +937,140 @@ export default defineSchema({
     .index("by_vapi_call_id", ["vapiCallId"])
     .index("by_status_created", ["status", "createdAt"])
     .index("by_created_at", ["createdAt"]),
+
+  customerRecommendationProfiles: defineTable({
+    identityType: recommendationIdentityTypeValidator,
+    identityKey: v.string(),
+    email: v.optional(v.string()),
+    preferredCategoryIds: v.optional(v.string()),
+    preferredBrands: v.optional(v.string()),
+    priceRangeMin: v.optional(v.number()),
+    priceRangeMax: v.optional(v.number()),
+    purchaseFrequency: v.optional(v.number()),
+    orderCount: v.number(),
+    totalSpent: v.number(),
+    lastOrderAt: v.optional(v.number()),
+    favoriteProductTypes: v.array(v.string()),
+    segments: v.array(v.string()),
+    interestTags: v.array(v.string()),
+    recentlyViewedProductIds: v.array(v.id("products")),
+    recommendationScoreData: v.optional(v.string()),
+    lastActivityAt: v.number(),
+    profileRefreshedAt: v.optional(v.number()),
+    aiInterestSummary: v.optional(v.string()),
+    embedding: v.optional(v.array(v.float64())),
+    embeddingProvider: v.optional(v.string()),
+    embeddingVersion: v.optional(v.string()),
+    embeddingUpdatedAt: v.optional(v.number()),
+    linkedVisitorIds: v.array(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_identity", ["identityType", "identityKey"])
+    .index("by_email", ["email"])
+    .index("by_last_activity", ["lastActivityAt"])
+    .index("by_refresh_date", ["profileRefreshedAt"]),
+
+  customerBehaviorEvents: defineTable({
+    eventType: customerBehaviorEventTypeValidator,
+    visitorId: v.string(),
+    sessionId: v.optional(v.string()),
+    customerKey: v.optional(v.string()),
+    productId: v.optional(v.id("products")),
+    categoryId: v.optional(v.id("productCategories")),
+    query: v.optional(v.string()),
+    metadata: v.optional(v.string()),
+    weight: v.number(),
+    occurredAt: v.number(),
+  })
+    .index("by_visitor_time", ["visitorId", "occurredAt"])
+    .index("by_customer_time", ["customerKey", "occurredAt"])
+    .index("by_product_time", ["productId", "occurredAt"])
+    .index("by_type_time", ["eventType", "occurredAt"]),
+
+  wishlistItems: defineTable({
+    identityType: recommendationIdentityTypeValidator,
+    identityKey: v.string(),
+    productId: v.id("products"),
+    addedAt: v.number(),
+  })
+    .index("by_identity_product", ["identityType", "identityKey", "productId"])
+    .index("by_identity_added", ["identityType", "identityKey", "addedAt"]),
+
+  productCoOccurrence: defineTable({
+    productId: v.id("products"),
+    relatedProductId: v.id("products"),
+    coPurchaseCount: v.number(),
+    score: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_product_score", ["productId", "score"])
+    .index("by_product_related", ["productId", "relatedProductId"]),
+
+  recommendationCache: defineTable({
+    cacheKey: v.string(),
+    sectionType: recommendationSectionTypeValidator,
+    productIds: v.array(v.id("products")),
+    scores: v.array(v.number()),
+    explanations: v.optional(v.string()),
+    source: recommendationSourceValidator,
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_cache_key", ["cacheKey"])
+    .index("by_expires", ["expiresAt"]),
+
+  recommendationJobs: defineTable({
+    jobType: recommendationJobTypeValidator,
+    status: recommendationJobStatusValidator,
+    identityType: v.optional(recommendationIdentityTypeValidator),
+    identityKey: v.optional(v.string()),
+    productId: v.optional(v.id("products")),
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    idempotencyKey: v.string(),
+    processedBy: v.optional(v.union(v.literal("convex"), v.literal("n8n"))),
+    provider: v.optional(v.string()),
+    error: v.optional(v.string()),
+    nextRetryAt: v.optional(v.number()),
+    triggeredBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_status_next_retry", ["status", "nextRetryAt"])
+    .index("by_idempotency", ["idempotencyKey"])
+    .index("by_job_type_status", ["jobType", "status"]),
+
+  recommendationAnalytics: defineTable({
+    date: v.string(),
+    sectionType: recommendationSectionTypeValidator,
+    source: recommendationSourceValidator,
+    impressions: v.number(),
+    clicks: v.number(),
+    conversions: v.number(),
+    revenue: v.number(),
+    segment: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    n8nUsed: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_date_section", ["date", "sectionType"])
+    .index("by_date", ["date"]),
+
+  recommendationEvents: defineTable({
+    eventType: recommendationInteractionTypeValidator,
+    sectionType: recommendationSectionTypeValidator,
+    productId: v.id("products"),
+    visitorId: v.optional(v.string()),
+    customerKey: v.optional(v.string()),
+    cacheKey: v.optional(v.string()),
+    source: v.optional(recommendationSourceValidator),
+    revenue: v.optional(v.number()),
+    occurredAt: v.number(),
+  })
+    .index("by_section_time", ["sectionType", "occurredAt"])
+    .index("by_product_time", ["productId", "occurredAt"])
+    .index("by_visitor_time", ["visitorId", "occurredAt"]),
 });

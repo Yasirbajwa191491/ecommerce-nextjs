@@ -17,6 +17,9 @@ import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typograp
 import { cn } from "@/lib/utils";
 import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
+import { RecommendationSection } from "@/components/products/recommendation-section";
+import { resolveCartProductId } from "@/lib/cart-lines";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 type DeliveryMethodType =
   | "standard"
@@ -190,6 +193,34 @@ export function CheckoutView() {
             />
           </aside>
         </div>
+
+        <RecommendationSection
+          sectionType="last_minute"
+          cartProductIds={cart.map(
+            (item) => resolveCartProductId(item) as Id<"products">
+          )}
+          className="mt-12 border-t border-border/60 pt-10"
+          limit={4}
+          columns="4"
+        />
+        <RecommendationSection
+          sectionType="frequently_added"
+          cartProductIds={cart.map(
+            (item) => resolveCartProductId(item) as Id<"products">
+          )}
+          className="mt-12 border-t border-border/60 pt-10"
+          limit={4}
+          columns="4"
+        />
+        <RecommendationSection
+          sectionType="recommended_addons"
+          cartProductIds={cart.map(
+            (item) => resolveCartProductId(item) as Id<"products">
+          )}
+          className="mt-12 border-t border-border/60 pt-10"
+          limit={4}
+          columns="4"
+        />
       </section>
     </div>
   );

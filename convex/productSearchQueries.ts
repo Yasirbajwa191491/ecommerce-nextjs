@@ -81,6 +81,8 @@ export const logSearchEvent = internalMutation({
     queryDisplay: v.string(),
     resultCount: v.number(),
     sessionId: v.optional(v.string()),
+    visitorId: v.optional(v.string()),
+    customerKey: v.optional(v.string()),
     source: v.union(v.literal("header"), v.literal("catalog")),
   },
   returns: v.null(),
@@ -91,6 +93,8 @@ export const logSearchEvent = internalMutation({
       searchedAt: Date.now(),
       resultCount: args.resultCount,
       sessionId: args.sessionId,
+      visitorId: args.visitorId,
+      customerKey: args.customerKey,
       source: args.source,
     });
     return null;

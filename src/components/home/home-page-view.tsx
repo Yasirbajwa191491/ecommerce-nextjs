@@ -12,9 +12,10 @@ import { WhyChooseUsSection } from "@/components/home/why-choose-us-section";
 import { CustomerReviewsSection } from "@/components/home/customer-reviews-section";
 import { StoreStatsSection } from "@/components/home/store-stats-section";
 import { PopularBrandsSection } from "@/components/home/popular-brands-section";
+import { RecommendationSection } from "@/components/products/recommendation-section";
 import { StaggerGroup, StaggerItem } from "@/components/home/scroll-reveal";
 import { CONVERSION_TRUST_STRIP } from "@/lib/home-content";
-import { PAGE_GUTTER } from "@/lib/layout-constants";
+import { HOME_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BODY_SM } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,27 @@ export function HomePageView() {
       <PromoBannerSection />
       <BestSellersSection />
       <NewArrivalsSection />
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="recommended_for_you" />
+      </div>
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="trending_in_interests" />
+      </div>
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="continue_shopping" />
+      </div>
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="recently_viewed" />
+      </div>
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="because_you_bought" />
+      </div>
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="because_you_viewed" />
+      </div>
+      <div className={HOME_SECTION_PADDING_Y} style={PAGE_GUTTER}>
+        <RecommendationSection sectionType="ai_suggested" />
+      </div>
       <WhyChooseUsSection />
       <CustomerReviewsSection />
       <StoreStatsSection />

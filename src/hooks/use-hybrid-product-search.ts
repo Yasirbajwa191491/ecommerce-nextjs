@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { getSearchSessionId } from "@/lib/search/recent-searches";
+import {
+  getCheckoutCustomerEmail,
+  getVisitorId,
+} from "@/lib/recommendations/visitor-id";
 
 export type HybridSearchProduct = {
   _id: string;
@@ -85,6 +89,8 @@ export function useHybridProductSearch({
       cursor: 0,
       source,
       sessionId: getSearchSessionId() || undefined,
+      visitorId: getVisitorId() || undefined,
+      customerKey: getCheckoutCustomerEmail(),
     })
       .then((result) => {
         if (requestId !== requestIdRef.current) return;
@@ -157,6 +163,8 @@ export function useHybridProductSearchPaginated({
       cursor: 0,
       source,
       sessionId: getSearchSessionId() || undefined,
+      visitorId: getVisitorId() || undefined,
+      customerKey: getCheckoutCustomerEmail(),
     })
       .then((result) => {
         if (requestId !== requestIdRef.current) return;
@@ -191,6 +199,8 @@ export function useHybridProductSearchPaginated({
         cursor: nextCursor,
         source,
         sessionId: getSearchSessionId() || undefined,
+      visitorId: getVisitorId() || undefined,
+      customerKey: getCheckoutCustomerEmail(),
       });
       setProducts((prev) => [...prev, ...result.products]);
       setNextCursor(result.nextCursor);

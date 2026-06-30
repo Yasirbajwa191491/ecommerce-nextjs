@@ -311,6 +311,12 @@ async function executeTool(
             ? parameters.preference
             : undefined,
         limit: typeof parameters.limit === "number" ? parameters.limit : undefined,
+        visitorId:
+          typeof parameters.visitorId === "string" ? parameters.visitorId : undefined,
+        customerEmail:
+          typeof parameters.customerEmail === "string"
+            ? parameters.customerEmail
+            : undefined,
       });
     case "getCategories":
       return await ctx.runQuery(internal.vapi.tools.getCategories, {});
