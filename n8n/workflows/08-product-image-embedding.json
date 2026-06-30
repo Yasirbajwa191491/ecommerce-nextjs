@@ -1,0 +1,65 @@
+{
+  "name": "Product Image Embedding - Safety Net",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "id": "cron-15min",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.CONVEX_SITE_URL }}/n8n/image-embedding/process-due?limit=10",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-N8N-Secret", "value": "={{ $vars.N8N_WEBHOOK_SECRET }}" }
+          ]
+        }
+      },
+      "id": "process-due",
+      "name": "Process Due Image Embedding Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.CONVEX_SITE_URL }}/n8n/image-embedding/health",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-N8N-Secret", "value": "={{ $vars.N8N_WEBHOOK_SECRET }}" }
+          ]
+        }
+      },
+      "id": "queue-health",
+      "name": "Check Image Embedding Queue Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 480]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          { "node": "Process Due Image Embedding Jobs", "type": "main", "index": 0 },
+          { "node": "Check Image Embedding Queue Health", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Optional cron safety net for product image embeddings. Convex also processes jobs automatically after 30s — this workflow is not required for core functionality."
+  }
+}

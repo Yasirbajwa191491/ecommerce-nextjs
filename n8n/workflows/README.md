@@ -11,6 +11,7 @@ Import these workflows into your n8n instance.
 - `REVIEW_AI_N8N_FALLBACK_ENABLED=true` — Enable n8n fallback (optional)
 - `REVIEW_AI_VERSIONING_ENABLED=true` — Generation history (default on)
 - `PRODUCT_CONTENT_N8N_ENABLED=true` — Enable n8n product content on admin product form (default on unless `false`)
+- `IMAGE_EMBEDDING_N8N_ENABLED=true` — Emit image embedding events to n8n (default on unless `false`; Convex still processes jobs without n8n)
 
 ### n8n Variables (Settings → Variables)
 
@@ -45,6 +46,10 @@ Import these workflows into your n8n instance.
 | POST | `/n8n/review-ai/reprocess-review` | Full reprocess via n8n |
 | POST | `/n8n/product-ai/complete` | Complete product content generation job |
 | POST | `/n8n/product-ai/report-failure` | Fail product content generation job |
+| POST | `/n8n/image-embedding/process-job` | Process single image embedding job |
+| POST | `/n8n/image-embedding/process-due` | Process due image embedding jobs |
+| GET | `/n8n/image-embedding/due-jobs` | List due image embedding jobs |
+| GET | `/n8n/image-embedding/health` | Image embedding queue health |
 
 All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 
@@ -57,6 +62,34 @@ All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 5. `05-bulk-review-processor.json` — Throttled bulk reprocess
 6. `06-ai-generation-router.json` — Fallback/manual AI provider chain
 7. `07-product-content-generation.json` — Admin product form content (description, SEO, highlights)
+8. `08-product-image-embedding.json` — Cron safety net for visual search image embeddings (optional)
+
+## Visual product search / image embeddings (Workflow 08)
+
+**n8n is optional.** Convex schedules image embedding jobs on product save and processes them automatically after ~30s, even if n8n is off.
+
+### What to import
+
+| Workflow | Action | Required? |
+|----------|--------|-----------|
+| **08** `08-product-image-embedding.json` | **Import new** and activate | Optional (cron safety net) |
+| **01–07** | **No re-import** needed for image embeddings | — |
+
+Workflow **08** only runs a **15-minute cron** (process due jobs + health check). It does **not** add a webhook — that avoids conflicting with workflow **01** on `review-events`.
+
+Convex may still emit `product.image.embedding_requested` to the same `N8N_REVIEW_WEBHOOK_URL` as review AI; workflow **01** can ignore that event. Processing is handled by Convex fallback + workflow **08** cron.
+
+### Convex env
+
+- `SITE_URL` — Your Next.js app URL (e.g. `http://localhost:3000` or production domain). Used when Convex calls `/api/ai/embed-image`. Sync locally: `npm run dev:sync-url`
+- `IMAGE_EMBEDDING_N8N_ENABLED` — Set `false` to skip n8n webhook emits entirely (Convex-only queue)
+
+### n8n variables (same as review AI)
+
+- `CONVEX_SITE_URL` — `https://YOUR-DEPLOYMENT.convex.site` (not `.convex.cloud`)
+- `N8N_WEBHOOK_SECRET` — Same as Convex
+
+See [docs/visual-search-architecture.md](../../docs/visual-search-architecture.md) for full reference.
 
 ## Product AI content (Workflow 01 + optional Workflow 07)
 
@@ -133,6 +166,6 @@ This happens when the **Execute Workflow** node cannot resolve the sub-workflow 
 
 ## Events
 
-`review.created`, `review.updated`, `review.approved`, `review.bulk_process`, `review.ai.retry_scheduled`, `review.ai.completed`, `review.ai.failed`, `review.ai.fallback_requested`, `review.ai.manual_generate`, `product.ai.generate_content`
+`review.created`, `review.updated`, `review.approved`, `review.bulk_process`, `review.ai.retry_scheduled`, `review.ai.completed`, `review.ai.failed`, `review.ai.fallback_requested`, `review.ai.manual_generate`, `product.ai.generate_content`, `product.image.embedding_requested`, `product.image.embedding_retry`
 
 See [docs/review-ai-architecture.md](../../docs/review-ai-architecture.md) for full technical reference.

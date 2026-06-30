@@ -86,6 +86,13 @@ export default defineSchema({
     embeddingStatus: v.optional(aiAnalysisStatusValidator),
     embeddingContentHash: v.optional(v.string()),
     embeddingUpdatedAt: v.optional(v.number()),
+    imageEmbedding: v.optional(v.array(v.float64())),
+    imageEmbeddingClip: v.optional(v.array(v.float64())),
+    imageEmbeddingProvider: v.optional(v.string()),
+    imageEmbeddingVersion: v.optional(v.string()),
+    imageEmbeddingUpdatedAt: v.optional(v.number()),
+    imageEmbeddingContentHash: v.optional(v.string()),
+    imageEmbeddingStatus: v.optional(aiAnalysisStatusValidator),
     warrantyAvailable: v.optional(v.boolean()),
     warrantyDuration: v.optional(warrantyDurationValidator),
     warrantyType: v.optional(warrantyTypeValidator),
@@ -99,6 +106,16 @@ export default defineSchema({
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
       dimensions: 384,
+      filterFields: ["active"],
+    })
+    .vectorIndex("by_image_embedding", {
+      vectorField: "imageEmbedding",
+      dimensions: 768,
+      filterFields: ["active"],
+    })
+    .vectorIndex("by_image_embedding_clip", {
+      vectorField: "imageEmbeddingClip",
+      dimensions: 512,
       filterFields: ["active"],
     }),
 
@@ -146,6 +163,52 @@ export default defineSchema({
     embedding: v.array(v.float64()),
     createdAt: v.number(),
   }).index("by_query_normalized", ["queryNormalized"]),
+
+  visualSearchImageCache: defineTable({
+    imageHash: v.string(),
+    embedding: v.array(v.float64()),
+    provider: v.string(),
+    dimensions: v.number(),
+    createdAt: v.number(),
+  }).index("by_image_hash", ["imageHash"]),
+
+  visualSearchEvents: defineTable({
+    sessionId: v.optional(v.string()),
+    provider: v.string(),
+    resultCount: v.number(),
+    fallbackUsed: v.optional(v.string()),
+    searchedAt: v.number(),
+    source: v.optional(v.union(v.literal("header"), v.literal("catalog"), v.literal("visual"))),
+  }).index("by_searched_at", ["searchedAt"]),
+
+  imageEmbeddingJobs: defineTable({
+    productId: v.id("products"),
+    status: aiAnalysisStatusValidator,
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    provider: v.optional(v.string()),
+    error: v.optional(v.string()),
+    triggeredBy: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    nextRetryAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_product_id", ["productId"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_status_next_retry", ["status", "nextRetryAt"])
+    .index("by_idempotency", ["idempotencyKey"]),
+
+  providerHealth: defineTable({
+    provider: v.string(),
+    status: v.union(v.literal("healthy"), v.literal("degraded"), v.literal("down")),
+    lastSuccessAt: v.optional(v.number()),
+    lastFailureAt: v.optional(v.number()),
+    failureCount: v.number(),
+    consecutiveFailures: v.number(),
+    updatedAt: v.number(),
+  }).index("by_provider", ["provider"]),
 
   subscribers: defineTable({
     email: v.string(),

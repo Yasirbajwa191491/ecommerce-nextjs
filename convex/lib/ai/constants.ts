@@ -1,6 +1,25 @@
 /** Embedding dimensions for Xenova/all-MiniLM-L6-v2 */
 export const EMBEDDING_DIMENSIONS = 384;
 
+/** SigLIP image embedding dimensions */
+export const IMAGE_EMBEDDING_SIGLIP_DIMENSIONS = 768;
+
+/** CLIP image embedding dimensions */
+export const IMAGE_EMBEDDING_CLIP_DIMENSIONS = 512;
+
+export const SIGLIP_MODEL_DEFAULT = "Xenova/siglip-base-patch16-224";
+export const CLIP_MODEL_DEFAULT = "Xenova/clip-vit-base-patch32";
+
+export const IMAGE_EMBEDDING_VERSION = "v1";
+
+export const VISUAL_SEARCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export const IMAGE_EMBEDDING_MAX_RETRIES = 5;
+
+export const PROVIDER_CIRCUIT_BREAKER_THRESHOLD = 3;
+
+export const PROVIDER_CIRCUIT_BREAKER_COOLDOWN_MS = 5 * 60 * 1000;
+
 /** Default Gemini embedding model (text-embedding-004 retired Jan 2026) */
 export const GEMINI_EMBEDDING_MODEL_DEFAULT = "gemini-embedding-001";
 

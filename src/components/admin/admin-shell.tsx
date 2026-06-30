@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   Bot,
   FolderTree,
+  Image,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -43,6 +44,7 @@ import { AdminAccessGate } from "@/components/admin/admin-access-gate";
 const NAV = [
   { href: "/admin/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/image-embeddings", label: "Image Embeddings", icon: Image },
   { href: "/admin/promotions", label: "Promotions", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/reviews", label: "Reviews", icon: Star },

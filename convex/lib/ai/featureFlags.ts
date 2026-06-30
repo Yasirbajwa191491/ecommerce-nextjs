@@ -22,3 +22,7 @@ export function isProductContentN8nEnabled(): boolean {
 export function isProductContentN8nConfigured(): boolean {
   return Boolean(process.env.N8N_REVIEW_WEBHOOK_URL?.trim());
 }
+
+export function isImageEmbeddingN8nEnabled(): boolean {
+  return process.env.IMAGE_EMBEDDING_N8N_ENABLED !== "false";
+}

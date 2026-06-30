@@ -6,6 +6,7 @@ const convexSiteUrl = resolveConvexSiteUrl();
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@vapi-ai/web", "@daily-co/daily-js"],
+  serverExternalPackages: ["@xenova/transformers", "onnxruntime-node", "sharp"],
   env: {
     SITE_URL: siteUrl,
     NEXT_PUBLIC_SITE_URL: siteUrl,
