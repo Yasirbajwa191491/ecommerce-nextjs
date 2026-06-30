@@ -21,6 +21,14 @@ import {
   n8nProductContentComplete,
   n8nProductContentReportFailure,
 } from "./n8nProductAiHttp";
+import {
+  n8nImageEmbeddingDueJobs,
+  n8nImageEmbeddingHealth,
+  n8nImageEmbeddingProcessDue,
+  n8nImageEmbeddingProcessJob,
+  n8nImageEmbeddingReportFailure,
+  n8nImageEmbeddingSave,
+} from "./n8nImageEmbeddingHttp";
 
 const http = httpRouter();
 
@@ -126,6 +134,42 @@ http.route({
   path: "/n8n/product-ai/report-failure",
   method: "POST",
   handler: n8nProductContentReportFailure,
+});
+
+http.route({
+  path: "/n8n/image-embedding/health",
+  method: "GET",
+  handler: n8nImageEmbeddingHealth,
+});
+
+http.route({
+  path: "/n8n/image-embedding/due-jobs",
+  method: "GET",
+  handler: n8nImageEmbeddingDueJobs,
+});
+
+http.route({
+  path: "/n8n/image-embedding/process-due",
+  method: "POST",
+  handler: n8nImageEmbeddingProcessDue,
+});
+
+http.route({
+  path: "/n8n/image-embedding/process-job",
+  method: "POST",
+  handler: n8nImageEmbeddingProcessJob,
+});
+
+http.route({
+  path: "/n8n/image-embedding/save",
+  method: "POST",
+  handler: n8nImageEmbeddingSave,
+});
+
+http.route({
+  path: "/n8n/image-embedding/report-failure",
+  method: "POST",
+  handler: n8nImageEmbeddingReportFailure,
 });
 
 export default http;

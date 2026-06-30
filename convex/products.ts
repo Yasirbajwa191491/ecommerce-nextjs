@@ -25,6 +25,7 @@ import {
   validateProductDiscountPercent,
 } from "./lib/pricing";
 import { scheduleProductIntelligenceIfNeeded } from "./lib/ai/scheduleProductIntelligence";
+import { scheduleImageEmbeddingIfNeeded } from "./lib/ai/scheduleImageEmbedding";
 import {
   deliveryOptionValidator,
   getDefaultDeliveryOptions,
@@ -652,6 +653,8 @@ export const create = mutation({
       price: args.price,
     });
 
+    await scheduleImageEmbeddingIfNeeded(ctx, productId);
+
     return productId;
   },
 });
@@ -701,6 +704,8 @@ export const update = mutation({
       categoryId: data.categoryId,
       price: data.price,
     });
+
+    await scheduleImageEmbeddingIfNeeded(ctx, id);
 
     return id;
   },
