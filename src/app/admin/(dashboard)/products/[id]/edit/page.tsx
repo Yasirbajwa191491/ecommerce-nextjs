@@ -29,6 +29,8 @@ export default function EditProductPage() {
     categoryOptions: formState.categoryOptions,
     product: formState.product,
     onApplyAiContent: formState.applyAiContent,
+    aiContentProvider: formState.aiContentProvider,
+    onAiContentProviderChange: formState.setAiContentProvider,
   };
 
   const productName = formState.form.name.trim() || "Edit product";

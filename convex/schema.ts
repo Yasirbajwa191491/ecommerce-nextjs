@@ -36,6 +36,10 @@ import {
   warrantyDurationValidator,
   warrantyTypeValidator,
 } from "./lib/productValidators";
+import {
+  productContentModeValidator,
+  productContentJobStatusValidator,
+} from "./lib/ai/productContentTypes";
 
 export const productImageValidator = v.object({
   url: v.string(),
@@ -97,6 +101,22 @@ export default defineSchema({
       dimensions: 384,
       filterFields: ["active"],
     }),
+
+  productContentJobs: defineTable({
+    requestId: v.string(),
+    mode: productContentModeValidator,
+    context: v.string(),
+    status: productContentJobStatusValidator,
+    result: v.optional(v.string()),
+    error: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    model: v.optional(v.string()),
+    triggeredBy: v.optional(v.string()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_request_id", ["requestId"])
+    .index("by_status_created", ["status", "createdAt"]),
 
   productIntelligence: defineTable({
     productId: v.id("products"),

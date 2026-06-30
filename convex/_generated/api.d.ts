@@ -12,6 +12,7 @@ import type * as aboutStats from "../aboutStats.js";
 import type * as adminDashboard from "../adminDashboard.js";
 import type * as adminOrders from "../adminOrders.js";
 import type * as adminProductContent from "../adminProductContent.js";
+import type * as adminProductContentN8n from "../adminProductContentN8n.js";
 import type * as adminProductPricing from "../adminProductPricing.js";
 import type * as adminReviewAi from "../adminReviewAi.js";
 import type * as adminReviews from "../adminReviews.js";
@@ -132,6 +133,7 @@ import type * as lib_subscriberInterestDetection from "../lib/subscriberInterest
 import type * as lib_subscriberTokens from "../lib/subscriberTokens.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_backfillProductDeliveryWarranty from "../migrations/backfillProductDeliveryWarranty.js";
+import type * as n8nProductAiHttp from "../n8nProductAiHttp.js";
 import type * as n8nReviewAi from "../n8nReviewAi.js";
 import type * as n8nReviewAiHttp from "../n8nReviewAiHttp.js";
 import type * as n8nWebhooks from "../n8nWebhooks.js";
@@ -142,6 +144,7 @@ import type * as productAi from "../productAi.js";
 import type * as productAiActions from "../productAiActions.js";
 import type * as productAiQueries from "../productAiQueries.js";
 import type * as productCategories from "../productCategories.js";
+import type * as productContentJobs from "../productContentJobs.js";
 import type * as productPricingQueries from "../productPricingQueries.js";
 import type * as productPricingRecommendations from "../productPricingRecommendations.js";
 import type * as productPromotions from "../productPromotions.js";
@@ -201,6 +204,7 @@ declare const fullApi: ApiFromModules<{
   adminDashboard: typeof adminDashboard;
   adminOrders: typeof adminOrders;
   adminProductContent: typeof adminProductContent;
+  adminProductContentN8n: typeof adminProductContentN8n;
   adminProductPricing: typeof adminProductPricing;
   adminReviewAi: typeof adminReviewAi;
   adminReviews: typeof adminReviews;
@@ -321,6 +325,7 @@ declare const fullApi: ApiFromModules<{
   "lib/subscriberTokens": typeof lib_subscriberTokens;
   migrations: typeof migrations;
   "migrations/backfillProductDeliveryWarranty": typeof migrations_backfillProductDeliveryWarranty;
+  n8nProductAiHttp: typeof n8nProductAiHttp;
   n8nReviewAi: typeof n8nReviewAi;
   n8nReviewAiHttp: typeof n8nReviewAiHttp;
   n8nWebhooks: typeof n8nWebhooks;
@@ -331,6 +336,7 @@ declare const fullApi: ApiFromModules<{
   productAiActions: typeof productAiActions;
   productAiQueries: typeof productAiQueries;
   productCategories: typeof productCategories;
+  productContentJobs: typeof productContentJobs;
   productPricingQueries: typeof productPricingQueries;
   productPricingRecommendations: typeof productPricingRecommendations;
   productPromotions: typeof productPromotions;

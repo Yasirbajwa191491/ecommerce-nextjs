@@ -14,3 +14,11 @@ export function isVersioningEnabled(): boolean {
 export function getPrimaryProviderName(): string {
   return process.env.AI_PROVIDER ?? "gemini";
 }
+
+export function isProductContentN8nEnabled(): boolean {
+  return process.env.PRODUCT_CONTENT_N8N_ENABLED !== "false";
+}
+
+export function isProductContentN8nConfigured(): boolean {
+  return Boolean(process.env.N8N_REVIEW_WEBHOOK_URL?.trim());
+}

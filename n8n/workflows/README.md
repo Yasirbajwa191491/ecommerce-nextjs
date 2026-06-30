@@ -5,11 +5,12 @@ Import these workflows into your n8n instance.
 ## Prerequisites
 
 ### Convex dashboard
-- `N8N_REVIEW_WEBHOOK_URL` — Webhook URL from Workflow 01
+- `N8N_REVIEW_WEBHOOK_URL` — Webhook URL from Workflow 01 (shared by review AI and product content)
 - `N8N_WEBHOOK_SECRET` — Shared secret for inbound/outbound auth
 - `AI_PROVIDER=gemini` — Keep Gemini as primary
 - `REVIEW_AI_N8N_FALLBACK_ENABLED=true` — Enable n8n fallback (optional)
 - `REVIEW_AI_VERSIONING_ENABLED=true` — Generation history (default on)
+- `PRODUCT_CONTENT_N8N_ENABLED=true` — Enable n8n product content on admin product form (default on unless `false`)
 
 ### n8n Variables (Settings → Variables)
 
@@ -20,6 +21,7 @@ Import these workflows into your n8n instance.
 - `N8N_ADMIN_NOTIFY_WORKFLOW_ID` — Workflow 04 ID
 - `N8N_BULK_PROCESS_WORKFLOW_ID` — Workflow 05 ID
 - `N8N_AI_GENERATION_WORKFLOW_ID` — Workflow 06 ID
+- `N8N_PRODUCT_CONTENT_WORKFLOW_ID` — Workflow 07 ID (optional; only if you call WF07 as a sub-workflow)
 - `AI_FALLBACK_PROVIDER_ORDER` — Default: `groq,openrouter,openai`
 - `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY` — Fallback provider keys
 - `GROQ_MODEL`, `OPENROUTER_MODEL`, `OPENAI_MODEL` — Optional model overrides
@@ -41,6 +43,8 @@ Import these workflows into your n8n instance.
 | POST | `/n8n/review-ai/generate-reply` | Trigger reply via n8n |
 | POST | `/n8n/review-ai/generate-summary` | Trigger summary via n8n |
 | POST | `/n8n/review-ai/reprocess-review` | Full reprocess via n8n |
+| POST | `/n8n/product-ai/complete` | Complete product content generation job |
+| POST | `/n8n/product-ai/report-failure` | Fail product content generation job |
 
 All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 
@@ -52,6 +56,50 @@ All requests require header: `X-N8N-Secret: <N8N_WEBHOOK_SECRET>`
 4. `04-admin-notifications.json` — Sub-workflow for alerts
 5. `05-bulk-review-processor.json` — Throttled bulk reprocess
 6. `06-ai-generation-router.json` — Fallback/manual AI provider chain
+7. `07-product-content-generation.json` — Admin product form content (description, SEO, highlights)
+
+## Product AI content (Workflow 01 + optional Workflow 07)
+
+Used when admins select **n8n automation** on the product add/edit **AI Tools** tab.
+
+Uses the **same** `N8N_REVIEW_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET` as review AI. Workflow **01** normalizes the event and runs **Generate Product Content** inline (no sub-workflow required).
+
+1. Re-import `01-review-event-router.json` and activate workflow 01
+2. Reuse n8n variables: `CONVEX_SITE_URL`, `N8N_WEBHOOK_SECRET`, `AI_FALLBACK_PROVIDER_ORDER`, provider API keys
+3. Alt text stays **Gemini-only** (vision); n8n generates description, SEO, and highlights
+
+Event from Convex: `product.ai.generate_content` with `{ requestId, mode, context, triggeredBy }`
+
+### Testing workflow 07 in n8n (optional)
+
+Workflow 07 is for **isolated testing only**. Production uses workflow 01 inline.
+
+1. Import `07-product-content-generation.json`
+2. Click **Manual Test Trigger** → **Set Test Payload** → **Generate Product Content**
+3. Do **not** use **Execute workflow** on the Execute Workflow Trigger alone — it sends an empty item
+
+To test the real admin path, trigger workflow **01** via the Convex webhook or the admin product form.
+
+### Troubleshooting product content 404
+
+If **Generate Product Content** fails with `Request failed with status code 404` on `/n8n/product-ai/...`:
+
+1. **`CONVEX_SITE_URL` must use `.convex.site`** (HTTP actions), not `.convex.cloud`  
+   Example: `https://doting-bat-377.convex.site`
+2. **Deploy Convex** so HTTP routes exist: `npx convex deploy` (or `npx convex dev` locally)
+3. **`N8N_WEBHOOK_SECRET`** in n8n must match the value in Convex
+4. **Manual test in workflow 07** (`manual-test-*` request IDs) skips Convex callbacks — only tests AI providers. Use workflow 01 for end-to-end with Convex.
+
+Verify the endpoint exists:
+
+```bash
+curl -X POST "https://YOUR-DEPLOYMENT.convex.site/n8n/product-ai/report-failure" \
+  -H "Content-Type: application/json" \
+  -H "X-N8N-Secret: YOUR_SECRET" \
+  -d '{"requestId":"test","error":"ping"}'
+```
+
+Expect `404` only if the route is not deployed; `401` means the secret is wrong; `200` or a JSON job error means the route is live.
 
 ## Setup steps
 
@@ -85,6 +133,6 @@ This happens when the **Execute Workflow** node cannot resolve the sub-workflow 
 
 ## Events
 
-`review.created`, `review.updated`, `review.approved`, `review.bulk_process`, `review.ai.retry_scheduled`, `review.ai.completed`, `review.ai.failed`, `review.ai.fallback_requested`, `review.ai.manual_generate`
+`review.created`, `review.updated`, `review.approved`, `review.bulk_process`, `review.ai.retry_scheduled`, `review.ai.completed`, `review.ai.failed`, `review.ai.fallback_requested`, `review.ai.manual_generate`, `product.ai.generate_content`
 
 See [docs/review-ai-architecture.md](../../docs/review-ai-architecture.md) for full technical reference.

@@ -29,6 +29,8 @@ export default function NewProductPage() {
     categoryOptions: formState.categoryOptions,
     product: formState.product,
     onApplyAiContent: formState.applyAiContent,
+    aiContentProvider: formState.aiContentProvider,
+    onAiContentProviderChange: formState.setAiContentProvider,
   };
 
   return (

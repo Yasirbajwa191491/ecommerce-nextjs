@@ -44,3 +44,41 @@ export function formatRetryScheduledTime(nextRetryAt?: number): string | null {
   const date = new Date(nextRetryAt);
   return date.toLocaleString();
 }
+
+export function getFriendlyProductAiErrorMessage(
+  error: string | undefined
+): string {
+  if (!error) {
+    return "Content generation failed. Please retry.";
+  }
+
+  const lower = error.toLowerCase();
+
+  if (lower.includes("timed out") && lower.includes("n8n")) {
+    return "n8n did not finish in time. Confirm workflow 01 is active and CONVEX_SITE_URL in n8n uses your https://….convex.site URL (not .convex.cloud).";
+  }
+
+  if (
+    lower.includes("429") &&
+    (lower.includes("quota") ||
+      lower.includes("resource_exhausted") ||
+      lower.includes("free_tier"))
+  ) {
+    return "AI daily quota reached. Wait and retry, add another provider key in n8n, or switch to Gemini.";
+  }
+
+  if (
+    lower.includes("429") ||
+    lower.includes("503") ||
+    lower.includes("502") ||
+    lower.includes("504")
+  ) {
+    return "AI provider rate limit or overload (429). Wait a minute and retry, or switch to Gemini.";
+  }
+
+  if (error.length > 200) {
+    return "Content generation failed due to a provider error. Check n8n execution logs.";
+  }
+
+  return error;
+}

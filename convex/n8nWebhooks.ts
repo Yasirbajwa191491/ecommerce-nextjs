@@ -12,11 +12,20 @@ export const emitReviewEvent = internalAction({
   handler: async (_ctx, args) => {
     const url = process.env.N8N_REVIEW_WEBHOOK_URL;
     const secret = process.env.N8N_WEBHOOK_SECRET;
-    if (!url) return null;
+    const required = args.event.startsWith("product.ai.");
+
+    if (!url) {
+      if (required) {
+        throw new Error(
+          "N8N_REVIEW_WEBHOOK_URL is not configured in Convex."
+        );
+      }
+      return null;
+    }
 
     try {
       const parsedPayload = JSON.parse(args.payload) as Record<string, unknown>;
-      await fetch(url, {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -28,7 +37,19 @@ export const emitReviewEvent = internalAction({
           ...parsedPayload,
         }),
       });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        const message = `n8n webhook failed (${response.status}): ${text || response.statusText}`;
+        if (required) {
+          throw new Error(message);
+        }
+        console.error("[n8n] Failed to emit event:", args.event, message);
+      }
     } catch (error) {
+      if (required) {
+        throw error;
+      }
       console.error("[n8n] Failed to emit review event:", args.event, error);
     }
 
