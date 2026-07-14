@@ -4,9 +4,9 @@ import { createPageMetadata } from "@/lib/seo";
 import { STORE_NAME } from "@/lib/site";
 
 export const metadata = createPageMetadata({
-  title: `${STORE_NAME} — Premium Products For Your Lifestyle`,
+  title: `${STORE_NAME} — Your Trusted Online Pharmacy`,
   description:
-    "Shop curated furniture, electronics, and lifestyle essentials. Secure Stripe checkout, fast delivery, order tracking, and verified customer reviews.",
+    "Order medicines, vitamins, supplements, and healthcare products online. Secure Stripe checkout, fast delivery, order tracking, and verified customer reviews.",
   path: "/home",
 });
 

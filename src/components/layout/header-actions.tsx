@@ -16,7 +16,7 @@ export function HeaderCart({ compact = false }: HeaderCartProps) {
   return (
     <Link
       href="/cart"
-      aria-label={`Shopping cart, ${total_item} items`}
+      aria-label={`Medicine cart, ${total_item} items`}
       className={cn(
         "group relative flex shrink-0 items-center justify-center transition-opacity duration-200 hover:opacity-80",
         compact ? "size-10 p-2 sm:size-11" : ""

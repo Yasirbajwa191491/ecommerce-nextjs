@@ -54,7 +54,7 @@ export function VapiGuidedShoppingBanner({
       >
         <Sparkles className="size-3.5 shrink-0 text-primary" />
         <span className="text-muted-foreground">
-          Guided shopping — tell me your budget, brand, or category.
+          Guided shopping — tell me your budget, brand, or medicine category.
         </span>
         {onDismiss ? (
           <Button

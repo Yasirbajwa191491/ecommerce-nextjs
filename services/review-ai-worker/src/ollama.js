@@ -131,7 +131,7 @@ function fallbackTopics(text) {
 }
 
 export async function generateReply(review) {
-  const storeName = review.storeName?.trim() || "Ecommerce Store";
+  const storeName = review.storeName?.trim() || "Smart Pharmacy";
   const storeEmail = review.storeEmail?.trim() || "yasir.sohail@savari.io";
   const storeAddress =
     review.storeAddress?.trim() || "DHA Phase 6 Lahore, Pakistan, 54000";

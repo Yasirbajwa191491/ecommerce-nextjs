@@ -46,7 +46,7 @@ export function buildTiptapFromAi(input: AiEmailBodyInput): {
   contentJson: string;
   contentHtml: string;
 } {
-  const ctaText = input.ctaText?.trim() || "Shop Now";
+  const ctaText = input.ctaText?.trim() || "Shop Medicines";
   const ctaUrl = input.ctaUrl?.trim() || DEFAULT_CTA_URL;
 
   const content: Record<string, unknown>[] = input.bodyParagraphs

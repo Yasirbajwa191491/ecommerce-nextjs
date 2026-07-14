@@ -25,7 +25,7 @@ function formatMoney(amount: number, currency: string) {
 export function ProductPromoPreview({
   products,
   productPromoText,
-  ctaText = "Shop Now",
+  ctaText = "Shop Medicines",
 }: {
   products: PromoProduct[];
   productPromoText?: string;

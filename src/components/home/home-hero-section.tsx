@@ -30,27 +30,27 @@ import { cn } from "@/lib/utils";
 
 const HERO_FALLBACK_IMAGES = [
   {
-    src: "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=800&q=80",
-    alt: "Modern living room furniture",
-    price: 36000,
+    src: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+    alt: "Paracetamol tablets",
+    price: 12,
     discountPercent: 20,
   },
   {
-    src: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80",
-    alt: "Ergonomic office chair",
-    price: 15000,
+    src: "https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=600&q=80",
+    alt: "Blood pressure monitor",
+    price: 49,
     discountPercent: 0,
   },
   {
-    src: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=700&q=80",
-    alt: "Contemporary bedside table",
-    price: 8999,
+    src: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=700&q=80",
+    alt: "Vitamin D tablets",
+    price: 18,
     discountPercent: 10,
   },
   {
-    src: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=600&q=80",
-    alt: "Gold bracelet",
-    price: 2499,
+    src: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=600&q=80",
+    alt: "First aid kit",
+    price: 29,
     discountPercent: 15,
   },
 ] as const;
@@ -118,11 +118,11 @@ export function HomeHeroSection() {
             variants={fadeUp}
             className={cn("mt-3 max-w-xl text-white sm:mt-3.5", SHOP_HERO_TITLE)}
           >
-            Discover Premium Products For Your Lifestyle
+            Your Trusted Online Pharmacy
           </m.h1>
 
           <m.p variants={fadeIn} className={cn("mt-3 max-w-lg", SHOP_HERO_LEAD)}>
-            Shop curated furniture, electronics, and essentials with secure
+            Order medicines, vitamins, and healthcare products online with secure
             checkout, fast delivery, and quality you can trust.
           </m.p>
 
@@ -135,7 +135,7 @@ export function HomeHeroSection() {
                 render={<Link href="/products" />}
                 className={HERO_PRIMARY_BUTTON_CLASS}
               >
-                Shop Now
+                Browse Medicines
                 <ArrowRight />
               </Button>
             </m.div>

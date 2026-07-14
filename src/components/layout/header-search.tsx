@@ -157,8 +157,8 @@ function HeaderSearchForm({
               setDropdownOpen(true);
               refreshRecentSearches();
             }}
-            placeholder="Search products, brands, categories…"
-            aria-label="Search products"
+            placeholder="Search medicines, tablets, vitamins…"
+            aria-label="Search medicines"
             aria-expanded={showDropdown}
             aria-controls="search-suggestions"
             autoComplete="off"

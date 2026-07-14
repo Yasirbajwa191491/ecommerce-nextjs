@@ -407,7 +407,7 @@ export function ProductFormFields({
               onChange={(e) =>
                 setForm((f) => ({ ...f, seoKeywords: e.target.value }))
               }
-              placeholder="office chair, ergonomic, lumbar support"
+              placeholder="paracetamol, vitamin d, pain relief"
             />
           </AdminFormField>
 

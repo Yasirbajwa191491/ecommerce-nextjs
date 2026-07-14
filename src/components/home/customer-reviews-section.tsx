@@ -31,7 +31,7 @@ export function CustomerReviewsSection() {
           badge="Testimonials"
           badgeIcon={MessageSquareQuote}
           title="Customer Reviews"
-          description="Real feedback from verified shoppers — only approved reviews are shown."
+          description="Real feedback from verified pharmacy customers — only approved reviews are shown."
           align="center"
           className="sm:items-center sm:text-center"
         />

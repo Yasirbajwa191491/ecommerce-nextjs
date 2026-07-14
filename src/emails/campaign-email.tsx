@@ -41,7 +41,7 @@ export function CampaignEmail({
   previewText,
   headline,
   productPromoText,
-  ctaText = "Shop Now",
+  ctaText = "Shop Medicines",
   companyName,
   companyEmail,
   companyPhone,
@@ -73,7 +73,7 @@ export function CampaignEmail({
               {productPromoText?.trim() ? (
                 <Text style={promoText}>{productPromoText}</Text>
               ) : null}
-              <Text style={sectionTitle}>Featured Deals</Text>
+              <Text style={sectionTitle}>Featured Healthcare Deals</Text>
               {products.map((product) => (
                 <ProductPromoCard
                   key={product.id}

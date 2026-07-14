@@ -9,7 +9,7 @@ export default function RootNotFound() {
           href="/home"
           className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
         >
-          Ecommerce Store
+          Smart Pharmacy
         </Link>
       </header>
       <NotFoundPageView variant="shop" />

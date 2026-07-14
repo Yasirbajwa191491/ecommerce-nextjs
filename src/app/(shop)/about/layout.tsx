@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/lib/seo";
 export const metadata: Metadata = createPageMetadata({
   title: "About Us",
   description:
-    "Learn how our online store works — browse products, secure checkout with Stripe, order tracking, shipping, and customer support.",
+    "Learn how our online pharmacy works — browse medicines and healthcare products, secure checkout with Stripe, order tracking, shipping, and customer support.",
   path: "/about",
 });
 

@@ -37,7 +37,7 @@ export function ShopByCategorySection() {
           badge="Explore"
           badgeIcon={LayoutGrid}
           title="Shop By Category"
-          description="Browse our curated collections and find the perfect products for every room and lifestyle."
+          description="Browse our curated collections and find medicines and healthcare products for every need."
           align="center"
           className="sm:items-center sm:text-center"
         />

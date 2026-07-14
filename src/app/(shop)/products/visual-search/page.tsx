@@ -76,7 +76,7 @@ function VisualSearchPageContent() {
             className="inline-flex h-8 items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
-            Back to products
+            Back to medicines
           </Link>
 
           <div className="flex items-start gap-3">
@@ -86,8 +86,8 @@ function VisualSearchPageContent() {
             <div>
               <h1 className={SHOP_PAGE_TITLE}>Search by image</h1>
               <p className={SHOP_PAGE_LEAD}>
-                Find visually similar products. Upload a photo or use your camera,
-                then optionally add text to refine results.
+                Find visually similar healthcare products. Upload a medicine package
+                or healthcare product image, then optionally add text to refine results.
               </p>
             </div>
           </div>

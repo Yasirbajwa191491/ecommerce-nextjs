@@ -116,7 +116,7 @@ export function CartOrderSummary({
             className="h-10 gap-2 rounded-full px-6 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground"
           >
             <ShoppingBag className="size-4 shrink-0" />
-            Continue shopping
+            Continue Browsing Medicines
           </Button>
         </div>
         <p className={cn("flex items-center justify-center gap-1.5 text-center", SHOP_BODY_SM)}>

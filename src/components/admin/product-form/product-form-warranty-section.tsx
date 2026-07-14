@@ -53,7 +53,7 @@ export function ProductFormWarrantySection({
           <div className="grid gap-4 sm:grid-cols-2">
             <AdminFormField label="Warranty duration">
               <Select
-                value={form.warrantyDuration || undefined}
+                value={form.warrantyDuration}
                 onValueChange={(value) =>
                   setForm((current) => ({
                     ...current,
@@ -76,7 +76,7 @@ export function ProductFormWarrantySection({
 
             <AdminFormField label="Warranty type">
               <Select
-                value={form.warrantyType || undefined}
+                value={form.warrantyType}
                 onValueChange={(value) =>
                   setForm((current) => ({
                     ...current,

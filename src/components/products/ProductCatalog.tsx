@@ -520,9 +520,9 @@ export default function ProductCatalog() {
 
   const pageIntro = (
     <ScrollReveal variant="headline">
-      <h1 className={SHOP_PAGE_TITLE}>Ecommerce Products</h1>
+      <h1 className={SHOP_PAGE_TITLE}>Pharmacy Products</h1>
       <p className={SHOP_PAGE_LEAD}>
-        Browse our catalog — search from the header anytime.
+        Browse medicines and healthcare products — search from the header anytime.
       </p>
     </ScrollReveal>
   );

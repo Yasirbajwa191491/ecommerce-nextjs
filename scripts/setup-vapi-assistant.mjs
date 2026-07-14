@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Provisions or updates the Vapi "Store Shopping Assistant" with ecommerce tools.
+ * Provisions or updates the Vapi "Pharmacy Assistant" with pharmacy storefront tools.
  * Prompt and tools are loaded from convex/vapi/assistantConfig.ts (single source of truth).
  *
  * Usage:
@@ -115,9 +115,9 @@ const webhookUrl = `${CONVEX_SITE_URL.replace(/\/$/, "")}/vapi/webhook`;
 const TOOLS_WITH_SERVER = TOOLS.map((tool) => withToolServer(tool, webhookUrl));
 
 const assistantPayload = {
-  name: "Store Shopping Assistant",
+  name: "Pharmacy Assistant",
   firstMessage:
-    "Hi! I'm your shopping assistant. I can find products, explain promotions, add items to your cart, checkout, and track orders. What are you looking for today?",
+    "Hi! I'm your pharmacy assistant. I can help you find medicines and healthcare products, explain promotions, add items to your medicine cart, checkout, and track orders. What are you looking for today?",
   clientMessages: [
     "transcript",
     "tool-calls",

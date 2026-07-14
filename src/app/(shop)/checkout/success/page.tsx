@@ -96,7 +96,7 @@ function CheckoutSuccessContent() {
           We could not find your order details.
         </p>
         <Button render={<Link href="/products" />} className="mt-6">
-          Continue shopping
+          Continue Browsing Medicines
         </Button>
       </div>
     );
@@ -117,7 +117,7 @@ function CheckoutSuccessContent() {
               This order could not be retrieved. Check your email for confirmation.
             </p>
             <Button render={<Link href="/products" />} className="mt-6">
-              Continue shopping
+              Continue Browsing Medicines
             </Button>
           </div>
         ) : (
@@ -245,7 +245,7 @@ function CheckoutSuccessContent() {
                   className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] [&_svg]:!text-white"
                 >
                   <ShoppingBag className="size-4" />
-                  Continue shopping
+                  Continue Browsing Medicines
                 </Button>
                 <Button
                   render={<Link href="/contact" />}

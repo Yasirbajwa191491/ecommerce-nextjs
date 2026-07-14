@@ -63,7 +63,7 @@ export function SimilarProductsSection({
     <section className={className}>
       <AnimatedSectionHeader
         title="You may also like"
-        description="Similar products based on features, category, and customer reviews."
+        description="Similar healthcare products based on features, category, and customer reviews."
       />
 
       {loading || products === undefined ? (

@@ -46,10 +46,10 @@ type QuickPreset =
   | { kind: "custom"; label: string };
 
 const THEMATIC_PRESETS: QuickPreset[] = [
-  { kind: "thematic", preset: "summer_sale", label: "Generate Summer Sale Campaign" },
-  { kind: "thematic", preset: "new_arrivals", label: "Generate New Arrivals Campaign" },
-  { kind: "thematic", preset: "clearance_sale", label: "Generate Clearance Sale" },
-  { kind: "thematic", preset: "holiday_promotion", label: "Generate Holiday Promotion" },
+  { kind: "thematic", preset: "summer_sale", label: "Generate Wellness Sale Campaign" },
+  { kind: "thematic", preset: "new_arrivals", label: "Generate New Medicine Arrivals" },
+  { kind: "thematic", preset: "clearance_sale", label: "Generate Vitamin Discount Sale" },
+  { kind: "thematic", preset: "holiday_promotion", label: "Generate Seasonal Wellness Campaign" },
   { kind: "custom", label: "Generate Custom Campaign" },
 ];
 
@@ -186,7 +186,7 @@ export function EmailMarketingAiAssistant({
           <Textarea
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="e.g. Generate a furniture promotion for customers interested in office setups…"
+            placeholder="e.g. Generate a vitamins promotion for customers interested in wellness supplements…"
             rows={3}
           />
           <Button

@@ -117,11 +117,11 @@ export function VisualSearchUpload({
       <Card className={cn("overflow-hidden border-border/80 shadow-sm", className)}>
         <CardHeader className="border-b bg-muted/30 pb-4">
           <CardTitle className="text-base font-semibold sm:text-lg">
-            Upload or capture a product photo
+            Upload a medicine package or healthcare product image
           </CardTitle>
           <CardDescription>
-            We&apos;ll find visually similar items in our catalog. Add optional
-            text to refine results.
+            We&apos;ll find visually similar items in our pharmacy catalog. Add
+            optional text to refine results.
           </CardDescription>
         </CardHeader>
 
@@ -235,12 +235,12 @@ export function VisualSearchUpload({
               id="visual-text-query"
               value={textQuery}
               onChange={(e) => setTextQuery(e.target.value)}
-              placeholder='e.g. "under $300", "gold", "wireless"'
+              placeholder='e.g. "vitamins", "OTC", "under $30"'
               disabled={isLoading}
               className="h-10"
             />
             <p className={SHOP_BODY_SM}>
-              Combine your photo with price, color, or style keywords.
+              Combine your photo with price, product type, or healthcare keywords.
             </p>
           </div>
 

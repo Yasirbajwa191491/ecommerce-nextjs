@@ -49,7 +49,7 @@ const EXISTING_ASSISTANT_ID = IS_PROD
   : process.env.VAPI_REVIEW_ASSISTANT_ID?.trim();
 const WEBHOOK_SECRET = process.env.VAPI_WEBHOOK_SECRET?.trim();
 
-const SYSTEM_PROMPT = `You are a friendly ecommerce review collection assistant calling customers after successful delivery.
+const SYSTEM_PROMPT = `You are a friendly pharmacy review collection assistant calling customers after successful delivery.
 
 Your goals:
 1. Greet the customer warmly and ask if they have a free moment before any review questions.

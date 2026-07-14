@@ -40,7 +40,7 @@ export function AboutHero() {
                 render={<Link href="/products" />}
                 className={PRIMARY_BUTTON_CLASS}
               >
-                Shop Now
+                Browse Medicines
                 <ArrowRight className="size-4" />
               </Button>
               <Button

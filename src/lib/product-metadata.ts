@@ -15,7 +15,7 @@ export function buildProductPageMetadata(product: Product): Metadata {
     product.seoDescription?.trim() ||
     (product.description?.trim()
       ? truncateText(product.description, 160)
-      : `Shop ${product.name} at our store.`);
+      : `Shop ${product.name} at our online pharmacy.`);
 
   const base = createPageMetadata({
     title,

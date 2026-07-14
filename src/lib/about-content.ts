@@ -45,31 +45,31 @@ export type AboutInfoCard = {
 
 export const ABOUT_HERO = {
   badge: "About",
-  title: "Making Online Shopping Simple and Reliable",
+  title: "Making Online Pharmacy Simple and Reliable",
   description:
-    "Browse curated products, use AI-powered discovery and support, place orders securely, track deliveries in real time, and stay connected across voice and SMS in one seamless shopping experience.",
+    "Browse medicines and healthcare products, use AI-powered discovery and support, place orders securely, track deliveries in real time, and stay connected across voice and SMS in one seamless pharmacy experience.",
   image: {
-    src: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80",
-    alt: "Customer shopping online with a laptop and credit card",
+    src: "https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80",
+    alt: "Pharmacist preparing medicines at a modern pharmacy counter",
   },
 } as const;
 
 export const ABOUT_STORY = {
   title: "Our Story",
-  subtitle: "Built for modern shoppers who value quality, clarity, and trust.",
+  subtitle: "Built for customers who value health, clarity, and trust.",
   image: {
-    src: "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=900&q=80",
-    alt: "Curated furniture and lifestyle products in a modern showroom",
+    src: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80",
+    alt: "Medicines, vitamins, and healthcare products arranged on a pharmacy shelf",
   },
   paragraphs: [
-    "We started with a simple idea: online shopping should feel effortless from the first click to delivery at your door. Our store brings together furniture, electronics, and lifestyle essentials in one place — curated for quality and everyday value.",
+    "We started with a simple idea: ordering medicines online should feel effortless from the first click to delivery at your door. Our pharmacy brings together OTC medicines, vitamins, medical devices, and healthcare essentials in one place — curated for quality and everyday wellness.",
     "Every product in our catalog is managed with care. We focus on accurate descriptions, transparent pricing, and reliable fulfillment so you always know what to expect.",
-    "As we have grown, we have added practical AI capabilities across discovery, communication, and catalog operations to make shopping faster and smarter for both customers and store teams.",
+    "As we have grown, we have added practical AI capabilities across discovery, communication, and catalog operations to make finding healthcare products faster and smarter for both customers and pharmacy teams.",
     "Customer satisfaction is at the heart of everything we do. Whether you are placing your first order or your tenth, our team is committed to making your experience smooth, secure, intelligent, and enjoyable.",
   ],
   highlights: [
-    "Curated product catalog with real-time availability",
-    "AI-powered semantic search and voice shopping assistance",
+    "Curated pharmacy catalog with real-time availability",
+    "AI-powered semantic search and voice pharmacy assistance",
     "Smart review insights and AI-assisted product content generation",
     "Integrated SMS and outbound call workflows for faster communication",
     "Secure checkout with multiple payment options",
@@ -80,23 +80,23 @@ export const ABOUT_STORY = {
 export const HOW_IT_WORKS_STEPS: AboutStep[] = [
   {
     step: 1,
-    title: "Browse Products",
+    title: "Browse Medicines",
     description:
-      "Explore products using categories, search, and filters to find exactly what you need.",
+      "Explore medicines and healthcare products using categories, search, and filters to find exactly what you need.",
     icon: Search,
   },
   {
     step: 2,
     title: "Choose Product Options",
     description:
-      "Select available options such as colors, sizes, and quantities before adding to your cart.",
+      "Select available options such as pack size, quantity, and variants before adding to your medicine cart.",
     icon: Palette,
   },
   {
     step: 3,
     title: "Add To Cart",
     description:
-      "Add products to your cart and review your selections before proceeding to checkout.",
+      "Add healthcare products to your medicine cart and review your selections before proceeding to checkout.",
     icon: ShoppingCart,
   },
   {
@@ -130,7 +130,7 @@ export const WHY_SHOP_FEATURES: AboutFeature[] = [
   },
   {
     title: "Fast Ordering Process",
-    description: "Simple and user-friendly shopping experience from browse to buy.",
+    description: "Simple and user-friendly pharmacy experience from browse to buy.",
     icon: Zap,
   },
   {
@@ -139,8 +139,8 @@ export const WHY_SHOP_FEATURES: AboutFeature[] = [
     icon: PackageSearch,
   },
   {
-    title: "Quality Products",
-    description: "Carefully managed product catalog with accurate listings.",
+    title: "Trusted Healthcare Products",
+    description: "Carefully managed pharmacy catalog with accurate listings.",
     icon: Sparkles,
   },
   {
@@ -156,7 +156,7 @@ export const WHY_SHOP_FEATURES: AboutFeature[] = [
   {
     title: "AI-Powered Experience",
     description:
-      "From semantic search to smart support automation, AI helps you find products and get answers faster.",
+      "From semantic search to smart support automation, AI helps you find medicines and get answers faster.",
     icon: Sparkles,
   },
 ];
@@ -165,13 +165,13 @@ export const ABOUT_AI_FEATURES: AboutFeature[] = [
   {
     title: "Semantic Product Search",
     description:
-      "Natural-language semantic search understands shopper intent and returns more relevant product results.",
+      "Natural-language semantic search understands intent and returns more relevant healthcare product results.",
     icon: Search,
   },
   {
     title: "AI Voice Assistant",
     description:
-      "Voice-first assistance helps customers discover products, navigate choices, and get instant shopping guidance.",
+      "Voice-first assistance helps customers discover medicines, navigate choices, and get instant pharmacy guidance.",
     icon: MessageSquare,
   },
   {
@@ -370,7 +370,7 @@ export const FAQ_ITEMS: AboutFaqItem[] = [
 export const ABOUT_BRANDS = {
   title: "Popular Brands",
   description:
-    "Shop trusted names from our live catalog — every brand is sourced from products in our store.",
+    "Shop trusted names from our live catalog — every brand is sourced from products in our pharmacy.",
 } as const;
 
 export const STATS_LABELS = [
@@ -381,7 +381,7 @@ export const STATS_LABELS = [
 ];
 
 export const ABOUT_CTA = {
-  title: "Ready to Start Shopping?",
+  title: "Ready to Browse Medicines?",
   description:
-    "Explore our full catalog or get in touch — we are here to help you find the right products.",
+    "Explore our full pharmacy catalog or get in touch — we are here to help you find the right healthcare products.",
 } as const;

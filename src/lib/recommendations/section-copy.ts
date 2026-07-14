@@ -1,19 +1,19 @@
 export const RECOMMENDATION_SECTION_COPY = {
   recommended_for_you: {
     title: "Recommended For You",
-    description: "Personalized picks based on your browsing and interests.",
+    description: "Personalized healthcare products based on your browsing and interests.",
   },
   trending_in_interests: {
     title: "Trending In Your Interests",
-    description: "Popular products in categories you explore most.",
+    description: "Popular healthcare products in categories you explore most.",
   },
   continue_shopping: {
-    title: "Continue Shopping",
+    title: "Continue Browsing",
     description: "Pick up where you left off.",
   },
   recently_viewed: {
     title: "Recently Viewed",
-    description: "Products you looked at recently.",
+    description: "Healthcare products you looked at recently.",
   },
   because_you_bought: {
     title: "Because You Bought",
@@ -21,39 +21,39 @@ export const RECOMMENDATION_SECTION_COPY = {
   },
   because_you_viewed: {
     title: "Because You Viewed",
-    description: "More products related to what you explored.",
+    description: "More healthcare products related to what you explored.",
   },
   ai_suggested: {
     title: "AI Suggested Products",
-    description: "Smart suggestions tailored to your shopping style.",
+    description: "Smart suggestions tailored to your healthcare needs.",
   },
   customers_like_you_bought: {
     title: "Customers Like You Also Bought",
-    description: "Popular with shoppers who share your interests.",
+    description: "Popular with customers who share your interests.",
   },
   recommended_alternatives: {
     title: "Recommended Alternatives",
-    description: "Similar options worth comparing.",
+    description: "Similar healthcare options worth comparing.",
   },
   ai_suggested_accessories: {
     title: "AI Suggested Accessories",
-    description: "Complementary products for your setup.",
+    description: "Complementary healthcare products for your order.",
   },
   frequently_bought_together: {
     title: "Frequently Bought Together",
     description: "Often purchased with this item.",
   },
   complete_your_setup: {
-    title: "Complete Your Setup",
+    title: "Complete Your Order",
     description: "Everything you need to finish your purchase.",
   },
   customers_also_purchased: {
     title: "Customers Also Purchased",
-    description: "Shoppers with similar carts also bought these.",
+    description: "Customers with similar carts also bought these.",
   },
   recommended_accessories: {
     title: "Recommended Accessories",
-    description: "Add-ons that pair well with your cart.",
+    description: "Add-ons that pair well with your medicine cart.",
   },
   last_minute: {
     title: "Last Minute Recommendations",

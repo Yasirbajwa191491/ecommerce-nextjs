@@ -17,15 +17,15 @@ const CAMPAIGN_TEMPERATURE = 0.4;
 
 const PRESET_DESCRIPTIONS: Record<CampaignPreset, string> = {
   summer_sale:
-    "A vibrant summer sale email promoting seasonal discounts across the store.",
+    "A vibrant wellness sale email promoting seasonal discounts on medicines, vitamins, and healthcare essentials.",
   new_arrivals:
-    "A fresh new arrivals email highlighting the latest products added to the catalog.",
+    "A fresh new arrivals email highlighting the latest medicines and healthcare products added to the pharmacy catalog.",
   clearance_sale:
-    "An urgent clearance sale email emphasizing limited stock and deep discounts.",
+    "An urgent vitamin and OTC discount email emphasizing limited stock and deep savings on healthcare products.",
   holiday_promotion:
-    "A festive holiday promotion email with gift-giving and celebration themes.",
+    "A seasonal wellness promotion email with health-focused gift ideas and pharmacy loyalty offers.",
   category_promotion:
-    "A category-focused promotion email for a specific product category.",
+    "A category-focused promotion email for a specific pharmacy product category.",
   custom: "A custom campaign based on the admin's specific instructions.",
 };
 
@@ -74,7 +74,7 @@ function parseGenerateResult(
     headline: String(raw.headline ?? "").trim(),
     previewText: String(raw.previewText ?? "").trim(),
     bodyParagraphs: normalizeStringArray(raw.bodyParagraphs),
-    ctaText: String(raw.ctaText ?? "Shop Now").trim(),
+    ctaText: String(raw.ctaText ?? "Shop Medicines").trim(),
     productPromoText: String(raw.productPromoText ?? "").trim(),
     suggestedProductIds,
     suggestedSegmentKeys: normalizeStringArray(raw.suggestedSegmentKeys),
@@ -122,7 +122,7 @@ export async function generateEmailCampaign(params: {
     ? categoryInterestKey(categorySlug)
     : undefined;
 
-  const system = `You are an expert ecommerce email marketing copywriter for ${context.storeName}.
+  const system = `You are an expert pharmacy email marketing copywriter for ${context.storeName}.
 Write compelling, professional promotional email content.
 Reply JSON only with this exact shape:
 {
@@ -232,7 +232,7 @@ export async function generateCtaOptions(params: {
   subject?: string;
   storeName: string;
 }): Promise<string[]> {
-  const system = `You are a CTA copywriter for ${params.storeName} ecommerce emails.
+  const system = `You are a CTA copywriter for ${params.storeName} pharmacy emails.
 Reply JSON only: { "options": ["CTA1", "CTA2", "CTA3", "CTA4", "CTA5"] }
 Each CTA should be 2-4 words, action-oriented.`;
 
@@ -260,7 +260,7 @@ Each CTA should be 2-4 words, action-oriented.`;
 
   if (options.length === 0) {
     return [
-      "Shop Now",
+      "Shop Medicines",
       "Claim Your Discount",
       "Explore Collection",
       "View Deals",
@@ -275,7 +275,7 @@ export async function generateProductPromoText(params: {
   products: Array<{ name: string; categoryName: string; discountPercent: number }>;
   storeName: string;
 }): Promise<string> {
-  const system = `You write short promotional blurbs (1-2 sentences) for ecommerce email product sections.
+  const system = `You write short promotional blurbs (1-2 sentences) for pharmacy email product sections.
 Reply JSON only: { "productPromoText": "string" }`;
 
   const productList = params.products

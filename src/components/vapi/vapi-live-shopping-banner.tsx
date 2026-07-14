@@ -41,7 +41,7 @@ export function VapiLiveShoppingBanner({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-            Assistant shopping
+            Assistant pharmacy help
           </p>
           <p className="truncate text-sm font-medium text-foreground">
             {current.title}

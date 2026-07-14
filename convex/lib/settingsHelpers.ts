@@ -29,7 +29,7 @@ export async function getLowStockThresholdValue(
 export async function getEmailFromValue(ctx: QueryCtx) {
   const row = await findSettingByKey(ctx, "email_from");
   if (row?.value.trim()) return row.value.trim();
-  return "Ecommerce Store <yasir.sohail@savari.io>";
+  return "Smart Pharmacy <yasir.sohail@savari.io>";
 }
 
 export async function getSmsOrderConfirmationEnabledValue(

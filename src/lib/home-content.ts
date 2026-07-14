@@ -28,11 +28,11 @@ export type TrustFeature = {
 /** Static promo banners — future: load from admin settings. */
 export const PROMO_BANNERS: PromoBanner[] = [
   {
-    id: "summer-sale",
-    eyebrow: "Summer Sale",
+    id: "wellness-sale",
+    eyebrow: "Wellness Sale",
     title: "Up To 30% Off",
-    description: "Limited-time savings on curated favorites across the store.",
-    ctaLabel: "Shop Now",
+    description: "Limited-time savings on vitamins, OTC medicines, and healthcare essentials.",
+    ctaLabel: "Browse Medicines",
     ctaHref: "/products",
     variant: "primary",
   },
@@ -40,7 +40,7 @@ export const PROMO_BANNERS: PromoBanner[] = [
     id: "free-shipping",
     eyebrow: "Free Shipping",
     title: "On Orders Above $100",
-    description: "Look for the free shipping badge on eligible products.",
+    description: "Look for the free shipping badge on eligible healthcare products.",
     ctaLabel: "Browse Deals",
     ctaHref: "/products",
     variant: "secondary",
@@ -66,40 +66,50 @@ export const WHY_CHOOSE_US_FEATURES: TrustFeature[] = [
     icon: Truck,
   },
   {
-    title: "Quality Products",
-    description: "Carefully curated catalog with accurate listings and photos.",
+    title: "Trusted Healthcare Products",
+    description: "Carefully curated medicines and wellness products with accurate listings.",
     icon: Sparkles,
   },
   {
     title: "AI + Human Support",
     description:
-      "AI voice assistant captures user info and creates support requests, backed by our responsive team.",
+      "AI voice assistant helps you find medicines and creates support requests, backed by our responsive team.",
     icon: Headphones,
   },
 ];
 
 /** Category image fallbacks when no product sample exists — keyed by slug. */
 export const CATEGORY_IMAGE_FALLBACKS: Record<string, string> = {
-  electronics:
-    "https://images.unsplash.com/photo-1498049794561-7780f7231661?auto=format&fit=crop&w=600&q=80",
-  furniture:
-    "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=600&q=80",
-  fashion:
-    "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=600&q=80",
-  jewelry:
-    "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=600&q=80",
-  office:
-    "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=600&q=80",
-  kitchen:
-    "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=600&q=80",
-  living:
-    "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=600&q=80",
-  "home-decor":
-    "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80",
+  "otc-medicines":
+    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80",
+  medicines:
+    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80",
+  "vitamins-supplements":
+    "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=600&q=80",
+  vitamins:
+    "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=600&q=80",
+  "personal-care":
+    "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=80",
+  "medical-devices":
+    "https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=600&q=80",
+  "healthcare-essentials":
+    "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=600&q=80",
+  "baby-care":
+    "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&w=600&q=80",
+  "diabetes-care":
+    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80",
+  "first-aid":
+    "https://images.unsplash.com/photo-1603398938378-e54eab446dde?auto=format&fit=crop&w=600&q=80",
+  "skin-care":
+    "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=600&q=80",
+  "pain-relief":
+    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80",
+  "heart-health":
+    "https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=600&q=80",
 };
 
 export const DEFAULT_CATEGORY_IMAGE =
-  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80";
+  "https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=600&q=80";
 
 export const CONVERSION_TRUST_STRIP = [
   { icon: ShieldCheck, label: "Secure Checkout" },

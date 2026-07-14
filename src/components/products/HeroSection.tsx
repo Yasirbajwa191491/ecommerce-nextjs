@@ -11,23 +11,23 @@ import { STORE_NAME } from "@/lib/site";
 
 const HERO_FALLBACK_IMAGES = [
   {
-    src: "https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=800&q=80",
-    alt: "Modern living room furniture",
+    src: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+    alt: "Paracetamol tablets",
   },
   {
-    src: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80",
-    alt: "Minimal home decor",
+    src: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=600&q=80",
+    alt: "Vitamin supplements",
   },
   {
-    src: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=700&q=80",
-    alt: "Contemporary sofa set",
+    src: "https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=700&q=80",
+    alt: "Blood pressure monitor",
   },
 ] as const;
 
 const TRUST_ITEMS = [
   { icon: Truck, label: "Free shipping on select orders" },
   { icon: ShieldCheck, label: "Secure checkout" },
-  { icon: Sparkles, label: "Curated quality products" },
+  { icon: Sparkles, label: "Trusted healthcare products" },
 ] as const;
 
 const PAGE_GUTTER = {
@@ -89,8 +89,8 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
           </h1>
 
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/75 sm:mt-4 sm:text-base md:text-lg">
-            Discover thoughtfully curated furniture, electronics, and lifestyle
-            essentials — handpicked for modern homes and workspaces.
+            Discover medicines, vitamins, and healthcare essentials — handpicked
+            for everyday wellness and trusted care.
           </p>
 
           <div className="mt-6 flex w-full max-w-md flex-col gap-3 sm:mt-8 sm:max-w-none sm:flex-row sm:justify-center md:justify-start">
@@ -99,7 +99,7 @@ export default function HeroSection({ title = STORE_NAME }: HeroSectionProps) {
               size="lg"
               className="h-11 w-full gap-2 rounded-full bg-[#6254f3] px-7 text-sm font-semibold text-white shadow-lg shadow-[#6254f3]/30 hover:bg-[#5548e0] sm:h-12 sm:w-auto sm:px-8 sm:text-base"
             >
-              Shop Now
+              Browse Medicines
               <ArrowRight className="size-4" />
             </Button>
             <Button

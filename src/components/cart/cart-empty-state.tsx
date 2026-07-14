@@ -22,10 +22,10 @@ export function CartEmptyState() {
         >
           <ShoppingBag className="size-7" />
         </EmptyMedia>
-        <EmptyTitle className="text-xl font-bold">Your cart is empty</EmptyTitle>
+        <EmptyTitle className="text-xl font-bold">Your medicine cart is empty</EmptyTitle>
         <EmptyDescription className="text-base">
-          Discover curated products and add your favorites. Your selections
-          will appear here when you are ready to checkout.
+          Discover medicines and healthcare products and add your favorites. Your
+          selections will appear here when you are ready to checkout.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -35,7 +35,7 @@ export function CartEmptyState() {
           className="h-12 gap-2 rounded-full bg-[#6254f3] px-8 text-base font-semibold !text-white shadow-md shadow-[#6254f3]/25 hover:bg-[#5548e0] hover:!text-white [&_svg]:!text-white"
         >
           <Sparkles className="size-4" />
-          Start shopping
+          Browse medicines
         </Button>
       </EmptyContent>
     </Empty>

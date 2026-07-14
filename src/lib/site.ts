@@ -1,4 +1,4 @@
-export const STORE_NAME = "Ecommerce Store";
+export const STORE_NAME = "Smart Pharmacy";
 
 /** Canonical storefront homepage path. */
 export const HOME_PATH = "/home" as const;
@@ -13,7 +13,7 @@ export const CONTACT_INFO = {
 
 export const NAV_LINKS = [
   { href: HOME_PATH, label: "Home" },
-  { href: "/products", label: "Products" },
+  { href: "/products", label: "Medicines" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
   { href: "/track-order", label: "Track Order" },

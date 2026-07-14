@@ -96,8 +96,8 @@ export default function Footer() {
           <div className="min-w-0 sm:col-span-2 lg:col-span-4">
             <StoreLogoLink className="text-lg text-white hover:opacity-90 sm:text-xl" />
             <p className="mt-4 max-w-md text-base leading-relaxed text-white/65 sm:mt-5">
-              Quality products across every category — electronics, furniture,
-              kitchen, office, and more. Shop with confidence and fast delivery.
+              Medicines, vitamins, medical devices, and healthcare essentials —
+              your trusted online pharmacy with fast delivery.
             </p>
 
             <div className="mt-6 space-y-3 text-base text-white/70 sm:mt-7 sm:space-y-3.5">
@@ -140,7 +140,7 @@ export default function Footer() {
           </div>
 
           <div className="grid grid-cols-2 gap-6 sm:contents sm:gap-0">
-            <FooterColumn title="Shop" className="lg:col-span-2">
+            <FooterColumn title="Pharmacy" className="lg:col-span-2">
               <ul className="space-y-2.5 sm:space-y-3">
                 {NAV_LINKS.map(({ href, label }) => (
                   <li key={href}>
@@ -148,7 +148,7 @@ export default function Footer() {
                   </li>
                 ))}
                 <li>
-                  <FooterLink href="/cart">Shopping cart</FooterLink>
+                  <FooterLink href="/cart">Medicine cart</FooterLink>
                 </li>
               </ul>
             </FooterColumn>
@@ -169,8 +169,8 @@ export default function Footer() {
             className="sm:col-span-2 lg:col-span-4"
           >
             <p className="max-w-md text-base leading-relaxed text-white/65">
-              Subscribe for new arrivals, exclusive offers, and curated picks
-              from our catalog.
+              Subscribe for new medicine arrivals, wellness offers, and healthcare
+              tips from our pharmacy.
             </p>
             <FooterNewsletter />
 

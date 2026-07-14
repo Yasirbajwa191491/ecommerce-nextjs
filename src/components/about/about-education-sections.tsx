@@ -104,7 +104,7 @@ export function AboutHowItWorksSection() {
         badge="How It Works"
         badgeIcon={Sparkles}
         title="How Our Store Works"
-        description="From browsing to delivery — here is your complete shopping journey in six simple steps."
+        description="From browsing to delivery — here is your complete pharmacy order journey in six simple steps."
       />
       <ol className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-2 md:grid-cols-3 md:gap-4 lg:gap-5">
         {HOW_IT_WORKS_STEPS.map(({ step, title, description, icon: Icon }) => (
@@ -140,7 +140,7 @@ export function AboutWhyShopSection() {
         badge="Why Us"
         badgeIcon={Sparkles}
         title="Why Shop With Us"
-        description="Everything you need for a confident, hassle-free online shopping experience."
+        description="Everything you need for a confident, hassle-free online pharmacy experience."
       />
       <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-2 md:grid-cols-3 md:gap-4 lg:gap-5">
         {WHY_SHOP_FEATURES.map(({ title, description, icon: Icon }) => (

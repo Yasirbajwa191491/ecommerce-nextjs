@@ -98,9 +98,9 @@ export const SUGGESTED_COPILOT_QUESTION_GROUPS: SuggestedQuestionGroup[] = [
       "Which products should not be promoted because they already sell well?",
       "Which products have high traffic but low sales?",
       "Which subscribers should receive promotions?",
-      "Suggest a campaign for Furniture.",
-      "Suggest a campaign for Jewelry.",
-      "Suggest a campaign for Electronics.",
+      "Suggest a campaign for Vitamins.",
+      "Suggest a campaign for OTC Medicines.",
+      "Suggest a campaign for Medical Devices.",
     ],
   },
   {

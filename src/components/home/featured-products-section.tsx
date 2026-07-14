@@ -22,7 +22,7 @@ export function FeaturedProductsSection() {
           badge="Curated"
           badgeIcon={Sparkles}
           title="Featured Products"
-          description="Handpicked favorites from our catalog — quality pieces selected for style, value, and customer satisfaction."
+          description="Handpicked favorites from our pharmacy — trusted medicines and wellness products selected for quality and value."
           action={{ label: "View All Products", href: "/products" }}
         />
 

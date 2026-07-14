@@ -89,7 +89,7 @@ export function EmailContentExtraFields({
             value={ctaText}
             onChange={(e) => onCtaTextChange(e.target.value)}
             disabled={disabled}
-            placeholder="Shop Now"
+            placeholder="Shop Medicines"
           />
           <Button
             type="button"
@@ -110,7 +110,7 @@ export function EmailContentExtraFields({
           onChange={(e) => onProductPromoTextChange(e.target.value)}
           disabled={disabled}
           rows={2}
-          placeholder="Upgrade your workspace with our most popular pieces…"
+          placeholder="Discover new medicine arrivals and seasonal wellness deals…"
         />
       </AdminFormField>
 

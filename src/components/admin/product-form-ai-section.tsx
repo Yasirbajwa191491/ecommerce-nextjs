@@ -284,7 +284,7 @@ export function ProductFormAiSection({
           </CardTitle>
           <CardDescription>
             {provider === "gemini"
-              ? "Generate professional ecommerce copy with Gemini. Review and edit before saving."
+              ? "Generate professional pharmacy product copy with Gemini. Review and edit before saving."
               : "Generate description, SEO, and highlights via n8n (Groq, OpenRouter, or OpenAI). Review and edit before saving."}
           </CardDescription>
         </CardHeader>

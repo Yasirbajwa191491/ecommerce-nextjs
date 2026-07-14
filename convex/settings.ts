@@ -62,7 +62,7 @@ export const SYSTEM_DEFAULTS: {
   {
     key: "email_from",
     name: "Email From",
-    value: "Ecommerce Store <yasir.sohail@savari.io>",
+    value: "Smart Pharmacy <yasir.sohail@savari.io>",
   },
   {
     key: "business_hours",

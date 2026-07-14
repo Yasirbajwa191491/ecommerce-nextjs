@@ -23,7 +23,7 @@ export function StoreStatsSection() {
           badge="By the Numbers"
           badgeIcon={BarChart3}
           title="Store Statistics"
-          description="Live figures from our catalog, orders, and growing community of shoppers."
+          description="Live figures from our pharmacy catalog, orders, and growing community of customers."
           align="center"
           className="sm:items-center sm:text-center"
         />

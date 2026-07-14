@@ -1,6 +1,6 @@
 import type { ReviewForReply } from "./types";
 
-export const REVIEW_REPLY_STORE_NAME = "Ecommerce Store";
+export const REVIEW_REPLY_STORE_NAME = "Smart Pharmacy";
 
 const DEFAULT_STORE_EMAIL = "yasir.sohail@savari.io";
 const DEFAULT_STORE_ADDRESS = "DHA Phase 6 Lahore, Pakistan, 54000";
@@ -32,7 +32,7 @@ export function buildReviewReplySystemPrompt(
   customerName?: string
 ): string {
   const firstName = customerFirstName(customerName);
-  return `You are a professional ecommerce customer support manager for ${store.storeName}.
+  return `You are a professional pharmacy customer support manager for ${store.storeName}.
 Write an empathetic, professional reply (80-120 words) to a product review.
 
 Requirements:

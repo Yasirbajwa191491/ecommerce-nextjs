@@ -28,7 +28,7 @@ export const PRIMARY_BUTTON_CLASS =
 export const OUTLINE_BUTTON_CLASS =
   "h-12 w-auto shrink-0 gap-2 rounded-full border-[#6254f3]/30 px-9 text-base font-semibold text-[#6254f3] transition-colors hover:bg-[#6254f3]/5";
 
-/** White surface button for purple/dark banners (Shop Now on sale cards). */
+/** White surface button for purple/dark banners (Browse Medicines on sale cards). */
 export const SURFACE_BUTTON_CLASS =
   "h-12 w-auto shrink-0 gap-2 rounded-full border-white bg-white px-9 text-base font-semibold !text-[#6254f3] shadow-md transition-all hover:bg-white/90 hover:!text-[#5548e0] active:scale-[0.98] [&_svg]:!text-[#6254f3]";
 
@@ -36,7 +36,7 @@ export const SURFACE_BUTTON_CLASS =
 export const GHOST_ON_DARK_BUTTON_CLASS =
   "h-12 w-auto shrink-0 gap-2 rounded-full border-white/25 bg-white/5 px-9 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white";
 
-/** Larger hero CTAs — Shop Now / Browse Categories on home hero */
+/** Larger hero CTAs — Browse Medicines / Browse Categories on home hero */
 export const HERO_PRIMARY_BUTTON_CLASS =
   "h-11 w-auto shrink-0 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] sm:h-12 sm:px-9 sm:text-base [&_svg]:size-4 [&_svg]:!text-white sm:[&_svg]:size-5";
 

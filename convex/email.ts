@@ -16,7 +16,7 @@ import { getPrimaryImageUrl } from "./lib/productImages";
 import { BATCH_SIZE } from "./lib/campaignQueue";
 import { generateUnsubscribeToken } from "./lib/subscriberTokens";
 
-const STORE_NAME = "Ecommerce Store";
+const STORE_NAME = "Smart Pharmacy";
 
 function resendFailureMessage(message: string, to: string, from: string) {
   const lower = message.toLowerCase();

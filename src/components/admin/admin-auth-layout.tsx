@@ -23,7 +23,7 @@ type AdminAuthLayoutProps = {
 export function AdminAuthLayout({
   children,
   backHref = "/home",
-  backLabel = "Back to store",
+  backLabel = "Back to pharmacy",
   stepIndicator,
   title,
   subtitle,
@@ -58,7 +58,7 @@ export function AdminAuthLayout({
 
           <div className="max-w-md space-y-4">
             <h1 className="text-3xl font-semibold leading-tight tracking-tight xl:text-4xl">
-              Manage your store with confidence
+              Manage your pharmacy with confidence
             </h1>
             <p className="text-base leading-relaxed text-white/85">
               Secure access to products, categories, and team accounts — all in

@@ -17,7 +17,7 @@ export function WhyChooseUsSection() {
           badge="Why Us"
           badgeIcon={ShieldCheck}
           title="Why Choose Us"
-          description="We combine secure payments, reliable delivery, and responsive support so you can shop with confidence."
+          description="We combine secure payments, reliable delivery, and responsive support so you can order medicines with confidence."
           align="center"
           className="sm:items-center sm:text-center"
         />

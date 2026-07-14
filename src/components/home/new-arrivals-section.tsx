@@ -13,7 +13,7 @@ export function NewArrivalsSection() {
       badge="Just In"
       badgeIcon={Sparkles}
       title="New Arrivals"
-      description="Discover the latest additions to our catalog — fresh styles and new essentials."
+      description="Discover the latest additions to our pharmacy — new medicines and wellness essentials."
       products={products}
       action={{ label: "Shop New In", href: "/products" }}
       background="muted"

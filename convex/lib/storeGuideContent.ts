@@ -14,9 +14,9 @@ export const STORE_PAGE_URLS = {
 } as const;
 
 export const HOW_TO_BUY_STEPS = [
-  "Browse products using categories, search, or filters on the Products page.",
-  "Open a product page and choose available colors and quantity.",
-  "Click Add to Cart, then review your cart.",
+  "Browse medicines using categories, search, or filters on the Medicines page.",
+  "Open a product page and choose available options and quantity.",
+  "Click Add to Cart, then review your medicine cart.",
   "Go to Checkout, enter delivery details, and choose a payment method.",
   "Confirm your order — you will receive an order number for tracking.",
 ] as const;
@@ -62,7 +62,7 @@ export const SUPPORT_CHANNELS = [
   },
   {
     channel: "AI assistant",
-    description: "Use this chat or voice assistant for products, orders, and store policies.",
+    description: "Use this chat or voice assistant for medicines, orders, and pharmacy policies.",
   },
 ] as const;
 
@@ -70,7 +70,7 @@ export const FAQ_ITEMS = [
   {
     question: "How do I place an order?",
     answer:
-      "Browse the catalog, select colors and quantity, add to cart, checkout with delivery details, choose payment, and confirm.",
+      "Browse the pharmacy catalog, select options and quantity, add to cart, checkout with delivery details, choose payment, and confirm.",
   },
   {
     question: "Can I pay with Cash on Delivery?",
@@ -99,19 +99,19 @@ export const FAQ_ITEMS = [
 ] as const;
 
 export const ABOUT_SUMMARY = {
-  title: "About our store",
+  title: "About our pharmacy",
   story:
-    "We offer curated furniture, electronics, and lifestyle essentials with accurate descriptions, transparent pricing, and reliable fulfillment.",
+    "We offer medicines, vitamins, medical devices, and healthcare essentials with accurate descriptions, transparent pricing, and reliable fulfillment.",
   highlights: [
-    "Curated catalog with real-time stock availability",
+    "Curated pharmacy catalog with real-time stock availability",
     "Secure checkout with card and cash-on-delivery options",
     "Dedicated support for orders, payments, and delivery",
   ],
   whyShop: [
     "Secure Stripe-powered payments",
-    "Simple browse-to-buy experience",
+    "Simple browse-to-buy pharmacy experience",
     "Real-time order tracking",
-    "Quality products with verified reviews",
+    "Trusted healthcare products with verified reviews",
     "Responsive customer support",
     "Transparent pricing and shipping",
   ],

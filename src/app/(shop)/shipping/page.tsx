@@ -5,7 +5,7 @@ import { STORE_NAME } from "@/lib/site";
 export const metadata: Metadata = {
   title: `Shipping Policy | ${STORE_NAME}`,
   description:
-    "Shipping and delivery information for our store — costs, timelines, and order tracking.",
+    "Shipping and delivery information for our pharmacy — costs, timelines, and order tracking.",
 };
 
 export default function ShippingPolicyPage() {

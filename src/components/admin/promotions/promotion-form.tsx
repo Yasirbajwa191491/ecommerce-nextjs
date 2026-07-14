@@ -287,7 +287,7 @@ export function PromotionForm({ form, setForm, validation }: PromotionFormProps)
 
               onBlur={() => validation.touch("name")}
 
-              placeholder="Summer BOGO Chair Deal"
+              placeholder="Summer Vitamin BOGO Deal"
 
               aria-invalid={!!validation.fieldError("name")}
 

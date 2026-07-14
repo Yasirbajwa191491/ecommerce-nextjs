@@ -108,7 +108,7 @@ export function CheckoutView() {
           </Link>
           <ChevronRight className="size-3.5 shrink-0 opacity-50" />
           <Link href="/cart" className="transition-colors hover:text-foreground">
-            Shopping cart
+            Medicine cart
           </Link>
           <ChevronRight className="size-3.5 shrink-0 opacity-50" />
           <span className="font-medium text-foreground">Checkout</span>

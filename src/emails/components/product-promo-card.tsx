@@ -17,7 +17,7 @@ export function ProductPromoCard({
   discountedPrice,
   discountPercent,
   shopUrl,
-  ctaText = "Shop Now",
+  ctaText = "Shop Medicines",
 }: ProductPromoCardProps) {
   return (
     <Section style={card}>

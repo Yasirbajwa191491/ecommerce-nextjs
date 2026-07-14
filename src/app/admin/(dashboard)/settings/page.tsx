@@ -380,7 +380,7 @@ export default function AdminSettingsPage() {
               error={validation.fieldError("value")}
               description={
                 editing?.key === "email_from"
-                  ? 'Saved to Convex as RESEND_FROM_EMAIL. Example: Ecommerce Store <you@yourdomain.com>'
+                  ? 'Saved to Convex as RESEND_FROM_EMAIL. Example: Smart Pharmacy <you@yourdomain.com>'
                   : editing?.key === "shipping_policy" ||
                       editing?.key === "return_policy"
                     ? "Used by the AI assistant and storefront FAQ. Plain text or markdown."

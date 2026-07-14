@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n  json: {\n    requestId: 'manual-test-' + Date.now(),\n    mode: 'description',\n    context: {\n      name: 'Wireless Headphones',\n      company: 'Acme',\n      categoryName: 'Electronics',\n      price: 79.99,\n      currency: 'USD',\n      colors: ['Black'],\n      imageUrls: [],\n    },\n  },\n}];"
+        "jsCode": "return [{\n  json: {\n    requestId: 'manual-test-' + Date.now(),\n    mode: 'description',\n    context: {\n      name: 'Vitamin D Tablets',\n      company: 'VitaCare',\n      categoryName: 'Vitamins & Supplements',\n      price: 18.99,\n      currency: 'USD',\n      colors: ['White'],\n      imageUrls: [],\n    },\n  },\n}];"
       },
       "id": "set-test-payload",
       "name": "Set Test Payload",

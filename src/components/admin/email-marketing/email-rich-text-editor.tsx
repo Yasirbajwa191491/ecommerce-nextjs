@@ -86,7 +86,7 @@ export function EmailRichTextEditor({
 
   const addCtaButton = () => {
     const url = window.prompt("Enter button URL", "https://");
-    const label = window.prompt("Enter button label", "Shop Now");
+    const label = window.prompt("Enter button label", "Shop Medicines");
     if (!url || !label) return;
     editor
       .chain()

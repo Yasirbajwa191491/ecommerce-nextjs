@@ -26,7 +26,7 @@ export function PopularBrandsSection() {
           badge="Partners"
           badgeIcon={Award}
           title="Popular Brands"
-          description="Shop trusted names across furniture, electronics, and lifestyle essentials."
+          description="Shop trusted names across medicines, vitamins, and healthcare essentials."
           align="center"
           className="sm:items-center sm:text-center"
         />

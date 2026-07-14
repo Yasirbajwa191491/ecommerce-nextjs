@@ -33,7 +33,7 @@ export function HomeJsonLd() {
     name: STORE_NAME,
     url: siteUrl,
     description:
-      "Premium ecommerce store offering curated furniture, electronics, and lifestyle products with secure checkout and fast delivery.",
+      "Online pharmacy offering medicines, vitamins, supplements, and healthcare essentials with secure checkout and fast delivery.",
   };
 
   return (

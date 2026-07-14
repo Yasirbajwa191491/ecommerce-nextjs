@@ -120,15 +120,15 @@ export default function ContactPage() {
               <CardContent className="space-y-3 p-5 sm:p-6">
                 <p className={SHOP_CARD_TITLE}>Prefer browsing on your own?</p>
                 <p className={SHOP_BODY}>
-                  Explore our full catalog of furniture, electronics, and
-                  lifestyle essentials anytime.
+                  Explore our full catalog of medicines, vitamins, and
+                  healthcare essentials anytime.
                 </p>
                 <Button
                   render={<Link href="/products" />}
                   variant="outline"
                   className="h-10 border-[#6254f3]/30 text-[#6254f3] hover:bg-[#6254f3]/5"
                 >
-                  View all products
+                  View all medicines
                 </Button>
               </CardContent>
             </Card>

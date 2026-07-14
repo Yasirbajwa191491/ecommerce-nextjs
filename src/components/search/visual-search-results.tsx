@@ -38,7 +38,7 @@ export function VisualSearchResults({
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 px-6 py-10 text-center">
         <PackageSearch className="size-10 text-muted-foreground/70" />
         <p className={SHOP_BODY_SM}>
-          Your similar products will appear here after you search.
+          Your similar healthcare products will appear here after you search.
         </p>
       </div>
     );
@@ -67,7 +67,7 @@ export function VisualSearchResults({
         </Alert>
         <div className="flex flex-wrap gap-2">
           <ButtonLink href="/products" variant="outline" className={OUTLINE_BUTTON_CLASS}>
-            Browse products
+            Browse medicines
           </ButtonLink>
           <ButtonLink href="/products?search=" variant="outline" className={OUTLINE_BUTTON_CLASS}>
             Keyword search
@@ -81,10 +81,10 @@ export function VisualSearchResults({
     return (
       <div className="space-y-4 rounded-xl border border-border/80 bg-background p-8 text-center shadow-sm">
         <p className="text-muted-foreground">
-          No similar products found. Try a different image or add text keywords.
+          No similar healthcare products found. Try a different image or add text keywords.
         </p>
         <ButtonLink href="/products" variant="outline" className={OUTLINE_BUTTON_CLASS}>
-          Browse all products
+          Browse all medicines
         </ButtonLink>
       </div>
     );
@@ -95,7 +95,7 @@ export function VisualSearchResults({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className={SHOP_SUBSECTION_TITLE}>Similar products</h2>
+        <h2 className={SHOP_SUBSECTION_TITLE}>Similar healthcare products</h2>
         <Badge variant="secondary" className="font-normal">
           {totalCount} {totalCount === 1 ? "match" : "matches"}
         </Badge>

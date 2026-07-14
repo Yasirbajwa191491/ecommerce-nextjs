@@ -358,7 +358,7 @@ export const getSearchSuggestions = query({
       { label: "Best Selling Products", query: "best selling products" },
       { label: "New Arrivals", query: "new arrivals" },
       { label: "Premium Collection", query: "premium collection" },
-      { label: "Office Furniture", query: "office furniture" },
+      { label: "Blood Pressure", query: "blood pressure" },
     ];
 
     for (const item of curated) {

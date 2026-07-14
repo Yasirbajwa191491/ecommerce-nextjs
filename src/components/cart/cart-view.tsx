@@ -77,14 +77,14 @@ export function CartView() {
             Home
           </Link>
           <ChevronRight className="size-3.5 shrink-0 opacity-50" />
-          <span className="font-medium text-foreground">Shopping cart</span>
+          <span className="font-medium text-foreground">Medicine cart</span>
         </nav>
 
         {!cart.length ? (
           <>
             <div className="mb-8">
               <h1 className={SHOP_PAGE_TITLE}>
-                Your shopping cart
+                Your medicine cart
               </h1>
             </div>
             <CartEmptyState />
@@ -97,7 +97,7 @@ export function CartView() {
                   <ShoppingCart className="size-6" />
                 </span>
                 <div>
-                  <h1 className={SHOP_PAGE_TITLE}>Your shopping cart</h1>
+                  <h1 className={SHOP_PAGE_TITLE}>Your medicine cart</h1>
                   <p className={SHOP_PAGE_LEAD}>
                     Review items, adjust quantities, and proceed when you are
                     ready.

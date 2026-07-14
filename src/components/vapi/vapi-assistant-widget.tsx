@@ -210,7 +210,7 @@ export function VapiAssistantWidget() {
               size="icon"
               className="size-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:bg-primary/90"
               onClick={() => setOpen(true)}
-              aria-label="Open shopping assistant"
+              aria-label="Open pharmacy assistant"
             >
               <Sparkles className="size-6" />
             </Button>
@@ -238,7 +238,7 @@ export function VapiAssistantWidget() {
                   <Bot className="size-5 text-primary" />
                 </div>
                 <div>
-                  <SheetTitle>Store Shopping Assistant</SheetTitle>
+                  <SheetTitle>Pharmacy Assistant</SheetTitle>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <VapiAssistantStatus
                       state={state}

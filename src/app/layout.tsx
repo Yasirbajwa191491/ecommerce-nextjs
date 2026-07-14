@@ -14,8 +14,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: `${STORE_NAME} | Premium Online Shopping`,
-  description: "Discover quality products with a fast, modern shopping experience.",
+  title: `${STORE_NAME} | Online Medicines & Healthcare Products`,
+  description:
+    "Browse medicines, vitamins, supplements, and healthcare essentials with AI-powered recommendations.",
 };
 
 export default async function RootLayout({

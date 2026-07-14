@@ -25,8 +25,8 @@ export default function FeatureProduct() {
             Our Feature Services
           </h2>
           <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-            Handpicked favorites from our catalog — quality pieces for every
-            room and lifestyle.
+            Handpicked favorites from our pharmacy — trusted medicines and
+            healthcare essentials.
           </p>
         </div>
 
