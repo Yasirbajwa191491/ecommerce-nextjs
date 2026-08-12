@@ -6,7 +6,13 @@ import { AppProviders } from "@/providers/AppProviders";
 import { VapiStorefrontControllerProvider } from "@/providers/vapi-storefront-controller";
 import { VapiAssistantWidgetLoader } from "@/components/vapi/vapi-assistant-widget-loader";
 import { ProductCompareSheet } from "@/components/products/product-compare-sheet";
+import { useCartRecommendationSync } from "@/hooks/use-cart-recommendation-sync";
 import { useVapiStorefrontController } from "@/providers/vapi-storefront-controller";
+
+function CartRecommendationSync() {
+  useCartRecommendationSync();
+  return null;
+}
 
 function VapiStorefrontExtras() {
   const { compareProducts, compareSheetOpen, dismissCompareSheet } =
@@ -31,6 +37,7 @@ export function ShopShell({ children }: { children: React.ReactNode }) {
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
+          <CartRecommendationSync />
           <VapiAssistantWidgetLoader />
           <VapiStorefrontExtras />
         </div>

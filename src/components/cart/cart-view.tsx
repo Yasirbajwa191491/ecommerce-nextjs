@@ -4,10 +4,12 @@ import Link from "next/link";
 import { ChevronRight, ShoppingCart, Trash2 } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { toast } from "sonner";
+import { Suspense } from "react";
 import { useCartContext } from "@/context/cart_context";
 import { CartItemMobile, CartItemRow } from "@/components/cart/cart-item";
 import { CartOrderSummary } from "@/components/cart/cart-order-summary";
 import { CartEmptyState } from "@/components/cart/cart-empty-state";
+import { CartRestoreBanner } from "@/components/cart/cart-restore-banner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -36,13 +38,16 @@ import { PromotionAppliedSection } from "@/components/promotions/promotion-appli
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { fadeUp } from "@/lib/motion";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
-import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
-import { CartRestoreBanner } from "@/components/cart/cart-restore-banner";
-import { CartRecommendationsSection } from "@/components/cart/cart-recommendations-section";
-import { Suspense } from "react";
-import { resolveCartProductId } from "@/reducer/cartReducer";
+import {
+  SHOP_BREADCRUMB,
+  SHOP_PAGE_LEAD,
+  SHOP_PAGE_TITLE,
+  SHOP_TABLE_HEAD,
+} from "@/lib/typography";
+import { resolveCartProductId } from "@/lib/cart-lines";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
+import { RecommendationSection } from "@/components/products/recommendation-section";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 
 export function CartView() {
@@ -311,9 +316,25 @@ export function CartView() {
               </m.aside>
             </div>
 
-            <CartRecommendationsSection
-              productIds={cartProductIds}
-              className="mt-10"
+            <RecommendationSection
+              sectionType="frequently_bought_together"
+              cartProductIds={cartProductIds}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
+            <RecommendationSection
+              sectionType="complete_your_setup"
+              cartProductIds={cartProductIds}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
+            <RecommendationSection
+              sectionType="customers_also_purchased"
+              cartProductIds={cartProductIds}
+              className="mt-12 border-t border-border/60 pt-10"
+            />
+            <RecommendationSection
+              sectionType="recommended_accessories"
+              cartProductIds={cartProductIds}
+              className="mt-12 border-t border-border/60 pt-10"
             />
           </>
         )}

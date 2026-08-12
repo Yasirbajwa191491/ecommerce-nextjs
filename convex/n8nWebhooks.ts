@@ -12,7 +12,9 @@ export const emitReviewEvent = internalAction({
   handler: async (_ctx, args) => {
     const url = process.env.N8N_REVIEW_WEBHOOK_URL;
     const secret = process.env.N8N_WEBHOOK_SECRET;
-    const required = args.event.startsWith("product.ai.");
+    const required =
+      args.event.startsWith("product.ai.generate") ||
+      args.event.startsWith("product.ai.complete");
 
     if (!url) {
       if (required) {

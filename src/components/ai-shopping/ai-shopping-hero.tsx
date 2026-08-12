@@ -5,7 +5,7 @@ import { m, useReducedMotion } from "framer-motion";
 import { ArrowRight, Bot, Sparkles } from "lucide-react";
 import { AiShoppingHeroVisual } from "@/components/ai-shopping/ai-shopping-hero-visual";
 import { Button } from "@/components/ui/button";
-import { AI_SHOPPING_JOURNEY } from "@/lib/ai-shopping-content";
+import { AI_SHOPPING_JOURNEY } from "@/lib/ai-shopping-copy";
 import { fadeUp } from "@/lib/motion";
 import { requestOpenVapiAssistant } from "@/lib/site";
 import { cn } from "@/lib/utils";

@@ -10,10 +10,12 @@
 
 import type * as aboutStats from "../aboutStats.js";
 import type * as adminDashboard from "../adminDashboard.js";
+import type * as adminImageEmbeddings from "../adminImageEmbeddings.js";
 import type * as adminOrders from "../adminOrders.js";
 import type * as adminProductContent from "../adminProductContent.js";
 import type * as adminProductContentN8n from "../adminProductContentN8n.js";
 import type * as adminProductPricing from "../adminProductPricing.js";
+import type * as adminRecommendations from "../adminRecommendations.js";
 import type * as adminReviewAi from "../adminReviewAi.js";
 import type * as adminReviews from "../adminReviews.js";
 import type * as adminUsers from "../adminUsers.js";
@@ -32,6 +34,9 @@ import type * as emailHelpers from "../emailHelpers.js";
 import type * as emailMarketingDashboard from "../emailMarketingDashboard.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as http from "../http.js";
+import type * as imageEmbeddingActions from "../imageEmbeddingActions.js";
+import type * as imageEmbeddingMutations from "../imageEmbeddingMutations.js";
+import type * as imageEmbeddingQueries from "../imageEmbeddingQueries.js";
 import type * as lib_adminActivityLogs from "../lib/adminActivityLogs.js";
 import type * as lib_adminAuth from "../lib/adminAuth.js";
 import type * as lib_aiValidators from "../lib/aiValidators.js";
@@ -43,8 +48,11 @@ import type * as lib_ai_copilotTypes from "../lib/ai/copilotTypes.js";
 import type * as lib_ai_emailCampaignGeneration from "../lib/ai/emailCampaignGeneration.js";
 import type * as lib_ai_emailCampaignTypes from "../lib/ai/emailCampaignTypes.js";
 import type * as lib_ai_featureFlags from "../lib/ai/featureFlags.js";
+import type * as lib_ai_geminiVisionAttributes from "../lib/ai/geminiVisionAttributes.js";
 import type * as lib_ai_generationHistory from "../lib/ai/generationHistory.js";
 import type * as lib_ai_getProvider from "../lib/ai/getProvider.js";
+import type * as lib_ai_imageEmbeddingClient from "../lib/ai/imageEmbeddingClient.js";
+import type * as lib_ai_imageEmbeddingHelpers from "../lib/ai/imageEmbeddingHelpers.js";
 import type * as lib_ai_insightServices_buildInsightCards from "../lib/ai/insightServices/buildInsightCards.js";
 import type * as lib_ai_insightServices_businessSummary from "../lib/ai/insightServices/businessSummary.js";
 import type * as lib_ai_insightServices_inventoryForecast from "../lib/ai/insightServices/inventoryForecast.js";
@@ -65,6 +73,7 @@ import type * as lib_ai_productIntelligenceTypes from "../lib/ai/productIntellig
 import type * as lib_ai_productPricingGeneration from "../lib/ai/productPricingGeneration.js";
 import type * as lib_ai_productPricingTypes from "../lib/ai/productPricingTypes.js";
 import type * as lib_ai_providerChain from "../lib/ai/providerChain.js";
+import type * as lib_ai_providerHealth from "../lib/ai/providerHealth.js";
 import type * as lib_ai_providers_anthropic from "../lib/ai/providers/anthropic.js";
 import type * as lib_ai_providers_gemini from "../lib/ai/providers/gemini.js";
 import type * as lib_ai_providers_groq from "../lib/ai/providers/groq.js";
@@ -72,8 +81,10 @@ import type * as lib_ai_providers_openai from "../lib/ai/providers/openai.js";
 import type * as lib_ai_providers_openrouter from "../lib/ai/providers/openrouter.js";
 import type * as lib_ai_providers_remoteWorker from "../lib/ai/providers/remoteWorker.js";
 import type * as lib_ai_providers_shared from "../lib/ai/providers/shared.js";
+import type * as lib_ai_recommendationAiProvider from "../lib/ai/recommendationAiProvider.js";
 import type * as lib_ai_reviewIntelligence from "../lib/ai/reviewIntelligence.js";
 import type * as lib_ai_reviewReplyPrompt from "../lib/ai/reviewReplyPrompt.js";
+import type * as lib_ai_scheduleImageEmbedding from "../lib/ai/scheduleImageEmbedding.js";
 import type * as lib_ai_scheduleProductIntelligence from "../lib/ai/scheduleProductIntelligence.js";
 import type * as lib_ai_tagIndex from "../lib/ai/tagIndex.js";
 import type * as lib_ai_tagUtils from "../lib/ai/tagUtils.js";
@@ -115,6 +126,15 @@ import type * as lib_promotions_storefrontEnrich from "../lib/promotions/storefr
 import type * as lib_promotions_types from "../lib/promotions/types.js";
 import type * as lib_publicOrderDto from "../lib/publicOrderDto.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_recommendations_constants from "../lib/recommendations/constants.js";
+import type * as lib_recommendations_identity from "../lib/recommendations/identity.js";
+import type * as lib_recommendations_profileBuilder from "../lib/recommendations/profileBuilder.js";
+import type * as lib_recommendations_recommendationIntelligence from "../lib/recommendations/recommendationIntelligence.js";
+import type * as lib_recommendations_scheduleRecommendationJob from "../lib/recommendations/scheduleRecommendationJob.js";
+import type * as lib_recommendations_scoring from "../lib/recommendations/scoring.js";
+import type * as lib_recommendations_sections from "../lib/recommendations/sections.js";
+import type * as lib_recommendations_settings from "../lib/recommendations/settings.js";
+import type * as lib_recommendations_validators from "../lib/recommendations/validators.js";
 import type * as lib_requireAdmin from "../lib/requireAdmin.js";
 import type * as lib_reviewAggregates from "../lib/reviewAggregates.js";
 import type * as lib_reviewAiQueue from "../lib/reviewAiQueue.js";
@@ -133,7 +153,9 @@ import type * as lib_subscriberInterestDetection from "../lib/subscriberInterest
 import type * as lib_subscriberTokens from "../lib/subscriberTokens.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_backfillProductDeliveryWarranty from "../migrations/backfillProductDeliveryWarranty.js";
+import type * as n8nImageEmbeddingHttp from "../n8nImageEmbeddingHttp.js";
 import type * as n8nProductAiHttp from "../n8nProductAiHttp.js";
+import type * as n8nRecommendationHttp from "../n8nRecommendationHttp.js";
 import type * as n8nReviewAi from "../n8nReviewAi.js";
 import type * as n8nReviewAiHttp from "../n8nReviewAiHttp.js";
 import type * as n8nWebhooks from "../n8nWebhooks.js";
@@ -154,6 +176,12 @@ import type * as productReviews from "../productReviews.js";
 import type * as productSearch from "../productSearch.js";
 import type * as productSearchQueries from "../productSearchQueries.js";
 import type * as products from "../products.js";
+import type * as providerHealthMutations from "../providerHealthMutations.js";
+import type * as recommendationActions from "../recommendationActions.js";
+import type * as recommendationAiActions from "../recommendationAiActions.js";
+import type * as recommendationMutations from "../recommendationMutations.js";
+import type * as recommendationQueries from "../recommendationQueries.js";
+import type * as recommendations from "../recommendations.js";
 import type * as reviewAi from "../reviewAi.js";
 import type * as reviewAiActions from "../reviewAiActions.js";
 import type * as reviewAiBackfill from "../reviewAiBackfill.js";
@@ -192,6 +220,8 @@ import type * as vapi_voiceDeliveryHelpers from "../vapi/voiceDeliveryHelpers.js
 import type * as vapi_voiceSearchActions from "../vapi/voiceSearchActions.js";
 import type * as vapi_voiceStorefrontSync from "../vapi/voiceStorefrontSync.js";
 import type * as vapi_webhook from "../vapi/webhook.js";
+import type * as visualProductSearch from "../visualProductSearch.js";
+import type * as visualProductSearchMutations from "../visualProductSearchMutations.js";
 
 import type {
   ApiFromModules,
@@ -202,10 +232,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   aboutStats: typeof aboutStats;
   adminDashboard: typeof adminDashboard;
+  adminImageEmbeddings: typeof adminImageEmbeddings;
   adminOrders: typeof adminOrders;
   adminProductContent: typeof adminProductContent;
   adminProductContentN8n: typeof adminProductContentN8n;
   adminProductPricing: typeof adminProductPricing;
+  adminRecommendations: typeof adminRecommendations;
   adminReviewAi: typeof adminReviewAi;
   adminReviews: typeof adminReviews;
   adminUsers: typeof adminUsers;
@@ -224,6 +256,9 @@ declare const fullApi: ApiFromModules<{
   emailMarketingDashboard: typeof emailMarketingDashboard;
   emailTemplates: typeof emailTemplates;
   http: typeof http;
+  imageEmbeddingActions: typeof imageEmbeddingActions;
+  imageEmbeddingMutations: typeof imageEmbeddingMutations;
+  imageEmbeddingQueries: typeof imageEmbeddingQueries;
   "lib/adminActivityLogs": typeof lib_adminActivityLogs;
   "lib/adminAuth": typeof lib_adminAuth;
   "lib/aiValidators": typeof lib_aiValidators;
@@ -235,8 +270,11 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/emailCampaignGeneration": typeof lib_ai_emailCampaignGeneration;
   "lib/ai/emailCampaignTypes": typeof lib_ai_emailCampaignTypes;
   "lib/ai/featureFlags": typeof lib_ai_featureFlags;
+  "lib/ai/geminiVisionAttributes": typeof lib_ai_geminiVisionAttributes;
   "lib/ai/generationHistory": typeof lib_ai_generationHistory;
   "lib/ai/getProvider": typeof lib_ai_getProvider;
+  "lib/ai/imageEmbeddingClient": typeof lib_ai_imageEmbeddingClient;
+  "lib/ai/imageEmbeddingHelpers": typeof lib_ai_imageEmbeddingHelpers;
   "lib/ai/insightServices/buildInsightCards": typeof lib_ai_insightServices_buildInsightCards;
   "lib/ai/insightServices/businessSummary": typeof lib_ai_insightServices_businessSummary;
   "lib/ai/insightServices/inventoryForecast": typeof lib_ai_insightServices_inventoryForecast;
@@ -257,6 +295,7 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/productPricingGeneration": typeof lib_ai_productPricingGeneration;
   "lib/ai/productPricingTypes": typeof lib_ai_productPricingTypes;
   "lib/ai/providerChain": typeof lib_ai_providerChain;
+  "lib/ai/providerHealth": typeof lib_ai_providerHealth;
   "lib/ai/providers/anthropic": typeof lib_ai_providers_anthropic;
   "lib/ai/providers/gemini": typeof lib_ai_providers_gemini;
   "lib/ai/providers/groq": typeof lib_ai_providers_groq;
@@ -264,8 +303,10 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/providers/openrouter": typeof lib_ai_providers_openrouter;
   "lib/ai/providers/remoteWorker": typeof lib_ai_providers_remoteWorker;
   "lib/ai/providers/shared": typeof lib_ai_providers_shared;
+  "lib/ai/recommendationAiProvider": typeof lib_ai_recommendationAiProvider;
   "lib/ai/reviewIntelligence": typeof lib_ai_reviewIntelligence;
   "lib/ai/reviewReplyPrompt": typeof lib_ai_reviewReplyPrompt;
+  "lib/ai/scheduleImageEmbedding": typeof lib_ai_scheduleImageEmbedding;
   "lib/ai/scheduleProductIntelligence": typeof lib_ai_scheduleProductIntelligence;
   "lib/ai/tagIndex": typeof lib_ai_tagIndex;
   "lib/ai/tagUtils": typeof lib_ai_tagUtils;
@@ -307,6 +348,15 @@ declare const fullApi: ApiFromModules<{
   "lib/promotions/types": typeof lib_promotions_types;
   "lib/publicOrderDto": typeof lib_publicOrderDto;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/recommendations/constants": typeof lib_recommendations_constants;
+  "lib/recommendations/identity": typeof lib_recommendations_identity;
+  "lib/recommendations/profileBuilder": typeof lib_recommendations_profileBuilder;
+  "lib/recommendations/recommendationIntelligence": typeof lib_recommendations_recommendationIntelligence;
+  "lib/recommendations/scheduleRecommendationJob": typeof lib_recommendations_scheduleRecommendationJob;
+  "lib/recommendations/scoring": typeof lib_recommendations_scoring;
+  "lib/recommendations/sections": typeof lib_recommendations_sections;
+  "lib/recommendations/settings": typeof lib_recommendations_settings;
+  "lib/recommendations/validators": typeof lib_recommendations_validators;
   "lib/requireAdmin": typeof lib_requireAdmin;
   "lib/reviewAggregates": typeof lib_reviewAggregates;
   "lib/reviewAiQueue": typeof lib_reviewAiQueue;
@@ -325,7 +375,9 @@ declare const fullApi: ApiFromModules<{
   "lib/subscriberTokens": typeof lib_subscriberTokens;
   migrations: typeof migrations;
   "migrations/backfillProductDeliveryWarranty": typeof migrations_backfillProductDeliveryWarranty;
+  n8nImageEmbeddingHttp: typeof n8nImageEmbeddingHttp;
   n8nProductAiHttp: typeof n8nProductAiHttp;
+  n8nRecommendationHttp: typeof n8nRecommendationHttp;
   n8nReviewAi: typeof n8nReviewAi;
   n8nReviewAiHttp: typeof n8nReviewAiHttp;
   n8nWebhooks: typeof n8nWebhooks;
@@ -346,6 +398,12 @@ declare const fullApi: ApiFromModules<{
   productSearch: typeof productSearch;
   productSearchQueries: typeof productSearchQueries;
   products: typeof products;
+  providerHealthMutations: typeof providerHealthMutations;
+  recommendationActions: typeof recommendationActions;
+  recommendationAiActions: typeof recommendationAiActions;
+  recommendationMutations: typeof recommendationMutations;
+  recommendationQueries: typeof recommendationQueries;
+  recommendations: typeof recommendations;
   reviewAi: typeof reviewAi;
   reviewAiActions: typeof reviewAiActions;
   reviewAiBackfill: typeof reviewAiBackfill;
@@ -384,6 +442,8 @@ declare const fullApi: ApiFromModules<{
   "vapi/voiceSearchActions": typeof vapi_voiceSearchActions;
   "vapi/voiceStorefrontSync": typeof vapi_voiceStorefrontSync;
   "vapi/webhook": typeof vapi_webhook;
+  visualProductSearch: typeof visualProductSearch;
+  visualProductSearchMutations: typeof visualProductSearchMutations;
 }>;
 
 /**

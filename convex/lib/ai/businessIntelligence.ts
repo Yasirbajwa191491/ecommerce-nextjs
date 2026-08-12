@@ -28,6 +28,7 @@ import {
   normalizeDeliveryOptions,
   type DeliveryMethodType,
 } from "../productValidators";
+import { getRecommendationPlatformInsights } from "../recommendations/recommendationIntelligence";
 import type { CopilotIntent } from "./copilotTypes";
 
 const PRODUCT_LIMIT = 10;
@@ -1131,6 +1132,7 @@ export async function buildBusinessContext(
           {
             ...(await getPromotionCandidates(ctx, referenceNow)),
             configured: await getConfiguredPromotionPerformance(ctx),
+            recommendationPlatform: await getRecommendationPlatformInsights(ctx),
           },
         ] as const;
       case "inventory":

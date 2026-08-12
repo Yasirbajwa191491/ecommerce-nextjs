@@ -136,6 +136,8 @@ export const searchHybrid = action({
     cursor: v.optional(v.number()),
     source: v.optional(v.union(v.literal("header"), v.literal("catalog"))),
     sessionId: v.optional(v.string()),
+    visitorId: v.optional(v.string()),
+    customerKey: v.optional(v.string()),
   },
   returns: hybridSearchResultValidator,
   handler: async (ctx, args): Promise<HybridSearchResult> => {
@@ -271,6 +273,8 @@ export const searchHybrid = action({
       queryDisplay: trimmed,
       resultCount: totalCount,
       sessionId: args.sessionId,
+      visitorId: args.visitorId,
+      customerKey: args.customerKey,
       source: args.source ?? "header",
     });
 

@@ -6,6 +6,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
+export { AI_SHOPPING_FAQ, AI_SHOPPING_JOURNEY } from "@/lib/ai-shopping-copy";
+
 export type AiCapabilityAction =
   | { type: "link"; href: string; label: string }
   | { type: "assistant"; label: string };
@@ -51,10 +53,10 @@ export const AI_SHOPPING_CAPABILITIES: AiCapability[] = [
     badge: "Vision",
     title: "Visual Product Search",
     description:
-      "Describe or reference products visually and discover similar items from our catalog.",
-    example: '"Find products like this minimalist desk lamp."',
+      "Upload a photo or use your camera to find visually similar products in our catalog.",
+    example: "Snap a desk lamp — see matching items instantly.",
     anchor: "visual-search",
-    action: { type: "assistant", label: "Try with assistant" },
+    action: { type: "link", href: "/products/visual-search", label: "Search by image" },
   },
   {
     id: "recommendations",
@@ -69,32 +71,3 @@ export const AI_SHOPPING_CAPABILITIES: AiCapability[] = [
   },
 ];
 
-export const AI_SHOPPING_JOURNEY = [
-  "AI-powered discovery",
-  "Product exploration",
-  "Smart recommendations",
-  "Confident purchase",
-] as const;
-
-export const AI_SHOPPING_FAQ = [
-  {
-    question: "Do I need an account to use AI shopping?",
-    answer:
-      "No account is required to search, use the assistant, or checkout as a guest. AI search and voice shopping work immediately. Session-based recommendations use products you view and cart items stored in your browser during this visit.",
-  },
-  {
-    question: "How do personalized recommendations work without an account?",
-    answer:
-      "During your visit, we use locally stored browsing history and cart activity to suggest related products. These signals stay on your device unless you place an order, when checkout details can help associate future visits with your purchase history.",
-  },
-  {
-    question: "Can the assistant help with my order?",
-    answer:
-      "Yes. Ask about order status, delivery, or returns. You can also use Track Order and ask the AI assistant for help.",
-  },
-  {
-    question: "Is voice shopping available on mobile?",
-    answer:
-      "Yes. Tap the AI assistant button and use voice or text — both work on mobile and desktop.",
-  },
-] as const;

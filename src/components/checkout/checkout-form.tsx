@@ -40,6 +40,7 @@ import {
   createIdempotencyKey,
   saveCheckoutCustomer,
 } from "@/lib/checkout-customer-storage";
+import { getVisitorId } from "@/lib/recommendations/visitor-id";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import { SHOP_BODY_SM, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -157,6 +158,7 @@ export function CheckoutForm({
         fullName: customerPayload.fullName,
         phone: customerPayload.phone,
         address: customerPayload.address,
+        visitorId: getVisitorId() || undefined,
       });
     } catch {
       // Non-blocking for checkout completion

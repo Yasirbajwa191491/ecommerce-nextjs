@@ -23,6 +23,7 @@ import {
   restoreStock,
 } from "./lib/inventory";
 import { insertOrderStatusLog, insertPaymentLog, getOrderStatusLogsForPublic } from "./lib/orderLogs";
+import { mergeVisitorIntoCustomer } from "./lib/recommendations/profileBuilder";
 import { orderStatusValidator } from "./lib/orderValidators";
 import { checkAndIncrementRateLimit } from "./lib/rateLimit";
 import { normalizeEmail, phonesMatch } from "./lib/publicOrderDto";
@@ -638,6 +639,12 @@ export const markOrderPaid = internalMutation({
       email: order.customerEmail,
     });
 
+    await ctx.scheduler.runAfter(
+      0,
+      internal.recommendationMutations.recordPurchaseBehaviorForOrder,
+      { orderId: args.orderId }
+    );
+
     return { alreadyPaid: false as const };
   },
 });
@@ -782,6 +789,7 @@ export const saveCustomerProfile = mutation({
     fullName: v.string(),
     phone: v.string(),
     address: v.string(),
+    visitorId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const email = args.email.trim().toLowerCase();
@@ -798,12 +806,18 @@ export const saveCustomerProfile = mutation({
       updatedAt: Date.now(),
     };
 
+    let profileId = existing?._id;
     if (existing) {
       await ctx.db.patch(existing._id, profile);
-      return existing._id;
+    } else {
+      profileId = await ctx.db.insert("customerProfiles", profile);
     }
 
-    return await ctx.db.insert("customerProfiles", profile);
+    if (args.visitorId) {
+      await mergeVisitorIntoCustomer(ctx, args.visitorId, email, email);
+    }
+
+    return profileId!;
   },
 });
 

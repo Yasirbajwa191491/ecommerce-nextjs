@@ -1,10 +1,16 @@
 "use client";
 
 import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { AnimatePresence } from "framer-motion";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Camera } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "../../../convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -129,8 +135,8 @@ function HeaderSearchForm({
 
   const inputStyle =
     inputPadding === "comfortable"
-      ? { paddingLeft: "1.75rem", paddingRight: "1rem" }
-      : { paddingLeft: "1.5rem", paddingRight: "1rem" };
+      ? { paddingLeft: "1.75rem", paddingRight: "0.5rem" }
+      : { paddingLeft: "1.5rem", paddingRight: "0.5rem" };
 
   const showDropdown =
     dropdownOpen && (showSearchResults || showEmptySuggestions);
@@ -159,19 +165,35 @@ function HeaderSearchForm({
             className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent py-0 text-sm shadow-none focus-visible:ring-0"
             style={inputStyle}
           />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="size-10 shrink-0 rounded-none border-l border-border/80 text-muted-foreground hover:bg-[#6254f3]/5 hover:text-[#6254f3] sm:size-11"
-            aria-label="Search"
-          >
-            {loading && showSearchResults ? (
-              <Loader2 className="size-[1.125rem] animate-spin" />
-            ) : (
-              <Search className="size-[1.125rem]" />
-            )}
-          </Button>
+          <div className="flex shrink-0 items-center gap-0.5 pr-1.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    href="/products/visual-search"
+                    className="inline-flex size-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6254f3]/40 sm:size-11"
+                    aria-label="Search by image"
+                  >
+                    <Camera className="size-[1.375rem] sm:size-6" strokeWidth={1.75} />
+                  </Link>
+                }
+              />
+              <TooltipContent side="bottom">Search by image</TooltipContent>
+            </Tooltip>
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              className="size-10 rounded-full text-muted-foreground hover:bg-muted hover:text-[#6254f3] sm:size-11"
+              aria-label="Search"
+            >
+              {loading && showSearchResults ? (
+                <Loader2 className="size-[1.125rem] animate-spin" />
+              ) : (
+                <Search className="size-[1.125rem]" />
+              )}
+            </Button>
+          </div>
         </div>
       </form>
 
