@@ -27,6 +27,7 @@ export type HybridSearchProduct = {
   stock: number;
   shipping: boolean;
   description: string;
+  _creationTime?: number;
 };
 
 type UseHybridProductSearchOptions = {

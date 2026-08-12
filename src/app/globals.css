@@ -652,3 +652,16 @@ a[data-slot="button"].bg-primary {
 .ai-product-highlight {
   animation: ai-product-pulse 2.4s ease-in-out infinite;
 }
+
+/* Product card overlay actions: always visible on touch; hover-reveal on fine pointers */
+@media (hover: hover) and (pointer: fine) {
+  .product-card-actions {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  .group:hover .product-card-actions {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

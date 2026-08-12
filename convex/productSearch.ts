@@ -36,6 +36,7 @@ type SearchResultItem = {
   stock: number;
   shipping: boolean;
   description: string;
+  _creationTime: number;
 };
 
 type HybridSearchResult = {
@@ -70,6 +71,7 @@ const searchResultItemValidator = v.object({
   stock: v.number(),
   shipping: v.boolean(),
   description: v.string(),
+  _creationTime: v.number(),
 });
 
 const hybridSearchResultValidator = v.object({

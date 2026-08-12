@@ -6,7 +6,6 @@ import { v } from "convex/values";
 import type { ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { callImageEmbedApi } from "./lib/ai/imageEmbeddingClient";
-import { getSiteUrl } from "./lib/siteUrl";
 import { extractVisualSearchAttributes } from "./lib/ai/geminiVisionAttributes";
 import {
   isProviderHealthy,
@@ -226,10 +225,13 @@ export const searchByImage = action({
 
     let embedding: number[] | null = cached?.embedding ?? null;
     let embedProvider = cached?.provider as "siglip" | "clip" | undefined;
+    let embedApiAttempted = false;
+    let embedApiFailed = false;
 
     if (!embedding) {
       for (const p of ["siglip", "clip"] as const) {
         if (!(await isProviderHealthy(ctx, p))) continue;
+        embedApiAttempted = true;
         try {
           const result = await callImageEmbedApi({
             imageUrl: imageBase64 ? undefined : imageUrl,
@@ -252,6 +254,7 @@ export const searchByImage = action({
           );
           break;
         } catch {
+          embedApiFailed = true;
           await recordProviderFailure(ctx, p);
           if (p === "siglip") fallbackUsed = "clip";
         }
@@ -324,9 +327,22 @@ export const searchByImage = action({
         resultProductIds: [],
         provider,
         fallbackUsed,
-        message: getSiteUrl().includes("localhost")
-          ? "Visual search can't reach your local Next.js embed API from Convex cloud. Use a tunnel (ngrok/cloudflared), set Convex SITE_URL to the public URL, and index product images in Admin → Image embeddings."
-          : "Visual search isn't available right now. Try keyword or semantic search instead.",
+        message: (() => {
+          const configuredSiteUrl = process.env.SITE_URL?.trim() ?? "";
+          const isExplicitLocalhost = configuredSiteUrl.includes("localhost");
+          if (
+            embedApiAttempted &&
+            !embedding &&
+            embedApiFailed &&
+            isExplicitLocalhost
+          ) {
+            return "Visual search can't reach your local Next.js embed API from Convex cloud. Use a tunnel (ngrok/cloudflared), set Convex SITE_URL to the public URL, and index product images in Admin → Image embeddings.";
+          }
+          if (!embedding) {
+            return "Visual search isn't available right now. Try keyword or semantic search instead.";
+          }
+          return undefined;
+        })(),
       };
     }
 

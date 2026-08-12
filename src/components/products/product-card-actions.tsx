@@ -34,7 +34,7 @@ export function ProductCardActions({ product, className }: ProductCardActionsPro
     <>
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 z-20 flex translate-y-2 items-center justify-center gap-2 p-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100",
+          "product-card-actions absolute inset-x-0 bottom-0 z-20 flex translate-y-0 items-center justify-center gap-2 p-3 opacity-100 transition-all duration-300",
           className
         )}
       >

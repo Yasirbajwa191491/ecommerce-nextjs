@@ -19,6 +19,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ProductCarouselSectionProps = {
+  id?: string;
   badge?: string;
   badgeIcon?: LucideIcon;
   title: string;
@@ -44,6 +45,7 @@ function ProductCarouselSkeleton() {
 }
 
 export function ProductCarouselSection({
+  id,
   badge,
   badgeIcon,
   title,
@@ -58,6 +60,7 @@ export function ProductCarouselSection({
 
   return (
     <section
+      id={id}
       className={cn(
         HOME_SECTION_PADDING_Y,
         background === "muted" ? "bg-muted/30" : "bg-background",

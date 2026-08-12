@@ -377,6 +377,7 @@ export const getPublicFilterFacets = query({
     colors: v.optional(v.array(v.string())),
     minRating: v.optional(v.number()),
     promotions: v.optional(v.array(promotionFilterSlugValidator)),
+    inStockOnly: v.optional(v.boolean()),
     now: v.number(),
   },
   returns: v.object({
