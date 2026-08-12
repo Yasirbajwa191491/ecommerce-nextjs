@@ -8,6 +8,7 @@ export type CatalogFilterState = {
   minRating?: number;
   minPrice?: number;
   maxPrice?: number;
+  inStockOnly?: boolean;
   sort: ProductSort;
   search: string;
 };
@@ -39,6 +40,7 @@ export function parseCatalogFilters(
         ? Number(maxPriceRaw)
         : undefined,
     sort: parseSortParam(params.get("sort")),
+    inStockOnly: params.get("inStock") === "1",
   };
 }
 
@@ -56,7 +58,10 @@ function parseSortParam(value: string | null): ProductSort {
     value === "highest" ||
     value === "a-z" ||
     value === "z-a" ||
-    value === "default"
+    value === "default" ||
+    value === "popular" ||
+    value === "newest" ||
+    value === "rating"
   ) {
     return value;
   }
@@ -95,6 +100,9 @@ export function buildCatalogFilterSearchParams(
   if (filters.sort !== "default") {
     params.set("sort", filters.sort);
   }
+  if (filters.inStockOnly) {
+    params.set("inStock", "1");
+  }
 
   return params;
 }
@@ -115,5 +123,6 @@ export function countActiveCatalogFilters(filters: CatalogFilterState): number {
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     count += 1;
   }
+  if (filters.inStockOnly) count += 1;
   return count;
 }

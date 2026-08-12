@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   Bot,
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useVapiAssistant } from "@/hooks/use-vapi-assistant";
 import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
 import { useVapiStorefrontSync } from "@/hooks/use-vapi-storefront-sync";
@@ -30,6 +31,7 @@ import { VapiAssistantStatus } from "@/components/vapi/vapi-assistant-status";
 import { VapiGuidedShoppingBanner } from "@/components/vapi/vapi-guided-shopping-banner";
 import { getStripeCheckoutUrlFromSteps } from "@/lib/vapi-activity";
 import { isCheckoutRelatedMessage, isVapiConfigured } from "@/lib/vapi-config";
+import { VAPI_OPEN_ASSISTANT_EVENT } from "@/lib/site";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
 import type { UiAction } from "@/lib/vapi-ui-actions/types";
 
@@ -43,6 +45,7 @@ const VOICE_CART_SYNC_TOOLS = new Set([
 ]);
 
 export function VapiAssistantWidget() {
+  const isMobileSheet = useMediaQuery("(max-width: 639px)");
   const configured = isVapiConfigured();
   const { cart } = useCartContext();
   const { syncToolResult } = useVapiCartSync();
@@ -117,6 +120,12 @@ export function VapiAssistantWidget() {
 
   const [open, setOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener(VAPI_OPEN_ASSISTANT_EVENT, handler);
+    return () => window.removeEventListener(VAPI_OPEN_ASSISTANT_EVENT, handler);
+  }, []);
 
   const needsCheckoutLookup = useMemo(
     () =>
@@ -226,10 +235,15 @@ export function VapiAssistantWidget() {
         }}
       >
         <SheetContent
-          side="right"
+          side={isMobileSheet ? "bottom" : "right"}
           showCloseButton={false}
-          overlayBlur={false}
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+          overlayBlur={isMobileSheet}
+          className={cn(
+            "flex w-full flex-col gap-0 p-0",
+            isMobileSheet
+              ? "max-h-[min(85vh,720px)] rounded-t-2xl border-t"
+              : "sm:max-w-md"
+          )}
         >
           <SheetHeader className="border-b px-4 py-4 text-left">
             <div className="flex items-start justify-between gap-3">

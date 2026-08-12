@@ -34,10 +34,12 @@ type ProductCatalogMobileFiltersProps = {
   selectedColorSlugs: string[];
   selectedPromotionSlugs: string[];
   selectedMinRating?: number;
+  inStockOnly?: boolean;
   onToggleBrand: (slug: string) => void;
   onToggleColor: (slug: string) => void;
   onTogglePromotion: (slug: string) => void;
   onSelectRating: (minRating: number | undefined) => void;
+  onToggleInStock?: (value: boolean) => void;
   onClear: () => void;
   activeFilterCount: number;
 };
@@ -56,10 +58,12 @@ export function ProductCatalogMobileFilters({
   selectedColorSlugs,
   selectedPromotionSlugs,
   selectedMinRating,
+  inStockOnly,
   onToggleBrand,
   onToggleColor,
   onTogglePromotion,
   onSelectRating,
+  onToggleInStock,
   onClear,
   activeFilterCount,
 }: ProductCatalogMobileFiltersProps) {
@@ -142,6 +146,8 @@ export function ProductCatalogMobileFilters({
             onToggleColor={onToggleColor}
             onTogglePromotion={onTogglePromotion}
             onSelectRating={onSelectRating}
+            inStockOnly={inStockOnly}
+            onToggleInStock={onToggleInStock}
             onClear={() => {
               onClear();
               onOpenChange(false);

@@ -41,8 +41,10 @@ import {
 } from "@/lib/validation/track-order-form";
 import type { PublicOrderSummary } from "@/types/order";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
+import { requestOpenVapiAssistant } from "@/lib/site";
 import {
   ArrowRight,
+  Bot,
   Loader2,
   Mail,
   PackageSearch,
@@ -281,6 +283,15 @@ export function TrackOrderView() {
           Enter your order number or the contact details used at checkout to
           see real-time status and delivery progress.
         </p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={requestOpenVapiAssistant}
+          className="mt-5 gap-2 rounded-full border-brand-primary/30 text-brand-primary hover:bg-brand-primary/5"
+        >
+          <Bot className="size-4" />
+          Ask AI about my order
+        </Button>
       </div>
 
       <Tabs

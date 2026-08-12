@@ -90,7 +90,7 @@ export const SHOP_HERO_LEAD =
 
 /** Hero promo badge (e.g. Up To 40% Off) */
 export const SHOP_HERO_BADGE =
-  "inline-flex items-center gap-2 rounded-full border border-[#6254f3]/40 bg-[#6254f3]/20 px-3.5 py-1.5 text-xs font-bold tracking-wide text-white sm:px-4 sm:py-2 sm:text-sm";
+  "inline-flex items-center gap-2 rounded-full border border-brand-primary/40 bg-brand-primary/20 px-3.5 py-1.5 text-xs font-bold tracking-wide text-white sm:px-4 sm:py-2 sm:text-sm";
 
 /** Hero trust / feature list items */
 export const SHOP_HERO_FEATURE =
@@ -98,7 +98,7 @@ export const SHOP_HERO_FEATURE =
 
 /** Eyebrow / category badges */
 export const SHOP_EYEBROW =
-  "inline-flex items-center gap-2 rounded-full border border-[#6254f3]/20 bg-[#6254f3]/5 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-[#6254f3] uppercase sm:px-3.5 sm:py-1.5 sm:text-sm";
+  "inline-flex items-center gap-2 rounded-full border border-brand-primary/20 bg-brand-primary/5 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-brand-primary uppercase sm:px-3.5 sm:py-1.5 sm:text-sm";
 
 /** Product card grid — brand / company label */
 export const PRODUCT_CARD_BRAND =
@@ -110,7 +110,7 @@ export const PRODUCT_CARD_NAME =
 
 /** Product card — category pill on image */
 export const PRODUCT_CARD_CATEGORY =
-  "rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold tracking-wide text-[#6254f3] uppercase shadow-sm backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-sm";
+  "rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold tracking-wide text-brand-primary uppercase shadow-sm backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-sm";
 
 /** Product card — rating count text */
 export const PRODUCT_CARD_RATING =
@@ -154,7 +154,7 @@ export const SHOP_BREADCRUMB =
 
 /** Header store name / logo — dark navy to match section headings */
 export const HEADER_STORE_NAME =
-  "font-bold tracking-tight text-[#0a1435]";
+  "font-bold tracking-tight text-brand-navy";
 
 export const HEADER_STORE_NAME_MOBILE =
   "max-w-[8.5rem] justify-self-start truncate text-base sm:max-w-none sm:text-lg";
@@ -176,7 +176,7 @@ export const FOOTER_COLUMN_TITLE =
 
 /** Footer link */
 export const FOOTER_LINK =
-  "text-sm text-white/70 transition-colors hover:text-[#a89cff]";
+  "text-sm text-white/70 transition-colors hover:text-brand-accent";
 
 export function shopPageTitle(className?: string) {
   return cn(SHOP_PAGE_TITLE, className);

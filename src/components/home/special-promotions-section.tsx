@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export function SpecialPromotionsSection() {
   const promotions = useStorefrontPromotionsList();
 
-  if (!promotions?.length || promotions.length <= 1) {
+  if (!promotions?.length) {
     return null;
   }
 

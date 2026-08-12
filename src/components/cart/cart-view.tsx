@@ -4,10 +4,12 @@ import Link from "next/link";
 import { ChevronRight, ShoppingCart, Trash2 } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { toast } from "sonner";
+import { Suspense } from "react";
 import { useCartContext } from "@/context/cart_context";
 import { CartItemMobile, CartItemRow } from "@/components/cart/cart-item";
 import { CartOrderSummary } from "@/components/cart/cart-order-summary";
 import { CartEmptyState } from "@/components/cart/cart-empty-state";
+import { CartRestoreBanner } from "@/components/cart/cart-restore-banner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -36,11 +38,16 @@ import { PromotionAppliedSection } from "@/components/promotions/promotion-appli
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { fadeUp } from "@/lib/motion";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
-import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
-import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
-import { RecommendationSection } from "@/components/products/recommendation-section";
+import {
+  SHOP_BREADCRUMB,
+  SHOP_PAGE_LEAD,
+  SHOP_PAGE_TITLE,
+  SHOP_TABLE_HEAD,
+} from "@/lib/typography";
 import { resolveCartProductId } from "@/lib/cart-lines";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
+import { RecommendationSection } from "@/components/products/recommendation-section";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 
 export function CartView() {
@@ -60,6 +67,10 @@ export function CartView() {
   const currency = priced?.currency;
   const displaySubtotal = priced?.subtotal ?? total_price;
   const displayTotal = priced?.total ?? total_price;
+  const discountTotal = priced?.discountTotal ?? 0;
+  const cartProductIds = cart
+    .map((item) => resolveCartProductId(item))
+    .filter(Boolean) as Id<"products">[];
 
   const handleClearCart = () => {
     clearCart();
@@ -79,6 +90,10 @@ export function CartView() {
           <ChevronRight className="size-3.5 shrink-0 opacity-50" />
           <span className="font-medium text-foreground">Shopping cart</span>
         </nav>
+
+        <Suspense fallback={null}>
+          <CartRestoreBanner />
+        </Suspense>
 
         {!cart.length ? (
           <>
@@ -110,6 +125,26 @@ export function CartView() {
               >
                 {total_item} {total_item === 1 ? "item" : "items"}
               </Badge>
+            </div>
+
+            {discountTotal > 0 ? (
+              <Alert className="mb-6 border-emerald-200 bg-emerald-50 text-emerald-900">
+                <AlertTitle>You saved on this order</AlertTitle>
+                <AlertDescription>
+                  You saved{" "}
+                  <FormatPrice price={discountTotal} currency={currency} /> on
+                  products and promotions in your cart.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="mb-4">
+              <Link
+                href="/products"
+                className="text-sm font-semibold text-brand-primary hover:underline"
+              >
+                ← Continue shopping
+              </Link>
             </div>
 
             {pricingError ? (
@@ -283,30 +318,22 @@ export function CartView() {
 
             <RecommendationSection
               sectionType="frequently_bought_together"
-              cartProductIds={cart.map(
-                (item) => resolveCartProductId(item) as Id<"products">
-              )}
+              cartProductIds={cartProductIds}
               className="mt-12 border-t border-border/60 pt-10"
             />
             <RecommendationSection
               sectionType="complete_your_setup"
-              cartProductIds={cart.map(
-                (item) => resolveCartProductId(item) as Id<"products">
-              )}
+              cartProductIds={cartProductIds}
               className="mt-12 border-t border-border/60 pt-10"
             />
             <RecommendationSection
               sectionType="customers_also_purchased"
-              cartProductIds={cart.map(
-                (item) => resolveCartProductId(item) as Id<"products">
-              )}
+              cartProductIds={cartProductIds}
               className="mt-12 border-t border-border/60 pt-10"
             />
             <RecommendationSection
               sectionType="recommended_accessories"
-              cartProductIds={cart.map(
-                (item) => resolveCartProductId(item) as Id<"products">
-              )}
+              cartProductIds={cartProductIds}
               className="mt-12 border-t border-border/60 pt-10"
             />
           </>

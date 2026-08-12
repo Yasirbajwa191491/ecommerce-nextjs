@@ -46,6 +46,11 @@ export const SUGGESTED_COPILOT_QUESTION_GROUPS: SuggestedQuestionGroup[] = [
   {
     label: "Overview",
     questions: [
+      "Which products are selling best?",
+      "Which category is declining?",
+      "What should I promote?",
+      "Which customers generate the most revenue?",
+      "How are sales performing this month?",
       "What happened this week?",
       "What happened this month?",
       "Show revenue insights.",

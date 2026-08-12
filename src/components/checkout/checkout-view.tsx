@@ -15,6 +15,8 @@ import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { ShopTrustStrip } from "@/components/shop/shop-trust-strip";
+import { Lock, RefreshCw, Truck } from "lucide-react";
 import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 import { RecommendationSection } from "@/components/products/recommendation-section";
@@ -148,39 +150,8 @@ export function CheckoutView() {
           className="mb-6"
         />
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1fr)_440px] 2xl:gap-12">
-          <div className="min-w-0 space-y-4 xl:sticky xl:top-24">
-            <div id="checkout-order-summary">
-            <PromotionAppliedSection
-              gifts={giftItems.map((item) => ({
-                productName: item.productName,
-                color: item.color,
-                quantity: item.quantity,
-                imageUrl: item.imageUrl,
-                promotionName: item.promotionName,
-              }))}
-              summaries={priced?.promotionSummaries}
-              promotionSavingsTotal={priced?.promotionSavingsTotal}
-              currency={priced?.currency}
-            />
-            <CheckoutOrderSummary
-              cart={cart}
-              subtotal={priced?.subtotal ?? 0}
-              discountTotal={priced?.discountTotal ?? 0}
-              tax={priced?.tax ?? 0}
-              shipping={priced?.shipping ?? 0}
-              deliveryCharge={priced?.deliveryCharge ?? 0}
-              deliveryMethod={priced?.deliveryMethod}
-              deliveryMethodLabel={priced?.deliveryMethodLabel}
-              total={priced?.total ?? 0}
-              currency={priced?.currency}
-              isLoading={isLoading}
-              getPricedLine={getPricedLine}
-            />
-            </div>
-          </div>
-
-          <aside className="min-w-0">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] xl:items-start xl:gap-10 2xl:gap-12">
+          <aside className="min-w-0 xl:order-1">
             <CheckoutForm
               initialValues={initialFormValues}
               deliveryMethods={availableDeliveryMethods}
@@ -192,6 +163,46 @@ export function CheckoutView() {
               currency={priced?.currency}
             />
           </aside>
+
+          <div className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:order-2">
+            <div id="checkout-order-summary">
+              <PromotionAppliedSection
+                gifts={giftItems.map((item) => ({
+                  productName: item.productName,
+                  color: item.color,
+                  quantity: item.quantity,
+                  imageUrl: item.imageUrl,
+                  promotionName: item.promotionName,
+                }))}
+                summaries={priced?.promotionSummaries}
+                promotionSavingsTotal={priced?.promotionSavingsTotal}
+                currency={priced?.currency}
+              />
+              <CheckoutOrderSummary
+                cart={cart}
+                subtotal={priced?.subtotal ?? 0}
+                discountTotal={priced?.discountTotal ?? 0}
+                tax={priced?.tax ?? 0}
+                shipping={priced?.shipping ?? 0}
+                deliveryCharge={priced?.deliveryCharge ?? 0}
+                deliveryMethod={priced?.deliveryMethod}
+                deliveryMethodLabel={priced?.deliveryMethodLabel}
+                total={priced?.total ?? 0}
+                currency={priced?.currency}
+                isLoading={isLoading}
+                getPricedLine={getPricedLine}
+              />
+              <div className="mt-4 rounded-2xl border border-border/60 bg-card p-4">
+                <ShopTrustStrip
+                  items={[
+                    { icon: Lock, label: "Secure checkout" },
+                    { icon: RefreshCw, label: "Easy returns" },
+                    { icon: Truck, label: "Fast delivery" },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <RecommendationSection

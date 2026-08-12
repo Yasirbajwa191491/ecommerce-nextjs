@@ -8,7 +8,7 @@ export function mapHybridSearchProductsToCatalog(
 ): Product[] {
   return items.map((item) => ({
     _id: item._id as Id<"products">,
-    _creationTime: 0,
+    _creationTime: item._creationTime ?? 0,
     name: item.name,
     company: item.company,
     price: item.price,

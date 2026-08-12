@@ -214,6 +214,7 @@ export const enrichProductsByIds = internalQuery({
       shipping: v.boolean(),
       description: v.string(),
       images: v.array(productImageValidator),
+      _creationTime: v.number(),
     })
   ),
   handler: async (ctx, args) => {
@@ -246,6 +247,7 @@ export const enrichProductsByIds = internalQuery({
       shipping: product.shipping,
       description: product.description,
       images: product.image,
+      _creationTime: product._creationTime,
     }));
   },
 });

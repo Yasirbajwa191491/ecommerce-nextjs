@@ -63,6 +63,11 @@ body {
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-hover: var(--brand-primary-hover);
+  --color-brand-primary-muted: var(--brand-primary-muted);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-accent: var(--brand-accent);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -97,6 +102,14 @@ body {
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+  /* Storefront brand tokens */
+  --brand-primary: #6254f3;
+  --brand-primary-hover: #5548e0;
+  --brand-primary-muted: rgb(98 84 243 / 0.1);
+  --brand-primary-border: rgb(98 84 243 / 0.3);
+  --brand-navy: #0a1435;
+  --brand-accent: #a89cff;
+  --brand-primary-shadow: rgb(98 84 243 / 0.25);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -638,4 +651,17 @@ a[data-slot="button"].bg-primary {
 
 .ai-product-highlight {
   animation: ai-product-pulse 2.4s ease-in-out infinite;
+}
+
+/* Product card overlay actions: always visible on touch; hover-reveal on fine pointers */
+@media (hover: hover) and (pointer: fine) {
+  .product-card-actions {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  .group:hover .product-card-actions {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

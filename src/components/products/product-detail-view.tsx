@@ -6,9 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { useMutation } from "convex/react";
 import {
   ChevronRight,
-  Package,
-  RefreshCw,
-  ShieldCheck,
   Truck,
 } from "lucide-react";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -23,12 +20,10 @@ import { ProductImageGallery } from "@/components/products/product-image-gallery
 import { ProductPrice } from "@/components/products/product-price";
 import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
 import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
-import { ProductWarrantyBadge } from "@/components/products/product-warranty-badge";
-import { ProductDeliveryOptions } from "@/components/products/product-delivery-options";
-import { getWarrantyLabel } from "@/lib/product-display-helpers";
 import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
 import { ProductReviewSection } from "@/components/reviews/product-review-section";
 import { SimilarProductsSection } from "@/components/products/similar-products-section";
+import { ProductDetailTabs } from "@/components/products/product-detail-tabs";
 import { RecommendationSection } from "@/components/products/recommendation-section";
 import { ProductViewTracker } from "@/components/products/product-view-tracker";
 import { formatCurrencyAmount, DEFAULT_CURRENCY } from "@/lib/currencies";
@@ -47,6 +42,7 @@ import {
   SHOP_META_LABEL,
   SHOP_PRODUCT_TITLE,
 } from "@/lib/typography";
+import { recordRecentlyViewed } from "@/lib/recently-viewed-storage";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 
 type ProductDetailViewProps = {
@@ -75,75 +71,6 @@ function ProductDetailSkeleton() {
   );
 }
 
-type ProductDetailSecondaryInfoProps = {
-  product: Product;
-  categoryName: string;
-  inStock: boolean;
-  trustItems: ReadonlyArray<{ icon: typeof RefreshCw; label: string }>;
-};
-
-function ProductDetailSecondaryInfo({
-  product,
-  categoryName,
-  inStock,
-  trustItems,
-}: ProductDetailSecondaryInfoProps) {
-  return (
-    <>
-      <ProductDeliveryOptions product={product} />
-
-      <dl
-        id="product-specifications"
-        className={cn(
-          "grid gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:grid-cols-2 sm:p-5",
-          SHOP_BODY_SM
-        )}
-      >
-        <div>
-          <dt className="text-muted-foreground">Brand</dt>
-          <dd className="mt-0.5 font-semibold text-foreground">
-            {product.company}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Category</dt>
-          <dd className="mt-0.5 font-semibold text-foreground">
-            {categoryName}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Availability</dt>
-          <dd className="mt-0.5 font-semibold text-foreground">
-            {inStock
-              ? `${product.stock} in stock`
-              : "Currently unavailable"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Product ID</dt>
-          <dd className="mt-0.5 font-mono text-xs font-medium text-foreground/80">
-            {product._id}
-          </dd>
-        </div>
-      </dl>
-
-      <div className="grid grid-cols-3 gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:p-5">
-        {trustItems.map(({ icon: Icon, label }) => (
-          <div
-            key={label}
-            className="flex flex-col items-center gap-2 text-center"
-          >
-            <span className="flex size-11 items-center justify-center rounded-full bg-muted">
-              <Icon className="size-5 text-[#6254f3]" />
-            </span>
-            <p className={cn("leading-snug", SHOP_BODY_SM)}>{label}</p>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
 export function ProductDetailView({ params }: ProductDetailViewProps) {
   const { id } = use(params);
   const searchParams = useSearchParams();
@@ -158,6 +85,10 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
   useEffect(() => {
     if (promoId) void recordView({ id: promoId });
   }, [promoId, recordView]);
+
+  useEffect(() => {
+    if (id) recordRecentlyViewed(id);
+  }, [id]);
 
   const { singleProduct, isSingleLoading } = useSingleProduct(
     id as Id<"products">
@@ -190,60 +121,13 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
   const inStock = singleProduct.stock > 0;
   const discountPercent = singleProduct.discountPercent ?? 0;
   const freeShipping = singleProduct.shipping === true;
-  const productHighlights =
-    singleProduct.highlights?.map((h) => h.trim()).filter(Boolean) ?? [];
   const galleryImages = orderImagesForDisplay(singleProduct).map((image) => ({
     url: image.url,
     alt: image.alt?.trim() || singleProduct.name,
   }));
-  const warrantyLabel = getWarrantyLabel(singleProduct);
-  const trustItems = [
-    { icon: RefreshCw, label: "30-day returns" },
-    { icon: Package, label: "Secure packaging" },
-    ...(warrantyLabel
-      ? [{ icon: ShieldCheck, label: warrantyLabel } as const]
-      : []),
-  ];
   const storefrontPromotions =
     activePromotions?.filter((promo) => !promoId || promo._id !== promoId) ??
     [];
-
-  const secondaryInfo = (
-    <ProductDetailSecondaryInfo
-      product={singleProduct}
-      categoryName={categoryName}
-      inStock={inStock}
-      trustItems={trustItems}
-    />
-  );
-
-  const longFormContent = (
-    <>
-      {productHighlights.length > 0 ? (
-        <ul
-          id="product-highlights"
-          className={cn("space-y-2 text-foreground", SHOP_BODY)}
-        >
-          {productHighlights.map((highlight) => (
-            <li key={highlight} className="flex items-start gap-2">
-              <span className="mt-0.5 text-[#6254f3]" aria-hidden>
-                ✓
-              </span>
-              <span>{highlight}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {singleProduct.description ? (
-        <p className={cn("whitespace-pre-line text-foreground", SHOP_BODY)}>
-          {singleProduct.description}
-        </p>
-      ) : null}
-
-      <ProductWarrantyBadge product={singleProduct} showDetails />
-    </>
-  );
 
   const purchasePanel = (
     <>
@@ -383,13 +267,11 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
         </Link>
         <ChevronRight className="size-3.5 shrink-0 opacity-50" />
         <Link
-          href="/products"
+          href={`/products${singleProduct.category?.slug ? `?category=${singleProduct.category.slug}` : ""}`}
           className="transition-colors hover:text-foreground"
         >
-          Products
+          {categoryName}
         </Link>
-        <ChevronRight className="size-3.5 shrink-0 opacity-50" />
-        <span className="text-foreground/80">{categoryName}</span>
         <ChevronRight className="size-3.5 shrink-0 opacity-50" />
         <span className="line-clamp-1 font-medium text-foreground">
           {singleProduct.name}
@@ -397,31 +279,22 @@ export function ProductDetailView({ params }: ProductDetailViewProps) {
       </nav>
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
-          <ProductImageGallery
-            images={galleryImages}
-            fallbackAlt={singleProduct.name}
-          />
-          <div className="hidden flex-col gap-5 lg:flex lg:gap-6">
-            {longFormContent}
-          </div>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
-          {purchasePanel}
-          <div className="hidden flex-col gap-5 lg:flex lg:gap-6">
-            {secondaryInfo}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-5 lg:hidden lg:gap-6">
-          {longFormContent}
-        </div>
-
-        <div className="flex flex-col gap-5 lg:hidden lg:gap-6">
-          {secondaryInfo}
-        </div>
+        <ProductImageGallery
+          images={galleryImages}
+          fallbackAlt={singleProduct.name}
+        />
+        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">{purchasePanel}</div>
       </div>
+
+      <ProductDetailTabs
+        product={singleProduct}
+        categoryName={categoryName}
+        categorySlug={singleProduct.category?.slug}
+        inStock={inStock}
+        promotions={storefrontPromotions}
+        now={now}
+        className="mt-12 border-t border-border/60 pt-10 lg:mt-16"
+      />
 
       <div id="product-reviews">
         <ProductReviewSection

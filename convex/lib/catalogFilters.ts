@@ -51,6 +51,7 @@ export type CatalogProduct = {
   categoryId: Id<"productCategories">;
   active?: boolean | null;
   sortOrder?: number | null;
+  _creationTime?: number;
 };
 
 export type PublicFilterArgs = {
@@ -62,7 +63,16 @@ export type PublicFilterArgs = {
   colors?: string[];
   minRating?: number;
   promotions?: PromotionFilterSlug[];
-  sort?: "default" | "lowest" | "highest" | "a-z" | "z-a";
+  inStockOnly?: boolean;
+  sort?:
+    | "default"
+    | "popular"
+    | "newest"
+    | "lowest"
+    | "highest"
+    | "rating"
+    | "a-z"
+    | "z-a";
 };
 
 export type PromotionIndex = Map<
@@ -202,6 +212,10 @@ export function filterCatalogProducts<
     );
   }
 
+  if (args.inStockOnly) {
+    filtered = filtered.filter((p) => p.stock > 0);
+  }
+
   return filtered;
 }
 
@@ -229,6 +243,29 @@ export function sortCatalogProducts<
       break;
     case "z-a":
       sorted.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    case "popular":
+      sorted.sort(
+        (a, b) =>
+          b.reviews - a.reviews ||
+          b.stars - a.stars ||
+          (a.sortOrder ?? Number.MAX_SAFE_INTEGER) -
+            (b.sortOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+      break;
+    case "newest":
+      sorted.sort(
+        (a, b) =>
+          (b._creationTime ?? 0) - (a._creationTime ?? 0)
+      );
+      break;
+    case "rating":
+      sorted.sort(
+        (a, b) =>
+          b.stars - a.stars ||
+          b.reviews - a.reviews ||
+          a.name.localeCompare(b.name)
+      );
       break;
     case "default":
     default:

@@ -23,6 +23,7 @@ type CatalogActiveFiltersProps = {
   onToggleColor: (slug: string) => void;
   onTogglePromotion: (slug: string) => void;
   onClearRating: () => void;
+  onClearInStock?: () => void;
   onClearPrice: () => void;
 };
 
@@ -38,6 +39,7 @@ export function CatalogActiveFilters({
   onToggleColor,
   onTogglePromotion,
   onClearRating,
+  onClearInStock,
   onClearPrice,
 }: CatalogActiveFiltersProps) {
   const chips: ActiveFilterChip[] = [];
@@ -79,6 +81,14 @@ export function CatalogActiveFilters({
       key: "rating",
       label: `${filters.minRating}+ Stars`,
       onRemove: onClearRating,
+    });
+  }
+
+  if (filters.inStockOnly) {
+    chips.push({
+      key: "inStock",
+      label: "In stock",
+      onRemove: () => onClearInStock?.(),
     });
   }
 
