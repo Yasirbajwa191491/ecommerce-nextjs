@@ -104,7 +104,7 @@ export function OrderProgressTimeline({
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute top-[1.625rem] right-[10%] h-0.5 bg-brand-primary transition-all duration-500"
+          className="pointer-events-none absolute top-[1.625rem] left-[10%] h-0.5 bg-brand-primary transition-all duration-500"
           style={{
             width: `${Math.max(0, (activeIndex / (PROGRESS_STEPS.length - 1)) * 80)}%`,
           }}
