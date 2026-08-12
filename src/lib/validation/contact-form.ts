@@ -8,6 +8,7 @@ import {
 export type ContactFormValues = {
   name: string;
   email: string;
+  subject: string;
   message: string;
 };
 
@@ -29,6 +30,9 @@ export function validateContactForm(
 
   const email = validateEmail(values.email);
   if (email) errors.email = email;
+
+  const subjectRequired = validateRequired(values.subject, "Inquiry category");
+  if (subjectRequired) errors.subject = subjectRequired;
 
   const messageRequired = validateRequired(values.message, "Message");
   if (messageRequired) errors.message = messageRequired;

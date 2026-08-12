@@ -4,6 +4,16 @@ import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";
 
+const CONTACT_SUBJECTS = new Set([
+  "order_support",
+  "product_question",
+  "payment_issue",
+  "shipping",
+  "return_refund",
+  "general",
+  "other",
+]);
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeEmail(email: string) {
@@ -18,18 +28,23 @@ export const submit = mutation({
   args: {
     name: v.string(),
     email: v.string(),
+    subject: v.optional(v.string()),
     message: v.string(),
   },
   handler: async (ctx, args) => {
     const name = args.name.trim();
     const email = normalizeEmail(args.email);
     const message = args.message.trim();
+    const subject = args.subject?.trim();
 
     if (name.length < 2 || name.length > 120) {
       throw new ConvexError("Please enter a valid name.");
     }
     if (!isValidEmail(email)) {
       throw new ConvexError("Please enter a valid email address.");
+    }
+    if (subject && !CONTACT_SUBJECTS.has(subject)) {
+      throw new ConvexError("Please choose a valid inquiry category.");
     }
     if (message.length < 10 || message.length > 2000) {
       throw new ConvexError("Message must be between 10 and 2000 characters.");
@@ -38,6 +53,7 @@ export const submit = mutation({
     await ctx.db.insert("contactMessages", {
       name,
       email,
+      subject: subject || "general",
       message,
       submittedAt: Date.now(),
       read: false,
@@ -76,6 +92,7 @@ export const listPaginated = query({
         (message) =>
           message.name.toLowerCase().includes(term) ||
           message.email.toLowerCase().includes(term) ||
+          (message.subject ?? "").toLowerCase().includes(term) ||
           message.message.toLowerCase().includes(term)
       );
     }

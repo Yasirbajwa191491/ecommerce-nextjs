@@ -333,6 +333,7 @@ export default defineSchema({
   contactMessages: defineTable({
     name: v.string(),
     email: v.string(),
+    subject: v.optional(v.string()),
     message: v.string(),
     submittedAt: v.number(),
     read: v.boolean(),

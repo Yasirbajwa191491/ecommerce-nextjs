@@ -97,49 +97,57 @@ export function OrderProgressTimeline({
         })}
       </ol>
 
-      {/* Tablet+ : horizontal progress grid */}
-      <ol
-        className={cn(
-          "hidden w-full grid-cols-5 gap-2 sm:grid md:gap-4",
-          className
-        )}
-      >
-        {PROGRESS_STEPS.map((step, index) => {
-          const isComplete = index < activeIndex;
-          const isCurrent = index === activeIndex;
+      {/* Tablet+ : horizontal progress grid with connectors */}
+      <div className={cn("relative hidden sm:block", className)}>
+        <div
+          className="pointer-events-none absolute top-[1.625rem] right-[10%] left-[10%] h-0.5 bg-border"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute top-[1.625rem] right-[10%] h-0.5 bg-brand-primary transition-all duration-500"
+          style={{
+            width: `${Math.max(0, (activeIndex / (PROGRESS_STEPS.length - 1)) * 80)}%`,
+          }}
+          aria-hidden
+        />
+        <ol className="relative grid w-full grid-cols-5 gap-2 md:gap-4">
+          {PROGRESS_STEPS.map((step, index) => {
+            const isComplete = index < activeIndex;
+            const isCurrent = index === activeIndex;
 
-          return (
-            <li
-              key={step.key}
-              className={cn(
-                "flex min-w-0 flex-col items-center gap-2 rounded-xl border p-3 text-center",
-                isCurrent && "border-[#6254f3] bg-[#6254f3]/5",
-                isComplete && "border-emerald-500/30 bg-emerald-500/5"
-              )}
-            >
-              {isComplete || isCurrent ? (
-                <CheckCircle2
-                  className={cn(
-                    "size-5 shrink-0",
-                    isCurrent ? "text-[#6254f3]" : "text-emerald-600"
-                  )}
-                />
-              ) : (
-                <Circle className="size-5 shrink-0 text-muted-foreground" />
-              )}
-              <span
+            return (
+              <li
+                key={step.key}
                 className={cn(
-                  "text-sm font-medium leading-tight",
-                  isCurrent && "text-[#6254f3]",
-                  !isComplete && !isCurrent && "text-muted-foreground"
+                  "flex min-w-0 flex-col items-center gap-2 rounded-xl border bg-background p-3 text-center",
+                  isCurrent && "border-brand-primary bg-brand-primary/5",
+                  isComplete && "border-emerald-500/30 bg-emerald-500/5"
                 )}
               >
-                {step.label}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+                {isComplete || isCurrent ? (
+                  <CheckCircle2
+                    className={cn(
+                      "size-5 shrink-0",
+                      isCurrent ? "text-brand-primary" : "text-emerald-600"
+                    )}
+                  />
+                ) : (
+                  <Circle className="size-5 shrink-0 text-muted-foreground" />
+                )}
+                <span
+                  className={cn(
+                    "text-sm font-medium leading-tight",
+                    isCurrent && "text-brand-primary",
+                    !isComplete && !isCurrent && "text-muted-foreground"
+                  )}
+                >
+                  {step.label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </>
   );
 }

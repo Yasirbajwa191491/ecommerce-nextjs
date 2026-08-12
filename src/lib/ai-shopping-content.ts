@@ -64,7 +64,7 @@ export const AI_SHOPPING_CAPABILITIES: AiCapability[] = [
     badge: "Personalized",
     title: "Personalized Recommendations",
     description:
-      "Suggestions based on products you view and items in your cart during this browser session — no sign-in required.",
+      "Recommendations can use your current browsing and cart activity without requiring an account.",
     example: "Picks refresh as you browse and add to cart.",
     anchor: "recommendations",
     action: { type: "link", href: "/home", label: "See on homepage" },

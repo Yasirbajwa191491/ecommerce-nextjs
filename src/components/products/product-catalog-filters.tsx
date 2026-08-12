@@ -52,6 +52,8 @@ type ProductCatalogFiltersProps = {
   onClear: () => void;
   className?: string;
   showHeader?: boolean;
+  /** When true, price bounds are still loading from Convex. */
+  priceBoundsLoading?: boolean;
   /** sidebar = desktop sticky panel; sheet = mobile drawer */
   layout?: "sidebar" | "sheet";
 };
@@ -77,6 +79,7 @@ export function ProductCatalogFilters({
   onClear,
   className,
   showHeader = true,
+  priceBoundsLoading = false,
   layout = "sidebar",
 }: ProductCatalogFiltersProps) {
   const isSheet = layout === "sheet";
@@ -91,6 +94,7 @@ export function ProductCatalogFilters({
   );
 
   const sliderDisabled = priceBounds.maxPrice <= priceBounds.minPrice;
+  const showPriceBadge = !priceBoundsLoading && !sliderDisabled;
 
   return (
     <aside
@@ -190,18 +194,24 @@ export function ProductCatalogFilters({
 
         <FilterSidebarSection title="Price range">
           <div className="space-y-3">
-            <div className="flex justify-end">
-              <span
-                className={cn(
-                  "w-fit rounded-full bg-muted px-2.5 py-1 text-foreground tabular-nums",
-                  SHOP_BADGE
-                )}
-              >
-                {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
-                {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
-              </span>
-            </div>
-            {sliderDisabled ? (
+            {priceBoundsLoading ? (
+              <p className={cn("rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground", SHOP_BODY_SM)}>
+                Loading price range…
+              </p>
+            ) : showPriceBadge ? (
+              <div className="flex justify-end">
+                <span
+                  className={cn(
+                    "w-fit rounded-full bg-muted px-2.5 py-1 text-foreground tabular-nums",
+                    SHOP_BADGE
+                  )}
+                >
+                  {formatCurrencyAmount(priceRange[0], DEFAULT_CURRENCY)} –{" "}
+                  {formatCurrencyAmount(priceRange[1], DEFAULT_CURRENCY)}
+                </span>
+              </div>
+            ) : null}
+            {priceBoundsLoading ? null : sliderDisabled ? (
               <p className={cn("rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground", SHOP_BODY_SM)}>
                 Price filters appear once products are available.
               </p>

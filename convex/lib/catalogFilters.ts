@@ -186,10 +186,16 @@ export function filterCatalogProducts<
   }
 
   if (args.minPrice !== undefined) {
-    filtered = filtered.filter((p) => p.price >= args.minPrice!);
+    filtered = filtered.filter(
+      (p) =>
+        calculateFinalPrice(p.price, p.discountPercent ?? 0) >= args.minPrice!
+    );
   }
   if (args.maxPrice !== undefined) {
-    filtered = filtered.filter((p) => p.price <= args.maxPrice!);
+    filtered = filtered.filter(
+      (p) =>
+        calculateFinalPrice(p.price, p.discountPercent ?? 0) <= args.maxPrice!
+    );
   }
 
   if (args.brands?.length) {

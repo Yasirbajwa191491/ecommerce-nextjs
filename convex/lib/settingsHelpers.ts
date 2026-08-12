@@ -4,6 +4,7 @@ import {
   type ReviewReplyStoreContext,
 } from "./ai/reviewReplyPrompt";
 
+const DEFAULT_STORE_NAME = REVIEW_REPLY_STORE_NAME;
 const DEFAULT_STORE_EMAIL = "yasir.sohail@savari.io";
 const DEFAULT_STORE_ADDRESS = "DHA Phase 6 Lahore, Pakistan, 54000";
 
@@ -26,6 +27,12 @@ export async function getLowStockThresholdValue(
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 2;
 }
 
+export async function getStoreNameValue(ctx: QueryCtx | MutationCtx): Promise<string> {
+  const row = await findSettingByKey(ctx, "store_name");
+  const value = row?.value?.trim();
+  return value || DEFAULT_STORE_NAME;
+}
+
 export async function getEmailFromValue(ctx: QueryCtx) {
   const row = await findSettingByKey(ctx, "email_from");
   if (row?.value.trim()) return row.value.trim();
@@ -44,8 +51,9 @@ export async function getReviewReplyStoreContext(
 ): Promise<ReviewReplyStoreContext> {
   const emailRow = await findSettingByKey(ctx, "email");
   const addressRow = await findSettingByKey(ctx, "address");
+  const storeName = await getStoreNameValue(ctx);
   return {
-    storeName: REVIEW_REPLY_STORE_NAME,
+    storeName,
     storeEmail: emailRow?.value?.trim() || DEFAULT_STORE_EMAIL,
     storeAddress: addressRow?.value?.trim() || DEFAULT_STORE_ADDRESS,
   };

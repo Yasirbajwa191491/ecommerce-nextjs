@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HOME_PATH, STORE_NAME } from "@/lib/site";
+import { HOME_PATH } from "@/lib/site";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import { HEADER_STORE_NAME } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ type StoreLogoLinkProps = {
 
 export function StoreLogoLink({ className, onNavigate }: StoreLogoLinkProps) {
   const pathname = usePathname();
+  const { storeName } = useSiteSettings();
   const isHome = pathname === HOME_PATH || pathname === "/";
 
   const handleClick = () => {
@@ -26,14 +28,14 @@ export function StoreLogoLink({ className, onNavigate }: StoreLogoLinkProps) {
     <Link
       href={HOME_PATH}
       onClick={handleClick}
-      aria-label={`${STORE_NAME} — go to homepage`}
+      aria-label={`${storeName} — go to homepage`}
       className={cn(
         "cursor-pointer transition-opacity duration-200 hover:opacity-90",
         HEADER_STORE_NAME,
         className
       )}
     >
-      {STORE_NAME}
+      {storeName}
     </Link>
   );
 }

@@ -6,7 +6,6 @@ import { ContactForm } from "@/components/contact/contact-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { STORE_NAME } from "@/lib/site";
 import {
   SHOP_BODY,
   SHOP_CARD_TITLE,
@@ -28,7 +27,8 @@ type ContactCard = {
 };
 
 export default function ContactPage() {
-  const { address, phone, phoneHref, email, businessHours } = useSiteSettings();
+  const { storeName, address, phone, phoneHref, email, businessHours } =
+    useSiteSettings();
 
   const contactCards: ContactCard[] = [
     {
@@ -70,7 +70,7 @@ export default function ContactPage() {
             <h1 className={cn("mt-4", SHOP_PAGE_TITLE)}>We&apos;re here to help</h1>
             <p className={cn("max-w-2xl", SHOP_PAGE_LEAD)}>
               Questions about an order, product, or partnership? Reach out to
-              the {STORE_NAME} team — we typically respond within 1–2 business
+              the {storeName} team — we typically respond within 1–2 business
               days.
             </p>
           </div>

@@ -14,7 +14,7 @@ export type ActiveProductPromotions = FunctionReturnType<
   typeof api.productPromotions.getActiveForProduct
 >;
 
-type StorefrontPromotionsList = FunctionReturnType<
+export type StorefrontPromotionsList = FunctionReturnType<
   typeof api.productPromotions.listActiveForStorefront
 >;
 

@@ -2,15 +2,23 @@
 
 import { PromotionStorefrontCard } from "@/components/promotions/promotion-storefront-card";
 import { ShopEmptyState } from "@/components/shop/shop-empty-state";
-import { useStorefrontPromotionsList } from "@/hooks/use-storefront-promotions";
+import {
+  useStorefrontPromotionsList,
+  type StorefrontPromotionsList,
+} from "@/hooks/use-storefront-promotions";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { Tag } from "lucide-react";
 import { MotionSkeleton } from "@/components/motion";
 
-export function PromotionsPageView() {
-  const promotions = useStorefrontPromotionsList();
+export function PromotionsPageView({
+  initialPromotions,
+}: {
+  initialPromotions?: StorefrontPromotionsList;
+}) {
+  const promotionsQuery = useStorefrontPromotionsList();
+  const promotions = promotionsQuery ?? initialPromotions;
 
   return (
     <div className={cn("min-h-[60vh] bg-muted/20", CONTENT_SECTION_PADDING_Y)}>

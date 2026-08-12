@@ -27,6 +27,7 @@ type ProductCatalogMobileFiltersProps = {
   categoryId: Id<"productCategories"> | "all";
   onCategoryChange: (value: Id<"productCategories"> | "all") => void;
   priceBounds: { minPrice: number; maxPrice: number };
+  priceBoundsLoading?: boolean;
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
   facets?: FacetData;
@@ -51,6 +52,7 @@ export function ProductCatalogMobileFilters({
   categoryId,
   onCategoryChange,
   priceBounds,
+  priceBoundsLoading = false,
   priceRange,
   onPriceRangeChange,
   facets,
@@ -135,6 +137,7 @@ export function ProductCatalogMobileFilters({
             categoryId={categoryId}
             onCategoryChange={onCategoryChange}
             priceBounds={priceBounds}
+            priceBoundsLoading={priceBoundsLoading}
             priceRange={priceRange}
             onPriceRangeChange={onPriceRangeChange}
             facets={facets}
