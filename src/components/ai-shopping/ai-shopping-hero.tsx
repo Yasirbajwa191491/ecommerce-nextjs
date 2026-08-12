@@ -37,8 +37,8 @@ export function AiShoppingHero() {
           </span>
 
           <h1 className="mt-4 font-heading text-[clamp(1.75rem,4vw,2.75rem)] font-bold leading-[1.12] tracking-tight text-brand-navy">
-            Everything you need.
-            <span className="mt-0.5 block text-foreground/90">Smarter shopping.</span>
+            Everything you need.{" "}
+            <span className="text-foreground/90">Smarter shopping.</span>
           </h1>
 
           <p className="mt-3 max-w-lg text-base leading-relaxed text-muted-foreground xl:max-w-xl">
