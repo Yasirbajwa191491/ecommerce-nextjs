@@ -69,6 +69,23 @@ function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
     case "z-a":
       sorted.sort((a, b) => b.name.localeCompare(a.name));
       break;
+    case "popular":
+      sorted.sort(
+        (a, b) =>
+          b.reviews - a.reviews ||
+          b.stars - a.stars ||
+          (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+      );
+      break;
+    case "newest":
+      sorted.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+      break;
+    case "rating":
+      sorted.sort(
+        (a, b) =>
+          b.stars - a.stars || b.reviews - a.reviews || a.name.localeCompare(b.name)
+      );
+      break;
     default:
       sorted.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       break;
@@ -100,6 +117,7 @@ export default function ProductCatalog() {
     toggleColor,
     togglePromotion,
     setMinRating,
+    setInStockOnly,
     setPriceRange: setPriceRangeInUrl,
     clearPriceRange,
     clearAllFilters,
@@ -151,6 +169,7 @@ export default function ProductCatalog() {
           | "limited_time"
         >)
         : undefined,
+      inStockOnly: filters.inStockOnly || undefined,
       now: catalogNow,
     }),
     [
@@ -293,6 +312,7 @@ export default function ProductCatalog() {
           | "limited_time"
         >)
         : undefined,
+      inStockOnly: filters.inStockOnly || undefined,
       sort,
       now: catalogNow,
     }),
@@ -560,6 +580,8 @@ export default function ProductCatalog() {
               onToggleColor={toggleColor}
               onTogglePromotion={togglePromotion}
               onSelectRating={setMinRating}
+              inStockOnly={filters.inStockOnly}
+              onToggleInStock={setInStockOnly}
               onClear={handleClear}
               layout="sidebar"
             />
@@ -593,6 +615,8 @@ export default function ProductCatalog() {
               onToggleColor={toggleColor}
               onTogglePromotion={togglePromotion}
               onSelectRating={setMinRating}
+              inStockOnly={filters.inStockOnly}
+              onToggleInStock={setInStockOnly}
               onClear={handleClear}
               activeFilterCount={activeFilterCount}
             />
@@ -610,6 +634,7 @@ export default function ProductCatalog() {
                 onToggleColor={toggleColor}
                 onTogglePromotion={togglePromotion}
                 onClearRating={() => setMinRating(undefined)}
+                onClearInStock={() => setInStockOnly(false)}
                 onClearPrice={clearPriceRange}
               />
             </div>

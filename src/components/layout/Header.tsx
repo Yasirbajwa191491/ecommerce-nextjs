@@ -13,6 +13,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { HeaderNav } from "./header-nav";
 import { HeaderSearch, HeaderSearchFallback } from "./header-search";
 import { HeaderCart } from "./header-actions";
+import { HeaderAiButton } from "./header-ai-button";
 import { HeaderMobileMenu } from "./header-mobile-menu";
 
 const HEADER_GUTTER = "clamp(1.25rem, 4vw, 4.8rem)";
@@ -67,7 +68,8 @@ export default function Header() {
             className={HEADER_STORE_NAME_MOBILE}
           />
 
-          <div className="flex shrink-0 items-center gap-2.5 sm:gap-4">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <HeaderAiButton compact />
             <HeaderCart compact />
             <Button
               variant="outline"
@@ -95,8 +97,9 @@ export default function Header() {
           {desktopSearch}
         </div>
 
-        <div className="flex shrink-0 items-center gap-10">
+        <div className="flex shrink-0 items-center gap-6 xl:gap-8">
           <HeaderNav />
+          <HeaderAiButton />
           <HeaderCart />
         </div>
       </div>

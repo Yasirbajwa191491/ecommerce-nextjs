@@ -125,14 +125,25 @@ function matchesActiveFilter(product: { active?: boolean | null }, active: boole
 const sortValidator = v.optional(
   v.union(
     v.literal("default"),
+    v.literal("popular"),
+    v.literal("newest"),
     v.literal("lowest"),
     v.literal("highest"),
+    v.literal("rating"),
     v.literal("a-z"),
     v.literal("z-a")
   )
 );
 
-export type ProductSort = "default" | "lowest" | "highest" | "a-z" | "z-a";
+export type ProductSort =
+  | "default"
+  | "popular"
+  | "newest"
+  | "lowest"
+  | "highest"
+  | "rating"
+  | "a-z"
+  | "z-a";
 
 function sortProducts<
   T extends { name: string; price: number; sortOrder?: number | null },
@@ -226,6 +237,7 @@ const publicFilterArgs = {
   colors: v.optional(v.array(v.string())),
   minRating: v.optional(v.number()),
   promotions: v.optional(v.array(promotionFilterSlugValidator)),
+  inStockOnly: v.optional(v.boolean()),
   sort: sortValidator,
   now: v.number(),
 };
@@ -256,6 +268,7 @@ async function applyPublicFilters<
     categoryId: import("./_generated/dataModel").Id<"productCategories">;
     active?: boolean | null;
     sortOrder?: number | null;
+    _creationTime?: number;
   },
 >(ctx: QueryCtx, products: T[], args: PublicFilterArgs & { now: number }) {
   const promotions = await loadActivePromotions(ctx);

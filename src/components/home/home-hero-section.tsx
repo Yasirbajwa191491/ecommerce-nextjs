@@ -118,12 +118,12 @@ export function HomeHeroSection() {
             variants={fadeUp}
             className={cn("mt-3 max-w-xl text-white sm:mt-3.5", SHOP_HERO_TITLE)}
           >
-            Discover Premium Products For Your Lifestyle
+            Everything you need. Smarter shopping.
           </m.h1>
 
           <m.p variants={fadeIn} className={cn("mt-3 max-w-lg", SHOP_HERO_LEAD)}>
-            Shop curated furniture, electronics, and essentials with secure
-            checkout, fast delivery, and quality you can trust.
+            Discover products with AI-powered search, recommendations, visual
+            discovery, and personalized shopping assistance.
           </m.p>
 
           <m.div
@@ -141,11 +141,11 @@ export function HomeHeroSection() {
             </m.div>
             <m.div whileHover={reduceMotion ? undefined : { scale: 1.02 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
               <Button
-                render={<Link href="/products" />}
+                render={<Link href="/ai-shopping" />}
                 variant="outline"
                 className={HERO_GHOST_BUTTON_CLASS}
               >
-                Browse Categories
+                Explore AI Shopping
               </Button>
             </m.div>
           </m.div>

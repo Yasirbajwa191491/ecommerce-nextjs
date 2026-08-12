@@ -98,6 +98,11 @@ export function useCatalogFilters(categories: ProductCategory[] | undefined) {
     [replaceFilters]
   );
 
+  const setInStockOnly = useCallback(
+    (value: boolean) => replaceFilters({ inStockOnly: value || undefined }),
+    [replaceFilters]
+  );
+
   const setPriceRange = useCallback(
     (minPrice: number, maxPrice: number) =>
       replaceFilters({ minPrice, maxPrice }),
@@ -131,6 +136,7 @@ export function useCatalogFilters(categories: ProductCategory[] | undefined) {
     toggleColor,
     togglePromotion,
     setMinRating,
+    setInStockOnly,
     setPriceRange,
     clearPriceRange,
     clearAllFilters,

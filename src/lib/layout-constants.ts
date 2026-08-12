@@ -21,16 +21,20 @@ export const PARAGRAPH_SPACING = "mb-6 sm:mb-8";
 /** Max width for text-heavy content */
 export const CONTENT_PROSE_WIDTH = "mx-auto max-w-3xl";
 
+/** AI shopping hero + capabilities — uses more horizontal space on large screens */
+export const AI_SHOPPING_WIDE_WIDTH =
+  "mx-auto w-full max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1536px]";
+
 /** Primary CTA — auto width on all breakpoints (matches cart, checkout, about). */
 export const PRIMARY_BUTTON_CLASS =
-  "h-12 w-auto shrink-0 gap-2 rounded-full bg-[#6254f3] px-9 text-base font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] disabled:opacity-50 [&_svg]:!text-white";
+  "h-12 w-auto shrink-0 gap-2 rounded-full bg-brand-primary px-9 text-base font-semibold !text-white shadow-md shadow-brand-primary/25 transition-all hover:bg-brand-primary-hover hover:!text-white hover:shadow-lg active:scale-[0.98] disabled:opacity-50 [&_svg]:!text-white";
 
 export const OUTLINE_BUTTON_CLASS =
-  "h-12 w-auto shrink-0 gap-2 rounded-full border-[#6254f3]/30 px-9 text-base font-semibold text-[#6254f3] transition-colors hover:bg-[#6254f3]/5";
+  "h-12 w-auto shrink-0 gap-2 rounded-full border-brand-primary/30 px-9 text-base font-semibold text-brand-primary transition-colors hover:bg-brand-primary/5";
 
 /** White surface button for purple/dark banners (Shop Now on sale cards). */
 export const SURFACE_BUTTON_CLASS =
-  "h-12 w-auto shrink-0 gap-2 rounded-full border-white bg-white px-9 text-base font-semibold !text-[#6254f3] shadow-md transition-all hover:bg-white/90 hover:!text-[#5548e0] active:scale-[0.98] [&_svg]:!text-[#6254f3]";
+  "h-12 w-auto shrink-0 gap-2 rounded-full border-white bg-white px-9 text-base font-semibold !text-brand-primary shadow-md transition-all hover:bg-white/90 hover:!text-brand-primary-hover active:scale-[0.98] [&_svg]:!text-brand-primary";
 
 /** Ghost button on dark hero/CTA backgrounds. */
 export const GHOST_ON_DARK_BUTTON_CLASS =
@@ -38,14 +42,14 @@ export const GHOST_ON_DARK_BUTTON_CLASS =
 
 /** Larger hero CTAs — Shop Now / Browse Categories on home hero */
 export const HERO_PRIMARY_BUTTON_CLASS =
-  "h-11 w-auto shrink-0 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] sm:h-12 sm:px-9 sm:text-base [&_svg]:size-4 [&_svg]:!text-white sm:[&_svg]:size-5";
+  "h-11 w-auto shrink-0 gap-2 rounded-full bg-brand-primary px-8 text-sm font-semibold !text-white shadow-md shadow-brand-primary/25 transition-all hover:bg-brand-primary-hover hover:!text-white hover:shadow-lg active:scale-[0.98] sm:h-12 sm:px-9 sm:text-base [&_svg]:size-4 [&_svg]:!text-white sm:[&_svg]:size-5";
 
 export const HERO_GHOST_BUTTON_CLASS =
   "h-11 w-auto shrink-0 gap-2 rounded-full border-white/25 bg-white/5 px-8 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white sm:h-12 sm:px-9 sm:text-base";
 
 /** Compact outline for section “View all” links. */
 export const SECTION_ACTION_BUTTON_CLASS =
-  "h-10 w-fit shrink-0 gap-2 self-start rounded-full border-[#6254f3]/30 px-5 text-sm font-semibold text-[#6254f3] hover:bg-[#6254f3]/5 sm:h-11 sm:self-auto sm:px-6 sm:text-base";
+  "h-10 w-fit shrink-0 gap-2 self-start rounded-full border-brand-primary/30 px-5 text-sm font-semibold text-brand-primary hover:bg-brand-primary/5 sm:h-11 sm:self-auto sm:px-6 sm:text-base";
 
 export const BUTTON_ROW_CLASS =
   "flex flex-row flex-wrap items-center justify-center gap-3 md:justify-start";

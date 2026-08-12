@@ -15,7 +15,7 @@ export function BestSellersSection() {
       title="Best Sellers"
       description="Our most popular products based on customer orders and sales volume."
       products={products}
-      action={{ label: "View All Products", href: "/products" }}
+      action={{ label: "View Best Sellers", href: "/products?sort=popular" }}
       background="default"
     />
   );

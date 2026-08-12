@@ -7,6 +7,7 @@ import type { ProductCategory } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@/lib/currencies";
 import {
   buildPriceTicks,
@@ -42,10 +43,12 @@ type ProductCatalogFiltersProps = {
   selectedColorSlugs: string[];
   selectedPromotionSlugs: string[];
   selectedMinRating?: number;
+  inStockOnly?: boolean;
   onToggleBrand: (slug: string) => void;
   onToggleColor: (slug: string) => void;
   onTogglePromotion: (slug: string) => void;
   onSelectRating: (minRating: number | undefined) => void;
+  onToggleInStock?: (value: boolean) => void;
   onClear: () => void;
   className?: string;
   showHeader?: boolean;
@@ -65,10 +68,12 @@ export function ProductCatalogFilters({
   selectedColorSlugs,
   selectedPromotionSlugs,
   selectedMinRating,
+  inStockOnly = false,
   onToggleBrand,
   onToggleColor,
   onTogglePromotion,
   onSelectRating,
+  onToggleInStock,
   onClear,
   className,
   showHeader = true,
@@ -166,6 +171,20 @@ export function ProductCatalogFilters({
               selected={selectedColorSlugs}
               onToggle={onToggleColor}
             />
+            {onToggleInStock ? (
+              <FilterSidebarSection title="Availability">
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg px-1 py-2">
+                  <Checkbox
+                    checked={inStockOnly}
+                    onCheckedChange={(checked) =>
+                      onToggleInStock(checked === true)
+                    }
+                    aria-label="In stock only"
+                  />
+                  <span className={SHOP_BODY_SM}>In stock only</span>
+                </label>
+              </FilterSidebarSection>
+            ) : null}
           </>
         ) : null}
 

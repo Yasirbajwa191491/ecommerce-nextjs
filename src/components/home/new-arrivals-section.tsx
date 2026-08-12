@@ -15,7 +15,7 @@ export function NewArrivalsSection() {
       title="New Arrivals"
       description="Discover the latest additions to our catalog — fresh styles and new essentials."
       products={products}
-      action={{ label: "Shop New In", href: "/products" }}
+      action={{ label: "Shop New In", href: "/products?sort=newest" }}
       background="muted"
     />
   );

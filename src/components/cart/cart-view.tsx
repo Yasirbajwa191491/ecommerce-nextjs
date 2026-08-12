@@ -37,6 +37,11 @@ import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { fadeUp } from "@/lib/motion";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE, SHOP_TABLE_HEAD } from "@/lib/typography";
+import { CartRestoreBanner } from "@/components/cart/cart-restore-banner";
+import { CartRecommendationsSection } from "@/components/cart/cart-recommendations-section";
+import { Suspense } from "react";
+import { resolveCartProductId } from "@/reducer/cartReducer";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
 import { useVapiStorefrontOptional } from "@/providers/vapi-storefront-controller";
 
@@ -57,6 +62,10 @@ export function CartView() {
   const currency = priced?.currency;
   const displaySubtotal = priced?.subtotal ?? total_price;
   const displayTotal = priced?.total ?? total_price;
+  const discountTotal = priced?.discountTotal ?? 0;
+  const cartProductIds = cart
+    .map((item) => resolveCartProductId(item))
+    .filter(Boolean) as Id<"products">[];
 
   const handleClearCart = () => {
     clearCart();
@@ -76,6 +85,10 @@ export function CartView() {
           <ChevronRight className="size-3.5 shrink-0 opacity-50" />
           <span className="font-medium text-foreground">Shopping cart</span>
         </nav>
+
+        <Suspense fallback={null}>
+          <CartRestoreBanner />
+        </Suspense>
 
         {!cart.length ? (
           <>
@@ -107,6 +120,26 @@ export function CartView() {
               >
                 {total_item} {total_item === 1 ? "item" : "items"}
               </Badge>
+            </div>
+
+            {discountTotal > 0 ? (
+              <Alert className="mb-6 border-emerald-200 bg-emerald-50 text-emerald-900">
+                <AlertTitle>You saved on this order</AlertTitle>
+                <AlertDescription>
+                  You saved{" "}
+                  <FormatPrice price={discountTotal} currency={currency} /> on
+                  products and promotions in your cart.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="mb-4">
+              <Link
+                href="/products"
+                className="text-sm font-semibold text-brand-primary hover:underline"
+              >
+                ← Continue shopping
+              </Link>
             </div>
 
             {pricingError ? (
@@ -277,6 +310,11 @@ export function CartView() {
                 />
               </m.aside>
             </div>
+
+            <CartRecommendationsSection
+              productIds={cartProductIds}
+              className="mt-10"
+            />
           </>
         )}
       </section>
