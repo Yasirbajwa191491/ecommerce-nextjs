@@ -113,19 +113,20 @@ export function VisualSearchUpload({
   };
 
   return (
-    <>
-      <Card className={cn("overflow-hidden border-border/80 shadow-sm", className)}>
-        <CardHeader className="border-b bg-muted/30 pb-4">
-          <CardTitle className="text-base font-semibold sm:text-lg">
-            Upload or capture a product photo
-          </CardTitle>
-          <CardDescription>
-            We&apos;ll find visually similar items in our catalog. Add optional
-            text to refine results.
-          </CardDescription>
-        </CardHeader>
+    <Card className={cn("overflow-hidden border-border/80 shadow-sm", className)}>
+      <CardHeader className="border-b bg-muted/30 pb-4">
+        <CardTitle className="text-base font-semibold sm:text-lg">
+          {selectedFile ? "Review your image" : "Upload or capture a product photo"}
+        </CardTitle>
+        <CardDescription>
+          {selectedFile
+            ? "Confirm your upload, optionally refine with text, then search for similar products."
+            : "We'll find visually similar items in our catalog. Add optional text to refine results."}
+        </CardDescription>
+      </CardHeader>
 
-        <CardContent className="space-y-5 pt-5">
+      <CardContent className="space-y-5 pt-5">
+        {!selectedFile ? (
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -140,42 +141,17 @@ export function VisualSearchUpload({
                 : "border-border/80 bg-muted/20"
             )}
           >
-            {previewUrl ? (
-              <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-xl border border-border/60 bg-background shadow-sm">
-                <Image
-                  src={previewUrl}
-                  alt="Upload preview"
-                  fill
-                  className="object-contain p-2"
-                  unoptimized
-                />
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="secondary"
-                  className="absolute top-2 right-2 z-10 size-8 rounded-full shadow-md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    clear();
-                  }}
-                  aria-label="Remove image"
-                >
-                  <X className="size-4" />
-                </Button>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex size-14 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
+                <Upload className="size-7" strokeWidth={1.75} />
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-3 text-center">
-                <div className="flex size-14 items-center justify-center rounded-full bg-[#6254f3]/10 text-[#6254f3]">
-                  <Upload className="size-7" strokeWidth={1.75} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">
-                    Drag and drop an image here
-                  </p>
-                  <p className={SHOP_BODY_SM}>JPG, PNG, WebP or GIF · up to 5MB</p>
-                </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Drag and drop an image here
+                </p>
+                <p className={SHOP_BODY_SM}>JPG, PNG, WebP or GIF · up to 5MB</p>
               </div>
-            )}
+            </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button
@@ -201,82 +177,115 @@ export function VisualSearchUpload({
                 Take photo
               </Button>
             </div>
-
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept={ACCEPT}
-              className="hidden"
-              onChange={onFileInputChange}
-            />
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={onFileInputChange}
-            />
           </div>
-
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label htmlFor="visual-text-query" className={SHOP_META_LABEL}>
-              Refine with text (optional)
-            </Label>
-            <Input
-              id="visual-text-query"
-              value={textQuery}
-              onChange={(e) => setTextQuery(e.target.value)}
-              placeholder='e.g. "under $300", "gold", "wireless"'
-              disabled={isLoading}
-              className="h-10"
-            />
-            <p className={SHOP_BODY_SM}>
-              Combine your photo with price, color, or style keywords.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              className={PRIMARY_BUTTON_CLASS}
-              disabled={!selectedFile || isLoading}
-              onClick={submit}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Searching…
-                </>
-              ) : (
-                <>
-                  <Search className="size-4" />
-                  Search by image
-                </>
-              )}
-            </Button>
-            {selectedFile ? (
+        ) : (
+          <div className="space-y-4 rounded-xl border border-border/60 bg-muted/15 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className={SHOP_META_LABEL}>Uploaded image</p>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={clear}
                 disabled={isLoading}
+                className="h-8 gap-1.5 text-muted-foreground"
               >
-                Clear image
+                <X className="size-3.5" />
+                Remove
               </Button>
-            ) : null}
+            </div>
+            <div className="relative mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-xl border border-border/60 bg-background shadow-sm">
+              {previewUrl ? (
+                <Image
+                  src={previewUrl}
+                  alt="Uploaded product preview"
+                  fill
+                  className="object-contain p-3"
+                  unoptimized
+                />
+              ) : null}
+            </div>
+            <p className={cn("text-center", SHOP_BODY_SM)}>
+              {selectedFile.name} · {(selectedFile.size / 1024).toFixed(0)} KB
+            </p>
           </div>
-        </CardContent>
-      </Card>
-    </>
+        )}
+
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept={ACCEPT}
+          className="hidden"
+          onChange={onFileInputChange}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={onFileInputChange}
+        />
+
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {selectedFile ? (
+          <>
+            <Separator />
+
+            <div className="space-y-2">
+              <Label htmlFor="visual-text-query" className={SHOP_META_LABEL}>
+                Optional refinement
+              </Label>
+              <Input
+                id="visual-text-query"
+                value={textQuery}
+                onChange={(e) => setTextQuery(e.target.value)}
+                placeholder='e.g. "under $300", "gold", "wireless"'
+                disabled={isLoading}
+                className="h-10"
+              />
+              <p className={SHOP_BODY_SM}>
+                Combine your photo with price, color, or style keywords.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                className={PRIMARY_BUTTON_CLASS}
+                disabled={isLoading}
+                onClick={submit}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Searching…
+                  </>
+                ) : (
+                  <>
+                    <Search className="size-4" />
+                    Search visually similar products
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className={OUTLINE_BUTTON_CLASS}
+                onClick={() => uploadInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                Change image
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

@@ -11,7 +11,6 @@ import {
   FOOTER_SHOP_LINKS,
   FOOTER_SUPPORT_LINKS,
   PAYMENT_METHODS,
-  STORE_NAME,
 } from "@/lib/site";
 import { FOOTER_COLUMN_TITLE, FOOTER_LINK } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -71,7 +70,7 @@ function FooterLinkList({
 }
 
 export default function Footer() {
-  const { address, phone, phoneHref, email } = useSiteSettings();
+  const { storeName, address, phone, phoneHref, email } = useSiteSettings();
   const year = new Date().getFullYear();
 
   return (
@@ -176,7 +175,7 @@ export default function Footer() {
           className="mx-auto flex w-full max-w-[1600px] flex-col items-center gap-3 py-5 text-center text-sm text-white/55 sm:flex-row sm:justify-between sm:py-6 sm:text-left sm:text-base"
           style={FOOTER_GUTTER}
         >
-          <p>© {year} {STORE_NAME}. All rights reserved.</p>
+          <p>© {year} {storeName}. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:justify-end">
             {FOOTER_COMPANY_LINKS.map(({ href, label }) => (
               <FooterLink key={label} href={href}>

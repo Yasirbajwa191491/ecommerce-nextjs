@@ -1,8 +1,16 @@
-"use client";
-
+import type { Metadata } from "next";
 import { Suspense } from "react";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "../../../../convex/_generated/api";
 import ProductCatalog from "@/components/products/ProductCatalog";
+import { CatalogSeoSnapshot } from "@/components/products/catalog-seo-snapshot";
 import { MotionSkeleton } from "@/components/motion";
+import { STORE_NAME } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Products",
+  description: `Browse the ${STORE_NAME} catalog — filter by category, price, brand, and more.`,
+};
 
 function ProductsPageFallback() {
   return (
@@ -20,10 +28,38 @@ function ProductsPageFallback() {
   );
 }
 
+async function ProductsCatalogSeo() {
+  try {
+    const now = Date.now();
+    const [priceBounds, firstPage] = await Promise.all([
+      fetchQuery(api.products.getPublicPriceBounds, {}),
+      fetchQuery(api.products.listPublicPaginated, {
+        paginationOpts: { numItems: 12, cursor: null },
+        sort: "default",
+        now,
+      }),
+    ]);
+
+    return (
+      <CatalogSeoSnapshot
+        products={firstPage.page}
+        priceBounds={priceBounds}
+      />
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<ProductsPageFallback />}>
-      <ProductCatalog />
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <ProductsCatalogSeo />
+      </Suspense>
+      <Suspense fallback={<ProductsPageFallback />}>
+        <ProductCatalog />
+      </Suspense>
+    </>
   );
 }

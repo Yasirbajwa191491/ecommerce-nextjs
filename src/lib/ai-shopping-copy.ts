@@ -16,7 +16,7 @@ export const AI_SHOPPING_FAQ = [
   {
     question: "How do personalized recommendations work without an account?",
     answer:
-      "During your visit, we use locally stored browsing history and cart activity to suggest related products. These signals stay on your device unless you place an order, when checkout details can help associate future visits with your purchase history.",
+      "Recommendations can use products you view and items in your cart during this visit — no sign-in required. If you place an order, checkout details can help improve future suggestions on later visits.",
   },
   {
     question: "Can the assistant help with my order?",

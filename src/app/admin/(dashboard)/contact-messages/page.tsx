@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastError, toastSuccess } from "@/lib/app-toast";
+import { contactSubjectLabel } from "@/lib/contact-inquiry-subjects";
 import { Eye, Mail, Trash2 } from "lucide-react";
 
 type ContactMessage = Doc<"contactMessages">;
@@ -116,18 +117,19 @@ export default function AdminContactMessagesPage() {
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search name, email, or message"
+          placeholder="Search name, email, subject, or message"
           className="h-10 w-full sm:max-w-xs"
         />
       </div>
 
       <AdminTableCard>
         <div className="overflow-x-auto">
-          <Table className="min-w-[48rem]">
+          <Table className="min-w-[52rem]">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead className="hidden lg:table-cell">Subject</TableHead>
                 <TableHead className="hidden md:table-cell">Message</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
@@ -138,7 +140,7 @@ export default function AdminContactMessagesPage() {
               {status === "LoadingFirstPage" ? (
                 Array.from({ length: 4 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <Skeleton className="h-8 w-full" />
                     </TableCell>
                   </TableRow>
@@ -146,7 +148,7 @@ export default function AdminContactMessagesPage() {
               ) : messages.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="py-10 text-center text-muted-foreground"
                   >
                     {search
@@ -165,6 +167,11 @@ export default function AdminContactMessagesPage() {
                       >
                         {message.email}
                       </a>
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap lg:table-cell">
+                      <Badge variant="secondary">
+                        {contactSubjectLabel(message.subject)}
+                      </Badge>
                     </TableCell>
                     <TableCell className="hidden max-w-[16rem] truncate text-muted-foreground md:table-cell">
                       {message.message}
@@ -236,6 +243,12 @@ export default function AdminContactMessagesPage() {
                 >
                   {selected.email}
                 </a>
+              </div>
+              <div className="grid gap-1 text-sm">
+                <p className="text-muted-foreground">Subject</p>
+                <Badge variant="secondary" className="w-fit">
+                  {contactSubjectLabel(selected.subject)}
+                </Badge>
               </div>
               <div className="grid gap-1 text-sm">
                 <p className="text-muted-foreground">Submitted</p>

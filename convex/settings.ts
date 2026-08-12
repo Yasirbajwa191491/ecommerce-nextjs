@@ -9,6 +9,7 @@ import { slugify } from "./lib/products";
 import { RECOMMENDATION_SYSTEM_DEFAULTS } from "./lib/recommendations/constants";
 
 export const SYSTEM_SETTING_KEYS = [
+  "store_name",
   "address",
   "phone",
   "email",
@@ -26,6 +27,7 @@ export const SYSTEM_SETTING_KEYS = [
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
+  "store_name",
   "address",
   "phone",
   "email",
@@ -44,6 +46,11 @@ export const SYSTEM_DEFAULTS: {
   name: string;
   value: string;
 }[] = [
+  {
+    key: "store_name",
+    name: "Store Name",
+    value: "Ecommerce Store",
+  },
   {
     key: "address",
     name: "Address",
@@ -403,6 +410,9 @@ export const getPublicBranding = internalQuery({
     }
 
     return {
+      storeName:
+        map.store_name ??
+        SYSTEM_DEFAULTS.find((s) => s.key === "store_name")!.value,
       address: map.address ?? SYSTEM_DEFAULTS.find((s) => s.key === "address")!.value,
       phone: map.phone ?? SYSTEM_DEFAULTS.find((s) => s.key === "phone")!.value,
       email: map.email ?? SYSTEM_DEFAULTS.find((s) => s.key === "email")!.value,

@@ -486,6 +486,7 @@ export default function ProductCatalog() {
   };
 
   const bounds = priceBounds ?? { minPrice: 0, maxPrice: 0 };
+  const priceBoundsLoading = priceBounds === undefined;
 
   const categoryName =
     categoryId === "all"
@@ -569,6 +570,7 @@ export default function ProductCatalog() {
               categoryId={categoryId}
               onCategoryChange={setCategoryId}
               priceBounds={bounds}
+              priceBoundsLoading={priceBoundsLoading}
               priceRange={priceRange}
               onPriceRangeChange={handlePriceRangeChange}
               facets={facets}
@@ -604,6 +606,7 @@ export default function ProductCatalog() {
               categoryId={categoryId}
               onCategoryChange={setCategoryId}
               priceBounds={bounds}
+              priceBoundsLoading={priceBoundsLoading}
               priceRange={priceRange}
               onPriceRangeChange={handlePriceRangeChange}
               facets={facets}

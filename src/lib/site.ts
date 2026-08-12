@@ -1,14 +1,16 @@
-export const STORE_NAME = "Ecommerce Store";
+import { DEFAULT_STORE_CONTACT, DEFAULT_STORE_NAME } from "@/lib/store-defaults";
+
+export const STORE_NAME = DEFAULT_STORE_NAME;
 
 /** Canonical storefront homepage path. */
 export const HOME_PATH = "/home" as const;
 
 export const CONTACT_INFO = {
-  address: "DHA Phase 6 Lahore, Pakistan, 54000",
-  phone: "+1 (800) 555-0199",
+  address: DEFAULT_STORE_CONTACT.address,
+  phone: DEFAULT_STORE_CONTACT.phone,
   phoneHref: "tel:+18005550199",
-  email: "yasir.sohail@savari.io",
-  hours: "Mon – Fri, 9:00 AM – 6:00 PM (PKT)",
+  email: DEFAULT_STORE_CONTACT.email,
+  hours: DEFAULT_STORE_CONTACT.business_hours,
 } as const;
 
 export const NAV_LINKS = [

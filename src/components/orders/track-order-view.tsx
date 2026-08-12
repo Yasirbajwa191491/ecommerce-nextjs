@@ -116,6 +116,9 @@ function CustomerOrderCard({ order }: { order: PublicOrderSummary }) {
           </Button>
         </div>
       </div>
+      <div className="mt-4 border-t border-border/60 pt-4">
+        <OrderProgressTimeline status={order.status} />
+      </div>
     </div>
   );
 }

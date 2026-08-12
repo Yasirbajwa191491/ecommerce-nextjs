@@ -25,10 +25,19 @@ import {
   validateContactForm,
   type ContactFormValues,
 } from "@/lib/validation/contact-form";
+import { CONTACT_INQUIRY_SUBJECTS } from "@/lib/contact-inquiry-subjects";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const emptyForm = (): ContactFormValues => ({
   name: "",
   email: "",
+  subject: "",
   message: "",
 });
 
@@ -87,6 +96,7 @@ export function ContactForm() {
       await submit({
         name: form.name.trim(),
         email: form.email.trim(),
+        subject: form.subject,
         message: form.message.trim(),
       });
       toastSuccess("Message sent!", {
@@ -163,6 +173,40 @@ export function ContactForm() {
               aria-invalid={!!validation.fieldError("email")}
               className={invalidInputClass(validation.fieldError("email"))}
             />
+          </ContactFormField>
+
+          <ContactFormField
+            label="Reason for contacting"
+            htmlFor="contact-subject"
+            error={validation.fieldError("subject")}
+            required
+          >
+            <Select
+              value={form.subject || undefined}
+              onValueChange={(value) => {
+                setForm((current) => ({ ...current, subject: value ?? "" }));
+                validation.touch("subject");
+              }}
+              disabled={submitting}
+            >
+              <SelectTrigger
+                id="contact-subject"
+                aria-invalid={!!validation.fieldError("subject")}
+                className={cn(
+                  "h-10 w-full",
+                  invalidInputClass(validation.fieldError("subject"))
+                )}
+              >
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CONTACT_INQUIRY_SUBJECTS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </ContactFormField>
 
           <ContactFormField

@@ -5,7 +5,6 @@ import { HomeHeroSection } from "@/components/home/home-hero-section";
 import { ShopByCategorySection } from "@/components/home/shop-by-category-section";
 import { BestSellersSection } from "@/components/home/best-sellers-section";
 import { SpecialPromotionsSection } from "@/components/home/special-promotions-section";
-import { RecentlyViewedSection } from "@/components/home/recently-viewed-section";
 import { NewArrivalsSection } from "@/components/home/new-arrivals-section";
 import { WhyChooseUsSection } from "@/components/home/why-choose-us-section";
 import { CustomerReviewsSection } from "@/components/home/customer-reviews-section";
@@ -62,15 +61,10 @@ export function HomePageView() {
       <ShopByCategorySection />
       <BestSellersSection />
       <SpecialPromotionsSection />
-      <RecentlyViewedSection />
       <RecommendationBand sectionType="trending_in_interests" />
+      <RecommendationBand sectionType="because_you_viewed" />
       <NewArrivalsSection />
       <AiShoppingSection />
-      <RecommendationBand sectionType="continue_shopping" />
-      <RecommendationBand sectionType="recently_viewed" />
-      <RecommendationBand sectionType="because_you_bought" />
-      <RecommendationBand sectionType="because_you_viewed" />
-      <RecommendationBand sectionType="ai_suggested" />
       <WhyChooseUsSection />
       <CustomerReviewsSection />
       <ConversionTrustStrip />

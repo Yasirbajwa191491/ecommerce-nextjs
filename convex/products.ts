@@ -346,7 +346,9 @@ export const getPublicPriceBounds = query({
     if (products.length === 0) {
       return { minPrice: 0, maxPrice: 0 };
     }
-    const prices = products.map((p) => p.price);
+    const prices = products.map((p) =>
+      calculateFinalPrice(p.price, p.discountPercent ?? 0)
+    );
     return {
       minPrice: Math.min(...prices),
       maxPrice: Math.max(...prices),

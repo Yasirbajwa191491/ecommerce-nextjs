@@ -16,8 +16,6 @@ import { getPrimaryImageUrl } from "./lib/productImages";
 import { BATCH_SIZE } from "./lib/campaignQueue";
 import { generateUnsubscribeToken } from "./lib/subscriberTokens";
 
-const STORE_NAME = "Ecommerce Store";
-
 function resendFailureMessage(message: string, to: string, from: string) {
   const lower = message.toLowerCase();
   if (
@@ -157,7 +155,7 @@ export const sendOrderConfirmation = internalAction({
           })),
           trackOrderUrl,
           supportUrl: `${appUrl}/contact`,
-          storeName: STORE_NAME,
+          storeName: branding.storeName,
           supportEmail: branding.email,
           supportPhone: branding.phone,
           supportAddress: branding.address,
@@ -247,7 +245,7 @@ export const sendReviewInvitation = internalAction({
           customerName: order.customerName,
           orderNumber: order.orderNumber,
           reviewUrl,
-          storeName: STORE_NAME,
+          storeName: branding.storeName,
           supportEmail: branding.email,
           supportPhone: branding.phone,
           supportAddress: branding.address,
@@ -340,7 +338,7 @@ export const processCampaignBatch = internalAction({
         subscriberEmail: subscriber.email,
         unsubscribeToken: token,
         siteUrl,
-        companyName: STORE_NAME,
+        companyName: branding.storeName,
         companyEmail: branding.email,
         companyPhone: branding.phone,
         companyAddress: branding.address,
@@ -391,7 +389,7 @@ export const processCampaignBatch = internalAction({
             headline: campaign.headline,
             productPromoText: campaign.productPromoText,
             ctaText: campaign.ctaText,
-            companyName: STORE_NAME,
+            companyName: branding.storeName,
             companyEmail: branding.email,
             companyPhone: branding.phone,
             companyAddress: branding.address,
