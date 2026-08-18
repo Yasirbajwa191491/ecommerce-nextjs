@@ -15,8 +15,20 @@ const config: ExpoConfig = {
   android: {
     package: "com.yasir.ecommerce",
     adaptiveIcon: {
-      backgroundColor: "#ffffff",
+      backgroundColor: "#6254f3",
     },
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "ecommerce",
+          },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
   },
   plugins: ["expo-router"],
   experiments: {
@@ -24,6 +36,9 @@ const config: ExpoConfig = {
   },
   extra: {
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
+    router: {
+      origin: false,
+    },
   },
 };
 

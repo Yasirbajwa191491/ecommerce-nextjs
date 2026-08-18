@@ -28,17 +28,24 @@
     "vapi:setup:prod": "node scripts/setup-vapi-production.mjs",
     "ui:add": "npm run ui:add --workspace @ecommerce/web",
     "typecheck": "npm run typecheck --workspace @ecommerce/web",
-    "dev:mobile": "npm run start --workspace @ecommerce/mobile",
-    "mobile": "npm run start --workspace @ecommerce/mobile",
+    "dev:mobile": "node scripts/mobile-start.mjs",
+    "mobile": "node scripts/mobile-start.mjs",
+    "mobile:tunnel": "node scripts/mobile-start.mjs --tunnel",
     "mobile:env": "node scripts/sync-mobile-env.mjs",
     "typecheck:mobile": "npm run typecheck --workspace @ecommerce/mobile",
-    "typecheck:all": "npm run typecheck && npm run typecheck:mobile"
+    "typecheck:all": "npm run typecheck && npm run typecheck:mobile",
+    "lint:mobile": "npm run lint --workspace @ecommerce/mobile",
+    "validate:mobile": "npm run validate --workspace @ecommerce/mobile"
   },
   "dependencies": {
+    "ajv": "^8.20.0",
     "convex": "^1.40.0"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5",
     "typescript": "^5"
+  },
+  "overrides": {
+    "lan-network": "^0.1.6"
   }
 }
