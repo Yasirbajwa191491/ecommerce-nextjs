@@ -1,0 +1,272 @@
+"use client";
+
+import Link from "next/link";
+import { m, useReducedMotion } from "framer-motion";
+import { productPath } from "@/lib/product-url";
+import { getPrimaryImageUrl, getPrimaryImageAlt, orderImagesForDisplay } from "@/lib/product-images";
+import { Product } from "@/types/product";
+import type { Id } from "@convex/_generated/dataModel";
+import { useProductPromotionBadge } from "@/context/product-promotion-badges-context";
+import { ProductPromotionImageOverlay } from "@/components/promotions/product-promotion-image-overlay";
+import { useStableNow } from "@/hooks/use-stable-now";
+import { ProductImageGallery } from "@/components/products/product-image-gallery";
+import { ProductImageFrame } from "@/components/products/product-image-frame";
+import { ProductPrice } from "@/components/products/product-price";
+import { ProductDiscountBadge } from "@/components/products/product-discount-badge";
+import { ProductShippingBadge } from "@/components/products/product-shipping-badge";
+import { ProductStockBadge } from "@/components/products/product-stock-badge";
+import { ProductCardActions } from "@/components/products/product-card-actions";
+import { ProductRatingDisplay } from "@/components/reviews/product-rating-display";
+import { MotionHoverImage } from "@/components/motion";
+import { cardTap, fadeUp } from "@/lib/motion";
+import { hoverOrchestrator, hoverShadowGlow } from "@/lib/motion/image-card-hover";
+import { viewportReveal } from "@/lib/motion/transitions";
+import {
+  PRODUCT_CARD_BRAND,
+  PRODUCT_CARD_CATEGORY,
+  PRODUCT_CARD_NAME,
+  PRODUCT_CARD_RATING,
+  SHOP_BODY_SM,
+} from "@/lib/typography";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
+
+type ProductCardProps = Product & {
+  view?: "grid" | "list";
+  animateEntrance?: boolean;
+  aiRecommended?: boolean;
+};
+
+export default function ProductCard({
+  view = "grid",
+  animateEntrance = true,
+  aiRecommended = false,
+  ...product
+}: ProductCardProps) {
+  const reduceMotion = useReducedMotion();
+  const now = useStableNow();
+  const promotionBadge = useProductPromotionBadge(product._id as Id<"products">);
+  const imageUrl = getPrimaryImageUrl(product);
+  const imageAlt = getPrimaryImageAlt(product);
+  const displayImages = orderImagesForDisplay(product);
+  const hoverImageUrl =
+    displayImages.length > 1 ? displayImages[1].url : undefined;
+  const categoryName = product.category?.name ?? "Product";
+  const discountPercent = product.discountPercent ?? 0;
+  const freeShipping = product.shipping === true;
+
+  const entranceProps = reduceMotion
+    ? {}
+    : {
+        initial: animateEntrance ? ("hidden" as const) : false,
+        whileInView: animateEntrance ? ("visible" as const) : undefined,
+        viewport: viewportReveal,
+        variants: fadeUp,
+        style: { willChange: "transform, opacity" as const },
+      };
+
+  const hoverShellProps = reduceMotion
+    ? {}
+    : {
+        initial: "rest" as const,
+        whileHover: "hover" as const,
+        animate: "rest" as const,
+        variants: hoverOrchestrator,
+      };
+
+  const aiHighlightClass = aiRecommended
+    ? "ring-2 ring-primary/50 shadow-md shadow-primary/10 ai-product-highlight"
+    : "";
+
+  if (view === "list") {
+    return (
+      <m.div
+        data-product-id={product._id}
+        className={cn(
+          "group flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-500 hover:border-[#6254f3]/30 hover:shadow-md sm:p-5 lg:flex-row lg:items-start lg:gap-5 xl:gap-6",
+          aiHighlightClass
+        )}
+        {...entranceProps}
+        whileTap={reduceMotion ? undefined : cardTap}
+      >
+        <div className="mx-auto w-fit max-w-full shrink-0 lg:mx-0 relative">
+          {aiRecommended ? (
+            <Badge className="absolute left-2 top-2 z-20 gap-1 rounded-full bg-primary text-primary-foreground shadow-sm">
+              <Sparkles className="size-3" />
+              Recommended by AI
+            </Badge>
+          ) : null}
+          <ProductImageGallery
+            variant="list"
+            images={displayImages}
+            fallbackAlt={product.name}
+            overlay={
+              promotionBadge ? (
+                <ProductPromotionImageOverlay
+                  badge={promotionBadge}
+                  variant="compact"
+                  now={now}
+                  className="rounded-b-xl"
+                />
+              ) : undefined
+            }
+          />
+        </div>
+
+        <Link
+          href={productPath(product._id)}
+          className="flex w-full min-w-0 flex-1 flex-col gap-3 sm:gap-4 lg:w-auto lg:flex-row lg:items-center lg:gap-5 xl:gap-6"
+        >
+          <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <span
+                className={cn(
+                  "rounded-full bg-[#6254f3]/10 px-2.5 py-0.5 text-[#6254f3]",
+                  PRODUCT_CARD_CATEGORY
+                )}
+              >
+                {categoryName}
+              </span>
+              <span className={PRODUCT_CARD_BRAND}>{product.company}</span>
+            </div>
+            <h3 className={cn("line-clamp-1 min-h-0", PRODUCT_CARD_NAME)}>
+              {product.name}
+            </h3>
+            {product.description ? (
+              <p className={cn("line-clamp-2", SHOP_BODY_SM)}>
+                {product.description}
+              </p>
+            ) : null}
+            <ProductRatingDisplay
+              rating={product.stars}
+              reviewCount={product.reviews}
+              compact
+              className={PRODUCT_CARD_RATING}
+            />
+            <ProductStockBadge stock={product.stock} variant="list" />
+          </div>
+
+          <div className="flex w-full min-w-0 shrink-0 flex-row items-center justify-between gap-3 border-t border-border/50 pt-3 lg:w-36 lg:flex-col lg:items-end lg:justify-center lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5 lg:text-right xl:w-40 xl:pl-6">
+            <ProductPrice
+              price={product.price}
+              discountPercent={discountPercent}
+              currency={product.currency}
+              className="lg:justify-end"
+            />
+            <div className="flex flex-wrap justify-end gap-1">
+              <ProductDiscountBadge discountPercent={discountPercent} />
+              <ProductShippingBadge
+                freeShipping={freeShipping}
+                shippingCharges={product.shippingCharges}
+                currency={product.currency}
+                variant="compact"
+              />
+            </div>
+          </div>
+        </Link>
+      </m.div>
+    );
+  }
+
+  return (
+    <m.div
+      data-product-id={product._id}
+      className={cn(
+        "group h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm",
+        "transition-[border-color] duration-500 hover:border-brand-primary/20",
+        aiHighlightClass
+      )}
+      {...entranceProps}
+      whileTap={reduceMotion ? undefined : cardTap}
+    >
+      <m.div
+        initial={reduceMotion ? false : "rest"}
+        whileHover={reduceMotion ? undefined : "hover"}
+        animate="rest"
+        variants={reduceMotion ? undefined : hoverOrchestrator}
+        className="flex h-full flex-col"
+      >
+        <m.div
+          variants={reduceMotion ? undefined : hoverShadowGlow}
+          className="flex h-full flex-col rounded-2xl"
+        >
+          <div className="relative shrink-0 overflow-hidden">
+            <ProductCardActions product={product} />
+            {aiRecommended ? (
+              <Badge className="absolute left-3 top-3 z-20 gap-1 rounded-full bg-brand-primary text-white shadow-sm">
+                <Sparkles className="size-3" />
+                AI Pick
+              </Badge>
+            ) : null}
+            <Link href={productPath(product._id)} className="block">
+              <MotionHoverImage className="relative w-full">
+                <ProductImageFrame
+                  src={imageUrl}
+                  alt={imageAlt}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  interactive={false}
+                  variant="catalog"
+                  className="rounded-none"
+                />
+                {hoverImageUrl ? (
+                  <ProductImageFrame
+                    src={hoverImageUrl}
+                    alt={`${product.name} alternate view`}
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    interactive={false}
+                    variant="catalog"
+                    className="absolute inset-0 rounded-none opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  />
+                ) : null}
+              </MotionHoverImage>
+            </Link>
+            <span className={cn("pointer-events-none absolute top-3 right-3 z-10", PRODUCT_CARD_CATEGORY)}>
+              {categoryName}
+            </span>
+            {(discountPercent > 0 || freeShipping) && (
+              <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1">
+                <ProductDiscountBadge discountPercent={discountPercent} />
+                {freeShipping ? (
+                  <ProductShippingBadge
+                    freeShipping
+                    currency={product.currency}
+                    variant="compact"
+                  />
+                ) : null}
+              </div>
+            )}
+            {promotionBadge ? (
+              <ProductPromotionImageOverlay badge={promotionBadge} now={now} />
+            ) : null}
+          </div>
+
+          <Link
+            href={productPath(product._id)}
+            className="flex min-h-[9rem] flex-1 flex-col gap-2.5 p-4 sm:p-5"
+          >
+            <p className={PRODUCT_CARD_BRAND}>{product.company}</p>
+            <h3 className={PRODUCT_CARD_NAME}>{product.name}</h3>
+            <ProductRatingDisplay
+              rating={product.stars}
+              reviewCount={product.reviews}
+              size="md"
+              className={PRODUCT_CARD_RATING}
+            />
+            <div className="flex w-fit max-w-full flex-wrap items-start gap-2">
+              <ProductStockBadge stock={product.stock} variant="compact" />
+            </div>
+            <div className="mt-auto border-t border-border/50 pt-3">
+              <ProductPrice
+                price={product.price}
+                discountPercent={discountPercent}
+                currency={product.currency}
+                size="lg"
+              />
+            </div>
+          </Link>
+        </m.div>
+      </m.div>
+    </m.div>
+  );
+}

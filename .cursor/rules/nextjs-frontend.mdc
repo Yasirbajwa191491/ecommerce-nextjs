@@ -1,6 +1,6 @@
 ---
 description: Next.js App Router and Convex client patterns
-globs: src/**
+globs: apps/web/src/**
 alwaysApply: false
 ---
 
@@ -10,8 +10,8 @@ alwaysApply: false
 
 - **Server Components** by default; `"use client"` only when using hooks, Convex, or browser APIs
 - Convex hooks (`useQuery`, `useMutation`) only in **client** components
-- Route groups: shop pages under `src/app/(shop)/`; shared layout uses `AppProviders`
-- Use `next/link` and `next/image` (configure `remotePatterns` in `next.config.ts`)
+- Route groups: shop pages under `apps/web/src/app/(shop)/`; shared layout uses `AppProviders`
+- Use `next/link` and `next/image` (configure `remotePatterns` in `apps/web/next.config.ts`)
 
 ## Convex client
 

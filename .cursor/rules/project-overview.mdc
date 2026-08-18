@@ -7,13 +7,15 @@ alwaysApply: true
 
 - **Path:** `ecommerce-nextjs/` (lowercase folder at repo root)
 - **Stack:** Next.js 16 App Router, Convex (realtime), shadcn/ui + Tailwind v4, TypeScript strict
+- **Monorepo:** Web `apps/web` · Mobile `apps/mobile` · Shared `packages/shared` · Backend `convex/`
 - **Legacy reference:** React app in `../client/` — port behavior, do not break Convex patterns
 
 ## Commands
 
-- Dev: `npm run dev` (Next.js + `convex dev`)
+- Dev: `npm run dev` (Next.js in `apps/web` + `convex dev`)
+- Mobile: `npm run mobile:env` then `npm run mobile` (Expo + same Convex backend)
 - Seed: `npm run seed`
-- Add UI: `npm run ui:add <component>` or `npx shadcn@latest add <name>`
+- Add UI: `npm run ui:add <component>` (runs in `apps/web`)
 
 ## Providers
 

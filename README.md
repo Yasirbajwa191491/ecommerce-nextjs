@@ -2,7 +2,14 @@
 
 Rebuild of `../client` (React) with **Next.js 16** and **Convex** realtime backend.
 
-**Project folder:** `ecommerce-nextjs` (lowercase, at repo root).
+**Project folder:** `ecommerce-nextjs` (lowercase). npm workspaces monorepo:
+
+```
+apps/web/          Next.js storefront + admin
+apps/mobile/       Expo app
+packages/shared/   shared helpers
+convex/            shared backend
+```
 
 ## Convex
 
@@ -38,7 +45,7 @@ Open http://localhost:3000/home
 
 ## Deploy to Vercel
 
-1. Import the repo in Vercel and set **Root Directory** to `ecommerce-nextjs`.
+1. Import the repo in Vercel and set **Root Directory** to `apps/web` (this folder is the Git repo root). If the GitHub repo is the parent `Ecommerce-website` folder, set Root Directory to `ecommerce-nextjs/apps/web`.
 2. In the Convex dashboard, create a **production** deployment and generate a **Production deploy key**.
 3. Generate a **Preview deploy key** for PR preview backends.
 4. In Vercel → **Environment Variables** (required):
@@ -52,10 +59,10 @@ Open http://localhost:3000/home
 6. Deploy. The build runs `npm run build:vercel`, which:
    - Resolves `SITE_URL` (preview: `https://<branch>.vercel.app`, production: production domain)
    - Syncs `SITE_URL` to the target Convex deployment
-   - Runs `npx convex deploy` + `next build`
+   - Runs `npx convex deploy` + `next build` for `@ecommerce/web`
    - Seeds admin + system settings if missing (`seed:seedAdminAndSettings`)
 
-`vercel.json` sets the build command automatically. For a custom domain, set `SITE_URL` in Vercel Production env vars.
+`apps/web/vercel.json` installs from the monorepo root and runs `npm run build:vercel`. For a custom domain, set `SITE_URL` in Vercel Production env vars.
 
 ### Admin (Better Auth)
 
@@ -68,6 +75,26 @@ Open http://localhost:3000/home
 
 `useQuery(api.products.list)` subscribes to Convex — catalog updates appear instantly in every browser.
 
+## Monorepo
+
+npm workspaces. The **website stays the same product** — it now lives in `apps/web` so it follows the same pattern as mobile.
+
+| Path | Purpose |
+|------|---------|
+| `apps/web/` | Next.js storefront + admin (`@ecommerce/web`) |
+| `apps/mobile/` | Expo + React Native storefront (`@ecommerce/mobile`) |
+| `packages/shared/` | Shared constants/helpers (web + mobile) |
+| `convex/` | Shared backend (one deployment for both apps) |
+
+```bash
+npm install                  # installs all workspaces
+npm run dev                  # Next.js (apps/web) + Convex
+npm run mobile:env           # copies CONVEX URL from .env.local → apps/mobile/.env
+npm run mobile               # Expo — scan QR with Expo Go
+npm run typecheck            # web TypeScript
+npm run typecheck:mobile     # mobile TypeScript
+```
+
 ## Routes
 
 - `/home` — featured products
@@ -77,7 +104,7 @@ Open http://localhost:3000/home
 
 ## shadcn/ui
 
-All shared UI lives in `src/components/ui/` (55+ components). Import from `@/components/ui` or specific files.
+All shared UI lives in `apps/web/src/components/ui/` (55+ components). Import from `@/components/ui` or specific files.
 
 ```tsx
 import { Button, Input, Card, Alert } from "@/components/ui";

@@ -15,6 +15,7 @@ node_modules/
 
 # next.js
 .next/
+apps/web/.next/
 out/
 
 #posts
@@ -46,6 +47,11 @@ next-env.d.ts
 
 # convex generated local state
 .convex/
+
+# expo (mobile app)
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
 
 # AI worker — model caches and heavy runtime data
 services/review-ai-worker/node_modules/

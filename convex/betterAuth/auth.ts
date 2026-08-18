@@ -6,7 +6,7 @@ import type { BetterAuthOptions } from "better-auth";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import authConfig from "../auth.config";
-import { OTP_EXPIRES_SECONDS } from "../../src/lib/otp-config";
+import { OTP_EXPIRES_SECONDS } from "../../apps/web/src/lib/otp-config";
 import schema from "./schema";
 
 const ac = createAccessControl({
