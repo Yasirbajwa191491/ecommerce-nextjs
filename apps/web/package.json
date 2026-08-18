@@ -11,9 +11,9 @@
     "ui:add": "shadcn add"
   },
   "dependencies": {
-    "@ecommerce/shared": "*",
     "@base-ui/react": "^1.5.0",
     "@convex-dev/better-auth": "^0.12.2",
+    "@ecommerce/shared": "*",
     "@react-email/components": "^1.0.12",
     "@tailwindcss/postcss": "^4.3.0",
     "@tiptap/extension-image": "^3.26.0",
@@ -33,6 +33,7 @@
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.40.0",
+    "happy-dom": "^20.11.2",
     "input-otp": "^1.4.2",
     "libphonenumber-js": "^1.13.6",
     "lucide-react": "^1.17.0",
