@@ -2,6 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "skipLibCheck": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./*"],
       "@ecommerce/shared": ["../../packages/shared/src/index.ts"],
@@ -14,5 +17,6 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "../../convex/_generated/**/*.ts"
-  ]
+  ],
+  "exclude": ["node_modules"]
 }
