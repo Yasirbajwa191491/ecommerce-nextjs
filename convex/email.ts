@@ -5,9 +5,9 @@ import { internalAction } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/components";
-import { OtpEmail } from "../src/emails/otp-email";
-import { CampaignEmail } from "../src/emails/campaign-email";
-import { OTP_EXPIRES_MINUTES } from "../src/lib/otp-config";
+import { OtpEmail } from "../apps/web/src/emails/otp-email";
+import { CampaignEmail } from "../apps/web/src/emails/campaign-email";
+import { OTP_EXPIRES_MINUTES } from "../apps/web/src/lib/otp-config";
 import type { Doc } from "./_generated/dataModel";
 import { getSiteUrl } from "./lib/siteUrl";
 import { applyEmailPlaceholders, buildPlaceholderContext } from "./lib/emailPlaceholders";
@@ -117,7 +117,7 @@ export const sendOrderConfirmation = internalAction({
       const appUrl = getSiteUrl();
       const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
       const { OrderConfirmationEmail } = await import(
-        "../src/emails/order-confirmation-email"
+        "../apps/web/src/emails/order-confirmation-email"
       );
 
       const orderDate = new Intl.DateTimeFormat("en-US", {
@@ -237,7 +237,7 @@ export const sendReviewInvitation = internalAction({
       const reviewUrl = `${appUrl}/track-order/${encodeURIComponent(order.orderNumber)}`;
       const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
       const { ReviewInvitationEmail } = await import(
-        "../src/emails/review-invitation-email"
+        "../apps/web/src/emails/review-invitation-email"
       );
 
       const html = await render(

@@ -23,9 +23,9 @@ const buildEnv = {
 
 trySyncConvexSiteUrl(siteUrl, process.env);
 
-console.log("[vercel-build] Deploying Convex and building Next.js...");
+console.log("[vercel-build] Deploying Convex and building Next.js (apps/web)...");
 execSync(
-  'npx convex deploy --cmd "next build" --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --preview-run "seed:seedAdminAndSettings"',
+  'npx convex deploy --cmd "npm run build --workspace @ecommerce/web" --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --preview-run "seed:seedAdminAndSettings"',
   { stdio: "inherit", env: buildEnv }
 );
 
