@@ -130,12 +130,23 @@ export default function VisualSearchScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.heroIconWrap}>
-        <Ionicons name="scan-outline" size={40} color={colors.primary} />
+        <Ionicons name="camera-outline" size={40} color={colors.primary} />
       </View>
       <Text style={styles.heroTitle}>Find products from a photo</Text>
       <Text style={styles.heroCopy}>
-        Upload a photo or take a picture to discover products that look similar.
+        Upload a photo and we&apos;ll find visually similar products.
       </Text>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Choose a photo from your library"
+        onPress={() => void handlePick("library")}
+        style={({ pressed }) => [styles.uploadArea, pressed && styles.uploadAreaPressed]}
+      >
+        <Ionicons name="cloud-upload-outline" size={32} color={colors.primary} />
+        <Text style={styles.uploadTitle}>Tap to upload a photo</Text>
+        <Text style={styles.uploadHint}>JPG or PNG · product clearly visible</Text>
+      </Pressable>
 
       <View style={styles.actions}>
         <Button
@@ -293,9 +304,14 @@ export default function VisualSearchScreen() {
         <EmptyState
           compact
           icon="search-outline"
-          title="Couldn't find a close match"
-          description="Try another photo with the product clearly visible, or refine your search."
+          title="We couldn't find a close match"
+          description="Try another photo, use a clearer image, or shoot from a different angle."
         >
+          <View style={styles.emptyTips}>
+            <Text style={styles.emptyTip}>• Try another photo</Text>
+            <Text style={styles.emptyTip}>• Use a clearer image</Text>
+            <Text style={styles.emptyTip}>• Try a different angle</Text>
+          </View>
           <View style={styles.emptyResultsActions}>
             <Button label="Try another photo" onPress={handleSearchAgain} />
             <Button
@@ -361,8 +377,33 @@ const styles = StyleSheet.create({
   emptyContent: {
     flexGrow: 1,
     alignItems: "center",
-    paddingTop: spacing["3xl"],
+    paddingTop: spacing["2xl"],
     gap: spacing.lg,
+  },
+  uploadArea: {
+    width: "100%",
+    minHeight: 168,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: colors.primarySubtle,
+    backgroundColor: colors.primaryMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    padding: spacing.xl,
+  },
+  uploadAreaPressed: {
+    opacity: 0.88,
+  },
+  uploadTitle: {
+    fontSize: typography.base,
+    fontWeight: "600",
+    color: colors.foreground,
+  },
+  uploadHint: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
   },
   heroIconWrap: {
     width: 88,
@@ -522,5 +563,14 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  emptyTips: {
+    gap: 4,
+    marginTop: spacing.sm,
+  },
+  emptyTip: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
 });

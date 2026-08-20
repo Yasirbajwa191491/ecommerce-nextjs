@@ -1,83 +1,43 @@
 import { APP_NAME } from "@ecommerce/shared";
-
 import { Ionicons } from "@expo/vector-icons";
-
 import { router } from "expo-router";
-
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
-
 import { CartBadge } from "@/components/layout/CartBadge";
-
 import { SearchBar } from "@/components/ui/SearchBar";
-
-import { colors, spacing, textStyles } from "@/constants/theme";
-
+import { colors, sizes, spacing, textStyles } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 
-
-
 type HeaderProps = {
-
   title?: string;
-
   subtitle?: string;
-
   showSearch?: boolean;
-
   showCart?: boolean;
-
   showBack?: boolean;
-
   showLogo?: boolean;
-
   onBack?: () => void;
-
 };
 
-
-
 export function Header({
-
   title,
-
   subtitle,
-
   showSearch = true,
-
   showCart = true,
-
   showBack = false,
-
   showLogo = false,
-
   onBack,
-
 }: HeaderProps) {
-
   const insets = useSafeAreaInsets();
-
   const { horizontalPadding } = useLayoutMetrics();
 
-
-
   return (
-
     <View
-
       style={[
-
         styles.container,
-
         { paddingTop: insets.top + spacing.xs, paddingHorizontal: horizontalPadding },
-
       ]}
-
     >
-
       <View style={styles.topRow}>
         {showBack ? (
           <Pressable
@@ -87,7 +47,7 @@ export function Header({
             onPress={onBack ?? (() => router.back())}
             style={styles.iconButton}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+            <Ionicons name="chevron-back" size={sizes.iconLg} color={colors.foreground} />
           </Pressable>
         ) : null}
 
@@ -117,58 +77,33 @@ export function Header({
         )}
       </View>
 
-
-
       {showSearch ? (
-
         <View style={styles.searchRow}>
-
           <SearchBar />
-
         </View>
-
       ) : null}
-
     </View>
-
   );
-
 }
 
-
-
 const styles = StyleSheet.create({
-
   container: {
-
     backgroundColor: colors.surface,
-
-    paddingBottom: spacing.sm + 2,
-
-    gap: spacing.sm + 2,
-
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
   },
-
   topRow: {
-
     flexDirection: "row",
-
     alignItems: "center",
-
     justifyContent: "space-between",
-
-    minHeight: 40,
-
+    minHeight: sizes.headerRow,
   },
-
   logo: {
-
     flex: 1,
-
     ...textStyles.logo,
-
   },
-
   titleBlock: {
     flex: 1,
     gap: 1,
@@ -176,51 +111,27 @@ const styles = StyleSheet.create({
   titleWithBack: {
     paddingLeft: spacing.xs,
   },
-
   title: {
-
     ...textStyles.screenTitle,
-
+    fontSize: 22,
   },
-
   subtitle: {
-
     ...textStyles.bodySmall,
-
   },
-
   flex: {
-
     flex: 1,
-
   },
-
   iconButton: {
-
-    width: 44,
-
-    height: 44,
-
+    width: sizes.qtyControl,
+    height: sizes.qtyControl,
     alignItems: "center",
-
     justifyContent: "center",
-
     marginLeft: -8,
-
   },
-
   iconSpacer: {
-
-    width: 44,
-
+    width: sizes.qtyControl,
   },
-
   searchRow: {
-
     width: "100%",
-
   },
-
 });
-
-

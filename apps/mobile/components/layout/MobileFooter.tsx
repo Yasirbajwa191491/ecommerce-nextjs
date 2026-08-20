@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   wrapper: {
     paddingTop: spacing["2xl"],
-    gap: spacing["2xl"],
+    gap: spacing.xl,
   },
   brandSection: {
     gap: spacing.sm,

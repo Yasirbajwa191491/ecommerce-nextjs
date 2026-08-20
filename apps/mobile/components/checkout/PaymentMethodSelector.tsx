@@ -39,7 +39,7 @@ export function PaymentMethodSelector({
 }: PaymentMethodSelectorProps) {
   return (
     <View style={styles.section}>
-      <Text style={textStyles.sectionTitle}>Payment method</Text>
+      <Text style={textStyles.sectionTitle}>3. Payment method</Text>
       <View style={styles.options}>
         {OPTIONS.map((option) => {
           const selected = value === option.id;

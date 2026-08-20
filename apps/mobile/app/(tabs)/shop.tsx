@@ -13,6 +13,7 @@ import {
 
 import {
   CatalogFiltersSheet,
+  SORT_OPTIONS,
   type CatalogFilters,
 } from "@/components/catalog/CatalogFiltersSheet";
 import { MobileFooter } from "@/components/layout/MobileFooter";
@@ -81,6 +82,15 @@ export default function ShopScreen() {
 
   const ListFooter = <MobileFooter compactBottom />;
 
+  const activeFilterCount = [
+    filters.sort !== "default",
+    Boolean(filters.inStockOnly),
+    filters.minPrice != null,
+    filters.maxPrice != null,
+  ].filter(Boolean).length;
+  const sortLabel =
+    SORT_OPTIONS.find((option) => option.value === filters.sort)?.label ?? "Sort";
+
   const ListHeader = (
     <View style={styles.toolbar}>
       <View style={styles.searchTap}>
@@ -115,13 +125,31 @@ export default function ShopScreen() {
       <View style={styles.filterRow}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open filters and sort"
+          accessibilityLabel={`Open filters and sort. ${sortLabel}${activeFilterCount ? `, ${activeFilterCount} filters applied` : ""}`}
           onPress={() => setFiltersVisible(true)}
-          style={({ pressed }) => [styles.filterBtn, pressed && styles.filterPressed]}
+          style={({ pressed }) => [
+            styles.filterBtn,
+            activeFilterCount > 0 && styles.filterBtnActive,
+            pressed && styles.filterPressed,
+          ]}
         >
-          <Ionicons name="options-outline" size={18} color={colors.foreground} />
-          <Text style={styles.filterText}>Filter & Sort</Text>
+          <Ionicons
+            name="options-outline"
+            size={18}
+            color={activeFilterCount > 0 ? colors.primary : colors.foreground}
+          />
+          <Text style={[styles.filterText, activeFilterCount > 0 && styles.filterTextActive]}>
+            Filter & Sort
+          </Text>
+          {activeFilterCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          ) : null}
         </Pressable>
+        <Text style={styles.sortHint} numberOfLines={1}>
+          {sortLabel}
+        </Text>
       </View>
     </View>
   );
@@ -150,8 +178,8 @@ export default function ShopScreen() {
               {ListHeader}
               <EmptyState
                 icon="search-outline"
-                title="No products found"
-                description="Try adjusting your filters or check back later."
+                title="No products match these filters"
+                description="Try a different category, price range, or reset filters to see everything in the shop."
                 actionLabel="Clear Filters"
                 onAction={() => setFilters({ sort: "default", inStockOnly: false })}
                 compact
@@ -208,17 +236,24 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
   },
   filterBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
+    minHeight: 44,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
+  },
+  filterBtnActive: {
+    backgroundColor: colors.primaryMuted,
+    borderColor: colors.primary,
   },
   filterPressed: {
     opacity: 0.88,
@@ -227,6 +262,28 @@ const styles = StyleSheet.create({
     fontSize: typography.sm,
     fontWeight: "600",
     color: colors.foreground,
+  },
+  filterTextActive: {
+    color: colors.primary,
+  },
+  filterBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  filterBadgeText: {
+    color: colors.primaryForeground,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  sortHint: {
+    flex: 1,
+    fontSize: typography.sm,
+    color: colors.textSecondary,
   },
   listContent: {
     paddingBottom: spacing["3xl"],

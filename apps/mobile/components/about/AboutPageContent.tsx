@@ -45,7 +45,7 @@ export function AboutPageContent() {
         />
         <View style={styles.heroActions}>
           <Button
-            label="Shop now"
+            label="Start Shopping"
             fullWidth
             onPress={() => router.push("/(tabs)/shop")}
           />

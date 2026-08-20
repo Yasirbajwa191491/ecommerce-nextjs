@@ -5,7 +5,6 @@ import { colors, radius, spacing, typography } from "@/constants/theme";
 import type { OrderStatus } from "@/lib/order-display";
 
 const PROGRESS_STEPS: { key: OrderStatus; label: string }[] = [
-  { key: "pending", label: "Order Placed" },
   { key: "confirmed", label: "Confirmed" },
   { key: "processing", label: "Processing" },
   { key: "shipped", label: "Shipped" },
@@ -23,18 +22,9 @@ const TERMINAL_STATUSES: Record<
 };
 
 function getActiveStepIndex(status: OrderStatus): number {
+  if (status === "pending" || status === "confirmed") return 0;
   const directIndex = PROGRESS_STEPS.findIndex((step) => step.key === status);
-  if (directIndex >= 0) return directIndex;
-
-  const statusOrder: OrderStatus[] = [
-    "pending",
-    "confirmed",
-    "processing",
-    "shipped",
-    "delivered",
-  ];
-  const index = statusOrder.indexOf(status);
-  return index >= 0 ? index : 0;
+  return directIndex >= 0 ? directIndex : 0;
 }
 
 type OrderProgressTimelineProps = {

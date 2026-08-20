@@ -27,7 +27,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 import { EmptyState } from "@/components/feedback/EmptyState";
-import { LoadingView } from "@/components/feedback/LoadingView";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { HomeSection } from "@/components/home/HomeSection";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
@@ -41,19 +40,20 @@ import { Badge } from "@/components/ui/Badge";
 import { IconButton } from "@/components/ui/IconButton";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
+import { ProductDetailSkeleton } from "@/components/ui/Skeleton";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import {
   colors,
   radius,
   shadows,
   spacing,
   textStyles,
-  touchTarget,
   typography,
 } from "@/constants/theme";
 import { useSimilarProducts } from "@/hooks/useSimilarProducts";
 import { useStableNow } from "@/hooks/useStableNow";
 import { useWishlist } from "@/hooks/useWishlist";
-import { canRenderColorSwatch, isHexColor, resolveSwatchBackground } from "@/lib/color-swatch";
+import { canRenderColorSwatch, resolveSwatchBackground } from "@/lib/color-swatch";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
 import { api } from "@/lib/convex-api";
 import { formatShippingLine } from "@/lib/product-display";
@@ -270,9 +270,21 @@ export default function ProductDetailScreen() {
 
 
   if (product === undefined) {
-
-    return <LoadingView message="Loading product…" />;
-
+    return (
+      <ScreenContainer>
+        <View style={styles.container}>
+          <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
+            <IconButton
+              icon="chevron-back"
+              accessibilityLabel="Go back"
+              variant="surface"
+              onPress={() => router.back()}
+            />
+          </View>
+          <ProductDetailSkeleton />
+        </View>
+      </ScreenContainer>
+    );
   }
 
 
@@ -395,6 +407,12 @@ export default function ProductDetailScreen() {
 
             <RatingStars rating={product.stars} reviewCount={product.reviews} />
 
+            {product.description ? (
+              <Text style={styles.shortDescription} numberOfLines={3}>
+                {product.description}
+              </Text>
+            ) : null}
+
             {promotions && promotions.length > 0 ? (
               <View style={styles.promoSection}>
                 {promotions.map((promo) => (
@@ -476,7 +494,7 @@ export default function ProductDetailScreen() {
 
               <View style={styles.section}>
 
-                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.sectionTitle}>Details</Text>
 
                 <Text style={styles.description}>{product.description}</Text>
 
@@ -536,7 +554,7 @@ export default function ProductDetailScreen() {
 
           {!noSimilar ? (
 
-            <HomeSection title="You May Also Like" subtitle="Similar products">
+            <HomeSection title="Because you viewed this" subtitle="Similar products">
 
               <ProductCarousel
 
@@ -559,36 +577,27 @@ export default function ProductDetailScreen() {
 
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-          <View style={styles.footerQty}>
-            <Pressable
-              accessibilityLabel="Decrease quantity"
-              onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-              style={styles.qtyButton}
-            >
-              <Ionicons name="remove" size={20} color={colors.foreground} />
-            </Pressable>
-            <Text style={styles.qtyText}>{quantity}</Text>
-            <Pressable
-              accessibilityLabel="Increase quantity"
-              onPress={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-              style={styles.qtyButton}
-              disabled={quantity >= product.stock}
-            >
-              <Ionicons name="add" size={20} color={colors.foreground} />
-            </Pressable>
-          </View>
+          <QuantityStepper
+            value={quantity}
+            min={1}
+            max={Math.max(1, product.stock)}
+            onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
+            onIncrement={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+          />
 
           <View style={styles.footerActions}>
             <Button
               label="Add to Cart"
+              size="lg"
               onPress={handleAddToCart}
               disabled={!inStock}
-              style={styles.footerCta}
+              style={styles.footerCtaPrimary}
             />
             <View style={styles.viewCartWrap}>
               <Button
-                label="View Cart"
+                label={itemCount > 0 ? "Checkout" : "View Cart"}
                 variant="outline"
+                size="lg"
                 onPress={handleViewCart}
                 style={styles.footerCta}
               />
@@ -661,6 +670,10 @@ const styles = StyleSheet.create({
     ...textStyles.display,
     fontSize: 26,
     lineHeight: 32,
+  },
+  shortDescription: {
+    ...textStyles.bodySmall,
+    lineHeight: 20,
   },
   priceCard: {
     borderWidth: 1,
@@ -773,26 +786,19 @@ const styles = StyleSheet.create({
   },
 
   colorSwatch: {
-
-    width: 36,
-
-    height: 36,
-
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
-
     borderWidth: 2,
-
     borderColor: colors.border,
-
   },
-
   colorSwatchActive: {
     borderColor: colors.primary,
     borderWidth: 3,
   },
   namedColorSwatch: {
-    minWidth: 36,
-    height: 36,
+    minWidth: 44,
+    height: 44,
     borderRadius: radius.md,
     borderWidth: 2,
     borderColor: colors.border,
@@ -935,6 +941,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
   },
+  footerCtaPrimary: {
+    flex: 1.4,
+  },
   viewCartWrap: {
     flex: 1,
     position: "relative",
@@ -957,54 +966,9 @@ const styles = StyleSheet.create({
     color: colors.primaryForeground,
   },
 
-  footerQty: {
-
-    flexDirection: "row",
-
-    alignItems: "center",
-
-    backgroundColor: colors.background,
-
-    borderRadius: radius.md,
-
-    borderWidth: 1,
-
-    borderColor: colors.borderLight,
-
-  },
-
-  qtyButton: {
-
-    width: touchTarget,
-
-    height: touchTarget,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-  },
-
-  qtyText: {
-
-    minWidth: 32,
-
-    textAlign: "center",
-
-    fontSize: 16,
-
-    fontWeight: "700",
-
-    color: colors.foreground,
-
-  },
-
   footerCta: {
-
     flex: 1,
-
   },
-
 });
 
 

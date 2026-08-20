@@ -50,8 +50,8 @@ export default function CartScreen() {
           <Header title="Cart" showSearch={false} showCart={false} />
           <EmptyState
             icon="cart-outline"
-            title="Your cart is waiting"
-            description="Browse the shop and add items. Your selections are saved on this device."
+            title="Your cart is empty"
+            description="Discover products picked for you."
             actionLabel="Start Shopping"
             onAction={() => router.push("/(tabs)/shop")}
           />

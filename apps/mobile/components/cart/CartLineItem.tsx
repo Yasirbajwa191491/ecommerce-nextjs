@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ColorSwatch } from "@/components/cart/ColorSwatch";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import type { CartLineLike } from "@/lib/cart-lines";
 
@@ -27,7 +28,12 @@ export function CartLineItem({
 
   return (
     <View style={styles.container}>
-      <Pressable onPress={() => router.push(`/product/${item.productId}`)} style={styles.imageWrap}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`View ${item.name}`}
+        onPress={() => router.push(`/product/${item.productId}`)}
+        style={styles.imageWrap}
+      >
         {item.image ? (
           <Image source={{ uri: item.image }} style={styles.image} contentFit="cover" />
         ) : (
@@ -42,31 +48,24 @@ export function CartLineItem({
           {item.name}
         </Text>
         {item.color ? <ColorSwatch color={item.color} /> : null}
-        <Text style={styles.qtyMeta}>Qty: {item.amount}</Text>
-        <PriceDisplay price={displayTotal} size="sm" />
+        <PriceDisplay price={displayTotal} size="md" />
 
         <View style={styles.actions}>
-          <View style={styles.quantityControl}>
-            <Pressable accessibilityLabel="Decrease" hitSlop={8} onPress={onDecrement} style={styles.qtyBtn}>
-              <Ionicons name="remove" size={18} color={colors.foreground} />
-            </Pressable>
-            <Text style={styles.qtyText}>{item.amount}</Text>
-            <Pressable
-              accessibilityLabel="Increase"
-              hitSlop={8}
-              onPress={onIncrement}
-              style={styles.qtyBtn}
-              disabled={item.amount >= item.max}
-            >
-              <Ionicons
-                name="add"
-                size={18}
-                color={item.amount >= item.max ? colors.muted : colors.foreground}
-              />
-            </Pressable>
-          </View>
+          <QuantityStepper
+            value={item.amount}
+            min={1}
+            max={item.max}
+            onDecrement={onDecrement}
+            onIncrement={onIncrement}
+          />
 
-          <Pressable accessibilityLabel="Remove" hitSlop={8} onPress={onRemove} style={styles.removeBtn}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${item.name}`}
+            hitSlop={8}
+            onPress={onRemove}
+            style={styles.removeBtn}
+          >
             <Text style={styles.removeText}>Remove</Text>
           </Pressable>
         </View>
@@ -79,7 +78,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     padding: spacing.md,
     gap: spacing.md,
   },
@@ -105,10 +104,8 @@ const styles = StyleSheet.create({
   },
   name: {
     ...textStyles.cardTitle,
-  },
-  qtyMeta: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
+    fontSize: typography.base,
+    lineHeight: 20,
   },
   actions: {
     flexDirection: "row",
@@ -116,27 +113,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: spacing.sm,
   },
-  quantityControl: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    padding: 2,
-  },
-  qtyBtn: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qtyText: {
-    minWidth: 28,
-    textAlign: "center",
-    fontSize: typography.sm,
-    fontWeight: "600",
-  },
   removeBtn: {
-    paddingVertical: spacing.sm,
+    minHeight: 44,
+    justifyContent: "center",
     paddingHorizontal: spacing.sm,
   },
   removeText: {

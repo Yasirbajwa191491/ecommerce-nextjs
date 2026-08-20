@@ -637,7 +637,7 @@ The following capabilities are **planned** for future development and are not ye
 
 ## Portfolio Summary
 
-**Yasir Ecommerce** is a modern AI-powered ecommerce platform that combines traditional online retail functionality with intelligent automation at every layer of the stack. Built on **Next.js 16** and **Convex**, it delivers realtime catalog updates, semantic product search powered by **Gemini embeddings**, and a **Vapi voice assistant** that handles the full shopping journey — from product discovery to checkout and order tracking.
+**Ecommerce Store** is a modern AI-powered ecommerce platform that combines traditional online retail functionality with intelligent automation at every layer of the stack. Built on **Next.js 16** and **Convex**, it delivers realtime catalog updates, semantic product search powered by **Gemini embeddings**, and a **Vapi voice assistant** that handles the full shopping journey — from product discovery to checkout and order tracking.
 
 On the operations side, an **AI Business Copilot** gives store administrators natural-language access to revenue, inventory, and review analytics, while **AI email marketing** generates campaigns with behavioral segmentation. Customer reviews are enriched with sentiment analysis, topic extraction, and AI-generated reply drafts, and **outbound review calls** collect feedback proactively after delivery.
 

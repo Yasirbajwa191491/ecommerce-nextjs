@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, ViewStyle } from "react-native";
 
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { colors, radius, sizes, spacing, typography } from "@/constants/theme";
 
 type ChipProps = {
   label: string;
@@ -14,6 +14,7 @@ export function Chip({ label, selected = false, onPress, style }: ChipProps) {
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
@@ -22,19 +23,23 @@ export function Chip({ label, selected = false, onPress, style }: ChipProps) {
         style,
       ]}
     >
-      <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
+      <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   chip: {
+    minHeight: sizes.chip,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
+    justifyContent: "center",
   },
   chipSelected: {
     backgroundColor: colors.primaryMuted,
