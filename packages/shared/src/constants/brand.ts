@@ -7,4 +7,4 @@ export const BRAND = {
   accent: "#a89cff",
 } as const;
 
-export const APP_NAME = "Yasir Ecommerce";
+export const APP_NAME = "Ecommerce Store";

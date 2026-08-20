@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Animated, StyleSheet, View, ViewProps } from "react-native";
 
-import { colors, layout, radius } from "@/constants/theme";
+import { colors, layout, radius, spacing } from "@/constants/theme";
 
 type SkeletonProps = ViewProps & {
   width?: number | `${number}%`;
@@ -53,7 +53,7 @@ export function ProductCardSkeleton({ width }: ProductCardSkeletonProps) {
         <Skeleton height={14} width="90%" />
         <Skeleton height={12} width="50%" />
         <Skeleton height={16} width="40%" />
-        <Skeleton height={36} borderRadius={radius.sm} />
+        <Skeleton height={48} borderRadius={radius.sm} />
       </View>
     </View>
   );
@@ -71,13 +71,45 @@ export function CategoryCardSkeleton({ width = layout.categoryCardWidth }: { wid
   );
 }
 
+export function ProductDetailSkeleton() {
+  return (
+    <View style={styles.pdp} accessibilityLabel="Loading product">
+      <Skeleton height={360} borderRadius={0} />
+      <View style={styles.pdpContent}>
+        <Skeleton height={12} width="30%" />
+        <Skeleton height={26} width="88%" />
+        <Skeleton height={16} width="40%" />
+        <Skeleton height={72} borderRadius={radius.md} />
+        <Skeleton height={48} borderRadius={radius.md} />
+        <Skeleton height={48} borderRadius={radius.md} />
+      </View>
+    </View>
+  );
+}
+
+export function HomeFeedSkeleton() {
+  return (
+    <View style={styles.homeFeed} accessibilityLabel="Loading home">
+      <Skeleton height={72} borderRadius={radius.md} />
+      <View style={styles.homeCarousel}>
+        <ProductCardSkeleton width={240} />
+        <ProductCardSkeleton width={240} />
+      </View>
+      <View style={styles.homeCats}>
+        <CategoryCardSkeleton />
+        <CategoryCardSkeleton />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.border,
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     overflow: "hidden",
   },
   cardFlex: {
@@ -85,11 +117,32 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     overflow: "hidden",
   },
   content: {
-    padding: 12,
-    gap: 8,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  pdp: {
+    flex: 1,
+    backgroundColor: colors.surface,
+  },
+  pdpContent: {
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
+  homeFeed: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    gap: spacing["2xl"],
+  },
+  homeCarousel: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  homeCats: {
+    flexDirection: "row",
+    gap: spacing.md,
   },
 });

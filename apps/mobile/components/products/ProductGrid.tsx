@@ -47,7 +47,7 @@ export function ProductGrid({
   const renderItem: ListRenderItem<Product> = useCallback(
     ({ item }) => (
       <View style={styles.itemWrap}>
-        <ProductCard product={item} />
+        <ProductCard product={item} showActions />
       </View>
     ),
     []

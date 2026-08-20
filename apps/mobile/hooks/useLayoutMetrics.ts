@@ -10,7 +10,7 @@ export function useLayoutMetrics() {
 
   return useMemo(() => {
     const contentWidth = Math.min(screenWidth, layout.maxContentWidth);
-    const horizontalPadding = spacing.lg;
+    const horizontalPadding = layout.screenPadding;
     const gridGap = spacing.md;
     const contentInner = contentWidth - horizontalPadding * 2;
 

@@ -80,7 +80,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
+    minHeight: 44,
     paddingVertical: spacing.xs,
+    justifyContent: "center",
   },
   actionPressed: {
     opacity: 0.7,

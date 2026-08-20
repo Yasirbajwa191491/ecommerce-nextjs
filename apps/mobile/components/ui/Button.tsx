@@ -7,7 +7,7 @@ import {
   ViewStyle,
 } from "react-native";
 
-import { colors, radius, touchTarget, typography } from "@/constants/theme";
+import { colors, radius, sizes, typography } from "@/constants/theme";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "sm" | "md" | "lg";
@@ -56,9 +56,9 @@ const variantStyles: Record<
 };
 
 const sizeStyles: Record<ButtonSize, { container: ViewStyle; fontSize: number }> = {
-  sm: { container: { minHeight: 36, paddingHorizontal: 12 }, fontSize: typography.sm },
-  md: { container: { minHeight: touchTarget, paddingHorizontal: 16 }, fontSize: typography.base },
-  lg: { container: { minHeight: 48, paddingHorizontal: 20 }, fontSize: typography.lg },
+  sm: { container: { minHeight: sizes.buttonSm, paddingHorizontal: 14 }, fontSize: typography.sm },
+  md: { container: { minHeight: sizes.buttonMd, paddingHorizontal: 16 }, fontSize: typography.base },
+  lg: { container: { minHeight: sizes.buttonLg, paddingHorizontal: 20 }, fontSize: typography.md },
 };
 
 export function Button({
@@ -109,7 +109,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",

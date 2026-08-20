@@ -46,7 +46,7 @@ export const radius = {
   xs: 6,
   sm: 10,
   md: 14,
-  lg: 18,
+  lg: 16,
   xl: 24,
   full: 9999,
 } as const;
@@ -86,14 +86,34 @@ export const textStyles: Record<string, TextStyle> = {
   logo: { fontSize: typography.lg, fontWeight: fontWeight.semibold, color: colors.foreground, letterSpacing: -0.3 },
 };
 
+/** Minimum tap area for interactive controls. */
 export const touchTarget = 44;
+
+/** Shared control heights, icon sizes, and card metrics. */
+export const sizes = {
+  buttonSm: 40,
+  buttonMd: 48,
+  buttonLg: 52,
+  input: 48,
+  search: 48,
+  chip: 40,
+  iconSm: 16,
+  iconMd: 20,
+  iconLg: 24,
+  iconXl: 28,
+  qtyControl: 44,
+  headerRow: 44,
+} as const;
 
 export const layout = {
   maxContentWidth: 480,
   gridColumns: 2,
+  screenPadding: spacing.xl,
+  sectionSpacing: spacing["2xl"],
+  cardRadius: radius.md,
   /** ~1.32 cards visible in horizontal carousels */
   carouselCardWidthRatio: 0.74,
-  featuredCarouselWidthRatio: 0.76,
+  featuredCarouselWidthRatio: 0.82,
   categoryCardWidth: 132,
   categoryImageHeight: 88,
   productImageAspect: 1,
@@ -106,7 +126,7 @@ export const shadows = {
     default: {},
   }),
   card: Platform.select({
-    ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+    ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },
     android: { elevation: 2 },
     default: {},
   }),
@@ -135,6 +155,7 @@ export const theme = {
   fontWeight,
   textStyles,
   touchTarget,
+  sizes,
   shadows,
   layout,
   animation,

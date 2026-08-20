@@ -1,7 +1,7 @@
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
@@ -17,7 +17,6 @@ import {
   type CatalogFilters,
 } from "@/components/catalog/CatalogFiltersSheet";
 import { EmptyState } from "@/components/feedback/EmptyState";
-import { LoadingView } from "@/components/feedback/LoadingView";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -98,7 +97,22 @@ export default function CategoryScreen() {
   );
 
   if (categories === undefined) {
-    return <LoadingView message="Loading category…" />;
+    return (
+      <ScreenContainer>
+        <View style={styles.container}>
+          <Header title="Category" showBack showSearch={false} />
+          <View style={[styles.skeletonGrid, { paddingHorizontal: horizontalPadding }]}>
+            <View style={[styles.gridRow, { gap: gridGap }]}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <View key={i} style={styles.gridItem}>
+                  <ProductCardSkeleton />
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScreenContainer>
+    );
   }
 
   if (!category) {
@@ -135,7 +149,7 @@ export default function CategoryScreen() {
       ) : null}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open filters"
+        accessibilityLabel="Open filters and sort"
         onPress={() => setFiltersVisible(true)}
         style={({ pressed }) => [styles.filterButton, pressed && styles.filterPressed]}
       >
@@ -164,8 +178,10 @@ export default function CategoryScreen() {
             {ListHeader}
             <EmptyState
               icon="cube-outline"
-              title="No products in this category"
-              description="Try adjusting filters or browse other categories."
+            title="No products in this category"
+            description="Nothing is listed here right now. Browse other categories or check back soon."
+            actionLabel="Browse the shop"
+            onAction={() => router.push("/(tabs)/shop")}
               compact
             />
           </View>
@@ -236,12 +252,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     gap: spacing.sm,
+    minHeight: 44,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
   },
   filterPressed: {
     opacity: 0.88,

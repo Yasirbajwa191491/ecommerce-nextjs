@@ -1,4 +1,4 @@
-# Yasir Ecommerce — Next.js 16 + Convex
+# Ecommerce Store — Next.js 16 + Convex
 
 Rebuild of `../client` (React) with **Next.js 16** and **Convex** realtime backend.
 

@@ -1,7 +1,7 @@
 import type { ExpoConfig } from "expo/config";
 
 const config: ExpoConfig = {
-  name: "Yasir Shop",
+  name: "Ecommerce Store",
   slug: "ecommerce-mobile",
   version: "1.0.0",
   orientation: "portrait",
@@ -30,6 +30,10 @@ const config: ExpoConfig = {
       },
     ],
   },
+  web: {
+    // static = prerendered pages for EAS Hosting (free *.expo.app URL)
+    output: "static",
+  },
   plugins: [
     "expo-router",
     [
@@ -50,6 +54,9 @@ const config: ExpoConfig = {
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
     router: {
       origin: false,
+    },
+    eas: {
+      projectId: "a92c3120-fdec-4550-bece-3ebd28ee26fa",
     },
   },
 };

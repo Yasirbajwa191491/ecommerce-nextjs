@@ -407,7 +407,7 @@ export default function CheckoutScreen() {
           />
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Contact information</Text>
+            <Text style={styles.cardTitle}>1. Contact information</Text>
             <Input
               label="Full name *"
               value={form.fullName}
@@ -441,7 +441,7 @@ export default function CheckoutScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Delivery address</Text>
+            <Text style={styles.cardTitle}>2. Delivery address</Text>
             <Input
               label="Address *"
               value={form.address}

@@ -19,6 +19,7 @@ import { ErrorState } from "@/components/feedback/ErrorState";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Chip } from "@/components/ui/Chip";
+import { Button } from "@/components/ui/Button";
 import { SearchBarInput } from "@/components/ui/SearchBar";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
@@ -114,7 +115,21 @@ export default function SearchScreen() {
     >
       {recent.length > 0 ? (
         <View style={styles.block}>
-          <Text style={styles.blockTitle}>Recent searches</Text>
+          <View style={styles.blockHeader}>
+            <Text style={styles.blockTitle}>Recent searches</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear recent searches"
+              hitSlop={8}
+              onPress={() => {
+                setRecent([]);
+                void AsyncStorage.removeItem(RECENT_KEY);
+              }}
+              style={styles.clearRecent}
+            >
+              <Text style={styles.clearRecentText}>Clear</Text>
+            </Pressable>
+          </View>
           <View style={styles.chips}>
             {recent.map((term) => (
               <Chip key={term} label={term} onPress={() => { setQuery(term); void saveRecent(term); }} />
@@ -166,6 +181,8 @@ export default function SearchScreen() {
       ) : null}
 
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Visual search. Find products using a photo"
         onPress={() => router.push("/visual-search")}
         style={styles.visualEntry}
       >
@@ -184,6 +201,7 @@ export default function SearchScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={[styles.searchHeader, { paddingHorizontal: horizontalPadding }]}>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Go back"
             hitSlop={8}
             onPress={() => router.back()}
@@ -218,10 +236,27 @@ export default function SearchScreen() {
         ) : showResults && !loading && products.length === 0 ? (
           <EmptyState
             icon="search-outline"
-            title="No results found"
-            description={`We couldn't find products matching "${debouncedQuery}".`}
+            title="No matching products"
+            description={`We couldn't find products matching "${debouncedQuery}". Try a different search, browse the shop, or find similar items from a photo.`}
+            actionLabel="Browse the shop"
+            onAction={() => router.push("/(tabs)/shop")}
             compact
-          />
+          >
+            <View style={styles.emptyActions}>
+              <Button
+                label="Ask AI"
+                variant="outline"
+                onPress={() =>
+                  router.push({ pathname: "/(tabs)/ai", params: { q: debouncedQuery } })
+                }
+              />
+              <Button
+                label="Visual search"
+                variant="ghost"
+                onPress={() => router.push("/visual-search")}
+              />
+            </View>
+          </EmptyState>
         ) : showResults ? (
           <FlatList
             data={products}
@@ -237,12 +272,17 @@ export default function SearchScreen() {
               <View style={styles.resultsHeader}>
                 {isSimilarFallback ? (
                   <View style={styles.aiBanner}>
-                    <Ionicons name="sparkles" size={14} color={colors.primary} />
-                    <Text style={styles.aiBannerText}>
-                      Similar products — no exact matches
-                    </Text>
+                    <Ionicons name="sparkles" size={16} color={colors.primary} />
+                    <View style={styles.aiBannerCopy}>
+                      <Text style={styles.aiBannerTitle}>AI-powered results</Text>
+                      <Text style={styles.aiBannerText}>
+                        No exact matches — here are similar products.
+                      </Text>
+                    </View>
                   </View>
-                ) : null}
+                ) : (
+                  <Text style={styles.exactLabel}>Exact matches</Text>
+                )}
                 <Text style={styles.resultCount}>
                   {totalCount} result{totalCount === 1 ? "" : "s"}
                 </Text>
@@ -283,8 +323,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderLight,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -299,9 +339,24 @@ const styles = StyleSheet.create({
   block: {
     gap: spacing.md,
   },
+  blockHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   blockTitle: {
     ...textStyles.sectionTitle,
     fontSize: typography.base,
+  },
+  clearRecent: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: spacing.xs,
+  },
+  clearRecentText: {
+    fontSize: typography.sm,
+    fontWeight: "600",
+    color: colors.primary,
   },
   chips: {
     flexDirection: "row",
@@ -312,6 +367,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+    minHeight: 44,
     paddingVertical: spacing.sm,
   },
   suggestionText: {
@@ -323,6 +379,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     padding: spacing.lg,
+    minHeight: 72,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     marginTop: spacing.sm,
@@ -345,17 +402,35 @@ const styles = StyleSheet.create({
   },
   aiBanner: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: spacing.sm,
     backgroundColor: colors.primaryMuted,
     padding: spacing.md,
     borderRadius: radius.md,
   },
-  aiBannerText: {
+  aiBannerCopy: {
     flex: 1,
+    gap: 2,
+  },
+  aiBannerTitle: {
     fontSize: typography.sm,
     color: colors.primary,
-    fontWeight: "500",
+    fontWeight: "700",
+  },
+  aiBannerText: {
+    fontSize: typography.sm,
+    color: colors.text,
+    lineHeight: 18,
+  },
+  exactLabel: {
+    fontSize: typography.sm,
+    fontWeight: "700",
+    color: colors.foreground,
+  },
+  emptyActions: {
+    width: "100%",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   resultCount: {
     fontSize: typography.sm,

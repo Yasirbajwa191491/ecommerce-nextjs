@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,7 +7,7 @@ import {
   View,
 } from "react-native";
 
-import { colors, radius, touchTarget, typography } from "@/constants/theme";
+import { colors, radius, sizes, spacing, typography } from "@/constants/theme";
 
 type InputProps = TextInputProps & {
   label?: string;
@@ -20,8 +21,11 @@ export function Input({
   hint,
   style,
   accessibilityLabel,
+  onFocus,
+  onBlur,
   ...props
 }: InputProps) {
+  const [focused, setFocused] = useState(false);
   const inputLabel = accessibilityLabel ?? label;
 
   return (
@@ -29,8 +33,21 @@ export function Input({
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         accessibilityLabel={inputLabel}
-        placeholderTextColor={colors.mutedForeground}
-        style={[styles.input, error ? styles.inputError : null, style]}
+        placeholderTextColor={colors.muted}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
+        style={[
+          styles.input,
+          focused && !error ? styles.inputFocused : null,
+          error ? styles.inputError : null,
+          style,
+        ]}
         {...props}
       />
       {error ? (
@@ -46,7 +63,7 @@ export function Input({
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 6,
+    gap: spacing.sm,
   },
   label: {
     fontSize: typography.sm,
@@ -54,14 +71,17 @@ const styles = StyleSheet.create({
     color: colors.foreground,
   },
   input: {
-    minHeight: touchTarget,
+    minHeight: sizes.input,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.lg,
     fontSize: typography.base,
     color: colors.foreground,
     backgroundColor: colors.surface,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
   },
   inputError: {
     borderColor: colors.destructive,

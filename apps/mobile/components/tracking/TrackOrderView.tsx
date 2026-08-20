@@ -237,6 +237,14 @@ export function TrackOrderView() {
                   paidAt={orderResult.order.paidAt}
                   itemCount={orderResult.order.items.length}
                 />
+              ) : orderResult && !orderResult.found ? (
+                <View style={styles.notFound}>
+                  <Ionicons name="search-outline" size={28} color={colors.muted} />
+                  <Text style={styles.notFoundTitle}>No order found</Text>
+                  <Text style={styles.notFoundBody}>
+                    We couldn&apos;t find an order with those details. Check the order number and try again.
+                  </Text>
+                </View>
               ) : null}
             </Card>
           ) : (
@@ -315,6 +323,14 @@ export function TrackOrderView() {
                       }}
                     />
                   ))}
+                </View>
+              ) : customerResults && !customerResults.found ? (
+                <View style={styles.notFound}>
+                  <Ionicons name="search-outline" size={28} color={colors.muted} />
+                  <Text style={styles.notFoundTitle}>No orders found</Text>
+                  <Text style={styles.notFoundBody}>
+                    We couldn&apos;t find orders for those details. Try the email or phone used at checkout.
+                  </Text>
                 </View>
               ) : null}
             </Card>
@@ -403,5 +419,19 @@ const styles = StyleSheet.create({
   resultsHeading: {
     ...textStyles.sectionTitle,
     fontSize: typography.base,
+  },
+  notFound: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+  },
+  notFoundTitle: {
+    fontSize: typography.base,
+    fontWeight: "600",
+    color: colors.foreground,
+  },
+  notFoundBody: {
+    ...textStyles.bodySmall,
+    textAlign: "center",
   },
 });

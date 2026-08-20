@@ -12,20 +12,20 @@ const SECTION_COPY: Record<
   { title: string; subtitle?: string }
 > = {
   recommended_for_you: {
-    title: "Recommended for You",
-    subtitle: "Based on your recent activity",
+    title: "Recommended for you",
+    subtitle: "Picked from your recent activity",
   },
   trending_in_interests: {
-    title: "Trending for You",
-    subtitle: "Popular in your interests",
+    title: "Trending in your interests",
+    subtitle: "Popular with shoppers like you",
   },
   frequently_bought_together: {
-    title: "You May Also Like",
-    subtitle: "Customers also viewed these",
+    title: "Because you viewed this",
+    subtitle: "Similar products you might like",
   },
   customers_also_purchased: {
-    title: "Customers Also Purchased",
-    subtitle: "Frequently bought together",
+    title: "Customers also bought",
+    subtitle: "Frequently purchased together",
   },
 };
 
