@@ -1,5 +1,5 @@
 import { formatCurrencyAmount } from "@ecommerce/shared";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -166,7 +166,7 @@ export default function CartScreen() {
             label="Proceed to Checkout"
             fullWidth
             size="lg"
-            onPress={() => router.push("/checkout")}
+            onPress={() => router.push("/checkout" as Href)}
             loading={isLoading}
           />
         </View>

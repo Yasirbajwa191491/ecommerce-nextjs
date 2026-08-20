@@ -131,6 +131,8 @@ export const createCheckoutSession = action({
     customer: customerInfoValidator,
     idempotencyKey: v.string(),
     deliveryMethod: v.optional(deliveryMethodTypeValidator),
+    successUrl: v.optional(v.string()),
+    cancelUrl: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     url: string;
@@ -201,11 +203,14 @@ async function createCheckoutSessionHandler(
     };
     idempotencyKey: string;
     deliveryMethod?: import("./lib/productValidators").DeliveryMethodType;
+    successUrl?: string;
+    cancelUrl?: string;
   }
 ): Promise<{ url: string; orderId: Id<"orders">; orderNumber: string }> {
+    const { successUrl, cancelUrl, ...orderArgs } = args;
     const { orderId, orderNumber, priced } = await ctx.runMutation(
       internal.orders.createPendingStripeOrder,
-      args
+      orderArgs
     );
 
     const stripe = getStripe();
@@ -213,6 +218,13 @@ async function createCheckoutSessionHandler(
 
     const lineItems = buildStripeLineItems(priced);
     assertStripeAmountMatchesOrder(lineItems, priced.total);
+
+    const successUrlResolved =
+      successUrl ??
+      `${appUrl}/checkout/success?orderNumber=${encodeURIComponent(orderNumber)}&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrlResolved =
+      cancelUrl ??
+      `${appUrl}/checkout/cancel?orderNumber=${encodeURIComponent(orderNumber)}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -225,8 +237,8 @@ async function createCheckoutSessionHandler(
         orderNumber,
         idempotencyKey: args.idempotencyKey,
       },
-      success_url: `${appUrl}/checkout/success?orderNumber=${encodeURIComponent(orderNumber)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/checkout/cancel?orderNumber=${encodeURIComponent(orderNumber)}`,
+      success_url: successUrlResolved,
+      cancel_url: cancelUrlResolved,
     });
 
     if (!session.url) {

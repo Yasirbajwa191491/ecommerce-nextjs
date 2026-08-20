@@ -16,11 +16,14 @@ const PROMPTS = [
 ];
 
 export default function AiScreen() {
-  const { productId, productName } = useLocalSearchParams<{
+  const { productId, productName, context, orderNumber } = useLocalSearchParams<{
     productId?: string;
     productName?: string;
+    context?: string;
+    orderNumber?: string;
   }>();
   const { horizontalPadding } = useLayoutMetrics();
+  const isOrderContext = context === "order_tracking";
 
   return (
     <ScreenContainer>
@@ -38,11 +41,17 @@ export default function AiScreen() {
             <View style={styles.heroIcon}>
               <Ionicons name="sparkles" size={32} color={colors.primary} />
             </View>
-            <Text style={styles.heroTitle}>Tell me what you&apos;re looking for</Text>
+            <Text style={styles.heroTitle}>
+              {isOrderContext ? "Ask about your order" : "Tell me what you're looking for"}
+            </Text>
             <Text style={styles.heroSub}>
               {productName
                 ? `Ask anything about "${productName}" — I'm ready to help.`
-                : "Get personalized recommendations and shopping advice powered by AI."}
+                : isOrderContext
+                  ? orderNumber
+                    ? `Get help tracking order ${orderNumber} — delivery updates, status, and more.`
+                    : "Get help with order tracking, delivery updates, and order status questions."
+                  : "Get personalized recommendations and shopping advice powered by AI."}
             </Text>
           </View>
 
@@ -51,6 +60,15 @@ export default function AiScreen() {
               <Ionicons name="cube-outline" size={18} color={colors.primary} />
               <Text style={styles.contextText} numberOfLines={2}>
                 Product context: {productName ?? productId}
+              </Text>
+            </View>
+          ) : null}
+
+          {isOrderContext ? (
+            <View style={styles.contextCard}>
+              <Ionicons name="locate-outline" size={18} color={colors.primary} />
+              <Text style={styles.contextText} numberOfLines={2}>
+                Order tracking context{orderNumber ? `: ${orderNumber}` : ""}
               </Text>
             </View>
           ) : null}

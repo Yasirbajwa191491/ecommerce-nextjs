@@ -33,6 +33,7 @@ const searchResultItemValidator = v.object({
   stock: v.number(),
   shipping: v.boolean(),
   description: v.string(),
+  _creationTime: v.number(),
 });
 
 const visualSearchResultValidator = v.object({
@@ -64,6 +65,7 @@ type VisualSearchResult = {
     stock: number;
     shipping: boolean;
     description: string;
+    _creationTime: number;
   }>;
   totalCount: number;
   nextCursor?: number;

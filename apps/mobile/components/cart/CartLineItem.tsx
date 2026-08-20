@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ColorSwatch } from "@/components/cart/ColorSwatch";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import type { CartLineLike } from "@/lib/cart-lines";
@@ -40,9 +41,8 @@ export function CartLineItem({
         <Text style={styles.name} numberOfLines={2}>
           {item.name}
         </Text>
-        {item.color ? (
-          <Text style={styles.variant}>{item.color}</Text>
-        ) : null}
+        {item.color ? <ColorSwatch color={item.color} /> : null}
+        <Text style={styles.qtyMeta}>Qty: {item.amount}</Text>
         <PriceDisplay price={displayTotal} size="sm" />
 
         <View style={styles.actions}>
@@ -106,10 +106,9 @@ const styles = StyleSheet.create({
   name: {
     ...textStyles.cardTitle,
   },
-  variant: {
+  qtyMeta: {
     fontSize: typography.xs,
     color: colors.textSecondary,
-    textTransform: "capitalize",
   },
   actions: {
     flexDirection: "row",

@@ -5,6 +5,7 @@ export {
   getPrimaryImage,
   getPrimaryImageAlt,
   getPrimaryImageUrl,
+  orderImagesForDisplay,
   resolvePrimaryImageIndex,
   type ProductImageEntry,
   type ProductWithImages,
