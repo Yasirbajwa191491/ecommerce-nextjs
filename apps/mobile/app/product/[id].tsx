@@ -27,59 +27,40 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 import { EmptyState } from "@/components/feedback/EmptyState";
-
 import { LoadingView } from "@/components/feedback/LoadingView";
-
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
-
 import { HomeSection } from "@/components/home/HomeSection";
-
 import { ProductCarousel } from "@/components/products/ProductCarousel";
-
+import { ProductDeliverySection } from "@/components/products/ProductDeliverySection";
 import { ProductImageGallery } from "@/components/products/ProductImageGallery";
-
+import { ProductWarrantySection } from "@/components/products/ProductWarrantySection";
+import { PromotionOfferBanner } from "@/components/products/PromotionOfferBanner";
 import { RatingStars } from "@/components/products/RatingStars";
-
 import { Button } from "@/components/ui/Button";
-
 import { Badge } from "@/components/ui/Badge";
-
 import { IconButton } from "@/components/ui/IconButton";
-
 import { PressableScale } from "@/components/ui/PressableScale";
-
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
-
 import {
-
   colors,
-
   radius,
-
   shadows,
-
   spacing,
-
   textStyles,
-
   touchTarget,
-
+  typography,
 } from "@/constants/theme";
-
 import { useSimilarProducts } from "@/hooks/useSimilarProducts";
-
 import { useStableNow } from "@/hooks/useStableNow";
-
 import { useWishlist } from "@/hooks/useWishlist";
-
+import { canRenderColorSwatch, isHexColor, resolveSwatchBackground } from "@/lib/color-swatch";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
-
 import { api } from "@/lib/convex-api";
-
+import { formatShippingLine } from "@/lib/product-display";
+import { getPromotionDisplay } from "@/lib/promotion-display";
 import { useCart } from "@/providers/cart-context";
-
 import { useToast } from "@/providers/toast-context";
-
+import { orderImagesForDisplay } from "@ecommerce/shared";
 import type { Id } from "@convex/_generated/dataModel";
 
 
@@ -92,7 +73,7 @@ export default function ProductDetailScreen() {
 
   const now = useStableNow();
 
-  const { addToCart } = useCart();
+  const { addToCart, itemCount } = useCart();
 
   const { showError, showSuccess } = useToast();
 
@@ -110,37 +91,26 @@ export default function ProductDetailScreen() {
 
   );
 
-  const reviewSummary = useQuery(
-
-    api.productReviews.getProductReviewSummary,
-
-    productId ? { productId } : "skip"
-
-  );
-
   const promotions = useQuery(
-
     api.productPromotions.getActiveForProduct,
-
     productId ? { productId, now } : "skip"
-
   );
-
-
 
   const { products: similarProducts, loading: similarLoading, isEmpty: noSimilar } =
-
     useSimilarProducts(productId);
 
-
-
   const [selectedColor, setSelectedColor] = useState("");
-
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
 
 
   const colorsList = product?.colors;
+
+  const galleryImages = useMemo(
+    () => (product ? orderImagesForDisplay(product) : []),
+    [product]
+  );
 
   const activeColor = useMemo(
 
@@ -184,20 +154,60 @@ export default function ProductDetailScreen() {
 
 
   const handleAddToCart = useCallback(() => {
-
     if (!product || !inStock) {
-
       showError("Out of stock");
-
       return;
-
     }
 
     addToCart(product, activeColor, quantity);
+    const promo = promotions?.[0];
+    if (promo) {
+      const { subtitle } = getPromotionDisplay(promo);
+      showSuccess(`Added to cart — ${subtitle}`);
+    } else {
+      showSuccess("Added to cart");
+    }
+  }, [
+    product,
+    inStock,
+    addToCart,
+    activeColor,
+    quantity,
+    promotions,
+    showError,
+    showSuccess,
+  ]);
 
-    showSuccess("Added to cart");
+  const handleViewCart = useCallback(() => {
+    router.push("/(tabs)/cart");
+  }, []);
 
-  }, [product, inStock, addToCart, activeColor, quantity, showError, showSuccess]);
+  const handleImageIndexChange = useCallback(
+    (index: number) => {
+      setActiveImageIndex(index);
+      const colorAtIndex = colorsList?.[index];
+      if (colorAtIndex) {
+        setSelectedColor(colorAtIndex);
+      }
+    },
+    [colorsList]
+  );
+
+  const handleColorSelect = useCallback(
+    (color: string) => {
+      setSelectedColor(color);
+      const colorIndex =
+        colorsList?.findIndex(
+          (entry) =>
+            resolveProductColorOrDefault(colorsList, entry) ===
+            resolveProductColorOrDefault(colorsList, color)
+        ) ?? -1;
+      if (colorIndex >= 0 && colorIndex < galleryImages.length) {
+        setActiveImageIndex(colorIndex);
+      }
+    },
+    [colorsList, galleryImages.length]
+  );
 
 
 
@@ -341,155 +351,124 @@ export default function ProductDetailScreen() {
 
 
 
-        <ScrollView showsVerticalScrollIndicator={false} bounces>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces
+        >
 
-          <ProductImageGallery product={product} />
-
-
+          <ProductImageGallery
+            product={product}
+            images={galleryImages}
+            activeIndex={activeImageIndex}
+            onActiveIndexChange={handleImageIndexChange}
+          />
 
           <View style={styles.content}>
+            <View style={styles.badgeRow}>
+              {product.category?.name ? (
+                <Pressable
+                  onPress={() =>
+                    product.category?.slug
+                      ? router.push(`/category/${product.category.slug}`)
+                      : undefined
+                  }
+                >
+                  <Badge label={product.category.name.toUpperCase()} variant="primary" />
+                </Pressable>
+              ) : null}
+              {product.featured ? (
+                <Badge label="Featured" variant="warning" />
+              ) : null}
+              <Badge
+                label={inStock ? "In stock" : "Out of stock"}
+                variant={inStock ? "success" : "destructive"}
+              />
+            </View>
 
-            {product.category?.name ? (
-
-              <Pressable
-
-                onPress={() =>
-
-                  product.category?.slug
-
-                    ? router.push(`/category/${product.category.slug}`)
-
-                    : undefined
-
-                }
-
-              >
-
-                <Text style={styles.category}>{product.category.name}</Text>
-
-              </Pressable>
-
+            {product.company ? (
+              <Text style={styles.brand}>{product.company.toUpperCase()}</Text>
             ) : null}
-
-
 
             <Text style={styles.name}>{product.name}</Text>
 
-            {product.company ? (
-
-              <Text style={styles.brand}>{product.company}</Text>
-
-            ) : null}
-
-
-
-            <RatingStars
-
-              rating={reviewSummary?.averageRating ?? product.stars}
-
-              reviewCount={reviewSummary?.totalReviews ?? product.reviews}
-
-            />
-
-
-
-            <View style={styles.priceRow}>
-
-              <PriceDisplay
-
-                price={displayPrice}
-
-                originalPrice={hasDiscount ? product.price : undefined}
-
-                size="lg"
-
-              />
-
-              {hasDiscount ? (
-
-                <Badge label={`-${discountPercent}%`} variant="destructive" />
-
-              ) : null}
-
-            </View>
-
-
-
-            <View style={styles.stockRow}>
-
-              <View style={[styles.stockDot, inStock ? styles.inStockDot : styles.outStockDot]} />
-
-              <Text style={[styles.stockText, !inStock && styles.outOfStock]}>
-
-                {inStock ? `${product.stock} in stock` : "Out of stock"}
-
-              </Text>
-
-            </View>
-
-
+            <RatingStars rating={product.stars} reviewCount={product.reviews} />
 
             {promotions && promotions.length > 0 ? (
-
               <View style={styles.promoSection}>
-
                 {promotions.map((promo) => (
-
-                  <View key={promo._id} style={styles.promoBadge}>
-
-                    <Ionicons name="pricetag" size={14} color={colors.primary} />
-
-                    <Text style={styles.promoText}>{promo.name}</Text>
-
-                  </View>
-
+                  <PromotionOfferBanner key={promo._id} promotion={promo} now={now} />
                 ))}
-
               </View>
-
             ) : null}
 
+            <View style={styles.priceCard}>
+              <View style={styles.priceHeader}>
+                <Text style={styles.priceLabel}>Price</Text>
+                {hasDiscount ? (
+                  <Badge label={`-${discountPercent}%`} variant="destructive" />
+                ) : null}
+              </View>
+              <PriceDisplay
+                price={displayPrice}
+                originalPrice={hasDiscount ? product.price : undefined}
+                size="lg"
+              />
+              <View style={styles.shippingRow}>
+                <Ionicons name="car-outline" size={16} color={colors.primary} />
+                <Text
+                  style={[
+                    styles.shippingText,
+                    product.shipping === true && styles.freeShippingText,
+                  ]}
+                >
+                  {formatShippingLine(product)}
+                </Text>
+              </View>
+            </View>
 
+            <View style={styles.stockRow}>
+              <View style={[styles.stockDot, inStock ? styles.inStockDot : styles.outStockDot]} />
+              <Text style={[styles.stockText, !inStock && styles.outOfStock]}>
+                {inStock ? `${product.stock} available` : "Out of stock"}
+              </Text>
+            </View>
 
             {colorsList && colorsList.length > 0 ? (
-
               <View style={styles.optionSection}>
-
                 <Text style={styles.optionLabel}>Color</Text>
-
                 <View style={styles.colorRow}>
-
-                  {colorsList.map((color) => (
-
-                    <Pressable
-
-                      key={color}
-
-                      accessibilityLabel={`Select color ${color}`}
-
-                      onPress={() => setSelectedColor(color)}
-
-                      style={[
-
-                        styles.colorSwatch,
-
-                        { backgroundColor: color },
-
-                        activeColor === resolveProductColorOrDefault(colorsList, color) &&
-
-                          styles.colorSwatchActive,
-
-                      ]}
-
-                    />
-
-                  ))}
-
+                  {colorsList.map((color) => {
+                    const resolved = resolveProductColorOrDefault(colorsList, color);
+                    const selected = activeColor === resolved;
+                    const swatchColor = resolveSwatchBackground(color);
+                    const renderSwatch = canRenderColorSwatch(color);
+                    return (
+                      <Pressable
+                        key={color}
+                        accessibilityLabel={`Select color ${color}`}
+                        onPress={() => handleColorSelect(color)}
+                        style={[
+                          renderSwatch ? styles.colorSwatch : styles.namedColorSwatch,
+                          swatchColor ? { backgroundColor: swatchColor } : null,
+                          selected && styles.colorSwatchActive,
+                        ]}
+                      >
+                        {!renderSwatch ? (
+                          <Text style={styles.namedColorText} numberOfLines={1}>
+                            {color}
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
                 </View>
-
               </View>
-
             ) : null}
+
+            <ProductWarrantySection product={product} />
+            <ProductDeliverySection product={product} />
 
 
 
@@ -573,62 +552,53 @@ export default function ProductDetailScreen() {
 
 
 
-          <View style={{ height: 100 + insets.bottom }} />
+          <View style={{ height: 130 + insets.bottom }} />
 
         </ScrollView>
 
 
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-
           <View style={styles.footerQty}>
-
             <Pressable
-
               accessibilityLabel="Decrease quantity"
-
               onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-
               style={styles.qtyButton}
-
             >
-
               <Ionicons name="remove" size={20} color={colors.foreground} />
-
             </Pressable>
-
             <Text style={styles.qtyText}>{quantity}</Text>
-
             <Pressable
-
               accessibilityLabel="Increase quantity"
-
               onPress={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-
               style={styles.qtyButton}
-
               disabled={quantity >= product.stock}
-
             >
-
               <Ionicons name="add" size={20} color={colors.foreground} />
-
             </Pressable>
-
           </View>
 
-          <Button
-
-            label="Add to Cart"
-
-            onPress={handleAddToCart}
-
-            disabled={!inStock}
-
-            style={styles.footerCta}
-
-          />
-
+          <View style={styles.footerActions}>
+            <Button
+              label="Add to Cart"
+              onPress={handleAddToCart}
+              disabled={!inStock}
+              style={styles.footerCta}
+            />
+            <View style={styles.viewCartWrap}>
+              <Button
+                label="View Cart"
+                variant="outline"
+                onPress={handleViewCart}
+                style={styles.footerCta}
+              />
+              {itemCount > 0 ? (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{itemCount}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
         </View>
 
       </View>
@@ -644,33 +614,25 @@ export default function ProductDetailScreen() {
 const styles = StyleSheet.create({
 
   container: {
-
     flex: 1,
-
     backgroundColor: colors.background,
-
   },
-
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    width: "100%",
+    paddingBottom: spacing.md,
+  },
   topBar: {
-
-    position: "absolute",
-
-    top: 0,
-
-    left: 0,
-
-    right: 0,
-
-    zIndex: 10,
-
     flexDirection: "row",
-
     justifyContent: "space-between",
-
     alignItems: "center",
-
     paddingHorizontal: spacing.lg,
-
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
   },
 
   topActions: {
@@ -682,51 +644,56 @@ const styles = StyleSheet.create({
   },
 
   content: {
-
     padding: spacing.lg,
-
     gap: spacing.md,
-
   },
-
-  category: {
-
-    ...textStyles.caption,
-
-    color: colors.primary,
-
-    textTransform: "uppercase",
-
-  },
-
-  name: {
-
-    ...textStyles.display,
-
-    fontSize: 26,
-
-    lineHeight: 32,
-
-  },
-
-  brand: {
-
-    ...textStyles.bodySmall,
-
-    marginTop: -spacing.xs,
-
-  },
-
-  priceRow: {
-
+  badgeRow: {
     flexDirection: "row",
-
-    alignItems: "center",
-
-    gap: spacing.sm,
-
     flexWrap: "wrap",
-
+    gap: spacing.sm,
+  },
+  brand: {
+    ...textStyles.caption,
+    color: colors.muted,
+    letterSpacing: 0.8,
+  },
+  name: {
+    ...textStyles.display,
+    fontSize: 26,
+    lineHeight: 32,
+  },
+  priceCard: {
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.borderLight,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  priceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  priceLabel: {
+    ...textStyles.caption,
+    color: colors.muted,
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  shippingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  shippingText: {
+    ...textStyles.bodySmall,
+    fontWeight: "600",
+    color: colors.foreground,
+  },
+  freeShippingText: {
+    color: colors.success,
   },
 
   stockRow: {
@@ -778,39 +745,7 @@ const styles = StyleSheet.create({
   },
 
   promoSection: {
-
     gap: spacing.sm,
-
-  },
-
-  promoBadge: {
-
-    flexDirection: "row",
-
-    alignItems: "center",
-
-    gap: spacing.sm,
-
-    backgroundColor: colors.primaryMuted,
-
-    paddingHorizontal: spacing.md,
-
-    paddingVertical: spacing.sm,
-
-    borderRadius: radius.sm,
-
-    alignSelf: "flex-start",
-
-  },
-
-  promoText: {
-
-    ...textStyles.bodySmall,
-
-    color: colors.primary,
-
-    fontWeight: "600",
-
   },
 
   optionSection: {
@@ -852,11 +787,25 @@ const styles = StyleSheet.create({
   },
 
   colorSwatchActive: {
-
     borderColor: colors.primary,
-
     borderWidth: 3,
-
+  },
+  namedColorSwatch: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.borderLight,
+    paddingHorizontal: spacing.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  namedColorText: {
+    fontSize: typography.xs,
+    fontWeight: "600",
+    color: colors.foreground,
+    maxWidth: 80,
   },
 
   section: {
@@ -970,33 +919,42 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-
     position: "absolute",
-
     bottom: 0,
-
     left: 0,
-
     right: 0,
-
-    flexDirection: "row",
-
-    alignItems: "center",
-
-    gap: spacing.md,
-
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-
     paddingTop: spacing.md,
-
     backgroundColor: colors.surface,
-
     borderTopWidth: StyleSheet.hairlineWidth,
-
     borderTopColor: colors.border,
-
     ...shadows.md,
-
+  },
+  footerActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  viewCartWrap: {
+    flex: 1,
+    position: "relative",
+  },
+  cartBadge: {
+    position: "absolute",
+    top: -6,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    fontSize: typography.xs,
+    fontWeight: "700",
+    color: colors.primaryForeground,
   },
 
   footerQty: {

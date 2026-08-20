@@ -15,6 +15,7 @@ import {
   CatalogFiltersSheet,
   type CatalogFilters,
 } from "@/components/catalog/CatalogFiltersSheet";
+import { MobileFooter } from "@/components/layout/MobileFooter";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -78,6 +79,8 @@ export default function ShopScreen() {
     []
   );
 
+  const ListFooter = <MobileFooter compactBottom />;
+
   const ListHeader = (
     <View style={styles.toolbar}>
       <View style={styles.searchTap}>
@@ -139,17 +142,23 @@ export default function ShopScreen() {
             </View>
           </View>
         ) : products.length === 0 ? (
-          <View style={{ paddingHorizontal: horizontalPadding }}>
-            {ListHeader}
-            <EmptyState
-              icon="search-outline"
-              title="No products found"
-              description="Try adjusting your filters or check back later."
-              actionLabel="Clear Filters"
-              onAction={() => setFilters({ sort: "default", inStockOnly: false })}
-              compact
-            />
-          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: spacing["2xl"] }}
+          >
+            <View style={{ paddingHorizontal: horizontalPadding }}>
+              {ListHeader}
+              <EmptyState
+                icon="search-outline"
+                title="No products found"
+                description="Try adjusting your filters or check back later."
+                actionLabel="Clear Filters"
+                onAction={() => setFilters({ sort: "default", inStockOnly: false })}
+                compact
+              />
+            </View>
+            {ListFooter}
+          </ScrollView>
         ) : (
           <FlatList
             data={products}
@@ -162,6 +171,7 @@ export default function ShopScreen() {
               { paddingHorizontal: horizontalPadding },
             ]}
             ListHeaderComponent={ListHeader}
+            ListFooterComponent={ListFooter}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
             showsVerticalScrollIndicator={false}

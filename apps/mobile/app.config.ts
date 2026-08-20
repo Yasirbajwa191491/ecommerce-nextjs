@@ -30,7 +30,19 @@ const config: ExpoConfig = {
       },
     ],
   },
-  plugins: ["expo-router"],
+  plugins: [
+    "expo-router",
+    [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Allow access to your photo library to find similar products.",
+        cameraPermission:
+          "Allow camera access to take a photo and find similar products.",
+      },
+    ],
+    "expo-web-browser",
+  ],
   experiments: {
     typedRoutes: true,
   },

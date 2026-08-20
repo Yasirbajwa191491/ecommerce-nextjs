@@ -14,6 +14,7 @@ import { CategoryCard } from "@/components/home/CategoryCard";
 import { HomeSection } from "@/components/home/HomeSection";
 import { PromoBanner } from "@/components/home/PromoBanner";
 import { RecommendationSection } from "@/components/home/RecommendationSection";
+import { MobileFooter } from "@/components/layout/MobileFooter";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
@@ -135,7 +136,7 @@ export default function HomeScreen() {
             </HomeSection>
           ) : null}
 
-          <View style={styles.bottomSpacer} />
+          <MobileFooter compactBottom />
         </ScrollView>
       </View>
     </ScreenContainer>
@@ -157,8 +158,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     paddingTop: spacing.xl,
-  },
-  bottomSpacer: {
-    height: spacing["2xl"],
   },
 });

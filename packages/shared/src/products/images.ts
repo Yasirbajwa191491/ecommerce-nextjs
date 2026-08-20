@@ -38,3 +38,15 @@ export function getPrimaryImageAlt(
   const primary = getPrimaryImage(product);
   return primary?.alt?.trim() || product.name;
 }
+
+export function orderImagesForDisplay(
+  product: Pick<ProductWithImages, "image" | "primaryImageIndex">
+): ProductImageEntry[] {
+  if (product.image.length <= 1) return [...product.image];
+  const primaryIndex = resolvePrimaryImageIndex(product);
+  if (primaryIndex === 0) return [...product.image];
+  return [
+    product.image[primaryIndex]!,
+    ...product.image.filter((_, i) => i !== primaryIndex),
+  ];
+}
