@@ -1,0 +1,25 @@
+import { CACHE_PREFIX } from "@/lib/offline/constants";
+
+export const offlineKeys = {
+  homeFeatured: `${CACHE_PREFIX}home:featured`,
+  homeBestSellers: `${CACHE_PREFIX}home:bestSellers`,
+  homeNewArrivals: `${CACHE_PREFIX}home:newArrivals`,
+  categoriesActive: `${CACHE_PREFIX}categories:active`,
+  categoriesWithCounts: `${CACHE_PREFIX}categories:withCounts`,
+  shopAll: `${CACHE_PREFIX}shop:all`,
+  shop: (categoryId = "all") => `${CACHE_PREFIX}shop:${categoryId}`,
+  productStore: `${CACHE_PREFIX}products`,
+  recentlyViewed: `${CACHE_PREFIX}recentlyViewed`,
+  settings: `${CACHE_PREFIX}settings`,
+  searchTrending: `${CACHE_PREFIX}search:trending`,
+  searchSuggestions: `${CACHE_PREFIX}search:suggestions`,
+  wishlistIds: `${CACHE_PREFIX}wishlist:ids`,
+  wishlistQueue: `${CACHE_PREFIX}wishlist:queue`,
+  contactDraft: `${CACHE_PREFIX}draft:contact`,
+  newsletterDraft: `${CACHE_PREFIX}draft:newsletter`,
+  lastTrack: `${CACHE_PREFIX}track:last`,
+  lastVisualSearch: `${CACHE_PREFIX}visual:last`,
+  categoryProducts: (slug: string) => `${CACHE_PREFIX}category:${slug}`,
+  recommendations: (section: string) => `${CACHE_PREFIX}recs:${section}`,
+  similar: (productId: string) => `${CACHE_PREFIX}similar:${productId}`,
+} as const;

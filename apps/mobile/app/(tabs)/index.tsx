@@ -13,24 +13,58 @@ import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
 import { ProductGridInline } from "@/components/products/ProductGridInline";
+import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
+import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { HomeFeedSkeleton } from "@/components/ui/Skeleton";
 import { colors, spacing } from "@/constants/theme";
+import { useOfflineCache } from "@/hooks/useOfflineCache";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { api } from "@/lib/convex-api";
+import { offlineKeys } from "@/lib/offline/keys";
+import type { HomeCategory } from "@/lib/offline/types";
+import { refreshNetworkSnapshot } from "@/lib/network";
+import { useNetworkStatus } from "@/providers/NetworkProvider";
+import type { Product } from "@/types/product";
 
 export default function HomeScreen() {
-  const featured = useQuery(api.products.featured);
-  const bestSellers = useQuery(api.products.bestSellers, { limit: 12 });
-  const newArrivals = useQuery(api.products.newArrivals, { limit: 8 });
-  const categories = useQuery(api.productCategories.listWithProductCounts);
+  const { isOffline } = useNetworkStatus();
+  const liveFeatured = useQuery(api.products.featured);
+  const liveBestSellers = useQuery(api.products.bestSellers, { limit: 12 });
+  const liveNewArrivals = useQuery(api.products.newArrivals, { limit: 8 });
+  const liveCategories = useQuery(api.productCategories.listWithProductCounts);
+  const { products: recentlyViewed } = useRecentlyViewed();
+
+  const featured = useOfflineCache<Product[]>(offlineKeys.homeFeatured, liveFeatured);
+  const bestSellers = useOfflineCache<Product[]>(offlineKeys.homeBestSellers, liveBestSellers);
+  const newArrivals = useOfflineCache<Product[]>(offlineKeys.homeNewArrivals, liveNewArrivals);
+  const categories = useOfflineCache<HomeCategory[]>(
+    offlineKeys.categoriesWithCounts,
+    liveCategories
+  );
+
+  const hasCachedHome =
+    Boolean(featured.data?.length) ||
+    Boolean(bestSellers.data?.length) ||
+    Boolean(newArrivals.data?.length) ||
+    Boolean(categories.data?.length) ||
+    recentlyViewed.length > 0;
 
   const isInitialLoading =
-    featured === undefined &&
-    bestSellers === undefined &&
-    newArrivals === undefined &&
-    categories === undefined;
+    liveFeatured === undefined &&
+    liveBestSellers === undefined &&
+    liveNewArrivals === undefined &&
+    liveCategories === undefined &&
+    !hasCachedHome;
+
+  const showingCached =
+    isOffline &&
+    hasCachedHome &&
+    liveFeatured === undefined &&
+    liveBestSellers === undefined &&
+    liveNewArrivals === undefined;
 
   const onRefresh = useCallback(() => {
-    // Convex queries auto-refresh on pull
+    // Convex queries auto-refresh on pull when online
   }, []);
 
   return (
@@ -48,42 +82,78 @@ export default function HomeScreen() {
           </View>
 
           {isInitialLoading ? (
-            <HomeFeedSkeleton />
+            isOffline ? (
+              <View style={styles.offlineWrap}>
+                <OfflineNotice
+                  title="You're offline"
+                  message="Connect to the internet to browse products."
+                  onRetry={() => void refreshNetworkSnapshot()}
+                />
+              </View>
+            ) : (
+              <HomeFeedSkeleton />
+            )
           ) : (
             <>
-              <HomeSection
-                title="Featured"
-                subtitle="Hand-picked for you"
-                onAction={() => router.push("/(tabs)/shop")}
-              >
-                <ProductCarousel
-                  products={featured}
-                  isLoading={featured === undefined}
-                  size="featured"
-                />
-              </HomeSection>
+              {showingCached ? (
+                <View style={styles.cachedWrap}>
+                  <CachedDataNotice
+                    title="Showing saved store information"
+                    message="Some information may be from your last visit."
+                  />
+                </View>
+              ) : null}
 
-              {categories === undefined || categories.length > 0 ? (
+              {featured.data && featured.data.length > 0 ? (
+                <HomeSection
+                  title="Featured"
+                  subtitle="Hand-picked for you"
+                  onAction={() => router.push("/(tabs)/shop")}
+                >
+                  <ProductCarousel
+                    products={featured.data}
+                    isLoading={liveFeatured === undefined && !featured.data}
+                    size="featured"
+                  />
+                </HomeSection>
+              ) : liveFeatured === undefined && !isOffline ? (
+                <HomeSection
+                  title="Featured"
+                  subtitle="Hand-picked for you"
+                  onAction={() => router.push("/(tabs)/shop")}
+                >
+                  <ProductCarousel products={undefined} isLoading size="featured" />
+                </HomeSection>
+              ) : null}
+
+              {(categories.data && categories.data.length > 0) ||
+              (liveCategories === undefined && !isOffline) ? (
                 <HomeSection
                   title="Shop by category"
                   subtitle="Browse collections"
                   onAction={() => router.push("/(tabs)/shop")}
                 >
-                  <CategoryGrid categories={categories} isLoading={categories === undefined} />
+                  <CategoryGrid
+                    categories={categories.data?.map((item) => ({
+                      ...item,
+                      productCount: item.productCount ?? 0,
+                    }))}
+                    isLoading={liveCategories === undefined && !categories.data}
+                  />
                 </HomeSection>
               ) : null}
 
               <RecommendationSection sectionType="recommended_for_you" limit={8} accent />
 
-              {bestSellers && bestSellers.length > 0 ? (
+              {bestSellers.data && bestSellers.data.length > 0 ? (
                 <HomeSection
                   title="Best sellers"
                   subtitle="Top picks from our customers"
                   onAction={() => router.push("/(tabs)/shop")}
                 >
                   <ProductCarousel
-                    products={bestSellers}
-                    isLoading={bestSellers === undefined}
+                    products={bestSellers.data}
+                    isLoading={liveBestSellers === undefined && !bestSellers.data}
                     showRank
                   />
                 </HomeSection>
@@ -95,14 +165,24 @@ export default function HomeScreen() {
 
               <RecommendationSection sectionType="trending_in_interests" limit={8} />
 
-              {newArrivals && newArrivals.length > 0 ? (
+              {recentlyViewed.length > 0 ? (
+                <HomeSection
+                  title="Recently viewed"
+                  subtitle="Pick up where you left off"
+                  onAction={() => router.push("/(tabs)/shop")}
+                >
+                  <ProductCarousel products={recentlyViewed} />
+                </HomeSection>
+              ) : null}
+
+              {newArrivals.data && newArrivals.data.length > 0 ? (
                 <HomeSection
                   title="New arrivals"
                   subtitle="Fresh additions"
                   compact
                   onAction={() => router.push("/(tabs)/shop")}
                 >
-                  <ProductGridInline products={newArrivals} limit={4} />
+                  <ProductGridInline products={newArrivals.data} limit={4} />
                 </HomeSection>
               ) : null}
             </>
@@ -125,5 +205,13 @@ const styles = StyleSheet.create({
   },
   promoWrap: {
     paddingTop: spacing["2xl"],
+  },
+  cachedWrap: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  offlineWrap: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
   },
 });

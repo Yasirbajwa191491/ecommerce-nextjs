@@ -25,7 +25,7 @@ type MobileFooterProps = {
 export function MobileFooter({ compactBottom = false }: MobileFooterProps) {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
-  const { storeName, address, phone, phoneHref, email, businessHours, isLoading } =
+  const { storeName, address, phone, phoneHref, email, businessHours } =
     useSiteSettings();
   const year = new Date().getFullYear();
 
@@ -62,12 +62,8 @@ export function MobileFooter({ compactBottom = false }: MobileFooterProps) {
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Contact</Text>
         <View style={styles.contactCard}>
-          {isLoading ? (
-            <Text style={styles.contactLoading}>Loading contact details…</Text>
-          ) : (
-            <>
-              {(
-                [
+          {(
+            [
                   {
                     key: "address",
                     icon: "location-outline" as const,
@@ -110,8 +106,6 @@ export function MobileFooter({ compactBottom = false }: MobileFooterProps) {
                   isLast={index === rows.length - 1}
                 />
               ))}
-            </>
-          )}
         </View>
       </View>
 
@@ -257,10 +251,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: "hidden",
-  },
-  contactLoading: {
-    ...textStyles.bodySmall,
-    padding: spacing.lg,
   },
   contactRow: {
     flexDirection: "row",

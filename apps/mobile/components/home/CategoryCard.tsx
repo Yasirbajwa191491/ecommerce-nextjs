@@ -104,6 +104,8 @@ export function CategoryCard({
 
             contentFit="cover"
 
+            cachePolicy="memory-disk"
+
             onError={() => setImageError(true)}
 
           />

@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useCartPricing } from "@/hooks/useCartPricing";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useCart } from "@/providers/cart-context";
 
@@ -27,7 +28,8 @@ export default function CartScreen() {
     decrementItem,
     removeItem,
   } = useCart();
-  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(cart);
+  const { priced, pricingError, isLoading, isOffline, getPricedItem } = useCartPricing(cart);
+  const isOnline = useOnlineStatus();
 
   if (!hydrated) {
     return (
@@ -60,7 +62,7 @@ export default function CartScreen() {
     );
   }
 
-  if (pricingError && !isLoading) {
+  if (pricingError && !isLoading && !isOffline) {
     return (
       <ScreenContainer>
         <View style={styles.container}>
@@ -113,6 +115,13 @@ export default function CartScreen() {
             { paddingHorizontal: horizontalPadding, paddingBottom: insets.bottom + spacing.lg },
           ]}
         >
+          {isOffline ? (
+            <Text style={styles.offlineText}>
+              You&apos;re offline. Prices and availability will be checked when you&apos;re back
+              online.
+            </Text>
+          ) : null}
+
           {pricingError ? (
             <Text style={styles.errorText}>{getFriendlyErrorMessage(pricingError)}</Text>
           ) : null}
@@ -133,7 +142,7 @@ export default function CartScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>
-              {isLoading ? "…" : formatCurrencyAmount(priced?.subtotal ?? 0)}
+              {isLoading || isOffline ? "…" : formatCurrencyAmount(priced?.subtotal ?? 0)}
             </Text>
           </View>
 
@@ -158,16 +167,17 @@ export default function CartScreen() {
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Estimated total</Text>
             <Text style={styles.totalValue}>
-              {isLoading ? "…" : formatCurrencyAmount(priced?.total ?? 0)}
+              {isLoading || isOffline ? "…" : formatCurrencyAmount(priced?.total ?? 0)}
             </Text>
           </View>
 
           <Button
-            label="Proceed to Checkout"
+            label={isOffline ? "Internet required to checkout" : "Proceed to Checkout"}
             fullWidth
             size="lg"
             onPress={() => router.push("/checkout" as Href)}
             loading={isLoading}
+            disabled={isLoading || isOffline || !isOnline || Boolean(pricingError) || !priced}
           />
         </View>
       </View>
@@ -202,6 +212,12 @@ const styles = StyleSheet.create({
     fontSize: typography.sm,
     color: colors.destructive,
     textAlign: "center",
+  },
+  offlineText: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
   },
   promoSection: {
     gap: 4,

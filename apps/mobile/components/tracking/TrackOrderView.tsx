@@ -18,13 +18,18 @@ import {
   CustomerOrderCard,
   TrackOrderResultCard,
 } from "@/components/tracking/TrackOrderCards";
+import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
+import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { api } from "@/lib/convex-api";
+import { ensureOnlineNow, getIsOnline, refreshNetworkSnapshot } from "@/lib/network";
+import { loadTrackByOrderCache, saveTrackByOrderCache } from "@/lib/offline/track-cache";
 import type { OrderStatus } from "@/lib/order-display";
 import {
   hasTrackByCustomerErrors,
@@ -63,6 +68,7 @@ export function TrackOrderView() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
   const { showError } = useToast();
+  const isOnline = useOnlineStatus();
   const params = useLocalSearchParams<{ orderNumber?: string }>();
 
   const trackByOrderNumber = useAction(api.orderTracking.trackByOrderNumber);
@@ -87,6 +93,7 @@ export function TrackOrderView() {
   const [customerResults, setCustomerResults] = useState<
     Awaited<ReturnType<typeof trackByCustomer>> | null
   >(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const runOrderSearch = useCallback(
     async (value: string) => {
@@ -95,13 +102,35 @@ export function TrackOrderView() {
       setOrderErrors(errors);
       if (hasTrackByOrderErrors(errors)) return;
 
+      if (!getIsOnline()) {
+        const cached = await loadTrackByOrderCache(trimmed);
+        if (cached) {
+          setOrderResult(cached.result as Awaited<ReturnType<typeof trackByOrderNumber>>);
+          setLastUpdatedAt(cached.cachedAt);
+          return;
+        }
+        try {
+          await ensureOnlineNow("Connect to the internet for the latest order status.");
+        } catch (error) {
+          showError(
+            error instanceof Error
+              ? error.message
+              : "Connect to the internet for the latest order status."
+          );
+        }
+        return;
+      }
+
       setIsSearchingOrder(true);
       setOrderResult(null);
+      setLastUpdatedAt(null);
       Keyboard.dismiss();
 
       try {
         const result = await trackByOrderNumber({ orderNumber: trimmed });
         setOrderResult(result);
+        setLastUpdatedAt(Date.now());
+        await saveTrackByOrderCache(trimmed, result);
         const message = getTrackingErrorMessage(result);
         if (message) showError(message);
       } catch {
@@ -118,6 +147,15 @@ export function TrackOrderView() {
       const errors = validateTrackByCustomerForm({ email, phone });
       setCustomerErrors(errors);
       if (hasTrackByCustomerErrors(errors)) return;
+
+      try {
+        await ensureOnlineNow("Connect to the internet for the latest order status.");
+      } catch (error) {
+        showError(
+          error instanceof Error ? error.message : "Connect to the internet for the latest order status."
+        );
+        return;
+      }
 
       setIsSearchingCustomer(true);
       setCustomerResults(null);
@@ -182,6 +220,13 @@ export function TrackOrderView() {
               Enter your order number or the contact details used at checkout to see
               your delivery progress.
             </Text>
+            {!isOnline ? (
+              <OfflineNotice
+                title="You're offline"
+                message="Connect to the internet for the latest order status."
+                onRetry={() => void refreshNetworkSnapshot()}
+              />
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Ask AI about my order"
@@ -226,17 +271,25 @@ export function TrackOrderView() {
               />
 
               {orderResult?.found ? (
-                <TrackOrderResultCard
-                  orderNumber={orderResult.order.orderNumber}
-                  status={orderResult.order.status as OrderStatus}
-                  paymentMethod={orderResult.order.paymentMethod}
-                  paymentStatus={orderResult.order.paymentStatus}
-                  total={orderResult.order.total}
-                  currency={orderResult.order.currency}
-                  createdAt={orderResult.order.createdAt}
-                  paidAt={orderResult.order.paidAt}
-                  itemCount={orderResult.order.items.length}
-                />
+                <>
+                  {lastUpdatedAt && !isOnline ? (
+                    <CachedDataNotice
+                      title={`Last updated: ${new Date(lastUpdatedAt).toLocaleString()}`}
+                      message="You're viewing saved information. Connect to the internet for the latest status."
+                    />
+                  ) : null}
+                  <TrackOrderResultCard
+                    orderNumber={orderResult.order.orderNumber}
+                    status={orderResult.order.status as OrderStatus}
+                    paymentMethod={orderResult.order.paymentMethod}
+                    paymentStatus={orderResult.order.paymentStatus}
+                    total={orderResult.order.total}
+                    currency={orderResult.order.currency}
+                    createdAt={orderResult.order.createdAt}
+                    paidAt={orderResult.order.paidAt}
+                    itemCount={orderResult.order.items.length}
+                  />
+                </>
               ) : orderResult && !orderResult.found ? (
                 <View style={styles.notFound}>
                   <Ionicons name="search-outline" size={28} color={colors.muted} />
@@ -296,6 +349,7 @@ export function TrackOrderView() {
                 label={isSearchingCustomer ? "Finding orders…" : "Find my orders"}
                 loading={isSearchingCustomer}
                 fullWidth
+                disabled={!isOnline}
                 onPress={() =>
                   void runCustomerSearch(
                     customerField === "email" ? customerEmail : "",

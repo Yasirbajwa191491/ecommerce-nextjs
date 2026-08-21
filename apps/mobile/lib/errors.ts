@@ -1,10 +1,11 @@
+import { isLikelyOfflineError, OfflineError } from "@/lib/network";
+
 const FRIENDLY_ERROR_MAP: Record<string, string> = {
   "Your cart is empty": "Your cart is empty.",
   "Each cart item must have a selected color":
     "A cart item is missing required details. Try removing it and adding again.",
   "Invalid quantity in cart": "Something is wrong with an item quantity. Please update your cart.",
   "Unable to validate your cart": "We couldn't calculate your cart total. Please try again.",
-  "Network request failed": "Check your internet connection and try again.",
 };
 
 export function getErrorMessage(error: unknown): string {
@@ -22,10 +23,18 @@ export function getFriendlyErrorMessage(
   error: unknown,
   fallback = "Something went wrong. Please try again."
 ): string {
+  if (error instanceof OfflineError) {
+    return error.message.trim() || "You're offline. Connect to the internet and try again.";
+  }
+
   const raw = getErrorMessage(error);
   const parsed = parseServerErrorMessage(raw);
   const mapped = FRIENDLY_ERROR_MAP[parsed] ?? FRIENDLY_ERROR_MAP[raw];
   if (mapped) return mapped;
+
+  if (isLikelyOfflineError(error) || isLikelyOfflineError(parsed)) {
+    return "You're offline. Connect to the internet and try again.";
+  }
 
   if (parsed.length > 0 && parsed.length < 280 && !looksLikeRawServerDump(parsed)) {
     return parsed;

@@ -24,6 +24,7 @@ export function AboutImage({
         source={{ uri: src }}
         accessibilityLabel={alt}
         contentFit="cover"
+        cachePolicy="memory-disk"
         transition={300}
         priority={priority ? "high" : "normal"}
         style={[styles.image, { aspectRatio }]}

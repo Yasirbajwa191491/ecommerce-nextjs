@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/feedback/EmptyState";
+import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -26,7 +27,9 @@ import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useVisualProductSearch } from "@/hooks/useVisualProductSearch";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { ensureOnlineNow, refreshNetworkSnapshot } from "@/lib/network";
 import { searchResultToProduct } from "@/lib/product-adapters";
 import type { PickedVisualSearchImage } from "@/lib/visual-search-picker";
 import {
@@ -46,6 +49,7 @@ export default function VisualSearchScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
   const { showError } = useToast();
+  const isOnline = useOnlineStatus();
 
   const [selectedImage, setSelectedImage] = useState<PickedVisualSearchImage | null>(null);
   const [textQuery, setTextQuery] = useState("");
@@ -94,13 +98,19 @@ export default function VisualSearchScreen() {
 
   const handleSearch = useCallback(async () => {
     if (!selectedImage) return;
+    try {
+      await ensureOnlineNow("Visual search requires an internet connection.");
+    } catch (error) {
+      showError(getFriendlyErrorMessage(error, "Visual search requires an internet connection."));
+      return;
+    }
     const sessionId = await getSearchSessionId();
     await search({
       image: selectedImage,
       textQuery: textQuery.trim() || undefined,
       sessionId,
     });
-  }, [search, selectedImage, textQuery]);
+  }, [search, selectedImage, textQuery, showError]);
 
   const handleSearchAgain = useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -137,9 +147,18 @@ export default function VisualSearchScreen() {
         Upload a photo and we&apos;ll find visually similar products.
       </Text>
 
+      {!isOnline ? (
+        <OfflineNotice
+          title="Visual search requires an internet connection."
+          message="Please reconnect to search with a photo."
+          onRetry={() => void refreshNetworkSnapshot()}
+        />
+      ) : null}
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Choose a photo from your library"
+        disabled={!isOnline}
         onPress={() => void handlePick("library")}
         style={({ pressed }) => [styles.uploadArea, pressed && styles.uploadAreaPressed]}
       >
@@ -153,6 +172,7 @@ export default function VisualSearchScreen() {
           label="Take a photo"
           size="lg"
           fullWidth
+          disabled={!isOnline}
           loading={pickingSource === "camera"}
           onPress={() => void handlePick("camera")}
         />
@@ -161,6 +181,7 @@ export default function VisualSearchScreen() {
           variant="outline"
           size="lg"
           fullWidth
+          disabled={!isOnline}
           loading={pickingSource === "library"}
           onPress={() => void handlePick("library")}
         />
@@ -212,10 +233,18 @@ export default function VisualSearchScreen() {
       </View>
 
       <View style={styles.previewActions}>
+        {!isOnline ? (
+          <OfflineNotice
+            title="Visual search requires an internet connection."
+            message="Please reconnect, then try again."
+            onRetry={() => void refreshNetworkSnapshot()}
+          />
+        ) : null}
         <Button
           label="Find similar products"
           size="lg"
           fullWidth
+          disabled={!isOnline}
           onPress={() => void handleSearch()}
         />
         <Button

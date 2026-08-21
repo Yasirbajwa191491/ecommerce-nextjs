@@ -23,6 +23,32 @@ export type SearchResultProduct = {
   _creationTime?: number;
 };
 
+export function productToSearchResult(product: Product): SearchResultProduct {
+  const imageUrl =
+    product.image?.find((entry) => entry?.url)?.url ?? product.image?.[0]?.url ?? "";
+  const discountPercent = product.discountPercent ?? 0;
+  return {
+    _id: product._id,
+    name: product.name,
+    company: product.company,
+    imageUrl,
+    images: product.image,
+    price: product.price,
+    discountPercent,
+    currency: product.currency ?? "USD",
+    categoryId: product.categoryId,
+    categoryName: product.category?.name ?? "",
+    stars: product.stars,
+    reviews: product.reviews,
+    featured: product.featured,
+    finalPrice: discountPercent > 0 ? product.price * (1 - discountPercent / 100) : product.price,
+    stock: product.stock,
+    shipping: product.shipping,
+    description: product.description,
+    _creationTime: product._creationTime,
+  };
+}
+
 export function searchResultToProduct(item: SearchResultProduct): Product {
   return {
     _id: item._id,

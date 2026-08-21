@@ -22,9 +22,9 @@ const TERMINAL_STATUSES: Record<
 };
 
 function getActiveStepIndex(status: OrderStatus): number {
-  if (status === "pending" || status === "confirmed") return 0;
+  if (status === "pending") return -1;
   const directIndex = PROGRESS_STEPS.findIndex((step) => step.key === status);
-  return directIndex >= 0 ? directIndex : 0;
+  return directIndex >= 0 ? directIndex : -1;
 }
 
 type OrderProgressTimelineProps = {

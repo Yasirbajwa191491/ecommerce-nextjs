@@ -17,11 +17,11 @@ type PromotionGiftItem = {
 
 type PromotionAppliedSectionProps = {
   gifts: PromotionGiftItem[];
-  summaries?: Array<{
+  summaries?: {
     promotionName: string;
     freeQuantity: number;
     savingsAmount: number;
-  }>;
+  }[];
   promotionSavingsTotal?: number;
   currency?: string;
 };

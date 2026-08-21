@@ -1,6 +1,6 @@
 import { useMutation } from "convex/react";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -20,6 +20,12 @@ import {
 } from "@/lib/contact-inquiry-subjects";
 import { api } from "@/lib/convex-api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { ensureOnlineNow } from "@/lib/network";
+import {
+  clearContactDraft,
+  loadContactDraft,
+  saveContactDraft,
+} from "@/lib/offline/drafts";
 import {
   validateContactForm,
   type ContactFormValues,
@@ -43,6 +49,32 @@ export function ContactForm() {
   const [submitting, setSubmitting] = useState(false);
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadContactDraft().then((draft) => {
+      if (!cancelled) {
+        if (draft) setForm(draft);
+        setDraftReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady || submitted) return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      void saveContactDraft(form);
+    }, 400);
+    return () => {
+      if (draftTimer.current) clearTimeout(draftTimer.current);
+    };
+  }, [form, submitted, draftReady]);
 
   const fieldError = useCallback(
     (field: keyof ContactFormValues) => (touched[field] ? errors[field] : undefined),
@@ -69,6 +101,13 @@ export function ContactForm() {
 
     if (Object.keys(nextErrors).length > 0) return;
 
+    try {
+      await ensureOnlineNow("You're offline. Connect to send your message.");
+    } catch (error) {
+      showError(getFriendlyErrorMessage(error, "You're offline. Connect to send your message."));
+      return;
+    }
+
     setSubmitting(true);
     try {
       await submit({
@@ -78,6 +117,7 @@ export function ContactForm() {
         message: form.message.trim(),
       });
       setSubmitted(true);
+      await clearContactDraft();
       showSuccess(
         "Message sent — We've received your message and will get back to you soon."
       );

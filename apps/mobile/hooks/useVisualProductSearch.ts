@@ -3,7 +3,9 @@ import { useAction, useMutation } from "convex/react";
 import { useCallback, useState } from "react";
 
 import { api } from "@/lib/convex-api";
-import type { SearchResultProduct } from "@/lib/product-adapters";
+import { getIsOnline } from "@/lib/network";
+import { cacheProducts } from "@/lib/offline/product-store";
+import { searchResultToProduct, type SearchResultProduct } from "@/lib/product-adapters";
 
 export type VisualSearchImage = {
   uri: string;
@@ -47,6 +49,16 @@ export function useVisualProductSearch() {
       cursor?: number;
       append?: boolean;
     }) => {
+      if (!getIsOnline()) {
+        setState((current) => ({
+          ...current,
+          isLoading: false,
+          hasSearched: false,
+          errorMessage: "Visual search requires an internet connection.",
+        }));
+        return null;
+      }
+
       setState((current) => ({
         ...current,
         isLoading: true,
@@ -91,6 +103,8 @@ export function useVisualProductSearch() {
           cursor: args.cursor,
           limit: 12,
         });
+
+        void cacheProducts(result.products.map(searchResultToProduct));
 
         setState((current) => ({
           ...current,

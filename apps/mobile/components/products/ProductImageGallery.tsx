@@ -44,7 +44,7 @@ export function ProductImageGallery({
 
   const commitIndex = useCallback(
     (index: number) => {
-      const clamped = Math.max(0, Math.min(index, images.length - 1));
+      const clamped = Math.max(0, Math.min(index, Math.max(images.length - 1, 0)));
       setScrollIndex(clamped);
       onActiveIndexChange?.(clamped);
     },
@@ -54,30 +54,25 @@ export function ProductImageGallery({
   const scrollToIndex = useCallback(
     (index: number, animated = true) => {
       if (galleryWidth <= 0) return;
-      const clamped = Math.max(0, Math.min(index, images.length - 1));
+      const clamped = Math.max(0, Math.min(index, Math.max(images.length - 1, 0)));
       isProgrammaticScrollRef.current = true;
       scrollRef.current?.scrollTo({
         x: clamped * galleryWidth,
         animated,
       });
-      setScrollIndex(clamped);
     },
     [galleryWidth, images.length]
   );
 
   useEffect(() => {
-    if (controlledIndex === undefined) return;
+    if (controlledIndex === undefined || galleryWidth <= 0) return;
     scrollToIndex(controlledIndex);
-    setScrollIndex(controlledIndex);
-  }, [controlledIndex, scrollToIndex]);
+  }, [controlledIndex, galleryWidth, scrollToIndex]);
 
-  useEffect(() => {
-    if (scrollIndex < images.length) return;
-    const nextIndex = 0;
-    setScrollIndex(nextIndex);
-    scrollToIndex(nextIndex, false);
-    commitIndex(nextIndex);
-  }, [scrollIndex, images.length, commitIndex, scrollToIndex]);
+  const displayIndex =
+    controlledIndex !== undefined
+      ? Math.max(0, Math.min(controlledIndex, Math.max(images.length - 1, 0)))
+      : Math.max(0, Math.min(scrollIndex, Math.max(images.length - 1, 0)));
 
   if (galleryWidth <= 0) {
     return (
@@ -145,6 +140,7 @@ export function ProductImageGallery({
                   source={{ uri: img.url }}
                   style={{ width: galleryWidth, height: galleryHeight }}
                   contentFit="contain"
+                  cachePolicy="memory-disk"
                   accessibilityLabel={img.alt ?? getPrimaryImageAlt(product)}
                 />
               ) : (
@@ -157,7 +153,7 @@ export function ProductImageGallery({
         {images.length > 1 ? (
           <View style={styles.dots}>
             {images.map((_, index) => {
-              const active = index === scrollIndex;
+              const active = index === displayIndex;
               return (
                 <Pressable
                   key={index}
@@ -168,7 +164,7 @@ export function ProductImageGallery({
                     scrollToIndex(index);
                     commitIndex(index);
                   }}
-                  hitSlop={8}
+                  hitSlop={12}
                   style={[styles.dot, active && styles.dotActive]}
                 />
               );

@@ -1,14 +1,13 @@
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
 
-import { api } from "@/lib/convex-api";
 import {
   type PolicySettingKey,
   settingValueToParagraphs,
 } from "@/lib/legal-content";
+import { usePublicSettingsMap } from "@/hooks/useSiteSettings";
 
 export function useLegalPageContent(key: PolicySettingKey) {
-  const map = useQuery(api.settings.listPublic);
+  const { map, isLoading } = usePublicSettingsMap();
 
   const paragraphs = useMemo(() => {
     return settingValueToParagraphs(map?.[key], key);
@@ -16,6 +15,6 @@ export function useLegalPageContent(key: PolicySettingKey) {
 
   return {
     paragraphs,
-    isLoading: map === undefined,
+    isLoading,
   };
 }

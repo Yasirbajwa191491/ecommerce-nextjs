@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { SearchBarInput } from "@/components/ui/SearchBar";
 import { colors, radius, sizes, spacing, textStyles, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { OfflineNotice } from "@/components/feedback/OfflineNotice";
+import { refreshNetworkSnapshot } from "@/lib/network";
 
 const PROMPTS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { label: "Find me running shoes under $100", icon: "walk-outline" },
@@ -26,12 +29,14 @@ export default function AiScreen() {
     q?: string;
   }>();
   const { horizontalPadding } = useLayoutMetrics();
+  const isOnline = useOnlineStatus();
   const isOrderContext = context === "order_tracking";
   const [query, setQuery] = useState(typeof q === "string" ? q : "");
 
   const submitQuery = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
+    if (!isOnline) return;
     router.push({ pathname: "/search", params: { q: trimmed } });
   };
 
@@ -63,6 +68,14 @@ export default function AiScreen() {
             </Text>
           </View>
 
+          {!isOnline ? (
+            <OfflineNotice
+              title="AI Shopping is unavailable offline."
+              message="Reconnect to continue chatting with your AI shopping assistant."
+              onRetry={() => void refreshNetworkSnapshot()}
+            />
+          ) : null}
+
           <SearchBarInput
             value={query}
             onChangeText={setQuery}
@@ -75,7 +88,7 @@ export default function AiScreen() {
             label="Find products"
             size="lg"
             fullWidth
-            disabled={!query.trim()}
+            disabled={!query.trim() || !isOnline}
             onPress={() => submitQuery(query)}
           />
 

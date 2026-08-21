@@ -37,7 +37,7 @@ export function SearchBar({
       {showVisualSearch ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Visual search"
+          accessibilityLabel="Search by image"
           hitSlop={4}
           onPress={(e) => {
             e.stopPropagation?.();
@@ -94,7 +94,7 @@ export function SearchBarInput({
       ) : showVisualSearch ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Visual search"
+          accessibilityLabel="Search by image"
           hitSlop={4}
           onPress={() => router.push("/visual-search")}
           style={styles.visualBtn}

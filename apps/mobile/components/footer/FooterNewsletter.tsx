@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Keyboard,
   StyleSheet,
@@ -13,6 +13,12 @@ import { Input } from "@/components/ui/Input";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { api } from "@/lib/convex-api";
+import { ensureOnlineNow } from "@/lib/network";
+import {
+  clearNewsletterDraft,
+  loadNewsletterDraft,
+  saveNewsletterDraft,
+} from "@/lib/offline/drafts";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +29,16 @@ export function FooterNewsletter() {
   const [status, setStatus] = useState<NewsletterStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const subscribe = useMutation(api.subscribers.subscribe);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadNewsletterDraft().then((draft) => {
+      if (!cancelled && draft) setEmail(draft);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async () => {
     const trimmed = email.trim();
@@ -35,6 +51,14 @@ export function FooterNewsletter() {
     if (!EMAIL_PATTERN.test(trimmed) || trimmed.length > 254) {
       setStatus("error");
       setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+
+    try {
+      await ensureOnlineNow("You're offline. Connect to subscribe.");
+    } catch (error) {
+      setStatus("error");
+      setErrorMessage(getFriendlyErrorMessage(error, "You're offline. Connect to subscribe."));
       return;
     }
 
@@ -51,6 +75,7 @@ export function FooterNewsletter() {
 
       setEmail("");
       setStatus("success");
+      void clearNewsletterDraft();
       Keyboard.dismiss();
     } catch (error) {
       setStatus("error");
@@ -93,6 +118,7 @@ export function FooterNewsletter() {
         value={email}
         onChangeText={(value) => {
           setEmail(value);
+          void saveNewsletterDraft(value);
           if (status === "error") {
             setStatus("idle");
             setErrorMessage(null);
