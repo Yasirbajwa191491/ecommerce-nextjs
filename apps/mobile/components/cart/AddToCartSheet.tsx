@@ -2,7 +2,7 @@ import { getPrimaryImageUrl } from "@ecommerce/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import { Image } from "expo-image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -17,7 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isHexColor } from "@/components/cart/ColorSwatch";
 import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
-import { colors, radius, spacing, textStyles, touchTarget, typography } from "@/constants/theme";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
+import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
 import { api } from "@/lib/convex-api";
 import { useCart } from "@/providers/cart-context";
@@ -38,37 +39,50 @@ export function AddToCartSheet({
   fallbackProduct,
   onClose,
 }: AddToCartSheetProps) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      {visible ? (
+        <AddToCartSheetBody
+          key={productId ?? "closed"}
+          productId={productId}
+          fallbackProduct={fallbackProduct}
+          onClose={onClose}
+        />
+      ) : null}
+    </Modal>
+  );
+}
+
+function AddToCartSheetBody({
+  productId,
+  fallbackProduct,
+  onClose,
+}: Omit<AddToCartSheetProps, "visible">) {
   const insets = useSafeAreaInsets();
   const { addToCart } = useCart();
   const { showError, showSuccess } = useToast();
 
   const fetchedProduct = useQuery(
     api.products.getById,
-    visible && productId ? { id: productId } : "skip"
+    productId ? { id: productId } : "skip"
   );
 
   const product = fetchedProduct ?? fallbackProduct ?? null;
-  const isLoading = visible && productId != null && fetchedProduct === undefined;
+  const isLoading = productId != null && fetchedProduct === undefined && !fallbackProduct;
 
-  const colorsList = product?.colors ?? [];
+  const colorsList = useMemo(() => product?.colors ?? [], [product?.colors]);
   const hasColors = colorsList.length > 0;
+  const defaultColor = product
+    ? resolveProductColorOrDefault(colorsList, colorsList[0] ?? "#000000")
+    : "";
 
-  const [selectedColor, setSelectedColor] = useState("");
+  const [colorOverride, setColorOverride] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-
-  useEffect(() => {
-    if (!visible || !product) return;
-    setSelectedColor(
-      resolveProductColorOrDefault(product.colors ?? [], product.colors?.[0] ?? "#000000")
-    );
-    setQuantity(1);
-  }, [visible, product]);
+  const selectedColor = colorOverride ?? defaultColor;
 
   const activeColor = useMemo(
     () =>
-      product
-        ? resolveProductColorOrDefault(colorsList, selectedColor || colorsList[0] || "#000000")
-        : "",
+      product ? resolveProductColorOrDefault(colorsList, selectedColor || colorsList[0] || "#000000") : "",
     [product, colorsList, selectedColor]
   );
 
@@ -93,131 +107,114 @@ export function AddToCartSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
-          <View style={styles.handle} />
+    <View style={styles.overlay}>
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close add to cart" />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
+        <View style={styles.handle} />
 
-          {isLoading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Loading options…</Text>
-            </View>
-          ) : !product ? (
-            <View style={styles.loadingWrap}>
-              <Text style={styles.loadingText}>Product unavailable</Text>
-              <Button label="Close" variant="outline" onPress={onClose} />
-            </View>
-          ) : (
-            <>
-              <ScrollView
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.scrollContent}
-              >
-                <View style={styles.header}>
-                  <View style={styles.thumbWrap}>
-                    {getPrimaryImageUrl(product) ? (
-                      <Image
-                        source={{ uri: getPrimaryImageUrl(product)! }}
-                        style={styles.thumb}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View style={styles.thumbPlaceholder}>
-                        <Ionicons name="image-outline" size={20} color={colors.muted} />
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.headerText}>
-                    <Text style={styles.productName} numberOfLines={2}>
-                      {product.name}
-                    </Text>
-                    <PriceDisplay
-                      price={displayPrice}
-                      originalPrice={discountPercent > 0 ? product.price : undefined}
-                      size="md"
+        {isLoading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading options…</Text>
+          </View>
+        ) : !product ? (
+          <View style={styles.loadingWrap}>
+            <Text style={styles.loadingText}>Product unavailable</Text>
+            <Button label="Close" variant="outline" onPress={onClose} />
+          </View>
+        ) : (
+          <>
+            <ScrollView
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.scrollContent}
+            >
+              <View style={styles.header}>
+                <View style={styles.thumbWrap}>
+                  {getPrimaryImageUrl(product) ? (
+                    <Image
+                      source={{ uri: getPrimaryImageUrl(product)! }}
+                      style={styles.thumb}
+                      contentFit="cover"
                     />
-                    <Text style={[styles.stockText, !inStock && styles.outOfStock]}>
-                      {inStock ? `${product.stock} available` : "Out of stock"}
-                    </Text>
-                  </View>
-                </View>
-
-                {hasColors ? (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>Color</Text>
-                    <View style={styles.colorRow}>
-                      {colorsList.map((color) => {
-                        const resolved = resolveProductColorOrDefault(colorsList, color);
-                        const selected = activeColor === resolved;
-                        const hex = isHexColor(color);
-                        return (
-                          <Pressable
-                            key={color}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Select color ${color}`}
-                            accessibilityState={{ selected }}
-                            onPress={() => setSelectedColor(color)}
-                            style={[
-                              hex ? styles.colorOption : styles.namedColorOption,
-                              hex ? { backgroundColor: color } : null,
-                              selected && styles.colorOptionSelected,
-                            ]}
-                          >
-                            {!hex ? (
-                              <Text style={styles.namedColorText} numberOfLines={1}>
-                                {color}
-                              </Text>
-                            ) : null}
-                          </Pressable>
-                        );
-                      })}
+                  ) : (
+                    <View style={styles.thumbPlaceholder}>
+                      <Ionicons name="image-outline" size={20} color={colors.muted} />
                     </View>
-                  </View>
-                ) : null}
+                  )}
+                </View>
+                <View style={styles.headerText}>
+                  <Text style={styles.productName} numberOfLines={2}>
+                    {product.name}
+                  </Text>
+                  <PriceDisplay
+                    price={displayPrice}
+                    originalPrice={discountPercent > 0 ? product.price : undefined}
+                    size="md"
+                  />
+                  <Text style={[styles.stockText, !inStock && styles.outOfStock]}>
+                    {inStock ? `${product.stock} available` : "Out of stock"}
+                  </Text>
+                </View>
+              </View>
 
+              {hasColors ? (
                 <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Quantity</Text>
-                  <View style={styles.quantityRow}>
-                    <Pressable
-                      accessibilityLabel="Decrease quantity"
-                      onPress={() => setQuantity((value) => Math.max(1, value - 1))}
-                      style={styles.qtyButton}
-                    >
-                      <Ionicons name="remove" size={20} color={colors.foreground} />
-                    </Pressable>
-                    <Text style={styles.qtyText}>{quantity}</Text>
-                    <Pressable
-                      accessibilityLabel="Increase quantity"
-                      onPress={() => setQuantity((value) => Math.min(product.stock, value + 1))}
-                      style={styles.qtyButton}
-                      disabled={quantity >= product.stock}
-                    >
-                      <Ionicons
-                        name="add"
-                        size={20}
-                        color={quantity >= product.stock ? colors.muted : colors.foreground}
-                      />
-                    </Pressable>
+                  <Text style={styles.sectionLabel}>Color</Text>
+                  <View style={styles.colorRow}>
+                    {colorsList.map((color) => {
+                      const resolved = resolveProductColorOrDefault(colorsList, color);
+                      const selected = activeColor === resolved;
+                      const hex = isHexColor(color);
+                      return (
+                        <Pressable
+                          key={color}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Select color ${color}`}
+                          accessibilityState={{ selected }}
+                          onPress={() => setColorOverride(color)}
+                          style={[
+                            hex ? styles.colorOption : styles.namedColorOption,
+                            hex ? { backgroundColor: color } : null,
+                            selected && styles.colorOptionSelected,
+                          ]}
+                        >
+                          {!hex ? (
+                            <Text style={styles.namedColorText} numberOfLines={1}>
+                              {color}
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 </View>
-              </ScrollView>
+              ) : null}
 
-              <Button
-                label="Add to cart"
-                size="lg"
-                fullWidth
-                disabled={!inStock}
-                onPress={handleAdd}
-              />
-            </>
-          )}
-        </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Quantity</Text>
+                <QuantityStepper
+                  value={quantity}
+                  min={1}
+                  max={Math.max(1, product.stock)}
+                  onDecrement={() => setQuantity((value) => Math.max(1, value - 1))}
+                  onIncrement={() => setQuantity((value) => Math.min(product.stock, value + 1))}
+                />
+              </View>
+            </ScrollView>
+
+            <Button
+              label="Add to cart"
+              size="lg"
+              fullWidth
+              disabled={!inStock}
+              onPress={handleAdd}
+            />
+          </>
+        )}
       </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -311,8 +308,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   colorOption: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
     borderWidth: 2,
     borderColor: colors.border,
@@ -322,8 +319,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   namedColorOption: {
-    minWidth: 36,
-    height: 36,
+    minWidth: 44,
+    height: 44,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.borderLight,
@@ -337,27 +334,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.foreground,
     textTransform: "capitalize",
-  },
-  quantityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  qtyButton: {
-    width: touchTarget,
-    height: touchTarget,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qtyText: {
-    minWidth: 40,
-    textAlign: "center",
-    fontSize: typography.base,
-    fontWeight: "700",
-    color: colors.foreground,
   },
 });

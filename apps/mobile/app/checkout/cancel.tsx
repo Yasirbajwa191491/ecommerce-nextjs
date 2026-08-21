@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Button } from "@/components/ui/Button";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { colors, radius, spacing, textStyles } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { api } from "@/lib/convex-api";
 

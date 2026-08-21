@@ -21,6 +21,7 @@ import {
   typography,
 } from "@/constants/theme";
 import { useWishlist } from "@/hooks/useWishlist";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useToast } from "@/providers/toast-context";
 import type { Product } from "@/types/product";
 import type { Id } from "@convex/_generated/dataModel";
@@ -91,8 +92,14 @@ function ProductCardComponent({
   }, [outOfStock, showError]);
 
   const handleWishlist = useCallback(() => {
-    void toggle(product._id as Id<"products">);
-  }, [product._id, toggle]);
+    void (async () => {
+      try {
+        await toggle(product._id as Id<"products">);
+      } catch (error) {
+        showError(getFriendlyErrorMessage(error, "Couldn't update wishlist. Please try again."));
+      }
+    })();
+  }, [product._id, showError, toggle]);
 
   return (
     <>
@@ -108,6 +115,7 @@ function ProductCardComponent({
               source={{ uri: imageUrl }}
               style={styles.image}
               contentFit="cover"
+              cachePolicy="memory-disk"
               transition={150}
               recyclingKey={product._id}
               accessibilityLabel={imageAlt}
@@ -144,7 +152,9 @@ function ProductCardComponent({
           {showActions ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              accessibilityLabel={
+                wishlisted ? "Remove product from wishlist" : "Add product to wishlist"
+              }
               hitSlop={4}
               onPress={(e) => {
                 e.stopPropagation?.();

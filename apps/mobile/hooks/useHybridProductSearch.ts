@@ -1,9 +1,16 @@
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { SearchResultProduct } from "@/lib/product-adapters";
+import {
+  productToSearchResult,
+  searchResultToProduct,
+  type SearchResultProduct,
+} from "@/lib/product-adapters";
 import { getCachedVisitorId, getSearchSessionId } from "@/lib/visitor-id";
 import { api } from "@/lib/convex-api";
+import { getIsOnline } from "@/lib/network";
+import { cacheProducts } from "@/lib/offline/product-store";
+import { searchCachedProducts } from "@/lib/offline/search-local";
 
 type SearchState = {
   products: SearchResultProduct[];
@@ -36,6 +43,20 @@ export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
     const requestId = ++requestIdRef.current;
 
     void (async () => {
+      if (!getIsOnline()) {
+        const cachedMatches = searchCachedProducts(trimmed).map(productToSearchResult);
+        setState({
+          products: cachedMatches,
+          totalCount: cachedMatches.length,
+          loading: false,
+          loadingMore: false,
+          isSimilarFallback: false,
+          error: cachedMatches.length === 0,
+          nextCursor: undefined,
+        });
+        return;
+      }
+
       setState((prev) => ({
         ...prev,
         loading: true,
@@ -57,6 +78,7 @@ export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
           visitorId: getCachedVisitorId() || undefined,
         });
         if (requestId !== requestIdRef.current) return;
+        void cacheProducts(result.products.map(searchResultToProduct));
         setState({
           products: result.products,
           totalCount: result.totalCount,
@@ -83,6 +105,9 @@ export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
   const loadMore = useCallback(async () => {
     const trimmed = debouncedQuery.trim();
     if (trimmed.length < 2 || state.nextCursor === undefined || state.loadingMore) {
+      return;
+    }
+    if (!getIsOnline()) {
       return;
     }
 

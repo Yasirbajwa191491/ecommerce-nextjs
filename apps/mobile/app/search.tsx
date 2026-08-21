@@ -26,8 +26,13 @@ import { colors, radius, spacing, textStyles, typography } from "@/constants/the
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useHybridProductSearch } from "@/hooks/useHybridProductSearch";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useOfflineCache } from "@/hooks/useOfflineCache";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { searchResultToProduct } from "@/lib/product-adapters";
 import { api } from "@/lib/convex-api";
+import { offlineKeys } from "@/lib/offline/keys";
+import type { HomeCategory } from "@/lib/offline/types";
+import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
 import type { Product } from "@/types/product";
 
 const RECENT_KEY = "mobile-recent-searches";
@@ -37,16 +42,23 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { q } = useLocalSearchParams<{ q?: string }>();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
+  const isOnline = useOnlineStatus();
   const [query, setQuery] = useState(typeof q === "string" ? q : "");
   const [recent, setRecent] = useState<string[]>([]);
   const debouncedQuery = useDebouncedValue(query, 350);
 
-  const suggestions = useQuery(api.productSearchQueries.getSearchSuggestions, {});
-  const trending = useQuery(api.productSearchQueries.getTrendingSearches, {
+  const suggestionsLive = useQuery(api.productSearchQueries.getSearchSuggestions, {});
+  const trendingLive = useQuery(api.productSearchQueries.getTrendingSearches, {
     period: "7d",
     limit: 8,
   });
-  const categories = useQuery(api.productCategories.listWithProductCounts);
+  const categoriesLive = useQuery(api.productCategories.listWithProductCounts);
+  const suggestions = useOfflineCache(offlineKeys.searchSuggestions, suggestionsLive);
+  const trending = useOfflineCache(offlineKeys.searchTrending, trendingLive);
+  const categories = useOfflineCache<HomeCategory[]>(
+    offlineKeys.categoriesWithCounts,
+    categoriesLive
+  );
 
   const {
     products: searchResults,
@@ -85,9 +97,13 @@ export default function SearchScreen() {
     if (debouncedQuery.trim().length >= 2 && !loading && searchResults.length > 0) {
       const trimmed = debouncedQuery.trim();
       void AsyncStorage.getItem(RECENT_KEY).then((raw) => {
-        const prev = raw ? (JSON.parse(raw) as string[]) : [];
-        const next = [trimmed, ...prev.filter((t) => t !== trimmed)].slice(0, MAX_RECENT);
-        void AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next));
+        try {
+          const prev = raw ? (JSON.parse(raw) as string[]) : [];
+          const next = [trimmed, ...prev.filter((t) => t !== trimmed)].slice(0, MAX_RECENT);
+          void AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next));
+        } catch {
+          void AsyncStorage.setItem(RECENT_KEY, JSON.stringify([trimmed]));
+        }
       });
     }
   }, [debouncedQuery, loading, searchResults.length]);
@@ -138,21 +154,21 @@ export default function SearchScreen() {
         </View>
       ) : null}
 
-      {trending && trending.length > 0 ? (
+      {trending.data && trending.data.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockTitle}>Trending</Text>
           <View style={styles.chips}>
-            {trending.map((item) => (
+            {trending.data.map((item) => (
               <Chip key={item.query} label={item.query} onPress={() => setQuery(item.query)} />
             ))}
           </View>
         </View>
       ) : null}
 
-      {suggestions && suggestions.length > 0 ? (
+      {suggestions.data && suggestions.data.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockTitle}>Suggestions</Text>
-          {suggestions.map((item) => (
+          {suggestions.data.map((item) => (
             <Pressable
               key={item.query}
               onPress={() => setQuery(item.query)}
@@ -165,11 +181,11 @@ export default function SearchScreen() {
         </View>
       ) : null}
 
-      {categories && categories.length > 0 ? (
+      {categories.data && categories.data.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockTitle}>Popular categories</Text>
           <View style={styles.chips}>
-            {categories.slice(0, 6).map((cat) => (
+            {categories.data.slice(0, 6).map((cat) => (
               <Chip
                 key={cat._id}
                 label={cat.name}
@@ -182,7 +198,7 @@ export default function SearchScreen() {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Visual search. Find products using a photo"
+          accessibilityLabel="Search by image. Find products using a photo"
         onPress={() => router.push("/visual-search")}
         style={styles.visualEntry}
       >
@@ -229,8 +245,12 @@ export default function SearchScreen() {
           </View>
         ) : showResults && error ? (
           <ErrorState
-            title="Search failed"
-            message="Something went wrong. Please try again."
+            title={isOnline ? "Search failed" : "Search requires an internet connection."}
+            message={
+              isOnline
+                ? "Something went wrong. Please try again."
+                : "Connect to search, or browse products you've already viewed."
+            }
             onRetry={() => setQuery((q) => q.trim())}
           />
         ) : showResults && !loading && products.length === 0 ? (
@@ -270,13 +290,19 @@ export default function SearchScreen() {
             ]}
             ListHeaderComponent={
               <View style={styles.resultsHeader}>
+                {!isOnline ? (
+                  <CachedDataNotice
+                    title="Showing saved products"
+                    message="Search requires an internet connection for new results."
+                  />
+                ) : null}
                 {isSimilarFallback ? (
                   <View style={styles.aiBanner}>
                     <Ionicons name="sparkles" size={16} color={colors.primary} />
                     <View style={styles.aiBannerCopy}>
-                      <Text style={styles.aiBannerTitle}>AI-powered results</Text>
+                      <Text style={styles.aiBannerTitle}>Similar products you may like</Text>
                       <Text style={styles.aiBannerText}>
-                        No exact matches — here are similar products.
+                        No exact matches — here are AI-powered results.
                       </Text>
                     </View>
                   </View>

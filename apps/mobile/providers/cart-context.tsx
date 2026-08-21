@@ -52,6 +52,8 @@ import {
 
 import { api } from "@/lib/convex-api";
 
+import { getIsOnline } from "@/lib/network";
+
 import { CART_STORAGE_KEY } from "@ecommerce/shared";
 
 import type { Product } from "@/types/product";
@@ -280,7 +282,7 @@ function CartSanitizer({
 
     api.products.listByIds,
 
-    productIds.length > 0 ? { ids: productIds } : "skip"
+    productIds.length > 0 && getIsOnline() ? { ids: productIds } : "skip"
 
   );
 

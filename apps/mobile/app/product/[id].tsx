@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from "expo-router";
 
 import { useQuery } from "convex/react";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
 
@@ -27,6 +27,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 import { EmptyState } from "@/components/feedback/EmptyState";
+import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
+import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { HomeSection } from "@/components/home/HomeSection";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
@@ -53,13 +55,19 @@ import {
 import { useSimilarProducts } from "@/hooks/useSimilarProducts";
 import { useStableNow } from "@/hooks/useStableNow";
 import { useWishlist } from "@/hooks/useWishlist";
+import { useOfflineCache } from "@/hooks/useOfflineCache";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { canRenderColorSwatch, resolveSwatchBackground } from "@/lib/color-swatch";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
 import { api } from "@/lib/convex-api";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { formatShippingLine } from "@/lib/product-display";
 import { getPromotionDisplay } from "@/lib/promotion-display";
+import { getCachedProduct } from "@/lib/offline/product-store";
+import { offlineKeys } from "@/lib/offline/keys";
 import { useCart } from "@/providers/cart-context";
 import { useToast } from "@/providers/toast-context";
+import { useNetworkStatus } from "@/providers/NetworkProvider";
 import { orderImagesForDisplay } from "@ecommerce/shared";
 import type { Id } from "@convex/_generated/dataModel";
 
@@ -78,18 +86,40 @@ export default function ProductDetailScreen() {
   const { showError, showSuccess } = useToast();
 
   const { isWishlisted, toggle } = useWishlist();
+  const { isOffline } = useNetworkStatus();
+  const { record } = useRecentlyViewed();
 
 
 
   const productId = id as Id<"products"> | undefined;
 
-  const product = useQuery(
+  const liveProduct = useQuery(
 
     api.products.getById,
 
     productId ? { id: productId } : "skip"
 
   );
+
+  const cachedProduct = useOfflineCache(
+    productId ? `${offlineKeys.productStore}:${productId}` : offlineKeys.productStore,
+    liveProduct ?? undefined
+  );
+
+  const product =
+    liveProduct === null && !isOffline
+      ? null
+      : liveProduct ??
+        cachedProduct.data ??
+        (productId ? getCachedProduct(productId) : undefined);
+
+  const fromCache = liveProduct === undefined && Boolean(product);
+
+  useEffect(() => {
+    if (product && product._id) {
+      void record(product);
+    }
+  }, [product, record]);
 
   const promotions = useQuery(
     api.productPromotions.getActiveForProduct,
@@ -179,8 +209,12 @@ export default function ProductDetailScreen() {
   ]);
 
   const handleViewCart = useCallback(() => {
+    if (itemCount > 0) {
+      router.push("/checkout");
+      return;
+    }
     router.push("/(tabs)/cart");
-  }, []);
+  }, [itemCount]);
 
   const handleImageIndexChange = useCallback(
     (index: number) => {
@@ -270,6 +304,29 @@ export default function ProductDetailScreen() {
 
 
   if (product === undefined) {
+    if (isOffline) {
+      return (
+        <ScreenContainer>
+          <View style={styles.container}>
+            <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
+              <IconButton
+                icon="chevron-back"
+                accessibilityLabel="Go back"
+                variant="surface"
+                onPress={() => router.back()}
+              />
+            </View>
+            <View style={{ padding: spacing.lg }}>
+              <OfflineNotice
+                title="You're offline"
+                message="Connect to the internet to load this product."
+                onRetry={() => router.replace(`/product/${id}`)}
+              />
+            </View>
+          </View>
+        </ScreenContainer>
+      );
+    }
     return (
       <ScreenContainer>
         <View style={styles.container}>
@@ -347,13 +404,23 @@ export default function ProductDetailScreen() {
 
               icon={wishlisted ? "heart" : "heart-outline"}
 
-              accessibilityLabel={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              accessibilityLabel={wishlisted ? "Remove product from wishlist" : "Add product to wishlist"}
 
               variant="surface"
 
               color={wishlisted ? colors.destructive : colors.foreground}
 
-              onPress={() => void toggle(product._id)}
+              onPress={() => {
+                void (async () => {
+                  try {
+                    await toggle(product._id);
+                  } catch (error) {
+                    showError(
+                      getFriendlyErrorMessage(error, "Couldn't update wishlist. Please try again.")
+                    );
+                  }
+                })();
+              }}
 
             />
 
@@ -378,6 +445,9 @@ export default function ProductDetailScreen() {
           />
 
           <View style={styles.content}>
+            {fromCache ? (
+              <CachedDataNotice />
+            ) : null}
             <View style={styles.badgeRow}>
               {product.category?.name ? (
                 <Pressable
@@ -413,7 +483,7 @@ export default function ProductDetailScreen() {
               </Text>
             ) : null}
 
-            {promotions && promotions.length > 0 ? (
+            {promotions && promotions.length > 0 && !fromCache ? (
               <View style={styles.promoSection}>
                 {promotions.map((promo) => (
                   <PromotionOfferBanner key={promo._id} promotion={promo} now={now} />

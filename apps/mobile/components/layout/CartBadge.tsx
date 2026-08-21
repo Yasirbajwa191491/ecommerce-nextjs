@@ -11,7 +11,7 @@ type CartBadgeProps = {
 
 export function CartBadge({ onPress, color = colors.foreground }: CartBadgeProps) {
   const { itemCount } = useCart();
-  const label = itemCount > 0 ? `${itemCount} items in cart` : "Cart empty";
+  const label = itemCount > 0 ? `Cart, ${itemCount} items` : "Cart";
 
   return (
     <Pressable

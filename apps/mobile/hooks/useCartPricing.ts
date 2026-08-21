@@ -4,24 +4,15 @@ import { useQuery } from "convex/react";
 
 import { useMemo } from "react";
 
-
-
 import {
-
   cartItemsToCheckoutLinesForProducts,
-
   cartLineKey,
-
   resolveCartProductId,
-
   type CartLineLike,
-
   type PricedCartItem,
-
 } from "@/lib/cart-lines";
-
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useStableNow } from "@/hooks/useStableNow";
-
 import { api } from "@/lib/convex-api";
 
 
@@ -32,6 +23,7 @@ export function useCartPricing(
 ) {
 
   const now = useStableNow();
+  const isOnline = useOnlineStatus();
 
 
 
@@ -49,7 +41,7 @@ export function useCartPricing(
 
     api.products.listByIds,
 
-    productIds.length > 0 ? { ids: productIds } : "skip"
+    isOnline && productIds.length > 0 ? { ids: productIds } : "skip"
 
   );
 
@@ -83,7 +75,7 @@ export function useCartPricing(
 
     api.orders.validateCartForCheckout,
 
-    lines && lines.length > 0 ? { lines, now, deliveryMethod } : "skip"
+    isOnline && lines && lines.length > 0 ? { lines, now, deliveryMethod } : "skip"
 
   );
 
@@ -131,7 +123,8 @@ export function useCartPricing(
 
     pricingError,
 
-    isLoading: cart.length > 0 && (products === undefined || result === undefined),
+    isLoading: isOnline && cart.length > 0 && (products === undefined || result === undefined),
+    isOffline: !isOnline && cart.length > 0,
 
     getPricedItem,
 

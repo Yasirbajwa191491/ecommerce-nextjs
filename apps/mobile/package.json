@@ -16,6 +16,7 @@
   "dependencies": {
     "@ecommerce/shared": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "11.4.1",
     "ajv": "^8.20.0",
     "convex": "^1.40.0",
     "expo": "^54.0.0",

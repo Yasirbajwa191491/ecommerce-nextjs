@@ -21,6 +21,7 @@ import { PriceBreakdown } from "@/components/checkout/PriceBreakdown";
 import { PromotionAppliedSection } from "@/components/checkout/PromotionAppliedSection";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
+import { CheckoutOfflineNotice } from "@/components/feedback/OfflineNotice";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +31,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useCartPricing } from "@/hooks/useCartPricing";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import {
   createIdempotencyKey,
@@ -43,6 +45,13 @@ import {
 } from "@/lib/checkout-stripe";
 import { api } from "@/lib/convex-api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import {
+  ensureOnlineNow,
+  isLikelyOfflineError,
+  refreshNetworkSnapshot,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from "@/lib/network";
 import {
   validateCheckoutForm,
   type CheckoutFormValues,
@@ -70,6 +79,7 @@ export default function CheckoutScreen() {
   const { horizontalPadding } = useLayoutMetrics();
   const { cart, itemCount, hydrated } = useCart();
   const { showError, showSuccess } = useToast();
+  const { isOnline, isOffline, isConnected } = useNetworkStatus();
 
   const [form, setForm] = useState<CheckoutFormValues>(emptyForm);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethodType | undefined>();
@@ -82,18 +92,11 @@ export default function CheckoutScreen() {
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
   const saveCustomerProfile = useMutation(api.orders.saveCustomerProfile);
 
+  const selectedDeliveryMethod = deliveryMethod ?? "standard";
   const { priced, pricingError, isLoading: pricingLoading, getPricedItem } = useCartPricing(
     cart,
-    deliveryMethod
+    selectedDeliveryMethod
   );
-
-  useEffect(() => {
-    if (deliveryMethod || !priced?.deliveryMethod) return;
-    setDeliveryMethod(priced.deliveryMethod as DeliveryMethodType);
-  }, [deliveryMethod, priced?.deliveryMethod]);
-
-  const selectedDeliveryMethod =
-    deliveryMethod ?? (priced?.deliveryMethod as DeliveryMethodType | undefined) ?? "standard";
   const availableDeliveryMethods = priced?.availableDeliveryMethods ?? [];
   const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
 
@@ -194,6 +197,13 @@ export default function CheckoutScreen() {
       return;
     }
 
+    try {
+      await ensureOnlineNow(`${OFFLINE_TITLE}. ${OFFLINE_MESSAGE}`);
+    } catch (error) {
+      showError(getFriendlyErrorMessage(error, `${OFFLINE_TITLE}. ${OFFLINE_MESSAGE}`));
+      return;
+    }
+
     if (!cartLines.length) {
       showError("Your cart is empty.");
       router.replace("/(tabs)/cart");
@@ -203,6 +213,11 @@ export default function CheckoutScreen() {
     if (cartLines.some((line) => !line.productId?.trim())) {
       showError("Some cart items are outdated. Please remove them and add products again.");
       router.replace("/(tabs)/cart");
+      return;
+    }
+
+    if (pricingLoading || !priced) {
+      showError("Please wait while we confirm your latest prices.");
       return;
     }
 
@@ -232,6 +247,8 @@ export default function CheckoutScreen() {
     };
 
     try {
+      await ensureOnlineNow(`${OFFLINE_TITLE}. ${OFFLINE_MESSAGE}`);
+
       if (form.paymentMethod === "cod") {
         const result = await createCashOrder(payload);
         await persistCustomer();
@@ -261,15 +278,16 @@ export default function CheckoutScreen() {
         stripeUrls.returnUrl
       );
 
+      if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
+        router.replace({
+          pathname: "/checkout/cancel",
+          params: { orderNumber: result.orderNumber },
+        });
+        return;
+      }
+
       if (browserResult.type === "success" && browserResult.url) {
         const parsed = parseCheckoutReturnUrl(browserResult.url);
-        if (parsed.type === "success") {
-          router.replace({
-            pathname: "/checkout/success",
-            params: { orderNumber: result.orderNumber },
-          });
-          return;
-        }
         if (parsed.type === "cancel") {
           router.replace({
             pathname: "/checkout/cancel",
@@ -279,23 +297,19 @@ export default function CheckoutScreen() {
         }
       }
 
-      if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
-        router.replace({
-          pathname: "/checkout/cancel",
-          params: { orderNumber: result.orderNumber },
-        });
-        return;
-      }
-
       router.replace({
         pathname: "/checkout/success",
         params: { orderNumber: result.orderNumber },
       });
     } catch (error) {
       showError(
-        getFriendlyErrorMessage(error, "Checkout failed. Please review your details and try again.")
+        isLikelyOfflineError(error)
+          ? `${OFFLINE_TITLE}. ${OFFLINE_MESSAGE}`
+          : getFriendlyErrorMessage(error, "Checkout failed. Please review your details and try again.")
       );
-      idempotencyKeyRef.current = createIdempotencyKey();
+      if (!isLikelyOfflineError(error)) {
+        idempotencyKeyRef.current = createIdempotencyKey();
+      }
     } finally {
       setSubmitting(false);
     }
@@ -308,6 +322,8 @@ export default function CheckoutScreen() {
     persistCustomer,
     selectedDeliveryMethod,
     pricingError,
+    pricingLoading,
+    priced,
     showError,
     showSuccess,
     touchAll,
@@ -320,7 +336,7 @@ export default function CheckoutScreen() {
     return form.paymentMethod === "stripe" ? "Continue to payment" : "Place order";
   }, [form.paymentMethod, submitting]);
 
-  if (!hydrated || !customerLoaded) {
+  if (!hydrated || !customerLoaded || isConnected === null) {
     return (
       <ScreenContainer>
         <View style={styles.container}>
@@ -347,6 +363,19 @@ export default function CheckoutScreen() {
             actionLabel="Continue shopping"
             onAction={() => router.replace("/(tabs)/shop")}
           />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (isOffline || !isOnline) {
+    return (
+      <ScreenContainer>
+        <View style={styles.container}>
+          <Header title="Checkout" showBack showSearch={false} showCart={false} />
+          <View style={[styles.loadingWrap, { paddingHorizontal: horizontalPadding }]}>
+            <CheckoutOfflineNotice onRetry={() => void refreshNetworkSnapshot()} />
+          </View>
         </View>
       </ScreenContainer>
     );
@@ -550,7 +579,7 @@ export default function CheckoutScreen() {
             size="lg"
             fullWidth
             loading={submitting}
-            disabled={submitting || pricingLoading || !isFormValid}
+            disabled={submitting || pricingLoading || !isFormValid || !isOnline || !priced}
             onPress={() => void handleSubmit()}
           />
         </View>

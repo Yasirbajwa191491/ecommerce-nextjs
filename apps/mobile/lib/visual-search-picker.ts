@@ -15,7 +15,7 @@ export async function pickVisualSearchFromLibrary(): Promise<PickedVisualSearchI
     mediaTypes: ["images"],
     allowsEditing: true,
     aspect: [4, 3],
-    quality: 0.85,
+    quality: 0.7,
   });
 
   if (result.canceled || !result.assets[0]) {
@@ -38,7 +38,7 @@ export async function pickVisualSearchFromCamera(): Promise<PickedVisualSearchIm
   const result = await ImagePicker.launchCameraAsync({
     allowsEditing: true,
     aspect: [4, 3],
-    quality: 0.85,
+    quality: 0.7,
   });
 
   if (result.canceled || !result.assets[0]) {

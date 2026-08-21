@@ -17,14 +17,21 @@ import {
   type CatalogFilters,
 } from "@/components/catalog/CatalogFiltersSheet";
 import { EmptyState } from "@/components/feedback/EmptyState";
+import { OfflineNotice } from "@/components/feedback/OfflineNotice";
+import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useOfflineCache } from "@/hooks/useOfflineCache";
 import { useStableNow } from "@/hooks/useStableNow";
 import { api } from "@/lib/convex-api";
+import { offlineKeys } from "@/lib/offline/keys";
+import { MAX_CATEGORY_PRODUCTS } from "@/lib/offline/constants";
+import type { HomeCategory } from "@/lib/offline/types";
+import { useNetworkStatus } from "@/providers/NetworkProvider";
 import type { Product } from "@/types/product";
 import type { Id } from "@convex/_generated/dataModel";
 
@@ -33,6 +40,7 @@ const PAGE_SIZE = 20;
 export default function CategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const now = useStableNow();
+  const { isOffline } = useNetworkStatus();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filters, setFilters] = useState<CatalogFilters>({
@@ -40,10 +48,14 @@ export default function CategoryScreen() {
     inStockOnly: false,
   });
 
-  const categories = useQuery(api.productCategories.listActive);
+  const liveCategories = useQuery(api.productCategories.listActive);
+  const categories = useOfflineCache<HomeCategory[]>(
+    offlineKeys.categoriesActive,
+    liveCategories
+  );
   const category = useMemo(
-    () => categories?.find((c) => c.slug === slug),
-    [categories, slug]
+    () => categories.data?.find((c) => c.slug === slug),
+    [categories.data, slug]
   );
 
   const productCount = useQuery(
@@ -51,7 +63,7 @@ export default function CategoryScreen() {
     category
       ? {
           now,
-          categoryId: category._id,
+          categoryId: category._id as Id<"productCategories">,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
           inStockOnly: filters.inStockOnly || undefined,
@@ -59,8 +71,12 @@ export default function CategoryScreen() {
       : "skip"
   );
 
-  const categoryMeta = useQuery(api.productCategories.listWithProductCounts, {});
-  const categoryImage = categoryMeta?.find((c) => c.slug === slug)?.sampleImageUrl;
+  const liveCategoryMeta = useQuery(api.productCategories.listWithProductCounts, {});
+  const categoryMeta = useOfflineCache<HomeCategory[]>(
+    offlineKeys.categoriesWithCounts,
+    liveCategoryMeta
+  );
+  const categoryImage = categoryMeta.data?.find((c) => c.slug === slug)?.sampleImageUrl;
 
   const priceBounds = useQuery(api.products.getPublicPriceBounds, {});
 
@@ -80,8 +96,24 @@ export default function CategoryScreen() {
   );
 
   const products = useMemo(() => results ?? [], [results]);
-  const isLoading = status === "LoadingFirstPage" || categories === undefined;
-  const canLoadMore = status === "CanLoadMore";
+  const cachedProducts = useOfflineCache<Product[]>(
+    slug ? offlineKeys.categoryProducts(slug) : offlineKeys.shopAll,
+    status !== "LoadingFirstPage" && products.length > 0
+      ? products.slice(0, MAX_CATEGORY_PRODUCTS)
+      : undefined
+  );
+  const displayProducts =
+    products.length > 0
+      ? products
+      : isOffline
+        ? cachedProducts.data ?? []
+        : [];
+  const fromCache = isOffline && products.length === 0 && Boolean(cachedProducts.data?.length);
+  const isLoading =
+    (status === "LoadingFirstPage" || (liveCategories === undefined && !categories.data)) &&
+    displayProducts.length === 0 &&
+    !isOffline;
+  const canLoadMore = status === "CanLoadMore" && !isOffline;
 
   const handleEndReached = useCallback(() => {
     if (canLoadMore) loadMore(PAGE_SIZE);
@@ -96,7 +128,23 @@ export default function CategoryScreen() {
     []
   );
 
-  if (categories === undefined) {
+  if (liveCategories === undefined && !categories.data) {
+    if (isOffline) {
+      return (
+        <ScreenContainer>
+          <View style={styles.container}>
+            <Header title="Category" showBack showSearch={false} />
+            <View style={{ paddingHorizontal: horizontalPadding, paddingTop: spacing.lg }}>
+              <OfflineNotice
+                title="You're offline"
+                message="Connect to the internet to browse this category."
+                onRetry={() => router.replace(`/category/${slug}`)}
+              />
+            </View>
+          </View>
+        </ScreenContainer>
+      );
+    }
     return (
       <ScreenContainer>
         <View style={styles.container}>
@@ -120,12 +168,22 @@ export default function CategoryScreen() {
       <ScreenContainer>
         <View style={styles.container}>
           <Header title="Category" showBack showSearch={false} />
-          <EmptyState
-            icon="grid-outline"
-            title="Category not found"
-            description="This category may no longer exist."
-            compact
-          />
+          {isOffline ? (
+            <View style={{ paddingHorizontal: horizontalPadding, paddingTop: spacing.lg }}>
+              <OfflineNotice
+                title="You're offline"
+                message="Connect to the internet to browse this category."
+                onRetry={() => router.replace(`/category/${slug}`)}
+              />
+            </View>
+          ) : (
+            <EmptyState
+              icon="grid-outline"
+              title="Category not found"
+              description="This category may no longer exist."
+              compact
+            />
+          )}
         </View>
       </ScreenContainer>
     );
@@ -133,6 +191,12 @@ export default function CategoryScreen() {
 
   const ListHeader = (
     <View style={styles.header}>
+      {fromCache ? (
+        <CachedDataNotice
+          title="Showing saved products"
+          message="Price and availability may have changed."
+        />
+      ) : null}
       {categoryImage ? (
         <View style={styles.bannerWrap}>
           <Image source={{ uri: categoryImage }} style={styles.banner} contentFit="cover" />
@@ -163,7 +227,7 @@ export default function CategoryScreen() {
     <ScreenContainer>
       <View style={styles.container}>
         <Header title={category.name} showBack showSearch={false} />
-        {isLoading && products.length === 0 ? (
+        {isLoading && displayProducts.length === 0 ? (
           <View style={[styles.skeletonGrid, { paddingHorizontal: horizontalPadding }]}>
             <View style={[styles.gridRow, { gap: gridGap }]}>
               {Array.from({ length: 4 }).map((_, i) => (
@@ -173,21 +237,29 @@ export default function CategoryScreen() {
               ))}
             </View>
           </View>
-        ) : products.length === 0 ? (
+        ) : displayProducts.length === 0 ? (
           <View style={{ paddingHorizontal: horizontalPadding }}>
             {ListHeader}
-            <EmptyState
-              icon="cube-outline"
-            title="No products in this category"
-            description="Nothing is listed here right now. Browse other categories or check back soon."
-            actionLabel="Browse the shop"
-            onAction={() => router.push("/(tabs)/shop")}
-              compact
-            />
+            {isOffline ? (
+              <OfflineNotice
+                title="You're offline"
+                message="Connect to the internet to browse this category."
+                onRetry={() => router.replace(`/category/${slug}`)}
+              />
+            ) : (
+              <EmptyState
+                icon="cube-outline"
+                title="No products in this category"
+                description="Nothing is listed here right now. Browse other categories or check back soon."
+                actionLabel="Browse the shop"
+                onAction={() => router.push("/(tabs)/shop")}
+                compact
+              />
+            )}
           </View>
         ) : (
           <FlatList
-            data={products}
+            data={displayProducts}
             renderItem={renderItem}
             keyExtractor={(item) => item._id}
             numColumns={2}
