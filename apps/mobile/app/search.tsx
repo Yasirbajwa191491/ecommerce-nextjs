@@ -26,6 +26,7 @@ import { colors, radius, spacing, textStyles, typography } from "@/constants/the
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useHybridProductSearch } from "@/hooks/useHybridProductSearch";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { searchResultToProduct } from "@/lib/product-adapters";
@@ -42,6 +43,7 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { q } = useLocalSearchParams<{ q?: string }>();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
+  const rootStyle = useScreenRootStyle();
   const isOnline = useOnlineStatus();
   const [query, setQuery] = useState(typeof q === "string" ? q : "");
   const [recent, setRecent] = useState<string[]>([]);
@@ -214,7 +216,7 @@ export default function SearchScreen() {
 
   return (
     <ScreenContainer>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, rootStyle, { paddingTop: insets.top }]}>
         <View style={[styles.searchHeader, { paddingHorizontal: horizontalPadding }]}>
           <Pressable
             accessibilityRole="button"
@@ -337,7 +339,6 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   searchHeader: {
     flexDirection: "row",
@@ -467,6 +468,7 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     marginBottom: spacing.md,
+    alignItems: "stretch",
   },
   gridItem: {
     flex: 1,

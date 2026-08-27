@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, textStyles, typography } from "@/constants/theme";
+import { typography } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 
 type RatingStarsProps = {
   rating: number;
@@ -16,15 +18,31 @@ export function RatingStars({
   size = 16,
   showCount = true,
 }: RatingStarsProps) {
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+        stars: { flexDirection: "row", gap: 1 },
+        value: { fontSize: typography.sm, fontWeight: "600", color: colors.muted },
+        count: { fontSize: typography.sm, color: colors.muted },
+        empty: { ...textStyles.bodySmall, color: colors.muted },
+      }),
+    [colors, textStyles]
+  );
+
   if (showCount && (reviewCount ?? 0) === 0) {
     return <Text style={styles.empty}>No Reviews Yet</Text>;
   }
 
   const clamped = Math.max(0, Math.min(5, rating));
+  const label = showCount && reviewCount !== undefined
+    ? `${clamped.toFixed(1)} stars, ${reviewCount} ${reviewCount === 1 ? "review" : "reviews"}`
+    : `${clamped.toFixed(1)} stars`;
 
   return (
-    <View style={styles.row}>
-      <View style={styles.stars}>
+    <View style={styles.row} accessibilityRole="text" accessibilityLabel={label}>
+      <View style={styles.stars} accessibilityElementsHidden>
         {Array.from({ length: 5 }).map((_, index) => {
           const filled = clamped >= index + 1;
           const half = !filled && clamped > index && clamped < index + 1;
@@ -51,29 +69,3 @@ export function RatingStars({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  stars: {
-    flexDirection: "row",
-    gap: 1,
-  },
-  value: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.muted,
-  },
-  count: {
-    fontSize: typography.sm,
-    color: colors.muted,
-  },
-  empty: {
-    ...textStyles.bodySmall,
-    color: colors.muted,
-  },
-});

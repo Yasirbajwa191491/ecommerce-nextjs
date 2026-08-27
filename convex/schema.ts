@@ -370,6 +370,7 @@ export default defineSchema({
     stripeSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
     stripeTransactionId: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
     reviewInvitationSentAt: v.optional(v.number()),
@@ -382,6 +383,7 @@ export default defineSchema({
   })
     .index("by_order_number", ["orderNumber"])
     .index("by_stripe_session", ["stripeSessionId"])
+    .index("by_access_token", ["accessToken"])
     .index("by_idempotency_key", ["idempotencyKey"])
     .index("by_customer_email", ["customerEmail"])
     .index("by_customer_phone", ["customerPhone"])

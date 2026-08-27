@@ -153,17 +153,12 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
           index === existingIndex
 
             ? {
-
                 ...item,
-
                 id: lineId,
-
                 productId,
-
                 color: normalizedColor,
-
                 amount: Math.min(item.max, item.amount + amount),
-
+                currency: product.currency ?? item.currency,
               }
 
             : item
@@ -199,6 +194,8 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
             image: getPrimaryImageUrl(product, ""),
 
             price: product.price,
+
+            currency: product.currency,
 
             max: product.stock,
 

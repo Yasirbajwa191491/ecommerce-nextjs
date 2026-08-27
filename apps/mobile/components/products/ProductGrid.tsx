@@ -116,6 +116,7 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: spacing.md,
+    alignItems: "stretch",
   },
   itemWrap: {
     flex: 1,

@@ -12,6 +12,7 @@ import { useCartContext } from "@/context/cart_context";
 import { PromotionAppliedSection } from "@/components/promotions/promotion-applied-section";
 import { useCartPricing, toCartPricedLine } from "@/hooks/useCartPricing";
 import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BREADCRUMB, SHOP_PAGE_LEAD, SHOP_PAGE_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,7 @@ export function CheckoutView() {
   const [deliveryMethod, setDeliveryMethod] = useState<
     DeliveryMethodType | undefined
   >(undefined);
-  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(
+  const { priced, pricingError, mixedCurrency, isLoading, getPricedItem } = useCartPricing(
     cart,
     deliveryMethod
   );
@@ -139,8 +140,10 @@ export function CheckoutView() {
 
         {pricingError ? (
           <Alert variant="destructive" className="mb-6">
-            <AlertTitle>Cannot complete checkout</AlertTitle>
-            <AlertDescription>{pricingError}</AlertDescription>
+            <AlertTitle>
+              {mixedCurrency ? "Different currencies in cart" : "Cannot complete checkout"}
+            </AlertTitle>
+            <AlertDescription>{getFriendlyErrorMessage(pricingError)}</AlertDescription>
           </Alert>
         ) : null}
 

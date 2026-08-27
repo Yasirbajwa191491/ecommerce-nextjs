@@ -14,4 +14,28 @@ config.resolver.nodeModulesPaths = [
 ];
 config.resolver.disableHierarchicalLookup = true;
 
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const origin = (context.originModulePath || "").replace(/\\/g, "/");
+  const isBottomTabs = origin.includes("/@react-navigation/bottom-tabs/");
+  const isScreenFallback =
+    moduleName === "./ScreenFallback" ||
+    moduleName === "./ScreenFallback.js" ||
+    moduleName.endsWith("/views/ScreenFallback") ||
+    moduleName.endsWith("/views/ScreenFallback.js");
+
+  if (platform === "web" && isBottomTabs && isScreenFallback) {
+    return {
+      type: "sourceFile",
+      filePath: path.resolve(projectRoot, "shims/navigation/ScreenFallback.tsx"),
+    };
+  }
+
+  if (defaultResolveRequest) {
+    return defaultResolveRequest(context, moduleName, platform);
+  }
+
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;

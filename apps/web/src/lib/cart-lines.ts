@@ -8,6 +8,7 @@ export type CartLineLike = {
   name: string;
   image: string;
   price: number;
+  currency?: string;
   max: number;
 };
 
@@ -124,6 +125,7 @@ export function consolidateCartItems(cart: CartLineLike[]): CartLineLike[] {
         name: existing.name || item.name,
         image: existing.image || item.image,
         price: item.price > 0 ? item.price : existing.price,
+        currency: item.currency ?? existing.currency,
       });
     } else {
       merged.set(lineId, {

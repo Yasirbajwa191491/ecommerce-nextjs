@@ -5,6 +5,7 @@ import { api } from "@/lib/convex-api";
 import { isSnapshotConfirmedOnline } from "@/lib/network";
 import {
   drainWishlistQueue,
+  dropDeadLetterItems,
   resetWishlistAttempts,
 } from "@/lib/offline/wishlist-queue";
 import { getVisitorId } from "@/lib/visitor-id";
@@ -44,6 +45,7 @@ export function OfflineSyncBridge() {
             add: item.add,
           });
         });
+        await dropDeadLetterItems();
       })();
     }, cameOnline ? 600 : 0);
 

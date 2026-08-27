@@ -4,6 +4,9 @@ import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { buildTrackingBucketKey } from "./lib/rateLimit";
 import {
+  emailsMatch,
+} from "./lib/orderAccess";
+import {
   normalizeEmail,
   normalizePhone,
   toPublicOrderDetail,
@@ -48,16 +51,18 @@ function rateLimited(): TrackingNotFound {
 export const trackByOrderNumber = action({
   args: {
     orderNumber: v.string(),
+    customerEmail: v.string(),
   },
   handler: async (ctx, args): Promise<TrackByOrderNumberResult> => {
     const orderNumber = args.orderNumber.trim();
+    const customerEmail = args.customerEmail.trim();
 
-    if (!orderNumber) {
+    if (!orderNumber || !customerEmail) {
       return notFound();
     }
 
     const rateLimit = await ctx.runMutation(internal.orders.applyTrackingRateLimit, {
-      bucketKey: buildTrackingBucketKey("order", orderNumber),
+      bucketKey: buildTrackingBucketKey("order", `${orderNumber}:${normalizeEmail(customerEmail)}`),
     });
     if (!rateLimit.allowed) {
       return rateLimited();
@@ -68,14 +73,22 @@ export const trackByOrderNumber = action({
     });
 
     if (!result) return notFound();
+    if (!emailsMatch(result.order.customerEmail, customerEmail)) {
+      return notFound();
+    }
+
+    const accessToken = await ctx.runMutation(internal.orders.ensureOrderAccessToken, {
+      orderId: result.order._id,
+    });
 
     return {
       found: true,
       order: toPublicOrderDetail(
-        result.order,
+        { ...result.order, accessToken: accessToken ?? result.order.accessToken },
         result.items,
         result.statusHistory,
-        result.promotions
+        result.promotions,
+        { verified: true }
       ),
     };
   },
@@ -119,16 +132,23 @@ export const trackByCustomer = action({
 export const getPublicOrderDetail = action({
   args: {
     orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<PublicOrderDetailResult> => {
     const orderNumber = args.orderNumber.trim();
+    const customerEmail = args.customerEmail?.trim();
+    const accessToken = args.accessToken?.trim();
 
     if (!orderNumber) {
       return notFound();
     }
 
     const rateLimit = await ctx.runMutation(internal.orders.applyTrackingRateLimit, {
-      bucketKey: buildTrackingBucketKey("detail", orderNumber),
+      bucketKey: buildTrackingBucketKey(
+        "detail",
+        `${orderNumber}:${normalizeEmail(customerEmail ?? accessToken ?? "anon")}`
+      ),
     });
     if (!rateLimit.allowed) {
       return rateLimited();
@@ -140,13 +160,26 @@ export const getPublicOrderDetail = action({
 
     if (!result) return notFound();
 
+    const verified =
+      (customerEmail && emailsMatch(result.order.customerEmail, customerEmail)) ||
+      (accessToken && result.order.accessToken === accessToken);
+
+    if (!verified) {
+      return notFound();
+    }
+
+    const ensuredToken = await ctx.runMutation(internal.orders.ensureOrderAccessToken, {
+      orderId: result.order._id,
+    });
+
     return {
       found: true,
       order: toPublicOrderDetail(
-        result.order,
+        { ...result.order, accessToken: ensuredToken ?? result.order.accessToken },
         result.items,
         result.statusHistory,
-        result.promotions
+        result.promotions,
+        { verified: true }
       ),
     };
   },

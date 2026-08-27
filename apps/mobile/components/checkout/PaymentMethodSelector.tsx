@@ -61,7 +61,7 @@ export function PaymentMethodSelector({
                 <Ionicons
                   name={option.icon}
                   size={20}
-                  color={selected ? colors.primary : colors.textSecondary}
+                  color={selected ? colors.cta : colors.textSecondary}
                 />
               </View>
               <View style={styles.optionContent}>
@@ -72,7 +72,7 @@ export function PaymentMethodSelector({
               </View>
               <View style={[styles.radio, selected && styles.radioSelected]}>
                 {selected ? (
-                  <Ionicons name="checkmark" size={14} color={colors.primaryForeground} />
+                  <Ionicons name="checkmark" size={14} color={colors.ctaForeground} />
                 ) : null}
               </View>
             </Pressable>
@@ -102,8 +102,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   optionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryMuted,
+    borderColor: colors.cta,
+    backgroundColor: colors.ctaMuted,
   },
   optionPressed: {
     opacity: 0.92,
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconWrapSelected: {
-    backgroundColor: colors.primarySubtle,
+    backgroundColor: colors.ctaMuted,
   },
   optionContent: {
     flex: 1,
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     color: colors.foreground,
   },
   optionTitleSelected: {
-    color: colors.primary,
+    color: colors.cta,
   },
   optionDescription: {
     fontSize: typography.sm,
@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   radioSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.cta,
+    borderColor: colors.cta,
   },
   error: {
     fontSize: typography.sm,

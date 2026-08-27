@@ -151,6 +151,7 @@ function AddToCartSheetBody({
                   <PriceDisplay
                     price={displayPrice}
                     originalPrice={discountPercent > 0 ? product.price : undefined}
+                    currency={product.currency}
                     size="md"
                   />
                   <Text style={[styles.stockText, !inStock && styles.outOfStock]}>

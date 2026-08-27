@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View, ViewProps } from "react-native";
 
-import { colors, radius, typography } from "@/constants/theme";
+import { radius, typography } from "@/constants/theme";
+import type { ColorPalette } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 
 type BadgeVariant = "default" | "primary" | "success" | "warning" | "destructive";
 
@@ -9,16 +12,33 @@ type BadgeProps = ViewProps & {
   variant?: BadgeVariant;
 };
 
-const variantStyles: Record<BadgeVariant, { bg: string; text: string }> = {
-  default: { bg: "#F3F4F6", text: colors.foreground },
-  primary: { bg: colors.primaryMuted, text: colors.primary },
-  success: { bg: "#D1FAE5", text: colors.success },
-  warning: { bg: "#FEF3C7", text: colors.warning },
-  destructive: { bg: "#FEE2E2", text: colors.destructive },
-};
+function variantStyles(colors: ColorPalette): Record<BadgeVariant, { bg: string; text: string }> {
+  return {
+    default: { bg: colors.chipBackground, text: colors.foreground },
+    primary: { bg: colors.primaryMuted, text: colors.primary },
+    success: { bg: colors.successMuted, text: colors.success },
+    warning: { bg: colors.warningMuted, text: colors.warning },
+    destructive: { bg: colors.destructiveMuted, text: colors.destructive },
+  };
+}
 
 export function Badge({ label, variant = "default", style, ...props }: BadgeProps) {
-  const variantStyle = variantStyles[variant];
+  const { colors } = useTheme();
+  const variants = useMemo(() => variantStyles(colors), [colors]);
+  const variantStyle = variants[variant];
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        badge: {
+          alignSelf: "flex-start",
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: radius.full,
+        },
+        label: { fontSize: typography.xs, fontWeight: "600" },
+      }),
+    []
+  );
 
   return (
     <View
@@ -30,16 +50,3 @@ export function Badge({ label, variant = "default", style, ...props }: BadgeProp
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-  },
-  label: {
-    fontSize: typography.xs,
-    fontWeight: "600",
-  },
-});

@@ -1,7 +1,7 @@
 import { useAction } from "convex/react";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -24,7 +24,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import {
+  createTextStyles,
+  radius,
+  spacing,
+  typography,
+  type ColorPalette,
+} from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { api } from "@/lib/convex-api";
@@ -39,6 +45,7 @@ import {
   type TrackByCustomerErrors,
   type TrackByOrderErrors,
 } from "@/lib/validation/track-order-form";
+import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
 
 type TrackMethod = "order-number" | "customer";
@@ -67,6 +74,11 @@ function getTrackingErrorMessage(
 export function TrackOrderView() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () => createStyles(colors, textStyles),
+    [colors, textStyles]
+  );
   const { showError } = useToast();
   const isOnline = useOnlineStatus();
   const params = useLocalSearchParams<{ orderNumber?: string }>();
@@ -96,14 +108,15 @@ export function TrackOrderView() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const runOrderSearch = useCallback(
-    async (value: string) => {
+    async (value: string, emailValue: string) => {
       const trimmed = value.trim();
-      const errors = validateTrackByOrderForm({ orderNumber: trimmed });
+      const email = emailValue.trim();
+      const errors = validateTrackByOrderForm({ orderNumber: trimmed, email });
       setOrderErrors(errors);
       if (hasTrackByOrderErrors(errors)) return;
 
       if (!getIsOnline()) {
-        const cached = await loadTrackByOrderCache(trimmed);
+        const cached = await loadTrackByOrderCache(`${trimmed}:${email.toLowerCase()}`);
         if (cached) {
           setOrderResult(cached.result as Awaited<ReturnType<typeof trackByOrderNumber>>);
           setLastUpdatedAt(cached.cachedAt);
@@ -127,10 +140,13 @@ export function TrackOrderView() {
       Keyboard.dismiss();
 
       try {
-        const result = await trackByOrderNumber({ orderNumber: trimmed });
+        const result = await trackByOrderNumber({
+          orderNumber: trimmed,
+          customerEmail: email,
+        });
         setOrderResult(result);
         setLastUpdatedAt(Date.now());
-        await saveTrackByOrderCache(trimmed, result);
+        await saveTrackByOrderCache(`${trimmed}:${email.toLowerCase()}`, result);
         const message = getTrackingErrorMessage(result);
         if (message) showError(message);
       } catch {
@@ -181,7 +197,7 @@ export function TrackOrderView() {
   useEffect(() => {
     if (!prefillOrderNumber || prefillHandledRef.current) return;
     prefillHandledRef.current = true;
-    void runOrderSearch(prefillOrderNumber);
+    void runOrderSearch(prefillOrderNumber, customerEmail);
   }, [prefillOrderNumber, runOrderSearch]);
 
   const openAiAssistant = () => {
@@ -197,8 +213,8 @@ export function TrackOrderView() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
     >
       <ScrollView
           contentContainerStyle={[
@@ -262,11 +278,22 @@ export function TrackOrderView() {
                 error={orderErrors.orderNumber}
                 accessibilityLabel="Order number"
               />
+              <Input
+                label="Email used at checkout"
+                value={customerEmail}
+                onChangeText={setCustomerEmail}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                error={orderErrors.email}
+                accessibilityLabel="Email used at checkout"
+              />
               <Button
                 label={isSearchingOrder ? "Tracking…" : "Track order"}
                 loading={isSearchingOrder}
                 fullWidth
-                onPress={() => void runOrderSearch(orderNumber)}
+                onPress={() => void runOrderSearch(orderNumber, customerEmail)}
                 accessibilityLabel="Track order"
               />
 
@@ -288,6 +315,8 @@ export function TrackOrderView() {
                     createdAt={orderResult.order.createdAt}
                     paidAt={orderResult.order.paidAt}
                     itemCount={orderResult.order.items.length}
+                    customerEmail={orderResult.order.customerEmail}
+                    accessToken={orderResult.order.accessToken}
                   />
                 </>
               ) : orderResult && !orderResult.found ? (
@@ -368,6 +397,7 @@ export function TrackOrderView() {
                   {customerResults.orders.map((order) => (
                     <CustomerOrderCard
                       key={order.orderNumber}
+                      customerEmail={customerEmail}
                       order={{
                         orderNumber: order.orderNumber,
                         status: order.status as OrderStatus,
@@ -394,7 +424,11 @@ export function TrackOrderView() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(
+  colors: ColorPalette,
+  textStyles: ReturnType<typeof createTextStyles>
+) {
+  return StyleSheet.create({
   flex: {
     flex: 1,
   },
@@ -489,3 +523,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+}

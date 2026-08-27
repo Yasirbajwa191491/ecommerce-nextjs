@@ -1,17 +1,35 @@
 import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { SearchBarInput } from "@/components/ui/SearchBar";
-import { colors, radius, sizes, spacing, textStyles, typography } from "@/constants/theme";
+import {
+  createTextStyles,
+  radius,
+  sizes,
+  spacing,
+  typography,
+  type ColorPalette,
+} from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { refreshNetworkSnapshot } from "@/lib/network";
+import { useTheme } from "@/providers/theme-context";
 
 const PROMPTS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { label: "Find me running shoes under $100", icon: "walk-outline" },
@@ -28,7 +46,14 @@ export default function AiScreen() {
     orderNumber?: string;
     q?: string;
   }>();
+  const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
+  const rootStyle = useScreenRootStyle();
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () => createStyles(colors, textStyles),
+    [colors, textStyles]
+  );
   const isOnline = useOnlineStatus();
   const isOrderContext = context === "order_tracking";
   const [query, setQuery] = useState(typeof q === "string" ? q : "");
@@ -37,41 +62,57 @@ export default function AiScreen() {
     const trimmed = value.trim();
     if (!trimmed) return;
     if (!isOnline) return;
-    router.push({ pathname: "/search", params: { q: trimmed } });
+    const contextBits = [
+      productName ? `product:${productName}` : null,
+      isOrderContext && orderNumber ? `order:${orderNumber}` : null,
+    ].filter(Boolean);
+    const q = contextBits.length > 0 ? `${trimmed} ${contextBits.join(" ")}` : trimmed;
+    router.push({ pathname: "/search", params: { q } });
   };
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
-        <Header title="AI Shopping" showSearch={false} />
+      <View style={[styles.container, rootStyle]}>
+        <Header title="Product search" showSearch={false} />
 
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
         >
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              {
+                paddingHorizontal: horizontalPadding,
+                paddingBottom: insets.bottom + spacing["2xl"],
+              },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <View style={styles.hero}>
             <View style={styles.heroIcon}>
               <Ionicons name="sparkles" size={sizes.iconXl} color={colors.primary} />
             </View>
             <Text style={styles.heroTitle}>
-              {isOrderContext ? "Ask about your order" : "What are you shopping for?"}
+              {isOrderContext ? "Search related to your order" : "What are you shopping for?"}
             </Text>
             <Text style={styles.heroSub}>
               {productName
-                ? `Ask anything about "${productName}" — we'll find matching products and advice.`
+                ? `Search for products related to "${productName}".`
                 : isOrderContext
                   ? orderNumber
-                    ? `Get help tracking order ${orderNumber}.`
-                    : "Get help with delivery updates and order status."
-                  : "Describe what you need in everyday language. We'll find products that match."}
+                    ? `Search the catalog for items related to order ${orderNumber}.`
+                    : "Search the catalog for replacements and related products."
+                  : "Describe what you need in everyday language. We'll search the catalog."}
             </Text>
           </View>
 
           {!isOnline ? (
             <OfflineNotice
-              title="AI Shopping is unavailable offline."
-              message="Reconnect to continue chatting with your AI shopping assistant."
+              title="Product search is unavailable offline."
+              message="Reconnect to search the catalog."
               onRetry={() => void refreshNetworkSnapshot()}
             />
           ) : null}
@@ -129,18 +170,24 @@ export default function AiScreen() {
             ))}
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(
+  colors: ColorPalette,
+  textStyles: ReturnType<typeof createTextStyles>
+) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  flex: {
+    flex: 1,
   },
   content: {
-    paddingBottom: spacing["4xl"],
     gap: spacing.lg,
   },
   hero: {
@@ -222,3 +269,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+}

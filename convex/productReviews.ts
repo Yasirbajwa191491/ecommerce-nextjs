@@ -6,6 +6,7 @@ import { clearTagIndexForReview } from "./lib/ai/tagIndex";
 import { slugifyTag } from "./lib/ai/tagUtils";
 import { paginateArray } from "./lib/pagination";
 import { normalizeEmail } from "./lib/publicOrderDto";
+import { emailsMatch } from "./lib/orderAccess";
 import {
   buildTrackingBucketKey,
   checkAndIncrementRateLimit,
@@ -77,6 +78,19 @@ async function lookupOrderByNumber(
     throw new ConvexError("Order not found");
   }
   return order;
+}
+
+function assertReviewProof(
+  order: { customerEmail: string; accessToken?: string },
+  customerEmail: string,
+  accessToken?: string
+) {
+  if (!emailsMatch(order.customerEmail, customerEmail)) {
+    throw new ConvexError("Customer email does not match this order");
+  }
+  if (order.accessToken && order.accessToken !== (accessToken ?? "").trim()) {
+    throw new ConvexError("A valid review token is required");
+  }
 }
 
 /** Latest approved reviews across the store for homepage testimonials. */
@@ -253,6 +267,7 @@ export const getOrderReviewStatus = query({
   args: {
     orderNumber: v.string(),
     customerEmail: v.string(),
+    accessToken: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
@@ -269,12 +284,7 @@ export const getOrderReviewStatus = query({
   ),
   handler: async (ctx, args) => {
     const order = await lookupOrderByNumber(ctx, args.orderNumber);
-    if (
-      normalizeEmail(order.customerEmail) !==
-      normalizeEmail(args.customerEmail)
-    ) {
-      throw new ConvexError("Customer email does not match this order");
-    }
+    assertReviewProof(order, args.customerEmail, args.accessToken);
 
     const items = await ctx.db
       .query("orderItems")
@@ -315,6 +325,7 @@ export const getCustomerReviewsForOrder = query({
   args: {
     orderNumber: v.string(),
     customerEmail: v.string(),
+    accessToken: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
@@ -325,12 +336,7 @@ export const getCustomerReviewsForOrder = query({
   ),
   handler: async (ctx, args) => {
     const order = await lookupOrderByNumber(ctx, args.orderNumber);
-    if (
-      normalizeEmail(order.customerEmail) !==
-      normalizeEmail(args.customerEmail)
-    ) {
-      throw new ConvexError("Customer email does not match this order");
-    }
+    assertReviewProof(order, args.customerEmail, args.accessToken);
 
     const reviews = await ctx.db
       .query("productReviews")
@@ -363,6 +369,7 @@ export const createReview = mutation({
   args: {
     orderNumber: v.string(),
     customerEmail: v.string(),
+    accessToken: v.optional(v.string()),
     productId: v.id("products"),
     rating: v.number(),
     title: v.string(),
@@ -386,6 +393,7 @@ export const createReview = mutation({
     }
 
     const order = await lookupOrderByNumber(ctx, args.orderNumber);
+    assertReviewProof(order, args.customerEmail, args.accessToken);
     await assertReviewEligibility(ctx, {
       orderId: order._id,
       productId: args.productId,
@@ -441,6 +449,7 @@ export const updateReview = mutation({
     reviewId: v.id("productReviews"),
     orderNumber: v.string(),
     customerEmail: v.string(),
+    accessToken: v.optional(v.string()),
     rating: v.number(),
     title: v.string(),
     content: v.string(),
@@ -458,6 +467,7 @@ export const updateReview = mutation({
     if (review.orderId !== order._id) {
       throw new ConvexError("Review does not belong to this order");
     }
+    assertReviewProof(order, args.customerEmail, args.accessToken);
     if (
       normalizeEmail(review.customerEmail) !==
       normalizeEmail(args.customerEmail)
@@ -525,6 +535,7 @@ export const deleteReview = mutation({
     reviewId: v.id("productReviews"),
     orderNumber: v.string(),
     customerEmail: v.string(),
+    accessToken: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -538,6 +549,7 @@ export const deleteReview = mutation({
     if (review.orderId !== order._id) {
       throw new ConvexError("Review does not belong to this order");
     }
+    assertReviewProof(order, args.customerEmail, args.accessToken);
     if (
       normalizeEmail(review.customerEmail) !==
       normalizeEmail(args.customerEmail)

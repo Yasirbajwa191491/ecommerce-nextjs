@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useMemo } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -9,7 +10,8 @@ import {
   type TextInputProps,
 } from "react-native";
 
-import { colors, radius, sizes, spacing, typography } from "@/constants/theme";
+import { radius, sizes, spacing, typography } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 
 type SearchBarTapProps = {
   placeholder?: string;
@@ -17,12 +19,44 @@ type SearchBarTapProps = {
   onPress?: () => void;
 };
 
-/** Non-editable search entry — navigates to search screen. */
 export function SearchBar({
   placeholder = "Search products, brands, categories…",
   showVisualSearch = true,
   onPress,
 }: SearchBarTapProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flexDirection: "row",
+          alignItems: "center",
+          minHeight: sizes.search,
+          paddingLeft: spacing.md,
+          paddingRight: spacing.xs,
+          gap: spacing.sm,
+          backgroundColor: colors.surfaceSecondary,
+          borderRadius: radius.md,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        },
+        placeholder: {
+          flex: 1,
+          fontSize: typography.base,
+          color: colors.muted,
+        },
+        visualBtn: {
+          width: sizes.qtyControl,
+          height: sizes.qtyControl,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: radius.sm,
+        },
+        pressed: { opacity: 0.85 },
+      }),
+    [colors]
+  );
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -59,7 +93,6 @@ type SearchBarInputProps = TextInputProps & {
   onClear?: () => void;
 };
 
-/** Editable search input for the search screen. */
 export function SearchBarInput({
   value,
   onChangeText,
@@ -68,6 +101,39 @@ export function SearchBarInput({
   onClear,
   ...inputProps
 }: SearchBarInputProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flexDirection: "row",
+          alignItems: "center",
+          minHeight: sizes.search,
+          paddingLeft: spacing.md,
+          paddingRight: spacing.xs,
+          gap: spacing.sm,
+          backgroundColor: colors.surfaceSecondary,
+          borderRadius: radius.md,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        },
+        textInput: {
+          flex: 1,
+          fontSize: typography.base,
+          color: colors.foreground,
+          paddingVertical: spacing.sm + 2,
+        },
+        visualBtn: {
+          width: sizes.qtyControl,
+          height: sizes.qtyControl,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: radius.sm,
+        },
+      }),
+    [colors]
+  );
+
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={sizes.iconMd} color={colors.muted} />
@@ -79,6 +145,7 @@ export function SearchBarInput({
         onChangeText={onChangeText}
         accessibilityLabel="Search products"
         returnKeyType="search"
+        keyboardType="default"
         {...inputProps}
       />
       {value.length > 0 ? (
@@ -105,39 +172,3 @@ export function SearchBarInput({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: sizes.search,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  placeholder: {
-    flex: 1,
-    fontSize: typography.base,
-    color: colors.muted,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: typography.base,
-    color: colors.foreground,
-    paddingVertical: spacing.sm + 2,
-  },
-  visualBtn: {
-    width: sizes.qtyControl,
-    height: sizes.qtyControl,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.sm,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-});

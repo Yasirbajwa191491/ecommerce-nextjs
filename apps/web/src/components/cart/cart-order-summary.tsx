@@ -30,6 +30,7 @@ type CartOrderSummaryProps = {
   total: number;
   currency?: string;
   isLoading?: boolean;
+  canCheckout?: boolean;
   className?: string;
 };
 
@@ -48,6 +49,7 @@ export function CartOrderSummary({
   total,
   currency,
   isLoading = false,
+  canCheckout = true,
   className,
 }: CartOrderSummaryProps) {
   return (
@@ -74,7 +76,7 @@ export function CartOrderSummary({
       <CardContent className="space-y-4 px-6 py-6 sm:px-7">
         {isLoading ? (
           <Skeleton className="h-40 w-full rounded-xl" />
-        ) : (
+        ) : canCheckout ? (
           <OrderSummaryBreakdown
             subtotal={subtotal}
             discountTotal={discountTotal}
@@ -84,6 +86,11 @@ export function CartOrderSummary({
             currency={currency}
             showProductsLabel
           />
+        ) : (
+          <p className={cn("rounded-xl bg-muted/40 px-4 py-3", SHOP_BODY)}>
+            A cart total is unavailable until this issue is resolved. You can still
+            remove or update items.
+          </p>
         )}
 
         <ul className="grid grid-cols-3 gap-2 pt-1">
@@ -105,9 +112,10 @@ export function CartOrderSummary({
         <div className="flex w-full flex-col items-center gap-3">
           <Button
             render={<Link href="/checkout" />}
-            className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] [&_svg]:!text-white"
+            disabled={!canCheckout}
+            className="group h-11 gap-2 rounded-full bg-[#6254f3] px-8 text-sm font-semibold !text-white shadow-md shadow-[#6254f3]/25 transition-all hover:bg-[#5548e0] hover:!text-white hover:shadow-lg active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:!text-white"
           >
-            Proceed to checkout
+            {canCheckout ? "Proceed to checkout" : "Fix cart to checkout"}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </Button>
           <Button

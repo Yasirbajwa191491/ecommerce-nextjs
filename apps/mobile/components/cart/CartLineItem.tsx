@@ -12,6 +12,7 @@ import type { CartLineLike } from "@/lib/cart-lines";
 type CartLineItemProps = {
   item: CartLineLike;
   lineTotal?: number;
+  currency?: string;
   onIncrement: () => void;
   onDecrement: () => void;
   onRemove: () => void;
@@ -20,6 +21,7 @@ type CartLineItemProps = {
 export function CartLineItem({
   item,
   lineTotal,
+  currency,
   onIncrement,
   onDecrement,
   onRemove,
@@ -48,7 +50,7 @@ export function CartLineItem({
           {item.name}
         </Text>
         {item.color ? <ColorSwatch color={item.color} /> : null}
-        <PriceDisplay price={displayTotal} size="md" />
+        <PriceDisplay price={displayTotal} currency={currency ?? item.currency} size="md" />
 
         <View style={styles.actions}>
           <QuantityStepper

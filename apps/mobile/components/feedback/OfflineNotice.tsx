@@ -1,12 +1,14 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
 import {
   OFFLINE_GENERIC_MESSAGE,
   OFFLINE_MESSAGE,
   OFFLINE_TITLE,
 } from "@/lib/network";
+import { useTheme } from "@/providers/theme-context";
 
 type OfflineNoticeProps = {
   title?: string;
@@ -21,6 +23,35 @@ export function OfflineNotice({
   onRetry,
   compact = false,
 }: OfflineNoticeProps) {
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        banner: {
+          backgroundColor: colors.surface,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.lg,
+          gap: spacing.sm,
+          alignItems: "center",
+        },
+        compact: { padding: spacing.md },
+        title: {
+          ...textStyles.sectionTitle,
+          fontSize: typography.base,
+          textAlign: "center",
+        },
+        message: {
+          fontSize: typography.sm,
+          color: colors.textSecondary,
+          textAlign: "center",
+          lineHeight: 20,
+        },
+      }),
+    [colors, textStyles]
+  );
+
   return (
     <View
       style={[styles.banner, compact && styles.compact]}
@@ -41,29 +72,3 @@ export function CheckoutOfflineNotice({ onRetry }: { onRetry?: () => void }) {
     <OfflineNotice title={OFFLINE_TITLE} message={OFFLINE_MESSAGE} onRetry={onRetry} />
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    alignItems: "center",
-  },
-  compact: {
-    padding: spacing.md,
-  },
-  title: {
-    ...textStyles.sectionTitle,
-    fontSize: typography.base,
-    textAlign: "center",
-  },
-  message: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});

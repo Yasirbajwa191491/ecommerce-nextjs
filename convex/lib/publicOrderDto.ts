@@ -5,6 +5,7 @@ import {
   normalizeOrderItem,
   type NormalizedOrderItem,
 } from "./orderItemSnapshot";
+import { maskCustomerName, maskEmail, maskPhone } from "./orderAccess";
 
 export type PublicOrderItem = NormalizedOrderItem;
 
@@ -49,6 +50,9 @@ export type PublicOrderDetail = PublicOrderSummary & {
     newStatus?: OrderStatus;
     createdAt: number;
   }>;
+  /** Present only after email/access-token verification. */
+  accessToken?: string;
+  verified?: boolean;
 };
 
 export function toPublicOrderItem(item: Doc<"orderItems">): PublicOrderItem {
@@ -93,19 +97,23 @@ export function toPublicOrderDetail(
   order: Doc<"orders">,
   items: Doc<"orderItems">[],
   statusHistory: PublicOrderDetail["statusHistory"],
-  promotions: Doc<"orderPromotions">[] = []
+  promotions: Doc<"orderPromotions">[] = [],
+  options?: { verified?: boolean }
 ): PublicOrderDetail {
+  const verified = options?.verified === true;
   return {
     ...toPublicOrderSummary(order, items),
-    customerName: order.customerName,
-    customerEmail: order.customerEmail,
-    customerPhone: order.customerPhone,
-    customerAddress: order.customerAddress,
+    customerName: verified ? order.customerName : maskCustomerName(order.customerName),
+    customerEmail: verified ? order.customerEmail : maskEmail(order.customerEmail),
+    customerPhone: verified ? order.customerPhone : maskPhone(order.customerPhone),
+    customerAddress: verified ? order.customerAddress : "On file",
     subtotal: order.subtotal,
     tax: order.tax,
     items: items.map(toPublicOrderItem),
     promotions: promotions.map(toPublicOrderPromotion),
     statusHistory,
+    accessToken: verified ? order.accessToken : undefined,
+    verified,
   };
 }
 

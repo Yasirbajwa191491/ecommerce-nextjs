@@ -4,6 +4,7 @@ import { useAction, useMutation } from "convex/react";
 import { useCallback, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { getVisitorId } from "@/lib/recommendations/visitor-id";
 import type { HybridSearchProduct } from "@/hooks/use-hybrid-product-search";
 
 export type VisualSearchProduct = HybridSearchProduct;
@@ -62,7 +63,7 @@ export function useVisualProductSearch() {
       }));
 
       try {
-        const uploadUrl = await generateUploadUrl();
+        const uploadUrl = await generateUploadUrl({ visitorId: getVisitorId() || "web" });
         const uploadResponse = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": args.file.type },

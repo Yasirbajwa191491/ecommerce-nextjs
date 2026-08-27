@@ -132,6 +132,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
           max,
 
+          currency: product.currency ?? existing.currency,
+
         };
 
       } else {
@@ -151,6 +153,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           image,
 
           price: product.price,
+
+          currency: product.currency,
 
           max,
 

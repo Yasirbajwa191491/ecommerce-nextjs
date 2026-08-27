@@ -53,7 +53,7 @@ export function DeliveryMethodSelector({
             >
               <View style={[styles.radio, selected && styles.radioSelected]}>
                 {selected ? (
-                  <Ionicons name="checkmark" size={14} color={colors.primaryForeground} />
+                  <Ionicons name="checkmark" size={14} color={colors.ctaForeground} />
                 ) : null}
               </View>
               <View style={styles.optionContent}>
@@ -100,8 +100,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   optionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryMuted,
+    borderColor: colors.cta,
+    backgroundColor: colors.ctaMuted,
   },
   optionPressed: {
     opacity: 0.92,
@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   radioSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.cta,
+    borderColor: colors.cta,
   },
   optionContent: {
     flex: 1,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     color: colors.foreground,
   },
   optionTitleSelected: {
-    color: colors.primary,
+    color: colors.cta,
   },
   charge: {
     fontSize: typography.base,

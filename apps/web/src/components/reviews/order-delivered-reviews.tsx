@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type OrderDeliveredReviewsProps = {
   orderNumber: string;
   customerEmail: string;
+  accessToken?: string;
   items: PublicOrderItem[];
   highlightProductId?: string;
 };
@@ -26,16 +27,19 @@ type OrderDeliveredReviewsProps = {
 export function OrderDeliveredReviews({
   orderNumber,
   customerEmail,
+  accessToken,
   items,
   highlightProductId,
 }: OrderDeliveredReviewsProps) {
   const reviewStatus = useQuery(api.productReviews.getOrderReviewStatus, {
     orderNumber,
     customerEmail,
+    accessToken,
   });
   const customerReviews = useQuery(api.productReviews.getCustomerReviewsForOrder, {
     orderNumber,
     customerEmail,
+    accessToken,
   });
 
   const reviewByProduct = useMemo(() => {
@@ -89,6 +93,7 @@ export function OrderDeliveredReviews({
               <OrderItemReviewPanel
                 orderNumber={orderNumber}
                 customerEmail={customerEmail}
+                accessToken={accessToken}
                 productId={item.productId as Id<"products">}
                 productName={item.productName}
                 status={statusEntry.status}

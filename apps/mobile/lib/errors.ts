@@ -1,11 +1,15 @@
 import { isLikelyOfflineError, OfflineError } from "@/lib/network";
 
+export const MIXED_CURRENCY_CART_MESSAGE =
+  "Your cart has items in different currencies. Remove items until only one currency remains, then continue to checkout.";
+
 const FRIENDLY_ERROR_MAP: Record<string, string> = {
   "Your cart is empty": "Your cart is empty.",
   "Each cart item must have a selected color":
     "A cart item is missing required details. Try removing it and adding again.",
   "Invalid quantity in cart": "Something is wrong with an item quantity. Please update your cart.",
   "Unable to validate your cart": "We couldn't calculate your cart total. Please try again.",
+  "All items must use the same currency": MIXED_CURRENCY_CART_MESSAGE,
 };
 
 export function getErrorMessage(error: unknown): string {

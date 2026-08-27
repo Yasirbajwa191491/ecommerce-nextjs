@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing, textStyles, typography } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 
 type SectionHeaderProps = {
   title: string;
@@ -18,6 +20,52 @@ export function SectionHeader({
   onAction,
   accent = false,
 }: SectionHeaderProps) {
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: "row",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: spacing.md,
+        },
+        textBlock: { flex: 1, gap: 2 },
+        accentRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          marginBottom: 2,
+        },
+        accentLabel: {
+          ...textStyles.caption,
+          color: colors.primary,
+          textTransform: "uppercase",
+        },
+        title: { ...textStyles.sectionTitle },
+        subtitle: {
+          fontSize: typography.sm,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        action: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 2,
+          minHeight: 44,
+          paddingVertical: spacing.xs,
+          justifyContent: "center",
+        },
+        actionPressed: { opacity: 0.7 },
+        actionText: {
+          fontSize: typography.sm,
+          fontWeight: "600",
+          color: colors.textSecondary,
+        },
+      }),
+    [colors, textStyles]
+  );
+
   return (
     <View style={styles.row}>
       <View style={styles.textBlock}>
@@ -39,57 +87,9 @@ export function SectionHeader({
           style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
         >
           <Text style={styles.actionText}>{actionLabel}</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </Pressable>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  textBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  accentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 2,
-  },
-  accentLabel: {
-    ...textStyles.caption,
-    color: colors.primary,
-    textTransform: "uppercase",
-  },
-  title: {
-    ...textStyles.sectionTitle,
-  },
-  subtitle: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  action: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    minHeight: 44,
-    paddingVertical: spacing.xs,
-    justifyContent: "center",
-  },
-  actionPressed: {
-    opacity: 0.7,
-  },
-  actionText: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.primary,
-  },
-});

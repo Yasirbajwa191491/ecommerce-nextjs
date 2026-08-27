@@ -25,7 +25,7 @@ export function IconButton({
   badge,
 }: IconButtonProps) {
   const iconColor =
-    color ?? (variant === "primary" ? colors.primaryForeground : colors.foreground);
+    color ?? (variant === "primary" ? colors.ctaForeground : colors.foreground);
 
   return (
     <Pressable
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   primary: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.cta,
   },
   pressed: {
     opacity: 0.75,

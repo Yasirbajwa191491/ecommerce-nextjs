@@ -8,36 +8,53 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMemo } from "react";
 
 import { ContactForm } from "@/components/contact/ContactForm";
 import { ContactInfoCard, ContactInfoSkeleton } from "@/components/contact/ContactInfoCard";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
-import { colors, spacing, textStyles, typography } from "@/constants/theme";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { spacing, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useTheme } from "@/providers/theme-context";
 
 export default function ContactScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
+  const rootStyle = useScreenRootStyle();
+  const { colors, textStyles } = useTheme();
   const { storeName, address, phone, phoneHref, email, businessHours, isLoading } =
     useSiteSettings();
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1 },
+        flex: { flex: 1 },
+        content: { paddingTop: spacing.lg, gap: spacing["2xl"] },
+        hero: { gap: spacing.sm },
+        heroTitle: { ...textStyles.display, fontSize: typography["3xl"] },
+        heroSub: { ...textStyles.body, color: colors.textSecondary },
+        cards: { gap: spacing.sm },
+      }),
+    [colors, textStyles]
+  );
+
   const openMaps = () => {
-    void Linking.openURL(
-      `https://maps.google.com/?q=${encodeURIComponent(address)}`
-    );
+    void Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`);
   };
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
+      <View style={[styles.container, rootStyle]}>
         <Header title="Contact" showBack showSearch={false} showCart={false} />
 
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
         >
           <ScrollView
             contentContainerStyle={[
@@ -102,31 +119,3 @@ export default function ContactScreen() {
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  content: {
-    paddingTop: spacing.lg,
-    gap: spacing["2xl"],
-  },
-  hero: {
-    gap: spacing.sm,
-  },
-  heroTitle: {
-    ...textStyles.display,
-    fontSize: typography["3xl"],
-  },
-  heroSub: {
-    ...textStyles.body,
-    color: colors.textSecondary,
-  },
-  cards: {
-    gap: spacing.sm,
-  },
-});

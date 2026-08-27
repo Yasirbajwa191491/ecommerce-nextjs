@@ -9,7 +9,7 @@ type LoadingViewProps = {
 export function LoadingView({ message = "Loading…" }: LoadingViewProps) {
   return (
     <View style={styles.container} accessibilityLabel={message} accessibilityRole="progressbar">
-      <ActivityIndicator size="large" color={colors.primary} />
+      <ActivityIndicator size="large" color={colors.cta} />
       <Text style={styles.message}>{message}</Text>
     </View>
   );

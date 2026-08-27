@@ -45,6 +45,7 @@ import {
   SHOP_TABLE_HEAD,
 } from "@/lib/typography";
 import { resolveCartProductId } from "@/lib/cart-lines";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import type { Id } from "@convex/_generated/dataModel";
 import { VapiCheckoutProgress } from "@/components/vapi/vapi-checkout-progress";
 import { RecommendationSection } from "@/components/products/recommendation-section";
@@ -55,19 +56,20 @@ export function CartView() {
   const {
     cart,
     total_item,
-    total_price,
     setIncrement,
     setDecrease,
     removeItem,
     clearCart,
   } = useCartContext();
 
-  const { priced, pricingError, isLoading, getPricedItem } = useCartPricing(cart);
+  const { priced, pricingError, mixedCurrency, isLoading, getPricedItem, getItemCurrency } =
+    useCartPricing(cart);
   const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
   const currency = priced?.currency;
-  const displaySubtotal = priced?.subtotal ?? total_price;
-  const displayTotal = priced?.total ?? total_price;
-  const discountTotal = priced?.discountTotal ?? 0;
+  const totalsReady = Boolean(priced) && !pricingError;
+  const displaySubtotal = totalsReady ? priced?.subtotal : undefined;
+  const displayTotal = totalsReady ? priced?.total : undefined;
+  const discountTotal = totalsReady ? priced?.discountTotal ?? 0 : 0;
   const cartProductIds = cart
     .map((item) => resolveCartProductId(item))
     .filter(Boolean) as Id<"products">[];
@@ -149,8 +151,10 @@ export function CartView() {
 
             {pricingError ? (
               <Alert variant="destructive" className="mb-6">
-                <AlertTitle>Cart update needed</AlertTitle>
-                <AlertDescription>{pricingError}</AlertDescription>
+                <AlertTitle>
+                  {mixedCurrency ? "Different currencies in cart" : "Cart update needed"}
+                </AlertTitle>
+                <AlertDescription>{getFriendlyErrorMessage(pricingError)}</AlertDescription>
               </Alert>
             ) : null}
 
@@ -175,7 +179,7 @@ export function CartView() {
                             pricedLine={
                               pricedLine ? toCartPricedLine(pricedLine) : undefined
                             }
-                            currency={currency}
+                            currency={getItemCurrency(item)}
                             onIncrement={setIncrement}
                             onDecrement={setDecrease}
                             onRemove={removeItem}
@@ -219,7 +223,7 @@ export function CartView() {
                                   ? toCartPricedLine(pricedLine)
                                   : undefined
                               }
-                              currency={currency}
+                              currency={getItemCurrency(item)}
                               onIncrement={setIncrement}
                               onDecrement={setDecrease}
                               onRemove={removeItem}
@@ -235,11 +239,17 @@ export function CartView() {
                       <span className="font-medium text-foreground">
                         {total_item} {total_item === 1 ? "item" : "items"}
                       </span>{" "}
-                      in cart ·{" "}
-                      <span className="font-semibold tabular-nums text-foreground">
-                        <FormatPrice price={displaySubtotal} currency={currency} />
-                      </span>{" "}
-                      products total
+                      in cart
+                      {displaySubtotal != null ? (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <span className="font-semibold tabular-nums text-foreground">
+                            <FormatPrice price={displaySubtotal} currency={currency} />
+                          </span>{" "}
+                          products total
+                        </>
+                      ) : null}
                     </p>
                     <div className="w-fit self-end sm:self-auto">
                       <AlertDialog>
@@ -305,13 +315,14 @@ export function CartView() {
                 />
                 <CartOrderSummary
                   totalItem={total_item}
-                  subtotal={displaySubtotal}
+                  subtotal={displaySubtotal ?? 0}
                   discountTotal={priced?.discountTotal ?? 0}
                   shipping={priced?.shipping ?? 0}
                   tax={priced?.tax ?? 0}
-                  total={displayTotal}
+                  total={displayTotal ?? 0}
                   currency={currency}
                   isLoading={isLoading}
+                  canCheckout={totalsReady && !isLoading}
                 />
               </m.aside>
             </div>

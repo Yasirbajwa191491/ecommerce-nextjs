@@ -66,7 +66,13 @@ function formatDateTime(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
-function CustomerOrderCard({ order }: { order: PublicOrderSummary }) {
+function CustomerOrderCard({
+  order,
+  customerEmail,
+}: {
+  order: PublicOrderSummary;
+  customerEmail?: string;
+}) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -107,7 +113,9 @@ function CustomerOrderCard({ order }: { order: PublicOrderSummary }) {
             className={COMPACT_PRIMARY_BUTTON_CLASS}
             render={
               <Link
-                href={`/track-order/${encodeURIComponent(order.orderNumber)}`}
+                href={`/track-order/${encodeURIComponent(order.orderNumber)}${
+                  customerEmail ? `?email=${encodeURIComponent(customerEmail)}` : ""
+                }`}
               />
             }
           >
@@ -173,16 +181,20 @@ export function TrackOrderView() {
   }, [searchParams, storefront?.trackOrderPrefill]);
 
   const runOrderSearch = useCallback(
-    async (value: string) => {
+    async (value: string, emailValue: string) => {
       const trimmed = value.trim();
-      const errors = validateTrackByOrderForm({ orderNumber: trimmed });
+      const email = emailValue.trim();
+      const errors = validateTrackByOrderForm({ orderNumber: trimmed, email });
       setOrderErrors(errors);
       if (hasTrackByOrderErrors(errors)) return;
 
       setIsSearchingOrder(true);
       setOrderResult(null);
       try {
-        const result = await trackByOrderNumber({ orderNumber: trimmed });
+        const result = await trackByOrderNumber({
+          orderNumber: trimmed,
+          customerEmail: email,
+        });
         setOrderResult(result);
         if (!result.found) {
           toastError(result.message);
@@ -229,7 +241,7 @@ export function TrackOrderView() {
     setPrefillApplied(true);
     setOrderNumber(urlOrderNumber);
     setActiveTab("order-number");
-    void runOrderSearch(urlOrderNumber);
+    void runOrderSearch(urlOrderNumber, searchParams.get("email")?.trim() ?? customerEmail);
   }, [searchParams, prefillApplied, runOrderSearch]);
 
   useEffect(() => {
@@ -255,7 +267,7 @@ export function TrackOrderView() {
     if (prefill.orderNumber) {
       setOrderNumber(prefill.orderNumber);
       setActiveTab("order-number");
-      void runOrderSearch(prefill.orderNumber);
+      void runOrderSearch(prefill.orderNumber, prefill.email ?? customerEmail);
     }
   }, [
     customerEmail,
@@ -267,7 +279,7 @@ export function TrackOrderView() {
 
   const handleTrackByOrder = async (event: React.FormEvent) => {
     event.preventDefault();
-    await runOrderSearch(orderNumber);
+    await runOrderSearch(orderNumber, customerEmail);
   };
 
   const handleTrackByCustomer = async (event: React.FormEvent) => {
@@ -352,6 +364,25 @@ export function TrackOrderView() {
                     autoComplete="off"
                   />
                 </AdminFormField>
+                <AdminFormField
+                  label="Email used at checkout"
+                  htmlFor="track-order-email"
+                  error={orderErrors.email}
+                  required
+                >
+                  <Input
+                    id="track-order-email"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className={cn(
+                      "h-11",
+                      invalidInputClass(orderErrors.email)
+                    )}
+                    autoComplete="email"
+                  />
+                </AdminFormField>
                 <div className="flex justify-center">
                   <Button
                     type="submit"
@@ -424,7 +455,9 @@ export function TrackOrderView() {
                       className={PRIMARY_BUTTON_CLASS}
                       onClick={() =>
                         router.push(
-                          `/track-order/${encodeURIComponent(orderResult.order.orderNumber)}`
+                          `/track-order/${encodeURIComponent(orderResult.order.orderNumber)}?email=${encodeURIComponent(
+                            orderResult.order.customerEmail
+                          )}&accessToken=${encodeURIComponent(orderResult.order.accessToken ?? "")}`
                         )
                       }
                     >
@@ -524,7 +557,11 @@ export function TrackOrderView() {
                   </p>
                   <div className="space-y-3">
                     {customerResults.orders.map((order) => (
-                      <CustomerOrderCard key={order.orderNumber} order={order} />
+                      <CustomerOrderCard
+                        key={order.orderNumber}
+                        order={order}
+                        customerEmail={customerEmail.trim() || undefined}
+                      />
                     ))}
                   </div>
                 </div>

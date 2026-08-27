@@ -9,9 +9,16 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://hip-salamander-864.convex.cloud"
+      }
+    }
   },
   "submit": {
     "production": {}

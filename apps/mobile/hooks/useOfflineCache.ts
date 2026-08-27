@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { cacheProducts } from "@/lib/offline/product-store";
 import { readCache, writeCache } from "@/lib/offline/storage";
+import { TTL } from "@/lib/offline/constants";
 import type { Product } from "@/types/product";
 
 type OfflineCacheResult<T> = {
@@ -19,6 +20,21 @@ function isProduct(value: unknown): value is Product {
   return Boolean(value) && typeof value === "object" && "_id" in (value as object);
 }
 
+function ttlForKey(key: string): number | undefined {
+  if (key.includes("wishlist:")) return undefined;
+  if (key.includes("draft:")) return undefined;
+  if (key.includes("home:")) return TTL.home;
+  if (key.includes("shop:")) return TTL.shop;
+  if (key.includes("category:")) return TTL.shop;
+  if (key.includes("recs:")) return TTL.recommendations;
+  if (key.includes("similar:")) return TTL.similar;
+  if (key.includes("settings")) return TTL.settings;
+  if (key.includes("search:")) return TTL.searchMeta;
+  if (key.includes("track:")) return TTL.trackOrder;
+  if (key.includes("categories:")) return TTL.categories;
+  return undefined;
+}
+
 export function useOfflineCache<T>(
   key: string,
   live: T | undefined | null,
@@ -30,7 +46,7 @@ export function useOfflineCache<T>(
 
   useEffect(() => {
     let cancelled = false;
-    void readCache<T>(key).then((entry) => {
+    void readCache<T>(key, ttlForKey(key)).then((entry) => {
       if (cancelled) return;
       setCached(entry ? { data: entry.data, cachedAt: entry.cachedAt } : null);
       setReadyKey(key);
@@ -61,6 +77,12 @@ export function useOfflineCache<T>(
 
   if (live === null) {
     return { data: undefined, fromCache: false, cachedAt: null, ready: true };
+  }
+
+  // Only expose cached data once readCache has finished for the current key.
+  // Prevents showing stale data from a previous key while the new key loads.
+  if (!ready) {
+    return { data: undefined, fromCache: false, cachedAt: null, ready: false };
   }
 
   return {

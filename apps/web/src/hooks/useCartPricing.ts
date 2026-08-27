@@ -8,7 +8,9 @@ import type { Id } from "@convex/_generated/dataModel";
 import type { CartPricedLine } from "@/components/cart/cart-line-pricing";
 import { useCatalogNow } from "@/hooks/use-stable-now";
 import { cartItemsToCheckoutLines, cartLineKey } from "@/lib/cart-lines";
+import { MIXED_CURRENCY_CART_MESSAGE } from "@/lib/errors";
 import { resolveCartProductId, type CartItem } from "@/reducer/cartReducer";
+import { DEFAULT_CURRENCY } from "@ecommerce/shared";
 
 type PricedCartItem = {
   productId: Id<"products">;
@@ -40,12 +42,26 @@ export function toCartPricedLine(item: PricedCartItem): CartPricedLine {
   };
 }
 
+function resolveCartItemCurrency(currency?: string | null): string {
+  const code = currency?.trim();
+  return code && code.length >= 3 ? code.toUpperCase() : DEFAULT_CURRENCY;
+}
+
 export function useCartPricing(
   cart: CartItem[],
   deliveryMethod?: string
 ) {
   const now = useCatalogNow();
   const lines = useMemo(() => cartItemsToCheckoutLines(cart), [cart]);
+
+  const mixedCurrency = useMemo(() => {
+    if (cart.length < 2) return false;
+    const known = cart
+      .map((item) => item.currency?.trim())
+      .filter((code): code is string => Boolean(code));
+    if (known.length < 2) return false;
+    return new Set(known.map((code) => resolveCartItemCurrency(code))).size > 1;
+  }, [cart]);
 
   const pricingCacheKey = useMemo(
     () =>
@@ -57,7 +73,7 @@ export function useCartPricing(
 
   const resultQuery = useQuery(
     api.orders.validateCartForCheckout,
-    cart.length > 0
+    cart.length > 0 && !mixedCurrency
       ? {
           lines,
           now,
@@ -83,8 +99,11 @@ export function useCartPricing(
       : undefined);
 
   const priced = result?.status === "ok" ? result : undefined;
-  const pricingError =
-    result?.status === "error" ? result.message : undefined;
+  const pricingError = mixedCurrency
+    ? MIXED_CURRENCY_CART_MESSAGE
+    : result?.status === "error"
+      ? result.message
+      : undefined;
 
   const pricedItemByKey = useMemo(() => {
     const map = new Map<string, PricedCartItem>();
@@ -101,13 +120,19 @@ export function useCartPricing(
       cartLineKey(resolveCartProductId(item), item.color)
     );
 
+  const getItemCurrency = (item: CartItem) =>
+    resolveCartItemCurrency(item.currency ?? priced?.currency);
+
   return {
     priced,
     pricingError,
+    mixedCurrency,
     isLoading:
       cart.length > 0 &&
+      !mixedCurrency &&
       result === undefined &&
       !(pricingCacheKey && cartPricingCache?.key === pricingCacheKey),
     getPricedItem,
+    getItemCurrency,
   };
 }

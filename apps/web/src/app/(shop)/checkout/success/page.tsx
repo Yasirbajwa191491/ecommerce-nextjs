@@ -45,17 +45,30 @@ function CheckoutSuccessContent() {
     (typeof window !== "undefined"
       ? sessionStorage.getItem("lastOrderNumber")
       : null);
+  const accessToken =
+    searchParams.get("accessToken") ??
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("lastOrderAccessToken") ?? undefined
+      : undefined);
   const customerEmail =
     typeof window !== "undefined"
       ? sessionStorage.getItem("lastOrderEmail") ?? undefined
       : undefined;
+  const sessionId = searchParams.get("session_id") ?? undefined;
 
-  const orderData = useQuery(
+  const orderByNumber = useQuery(
     api.orders.getOrderByNumber,
-    orderNumber
-      ? { orderNumber, customerEmail }
+    orderNumber && (customerEmail || accessToken)
+      ? { orderNumber, customerEmail, accessToken }
       : "skip"
   );
+  const orderBySession = useQuery(
+    api.orders.getOrderByCheckoutSession,
+    sessionId && sessionId.startsWith("cs_")
+      ? { stripeSessionId: sessionId }
+      : "skip"
+  );
+  const orderData = orderByNumber ?? orderBySession;
   const publicSettings = useQuery(api.settings.listPublic);
 
   const smsNotificationsEnabled =

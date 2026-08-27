@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { Animated, StyleSheet, View, ViewProps } from "react-native";
 
-import { colors, layout, radius, spacing } from "@/constants/theme";
+import { layout, radius, spacing, type ColorPalette } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 
 type SkeletonProps = ViewProps & {
   width?: number | `${number}%`;
@@ -16,9 +17,14 @@ export function Skeleton({
   style,
   ...props
 }: SkeletonProps) {
+  const { colors, reduceMotion } = useTheme();
   const opacity = useMemo(() => new Animated.Value(0.35), []);
 
   useEffect(() => {
+    if (reduceMotion) {
+      opacity.setValue(0.5);
+      return;
+    }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
@@ -27,13 +33,16 @@ export function Skeleton({
     );
     animation.start();
     return () => animation.stop();
-  }, [opacity]);
+  }, [opacity, reduceMotion]);
 
   return (
     <Animated.View
       accessibilityLabel="Loading"
       accessibilityRole="progressbar"
-      style={[styles.base, { width, height, borderRadius, opacity }, style]}
+      style={[
+        { backgroundColor: colors.border, width, height, borderRadius, opacity },
+        style,
+      ]}
       {...props}
     />
   );
@@ -44,26 +53,37 @@ type ProductCardSkeletonProps = {
 };
 
 export function ProductCardSkeleton({ width }: ProductCardSkeletonProps) {
+  const { colors } = useTheme();
   const imageHeight = width ? width / layout.productImageAspect : 160;
 
   return (
-    <View style={[styles.card, width ? { width } : styles.cardFlex]} accessibilityLabel="Loading product">
+    <View
+      style={[
+        skeletonStyles(colors).card,
+        width ? { width } : skeletonStyles(colors).cardFlex,
+      ]}
+      accessibilityLabel="Loading product"
+    >
       <Skeleton height={imageHeight} borderRadius={0} />
-      <View style={styles.content}>
+      <View style={skeletonStyles(colors).content}>
         <Skeleton height={14} width="90%" />
         <Skeleton height={12} width="50%" />
         <Skeleton height={16} width="40%" />
-        <Skeleton height={48} borderRadius={radius.sm} />
+        <Skeleton height={40} borderRadius={radius.sm} />
       </View>
     </View>
   );
 }
 
 export function CategoryCardSkeleton({ width = layout.categoryCardWidth }: { width?: number }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.categoryCard, { width }]} accessibilityLabel="Loading category">
+    <View
+      style={[skeletonStyles(colors).categoryCard, { width }]}
+      accessibilityLabel="Loading category"
+    >
       <Skeleton height={layout.categoryImageHeight} borderRadius={0} />
-      <View style={styles.content}>
+      <View style={skeletonStyles(colors).content}>
         <Skeleton height={14} width="70%" />
         <Skeleton height={11} width="45%" />
       </View>
@@ -72,6 +92,8 @@ export function CategoryCardSkeleton({ width = layout.categoryCardWidth }: { wid
 }
 
 export function ProductDetailSkeleton() {
+  const { colors } = useTheme();
+  const styles = skeletonStyles(colors);
   return (
     <View style={styles.pdp} accessibilityLabel="Loading product">
       <Skeleton height={360} borderRadius={0} />
@@ -88,6 +110,8 @@ export function ProductDetailSkeleton() {
 }
 
 export function HomeFeedSkeleton() {
+  const { colors } = useTheme();
+  const styles = skeletonStyles(colors);
   return (
     <View style={styles.homeFeed} accessibilityLabel="Loading home">
       <Skeleton height={72} borderRadius={radius.md} />
@@ -103,46 +127,32 @@ export function HomeFeedSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    backgroundColor: colors.border,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
-  cardFlex: {
-    flex: 1,
-  },
-  categoryCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
-  content: {
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  pdp: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  pdpContent: {
-    padding: spacing.xl,
-    gap: spacing.lg,
-  },
-  homeFeed: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    gap: spacing["2xl"],
-  },
-  homeCarousel: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-  homeCats: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-});
+function skeletonStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      overflow: "hidden",
+    },
+    cardFlex: { flex: 1 },
+    categoryCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      overflow: "hidden",
+    },
+    content: {
+      padding: spacing.md,
+      gap: spacing.sm,
+      minHeight: 108,
+    },
+    pdp: { flex: 1, backgroundColor: colors.surface },
+    pdpContent: { padding: spacing.xl, gap: spacing.lg },
+    homeFeed: {
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+      gap: spacing["2xl"],
+    },
+    homeCarousel: { flexDirection: "row", gap: spacing.md },
+    homeCats: { flexDirection: "row", gap: spacing.md },
+  });
+}

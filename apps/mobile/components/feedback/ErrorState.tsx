@@ -1,28 +1,70 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
-import { colors, spacing, typography } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { strings } from "@/lib/i18n/strings";
+import { useTheme } from "@/providers/theme-context";
 
 type ErrorStateProps = {
   title?: string;
   message?: string;
   error?: unknown;
   onRetry?: () => void;
+  actionLabel?: string;
 };
 
 export function ErrorState({
-  title = "Something went wrong",
+  title = strings.errors.generic,
   message,
   error,
   onRetry,
+  actionLabel = strings.common.retry,
 }: ErrorStateProps) {
+  const { colors } = useTheme();
   const displayMessage =
     message ??
     (error
       ? getFriendlyErrorMessage(error)
-      : "We couldn't load this content. Please check your connection and try again.");
+      : `${strings.errors.genericDetail} ${strings.errors.tryAgain}`);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: spacing["2xl"],
+          gap: spacing.md,
+        },
+        iconWrap: {
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          backgroundColor: colors.destructiveMuted,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        title: {
+          fontSize: typography.lg,
+          fontWeight: "700",
+          color: colors.foreground,
+          textAlign: "center",
+        },
+        message: {
+          fontSize: typography.sm,
+          color: colors.muted,
+          textAlign: "center",
+          lineHeight: 22,
+          maxWidth: 320,
+        },
+      }),
+    [colors]
+  );
+
   return (
     <View style={styles.container} accessibilityRole="alert">
       <View style={styles.iconWrap}>
@@ -31,39 +73,13 @@ export function ErrorState({
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{displayMessage}</Text>
       {onRetry ? (
-        <Button label="Try again" variant="outline" onPress={onRetry} accessibilityLabel="Try again" />
+        <Button
+          label={actionLabel}
+          variant="outline"
+          onPress={onRetry}
+          accessibilityLabel={actionLabel}
+        />
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing["2xl"],
-    gap: spacing.md,
-  },
-  iconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#FEE2E2",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: typography.lg,
-    fontWeight: "700",
-    color: colors.foreground,
-    textAlign: "center",
-  },
-  message: {
-    fontSize: typography.sm,
-    color: colors.muted,
-    textAlign: "center",
-    lineHeight: 22,
-    maxWidth: 320,
-  },
-});

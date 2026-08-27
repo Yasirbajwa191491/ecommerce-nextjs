@@ -42,6 +42,7 @@ import {
   filterCatalogProducts,
   promotionFilterSlugValidator,
   sortCatalogProducts,
+  type PromotionFilterSlug,
   type PublicFilterArgs,
 } from "./lib/catalogFilters";
 import { COLOR_FAMILY_HEX } from "./lib/colorFamilies";
@@ -230,6 +231,8 @@ function filterProducts<
 }
 
 const publicFilterArgs = {
+  /** Scope catalog to these products (e.g. hybrid search result set). Ignores `search`. */
+  productIds: v.optional(v.array(v.id("products"))),
   search: v.optional(v.string()),
   categoryId: v.optional(v.id("productCategories")),
   minPrice: v.optional(v.number()),
@@ -242,6 +245,36 @@ const publicFilterArgs = {
   sort: sortValidator,
   now: v.number(),
 };
+
+function scopeProductsByIds<
+  T extends { _id: import("./_generated/dataModel").Id<"products"> },
+>(products: T[], productIds?: import("./_generated/dataModel").Id<"products">[]) {
+  if (productIds === undefined) return products;
+  if (productIds.length === 0) return [];
+  const allowedIds = new Set(productIds);
+  return products.filter((product) => allowedIds.has(product._id));
+}
+
+function toCatalogFilterArgs(args: {
+  productIds?: import("./_generated/dataModel").Id<"products">[];
+  search?: string;
+  categoryId?: import("./_generated/dataModel").Id<"productCategories">;
+  minPrice?: number;
+  maxPrice?: number;
+  brands?: string[];
+  colors?: string[];
+  minRating?: number;
+  promotions?: PromotionFilterSlug[];
+  inStockOnly?: boolean;
+  sort?: PublicFilterArgs["sort"];
+  now: number;
+}) {
+  const { productIds: _productIds, search, ...rest } = args;
+  return {
+    ...rest,
+    search: args.productIds !== undefined ? undefined : search,
+  };
+}
 
 async function loadActiveProducts(ctx: QueryCtx) {
   const products = await ctx.db.query("products").collect();
@@ -360,8 +393,9 @@ export const getPublicPriceBounds = query({
 export const countPublicFiltered = query({
   args: publicFilterArgs,
   handler: async (ctx, args) => {
-    const products = await loadActiveProducts(ctx);
-    const filtered = await applyPublicFilters(ctx, products, args);
+    let products = await loadActiveProducts(ctx);
+    products = scopeProductsByIds(products, args.productIds);
+    const filtered = await applyPublicFilters(ctx, products, toCatalogFilterArgs(args));
     return filtered.length;
   },
 });
@@ -439,8 +473,9 @@ export const listPublicPaginated = query({
     ...publicFilterArgs,
   },
   handler: async (ctx, args) => {
-    const products = await loadActiveProducts(ctx);
-    const filtered = await applyPublicFilters(ctx, products, args);
+    let products = await loadActiveProducts(ctx);
+    products = scopeProductsByIds(products, args.productIds);
+    const filtered = await applyPublicFilters(ctx, products, toCatalogFilterArgs(args));
     const { page, isDone, continueCursor } = paginateArray(
       filtered,
       args.paginationOpts

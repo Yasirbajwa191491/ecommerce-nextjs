@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -24,8 +25,15 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import {
+  createTextStyles,
+  radius,
+  spacing,
+  typography,
+  type ColorPalette,
+} from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useVisualProductSearch } from "@/hooks/useVisualProductSearch";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -37,6 +45,7 @@ import {
   pickVisualSearchFromLibrary,
 } from "@/lib/visual-search-picker";
 import { getSearchSessionId } from "@/lib/visitor-id";
+import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -48,6 +57,12 @@ type ScreenPhase = "empty" | "preview" | "results";
 export default function VisualSearchScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
+  const rootStyle = useScreenRootStyle();
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () => createStyles(colors, textStyles),
+    [colors, textStyles]
+  );
   const { showError } = useToast();
   const isOnline = useOnlineStatus();
 
@@ -194,14 +209,19 @@ export default function VisualSearchScreen() {
   );
 
   const renderPreviewState = () => (
-    <ScrollView
-      contentContainerStyle={[
-        styles.previewContent,
-        { paddingHorizontal: horizontalPadding, paddingBottom: insets.bottom + spacing["3xl"] },
-      ]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
     >
+      <ScrollView
+        contentContainerStyle={[
+          styles.previewContent,
+          { paddingHorizontal: horizontalPadding, paddingBottom: insets.bottom + spacing["3xl"] },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.previewImageWrap}>
         <Image
           source={{ uri: selectedImage!.uri }}
@@ -254,7 +274,8 @@ export default function VisualSearchScreen() {
           onPress={handleChooseAnother}
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderResultsHeader = () => (
@@ -388,7 +409,7 @@ export default function VisualSearchScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
+      <View style={[styles.container, rootStyle]}>
         <Header title="Visual Search" showBack showSearch={false} showCart={false} />
         {phase === "empty" && renderEmptyState()}
         {phase === "preview" && renderPreviewState()}
@@ -398,10 +419,16 @@ export default function VisualSearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(
+  colors: ColorPalette,
+  textStyles: ReturnType<typeof createTextStyles>
+) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  flex: {
+    flex: 1,
   },
   emptyContent: {
     flexGrow: 1,
@@ -575,6 +602,7 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     marginBottom: 0,
+    alignItems: "stretch",
   },
   gridItem: {
     flex: 1,
@@ -603,3 +631,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+}

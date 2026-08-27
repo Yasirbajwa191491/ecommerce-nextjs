@@ -1,9 +1,9 @@
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 
-import { getCachedVisitorId } from "@/lib/visitor-id";
-import { api } from "@/lib/convex-api";
 import { getIsOnline } from "@/lib/network";
+import { useVisitorId } from "@/lib/visitor-id";
+import { api } from "@/lib/convex-api";
 import { offlineKeys } from "@/lib/offline/keys";
 import { cacheProducts } from "@/lib/offline/product-store";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
@@ -30,10 +30,16 @@ export function useRecommendations({
   enabled?: boolean;
 }) {
   const getRecommendations = useAction(api.recommendations.getRecommendations);
+  const visitorId = useVisitorId();
   const [productIds, setProductIds] = useState<Id<"products">[]>([]);
   const [loading, setLoading] = useState(enabled);
-  const cachedIds = useOfflineCache<Id<"products">[]>(
+  const recsCacheKey = [
     offlineKeys.recommendations(sectionType),
+    productId ?? "",
+    (cartProductIds ?? []).slice().sort().join(","),
+  ].join(":");
+  const cachedIds = useOfflineCache<Id<"products">[]>(
+    recsCacheKey,
     productIds.length > 0 ? productIds : undefined
   );
   const cachedIdsRef = useRef(cachedIds.data);
@@ -48,7 +54,6 @@ export function useRecommendations({
     }
 
     let cancelled = false;
-    const visitorId = getCachedVisitorId();
 
     void (async () => {
       if (!getIsOnline()) {
@@ -92,7 +97,7 @@ export function useRecommendations({
     return () => {
       cancelled = true;
     };
-  }, [getRecommendations, sectionType, productId, cartProductIds, limit, enabled]);
+  }, [getRecommendations, sectionType, productId, cartProductIds, limit, enabled, visitorId]);
 
   const resolvedIds = productIds.length > 0 ? productIds : cachedIds.data ?? [];
 
@@ -104,7 +109,7 @@ export function useRecommendations({
   );
 
   const cachedProducts = useOfflineCache<Product[]>(
-    `${offlineKeys.recommendations(sectionType)}:products`,
+    `${recsCacheKey}:products`,
     products
   );
 

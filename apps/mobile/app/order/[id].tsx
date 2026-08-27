@@ -6,6 +6,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OrderDeliverySummary } from "@/components/checkout/OrderDeliverySummary";
+import { OrderDeliveredReviews } from "@/components/reviews/OrderDeliveredReviews";
+import type { ReviewOrderItem } from "@/components/reviews/types";
 import { PriceBreakdown } from "@/components/checkout/PriceBreakdown";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { Header } from "@/components/layout/Header";
@@ -17,6 +19,7 @@ import { OrderStatusBadge } from "@/components/orders/OrderStatusBadges";
 import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { loadLastOrderInfo } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { formatOrderDateTime, getPaymentMethodLabel, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@/lib/order-display";
@@ -34,6 +37,7 @@ type LoadedPublicOrder = {
   customerEmail: string;
   customerPhone: string;
   customerAddress: string;
+  accessToken?: string;
   subtotal: number;
   tax: number;
   discountTotal?: number;
@@ -65,10 +69,14 @@ type LoadedPublicOrder = {
 export default function OrderDetailScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
+  const rootStyle = useScreenRootStyle();
   const params = useLocalSearchParams<{
     id?: string;
     orderNumber?: string;
     source?: string;
+    review?: string;
+    email?: string;
+    accessToken?: string;
   }>();
 
   const usePublicTracking = params.source === "track";
@@ -92,15 +100,25 @@ export default function OrderDetailScreen() {
     (typeof params.orderNumber === "string" ? params.orderNumber : null) ??
     storedOrder.orderNumber;
 
-  const customerEmail = storedOrder.email ?? undefined;
+  const customerEmail =
+    (typeof params.email === "string" && params.email
+      ? params.email
+      : null) ?? storedOrder.email ?? undefined;
+
+  const accessToken =
+    typeof params.accessToken === "string" && params.accessToken
+      ? params.accessToken
+      : undefined;
 
   const orderData = useQuery(
     api.orders.getOrderByNumber,
-    !usePublicTracking && orderNumber ? { orderNumber, customerEmail } : "skip"
+    !usePublicTracking && orderNumber && (customerEmail || accessToken)
+      ? { orderNumber, customerEmail, accessToken }
+      : "skip"
   );
 
   useEffect(() => {
-    if (!usePublicTracking || !orderNumber) return;
+    if (!usePublicTracking || !orderNumber || (!customerEmail && !accessToken)) return;
 
     let cancelled = false;
 
@@ -110,7 +128,11 @@ export default function OrderDetailScreen() {
       setPublicOrder(null);
 
       try {
-        const result = await getPublicOrderDetail({ orderNumber });
+        const result = await getPublicOrderDetail({
+          orderNumber,
+          customerEmail: customerEmail,
+          accessToken,
+        });
         if (cancelled) return;
         if (result.found) {
           setPublicOrder(result.order as LoadedPublicOrder);
@@ -128,7 +150,7 @@ export default function OrderDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [getPublicOrderDetail, orderNumber, usePublicTracking]);
+  }, [getPublicOrderDetail, orderNumber, usePublicTracking, customerEmail, accessToken]);
 
   const isLoading = usePublicTracking
     ? Boolean(orderNumber && publicLoading)
@@ -138,6 +160,7 @@ export default function OrderDetailScreen() {
   const items = usePublicTracking
     ? (publicOrder?.items ?? []).map((item, index) => ({
         _id: `${item.productId}-${index}`,
+        productId: item.productId,
         productName: item.productName,
         color: item.color,
         quantity: item.quantity,
@@ -145,7 +168,20 @@ export default function OrderDetailScreen() {
         warrantySummary: undefined,
         isPromotionGift: false,
       }))
-    : (orderData?.items ?? []);
+    : (orderData?.items ?? []).map((item) => ({
+        _id: item._id,
+        productId: item.productId as string,
+        productName: item.productName,
+        color: item.color,
+        quantity: item.quantity,
+        lineTotal: item.lineTotal,
+        warrantySummary: item.warrantySummary,
+        isPromotionGift: item.isPromotionGift ?? false,
+      }));
+  const reviewItems: ReviewOrderItem[] = items.map((item) => ({
+    productId: item.productId,
+    productName: item.productName,
+  }));
   const promotions = usePublicTracking
     ? (publicOrder?.promotions ?? [])
     : (orderData?.promotions ?? []);
@@ -158,7 +194,7 @@ export default function OrderDetailScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
+      <View style={[styles.container, rootStyle]}>
         <Header title="Order details" showBack showSearch={false} showCart={false} />
 
         {isLoading ? (
@@ -219,6 +255,21 @@ export default function OrderDetailScreen() {
             </View>
 
             <OrderItemsSection items={items} currency={order.currency} />
+
+            {order.status === "delivered" ? (
+              <OrderDeliveredReviews
+                orderNumber={order.orderNumber}
+                customerEmail={order.customerEmail}
+                accessToken={
+                  accessToken ??
+                  ("accessToken" in order ? order.accessToken : undefined)
+                }
+                items={reviewItems}
+                highlightProductId={
+                  typeof params.review === "string" ? params.review : undefined
+                }
+              />
+            ) : null}
 
             <OrderPromotionsSummary
               promotions={promotions.map((promo) => ({
@@ -299,7 +350,6 @@ export default function OrderDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,

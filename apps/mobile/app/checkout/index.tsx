@@ -31,13 +31,14 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useCartPricing } from "@/hooks/useCartPricing";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import {
   createIdempotencyKey,
   loadCheckoutCustomer,
   saveCheckoutCustomer,
   saveLastOrderInfo,
+  savePendingStripeOrder,
 } from "@/lib/checkout-customer-storage";
 import {
   getMobileStripeCheckoutUrls,
@@ -77,7 +78,8 @@ const emptyForm = (): CheckoutFormValues => ({
 export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
-  const { cart, itemCount, hydrated } = useCart();
+  const rootStyle = useScreenRootStyle();
+  const { cart, itemCount, hydrated, clearCart } = useCart();
   const { showError, showSuccess } = useToast();
   const { isOnline, isOffline, isConnected } = useNetworkStatus();
 
@@ -88,15 +90,21 @@ export default function CheckoutScreen() {
   const [customerLoaded, setCustomerLoaded] = useState(false);
 
   const idempotencyKeyRef = useRef(createIdempotencyKey());
+  const submittingRef = useRef(false);
   const createCashOrder = useMutation(api.orders.createCashOrder);
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
   const saveCustomerProfile = useMutation(api.orders.saveCustomerProfile);
 
-  const selectedDeliveryMethod = deliveryMethod ?? "standard";
-  const { priced, pricingError, isLoading: pricingLoading, getPricedItem } = useCartPricing(
-    cart,
-    selectedDeliveryMethod
-  );
+  const {
+    priced,
+    pricingError,
+    mixedCurrency,
+    isLoading: pricingLoading,
+    getPricedItem,
+    lines,
+  } = useCartPricing(cart, deliveryMethod);
+  const selectedDeliveryMethod =
+    deliveryMethod ?? priced?.deliveryMethod ?? "standard";
   const availableDeliveryMethods = priced?.availableDeliveryMethods ?? [];
   const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
 
@@ -130,15 +138,7 @@ export default function CheckoutScreen() {
     return result;
   }, [errors, touched]);
 
-  const cartLines = useMemo(
-    () =>
-      cartItemsToCheckoutLines(cart).map((line) => ({
-        productId: line.productId as Id<"products">,
-        color: line.color,
-        quantity: line.quantity,
-      })),
-    [cart]
-  );
+  const cartLines = lines ?? [];
 
   const isFormValid = useMemo(() => Object.keys(errors).length === 0, [errors]);
 
@@ -191,6 +191,7 @@ export default function CheckoutScreen() {
   }, [form, saveCustomerProfile]);
 
   const handleSubmit = useCallback(async () => {
+    if (submittingRef.current) return;
     touchAll();
     if (!isFormValid) {
       showError("Please complete all required fields.");
@@ -216,7 +217,7 @@ export default function CheckoutScreen() {
       return;
     }
 
-    if (pricingLoading || !priced) {
+    if (pricingLoading || !priced || lines === undefined) {
       showError("Please wait while we confirm your latest prices.");
       return;
     }
@@ -227,6 +228,7 @@ export default function CheckoutScreen() {
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
 
     const customerPayload = {
@@ -252,11 +254,15 @@ export default function CheckoutScreen() {
       if (form.paymentMethod === "cod") {
         const result = await createCashOrder(payload);
         await persistCustomer();
-        await saveLastOrderInfo(result.orderNumber, customerPayload.email);
+        await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
+        clearCart();
         showSuccess("Order placed successfully!");
         router.replace({
           pathname: "/checkout/success",
-          params: { orderNumber: result.orderNumber },
+          params: {
+            orderNumber: result.orderNumber,
+            accessToken: result.accessToken ?? "",
+          },
         });
         return;
       }
@@ -269,7 +275,12 @@ export default function CheckoutScreen() {
       });
 
       await persistCustomer();
-      await saveLastOrderInfo(result.orderNumber, customerPayload.email);
+      await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
+      await savePendingStripeOrder({
+        orderNumber: result.orderNumber,
+        email: customerPayload.email,
+        accessToken: result.accessToken,
+      });
 
       WebBrowser.maybeCompleteAuthSession();
 
@@ -278,43 +289,50 @@ export default function CheckoutScreen() {
         stripeUrls.returnUrl
       );
 
-      if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
-        router.replace({
-          pathname: "/checkout/cancel",
-          params: { orderNumber: result.orderNumber },
-        });
-        return;
-      }
-
       if (browserResult.type === "success" && browserResult.url) {
         const parsed = parseCheckoutReturnUrl(browserResult.url);
-        if (parsed.type === "cancel") {
+        if (parsed.type === "success") {
           router.replace({
-            pathname: "/checkout/cancel",
-            params: { orderNumber: result.orderNumber },
+            pathname: "/checkout/success",
+            params: {
+              orderNumber: parsed.orderNumber ?? result.orderNumber,
+              accessToken: parsed.accessToken ?? result.accessToken ?? "",
+              session_id: parsed.sessionId ?? "",
+            },
           });
           return;
         }
       }
 
       router.replace({
-        pathname: "/checkout/success",
-        params: { orderNumber: result.orderNumber },
+        pathname: "/checkout/cancel",
+        params: {
+          orderNumber: result.orderNumber,
+          accessToken: result.accessToken ?? "",
+        },
       });
     } catch (error) {
+      const message = getFriendlyErrorMessage(
+        error,
+        "Checkout failed. Please review your details and try again."
+      );
       showError(
         isLikelyOfflineError(error)
           ? `${OFFLINE_TITLE}. ${OFFLINE_MESSAGE}`
-          : getFriendlyErrorMessage(error, "Checkout failed. Please review your details and try again.")
+          : message
       );
-      if (!isLikelyOfflineError(error)) {
+      const alreadySubmitted = message.toLowerCase().includes("already submitted");
+      if (!isLikelyOfflineError(error) && !alreadySubmitted) {
         idempotencyKeyRef.current = createIdempotencyKey();
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }, [
     cartLines,
+    lines,
+    clearCart,
     createCashOrder,
     createCheckoutSession,
     form,
@@ -339,7 +357,7 @@ export default function CheckoutScreen() {
   if (!hydrated || !customerLoaded || isConnected === null) {
     return (
       <ScreenContainer>
-        <View style={styles.container}>
+        <View style={[styles.container, rootStyle]}>
           <Header title="Checkout" showBack showSearch={false} showCart={false} />
           <View style={[styles.loadingWrap, { paddingHorizontal: horizontalPadding }]}>
             <Skeleton height={120} />
@@ -354,7 +372,7 @@ export default function CheckoutScreen() {
   if (itemCount === 0) {
     return (
       <ScreenContainer>
-        <View style={styles.container}>
+        <View style={[styles.container, rootStyle]}>
           <Header title="Checkout" showBack showSearch={false} showCart={false} />
           <EmptyState
             icon="cart-outline"
@@ -371,7 +389,7 @@ export default function CheckoutScreen() {
   if (isOffline || !isOnline) {
     return (
       <ScreenContainer>
-        <View style={styles.container}>
+        <View style={[styles.container, rootStyle]}>
           <Header title="Checkout" showBack showSearch={false} showCart={false} />
           <View style={[styles.loadingWrap, { paddingHorizontal: horizontalPadding }]}>
             <CheckoutOfflineNotice onRetry={() => void refreshNetworkSnapshot()} />
@@ -384,11 +402,12 @@ export default function CheckoutScreen() {
   if (pricingError && !pricingLoading) {
     return (
       <ScreenContainer>
-        <View style={styles.container}>
+        <View style={[styles.container, rootStyle]}>
           <Header title="Checkout" showBack showSearch={false} showCart={false} />
           <ErrorState
-            title="Cart needs attention"
+            title={mixedCurrency ? "Different currencies in cart" : "Cart needs attention"}
             message={getFriendlyErrorMessage(pricingError)}
+            actionLabel="View cart"
             onRetry={() => router.replace("/(tabs)/cart")}
           />
         </View>
@@ -399,9 +418,9 @@ export default function CheckoutScreen() {
   return (
     <ScreenContainer>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, rootStyle]}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
       >
         <Header title="Checkout" showBack showSearch={false} showCart={false} />
 
@@ -591,7 +610,6 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   loadingWrap: {
     padding: spacing.lg,

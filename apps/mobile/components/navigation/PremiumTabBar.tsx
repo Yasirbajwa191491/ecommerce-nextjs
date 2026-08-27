@@ -1,10 +1,12 @@
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, radius, shadows, sizes, spacing, touchTarget, typography } from "@/constants/theme";
+import { radius, sizes, spacing, touchTarget, typography } from "@/constants/theme";
 import { useCart } from "@/providers/cart-context";
+import { useTheme } from "@/providers/theme-context";
 
 const HIDDEN_TAB_ROUTES = new Set(["orders"]);
 const TAB_CONFIG: Record<
@@ -21,7 +23,85 @@ const TAB_CONFIG: Record<
 export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { itemCount } = useCart();
+  const { colors, shadows } = useTheme();
   const bottomInset = Platform.OS === "android" ? Math.max(insets.bottom, spacing.xs) : insets.bottom;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: {
+          backgroundColor: colors.surface,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.borderLight,
+          ...shadows.tabBar,
+        },
+        bar: {
+          flexDirection: "row",
+          paddingTop: spacing.xs + 2,
+          paddingHorizontal: spacing.xs,
+        },
+        tab: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+          paddingVertical: spacing.xs,
+          minHeight: touchTarget + 4,
+        },
+        aiTab: { marginTop: -2 },
+        pressed: { opacity: 0.8 },
+        iconWrap: {
+          position: "relative",
+          width: 28,
+          height: 28,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        aiIconWrap: {
+          width: 36,
+          height: 36,
+          borderRadius: radius.full,
+          backgroundColor: colors.ctaMuted,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        aiIconWrapActive: { backgroundColor: colors.cta },
+        badge: {
+          position: "absolute",
+          top: -5,
+          right: -9,
+          minWidth: 18,
+          height: 18,
+          borderRadius: radius.full,
+          backgroundColor: colors.cta,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 4,
+          borderWidth: 2,
+          borderColor: colors.surface,
+        },
+        badgeText: {
+          color: colors.ctaForeground,
+          fontSize: 10,
+          fontWeight: "700",
+        },
+        label: {
+          fontSize: typography.xs,
+          fontWeight: "500",
+          color: colors.muted,
+        },
+        labelActive: {
+          color: colors.foreground,
+          fontWeight: "600",
+        },
+        aiLabel: { fontWeight: "600" },
+        aiLabelActive: {
+          color: colors.foreground,
+          fontWeight: "600",
+        },
+      }),
+    [colors, shadows]
+  );
 
   return (
     <View style={[styles.wrapper, { paddingBottom: bottomInset }]}>
@@ -49,7 +129,7 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
               }
             };
 
-            const color = isFocused ? colors.primary : colors.muted;
+            const color = isFocused ? colors.foreground : colors.muted;
             const cartLabel =
               route.name === "cart" && itemCount > 0
                 ? `${config.label}, ${itemCount} items`
@@ -69,7 +149,7 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
                     <Ionicons
                       name={isFocused ? config.iconActive : config.icon}
                       size={sizes.iconMd}
-                      color={isFocused ? colors.primaryForeground : colors.primary}
+                      color={isFocused ? colors.ctaForeground : colors.foreground}
                     />
                   </View>
                 ) : (
@@ -86,7 +166,14 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
                     ) : null}
                   </View>
                 )}
-                <Text style={[styles.label, isFocused && styles.labelActive, isAi && styles.aiLabel]}>
+                <Text
+                  style={[
+                    styles.label,
+                    isFocused && !isAi && styles.labelActive,
+                    isFocused && isAi && styles.aiLabelActive,
+                    isAi && styles.aiLabel,
+                  ]}
+                >
                   {config.label}
                 </Text>
               </Pressable>
@@ -96,80 +183,3 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-    ...shadows.tabBar,
-  },
-  bar: {
-    flexDirection: "row",
-    paddingTop: spacing.xs + 2,
-    paddingHorizontal: spacing.xs,
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    paddingVertical: spacing.xs,
-    minHeight: touchTarget + 4,
-  },
-  aiTab: {
-    marginTop: -2,
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  iconWrap: {
-    position: "relative",
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  aiIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  aiIconWrapActive: {
-    backgroundColor: colors.primary,
-  },
-  badge: {
-    position: "absolute",
-    top: -5,
-    right: -9,
-    minWidth: 18,
-    height: 18,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  badgeText: {
-    color: colors.primaryForeground,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  label: {
-    fontSize: typography.xs,
-    fontWeight: "500",
-    color: colors.muted,
-  },
-  labelActive: {
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  aiLabel: {
-    fontWeight: "600",
-  },
-});
