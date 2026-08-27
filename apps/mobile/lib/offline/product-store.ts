@@ -59,20 +59,21 @@ function evictIfNeeded() {
   }
 }
 
+export function peekCachedProduct(id: string): Product | undefined {
+  return items[id]?.product;
+}
+
 export function getCachedProduct(id: string): Product | undefined {
   const entry = items[id];
   if (!entry) return undefined;
-  entry.lastAccess = Date.now();
   return entry.product;
 }
 
 export function getCachedProducts(ids: string[]): Product[] {
-  const now = Date.now();
   const result: Product[] = [];
   for (const id of ids) {
     const entry = items[id];
     if (!entry) continue;
-    entry.lastAccess = now;
     result.push(entry.product);
   }
   return result;
@@ -117,4 +118,11 @@ export function getProductStoreVersion(): number {
 
 export function isProductStoreHydrated(): boolean {
   return hydrated;
+}
+
+export async function resetProductStore(): Promise<void> {
+  items = {};
+  hydrated = true;
+  emit();
+  await persist();
 }

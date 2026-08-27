@@ -106,6 +106,7 @@ import type * as lib_emailPlaceholders from "../lib/emailPlaceholders.js";
 import type * as lib_emailSegments from "../lib/emailSegments.js";
 import type * as lib_inventory from "../lib/inventory.js";
 import type * as lib_n8nAuth from "../lib/n8nAuth.js";
+import type * as lib_orderAccess from "../lib/orderAccess.js";
 import type * as lib_orderItemSnapshot from "../lib/orderItemSnapshot.js";
 import type * as lib_orderLogs from "../lib/orderLogs.js";
 import type * as lib_orderNumbers from "../lib/orderNumbers.js";
@@ -328,6 +329,7 @@ declare const fullApi: ApiFromModules<{
   "lib/emailSegments": typeof lib_emailSegments;
   "lib/inventory": typeof lib_inventory;
   "lib/n8nAuth": typeof lib_n8nAuth;
+  "lib/orderAccess": typeof lib_orderAccess;
   "lib/orderItemSnapshot": typeof lib_orderItemSnapshot;
   "lib/orderLogs": typeof lib_orderLogs;
   "lib/orderNumbers": typeof lib_orderNumbers;

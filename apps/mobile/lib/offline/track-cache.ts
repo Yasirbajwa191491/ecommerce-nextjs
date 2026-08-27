@@ -1,5 +1,6 @@
 import { offlineKeys } from "@/lib/offline/keys";
 import { readCache, writeCache } from "@/lib/offline/storage";
+import { TTL } from "@/lib/offline/constants";
 
 export type CachedTrackByOrder = {
   method: "order-number";
@@ -24,6 +25,9 @@ export async function loadTrackByOrderCache(
   if (!cached?.data) return null;
   if (cached.data.method !== "order-number") return null;
   if (cached.data.query.trim().toLowerCase() !== query.trim().toLowerCase()) {
+    return null;
+  }
+  if (Date.now() - cached.cachedAt > TTL.trackOrder) {
     return null;
   }
   return { ...cached.data, cachedAt: cached.cachedAt };

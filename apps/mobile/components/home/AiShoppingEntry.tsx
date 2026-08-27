@@ -44,7 +44,7 @@ export function AiShoppingEntry() {
 
         <View style={styles.iconWrap}>
 
-          <Ionicons name="sparkles" size={17} color={colors.primary} />
+          <Ionicons name="sparkles" size={17} color={colors.cta} />
 
         </View>
 
@@ -66,7 +66,7 @@ export function AiShoppingEntry() {
 
         <Text style={styles.ctaText}>Ask AI</Text>
 
-        <Ionicons name="chevron-forward" size={14} color={colors.primaryForeground} />
+          <Ionicons name="chevron-forward" size={14} color={colors.ctaForeground} />
 
       </View>
 
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
 
     borderRadius: radius.sm,
 
-    backgroundColor: colors.primaryMuted,
+    backgroundColor: colors.ctaMuted,
 
     alignItems: "center",
 
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
 
     gap: 2,
 
-    backgroundColor: colors.primary,
+    backgroundColor: colors.cta,
 
     paddingHorizontal: spacing.md,
 
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
 
     fontWeight: "600",
 
-    color: colors.primaryForeground,
+    color: colors.ctaForeground,
 
   },
 

@@ -20,7 +20,7 @@ function enqueueWrite(key: string, task: () => Promise<void>): Promise<void> {
   return next;
 }
 
-export async function readCache<T>(key: string): Promise<CacheEnvelope<T> | null> {
+export async function readCache<T>(key: string, ttlMs?: number): Promise<CacheEnvelope<T> | null> {
   try {
     const raw = await AsyncStorage.getItem(key);
     if (!raw) return null;
@@ -32,6 +32,10 @@ export async function readCache<T>(key: string): Promise<CacheEnvelope<T> | null
       parsed.data === undefined ||
       typeof parsed.cachedAt !== "number"
     ) {
+      await AsyncStorage.removeItem(key);
+      return null;
+    }
+    if (ttlMs !== undefined && Date.now() - parsed.cachedAt > ttlMs) {
       await AsyncStorage.removeItem(key);
       return null;
     }

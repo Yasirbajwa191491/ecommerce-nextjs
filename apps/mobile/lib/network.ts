@@ -27,9 +27,27 @@ let snapshot: NetworkSnapshot = {
 const listeners = new Set<NetworkListener>();
 
 const DISCONNECT_ERROR =
-  /network request failed|failed to fetch|fetch failed|networkerror|err_internet_disconnected|err_name_not_resolved|internet connection required|you're offline/i;
+  /network request failed|failed to fetch|fetch failed|load failed|networkerror|err_internet_disconnected|err_name_not_resolved|err_connection|err_network|net::err|econnreset|enotfound|eai_again|socket hang up|connection lost|could not connect|websocket|offline|internet connection required|you're offline|the internet connection appears to be offline/i;
 
-const TIMEOUT_ERROR = /timeout|timed out|econnaborted/i;
+const TIMEOUT_ERROR = /timeout|timed out|econnaborted|etimedout|request timed out/i;
+
+function collectErrorText(error: unknown, depth = 0): string {
+  if (depth > 4 || error == null) return "";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) {
+    return [error.name, error.message, collectErrorText(error.cause, depth + 1)]
+      .filter(Boolean)
+      .join(" ");
+  }
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    return ["message", "code", "data", "cause"]
+      .map((key) => collectErrorText(record[key], depth + 1))
+      .filter(Boolean)
+      .join(" ");
+  }
+  return String(error);
+}
 
 /**
  * CONNECTED + reachable → online
@@ -91,18 +109,9 @@ export async function refreshNetworkSnapshot(): Promise<boolean> {
 
 export function isLikelyOfflineError(error: unknown): boolean {
   if (error instanceof OfflineError) return true;
-  const raw =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "";
-
-  if (!getIsOnline()) {
-    return DISCONNECT_ERROR.test(raw) || TIMEOUT_ERROR.test(raw);
-  }
-
-  return false;
+  const raw = collectErrorText(error);
+  if (!raw.trim()) return false;
+  return DISCONNECT_ERROR.test(raw) || TIMEOUT_ERROR.test(raw);
 }
 
 export function ensureOnline(message = OFFLINE_GENERIC_MESSAGE): void {

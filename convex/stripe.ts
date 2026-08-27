@@ -125,6 +125,39 @@ function assertStripeAmountMatchesOrder(
   }
 }
 
+function appendCheckoutRedirectParams(
+  url: string,
+  params: Record<string, string>
+): string {
+  const filtered = Object.entries(params).filter(([, value]) => value.length > 0);
+  if (filtered.length === 0) return url;
+
+  const existingKeys = new Set<string>();
+  const queryIndex = url.indexOf("?");
+  if (queryIndex >= 0) {
+    const query = url.slice(queryIndex + 1);
+    for (const part of query.split("&")) {
+      const key = part.split("=")[0];
+      if (key) existingKeys.add(decodeURIComponent(key));
+    }
+  }
+
+  const additions = filtered.filter(([key]) => !existingKeys.has(key));
+  if (additions.length === 0) return url;
+
+  const encoded = additions
+    .map(([key, value]) => {
+      const encodedValue =
+        key === "session_id" && value === "{CHECKOUT_SESSION_ID}"
+          ? value
+          : encodeURIComponent(value);
+      return `${encodeURIComponent(key)}=${encodedValue}`;
+    })
+    .join("&");
+  const separator = queryIndex >= 0 ? "&" : "?";
+  return `${url}${separator}${encoded}`;
+}
+
 export const createCheckoutSession = action({
   args: {
     lines: v.array(cartLineValidator),
@@ -134,12 +167,63 @@ export const createCheckoutSession = action({
     successUrl: v.optional(v.string()),
     cancelUrl: v.optional(v.string()),
   },
+  handler: async (ctx, args) => {
+    return await createCheckoutSessionHandler(ctx, args);
+  },
+});
+
+export const resumeCheckoutSession = action({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+    successUrl: v.optional(v.string()),
+    cancelUrl: v.optional(v.string()),
+  },
   handler: async (ctx, args): Promise<{
     url: string;
     orderId: Id<"orders">;
     orderNumber: string;
+    accessToken?: string;
+    alreadyPaid?: boolean;
   }> => {
-    return await createCheckoutSessionHandler(ctx, args);
+    const pending = await ctx.runQuery(internal.orders.getPendingStripeOrderForResume, {
+      orderNumber: args.orderNumber,
+      customerEmail: args.customerEmail,
+      accessToken: args.accessToken,
+    });
+    if (!pending) {
+      throw new ConvexError("We couldn't find a pending payment for this order.");
+    }
+    if (!pending.resumable) {
+      if (pending.order.paymentStatus === "paid") {
+        return {
+          url: "",
+          orderId: pending.order._id,
+          orderNumber: pending.order.orderNumber,
+          accessToken: pending.order.accessToken,
+          alreadyPaid: true,
+        };
+      }
+      throw new ConvexError("This order is no longer awaiting payment.");
+    }
+
+    const priced = await ctx.runQuery(internal.orders.getPricedSnapshotForOrder, {
+      orderId: pending.order._id,
+    });
+
+    return await createStripeSessionForOrder(ctx, {
+      orderId: pending.order._id,
+      orderNumber: pending.order.orderNumber,
+      accessToken: pending.order.accessToken,
+      customerEmail: pending.order.customerEmail,
+      idempotencyKey: pending.order.idempotencyKey,
+      priced,
+      existingSessionId: pending.order.stripeSessionId,
+      successUrl: args.successUrl,
+      cancelUrl: args.cancelUrl,
+      rollbackOnFailure: false,
+    });
   },
 });
 
@@ -154,6 +238,7 @@ export const createCheckoutSessionForVoice = internalAction({
     url: v.string(),
     orderId: v.id("orders"),
     orderNumber: v.string(),
+    accessToken: v.optional(v.string()),
     total: v.number(),
     currency: v.string(),
     shipping: v.number(),
@@ -169,6 +254,7 @@ export const createCheckoutSessionForVoice = internalAction({
     url: string;
     orderId: Id<"orders">;
     orderNumber: string;
+    accessToken?: string;
     total: number;
     currency: string;
     shipping: number;
@@ -206,53 +292,135 @@ async function createCheckoutSessionHandler(
     successUrl?: string;
     cancelUrl?: string;
   }
-): Promise<{ url: string; orderId: Id<"orders">; orderNumber: string }> {
+): Promise<{
+    url: string;
+    orderId: Id<"orders">;
+    orderNumber: string;
+    accessToken?: string;
+  }> {
     const { successUrl, cancelUrl, ...orderArgs } = args;
-    const { orderId, orderNumber, priced } = await ctx.runMutation(
+    const pending = await ctx.runMutation(
       internal.orders.createPendingStripeOrder,
       orderArgs
     );
 
+    return await createStripeSessionForOrder(ctx, {
+      orderId: pending.orderId,
+      orderNumber: pending.orderNumber,
+      accessToken: pending.accessToken,
+      customerEmail: args.customer.email,
+      idempotencyKey: args.idempotencyKey,
+      priced: pending.priced,
+      existingSessionId: pending.stripeSessionId,
+      successUrl,
+      cancelUrl,
+      rollbackOnFailure: !pending.reused,
+    });
+}
+
+async function createStripeSessionForOrder(
+  ctx: ActionCtx,
+  args: {
+    orderId: Id<"orders">;
+    orderNumber: string;
+    accessToken?: string;
+    customerEmail: string;
+    idempotencyKey: string;
+    priced: {
+      currency: string;
+      shipping: number;
+      deliveryCharge?: number;
+      deliveryMethod?: string;
+      deliveryMethodLabel?: string;
+      tax?: number;
+      total: number;
+      items: PricedLineItem[];
+    };
+    existingSessionId?: string;
+    successUrl?: string;
+    cancelUrl?: string;
+    rollbackOnFailure: boolean;
+  }
+): Promise<{
+  url: string;
+  orderId: Id<"orders">;
+  orderNumber: string;
+  accessToken?: string;
+}> {
     const stripe = getStripe();
     const appUrl = getSiteUrl();
 
-    const lineItems = buildStripeLineItems(priced);
-    assertStripeAmountMatchesOrder(lineItems, priced.total);
-
-    const successUrlResolved =
-      successUrl ??
-      `${appUrl}/checkout/success?orderNumber=${encodeURIComponent(orderNumber)}&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrlResolved =
-      cancelUrl ??
-      `${appUrl}/checkout/cancel?orderNumber=${encodeURIComponent(orderNumber)}`;
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      allow_promotion_codes: true,
-      customer_email: args.customer.email.trim(),
-      line_items: lineItems,
-      metadata: {
-        orderId,
-        orderNumber,
-        idempotencyKey: args.idempotencyKey,
-      },
-      success_url: successUrlResolved,
-      cancel_url: cancelUrlResolved,
-    });
-
-    if (!session.url) {
-      throw new ConvexError("Failed to create Stripe checkout session");
+    if (args.existingSessionId) {
+      try {
+        const existing = await stripe.checkout.sessions.retrieve(args.existingSessionId);
+        if (existing.status === "open" && existing.url) {
+          return {
+            url: existing.url,
+            orderId: args.orderId,
+            orderNumber: args.orderNumber,
+            accessToken: args.accessToken,
+          };
+        }
+      } catch {
+        // Create a replacement session below.
+      }
     }
 
-    await ctx.runMutation(internal.orders.attachStripeSession, {
-      orderId,
-      stripeSessionId: session.id,
+    const lineItems = buildStripeLineItems(args.priced);
+    assertStripeAmountMatchesOrder(lineItems, args.priced.total);
+
+    const successBase =
+      args.successUrl ?? `${appUrl}/checkout/success`;
+    const cancelBase = args.cancelUrl ?? `${appUrl}/checkout/cancel`;
+
+    const successUrlResolved = appendCheckoutRedirectParams(successBase, {
+      orderNumber: args.orderNumber,
+      accessToken: args.accessToken ?? "",
+      session_id: "{CHECKOUT_SESSION_ID}",
+    });
+    const cancelUrlResolved = appendCheckoutRedirectParams(cancelBase, {
+      orderNumber: args.orderNumber,
+      accessToken: args.accessToken ?? "",
     });
 
-    return {
-      url: session.url,
-      orderId,
-      orderNumber,
-    };
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        allow_promotion_codes: false,
+        customer_email: args.customerEmail.trim(),
+        line_items: lineItems,
+        metadata: {
+          orderId: args.orderId,
+          orderNumber: args.orderNumber,
+          idempotencyKey: args.idempotencyKey,
+        },
+        success_url: successUrlResolved,
+        cancel_url: cancelUrlResolved,
+      });
+
+      if (!session.url) {
+        throw new ConvexError("Failed to create Stripe checkout session");
+      }
+
+      await ctx.runMutation(internal.orders.attachStripeSession, {
+        orderId: args.orderId,
+        stripeSessionId: session.id,
+        replaceExisting: Boolean(args.existingSessionId),
+      });
+
+      return {
+        url: session.url,
+        orderId: args.orderId,
+        orderNumber: args.orderNumber,
+        accessToken: args.accessToken,
+      };
+    } catch (error) {
+      if (args.rollbackOnFailure) {
+        await ctx.runMutation(internal.orders.rollbackPendingStripeOrder, {
+          orderId: args.orderId,
+        });
+      }
+      throw error;
+    }
 }

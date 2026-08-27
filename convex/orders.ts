@@ -27,6 +27,10 @@ import { mergeVisitorIntoCustomer } from "./lib/recommendations/profileBuilder";
 import { orderStatusValidator } from "./lib/orderValidators";
 import { checkAndIncrementRateLimit } from "./lib/rateLimit";
 import { normalizeEmail, phonesMatch } from "./lib/publicOrderDto";
+import {
+  generateOrderAccessToken,
+  hasOrderAccess,
+} from "./lib/orderAccess";
 
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -162,10 +166,13 @@ export const validateCartForCheckout = query({
   handler: async (ctx, args) => {
     validateCartLines(args.lines);
     try {
+      // `args.now` is only for query reactivity; price with server time so
+      // preview matches createCashOrder / createPendingStripeOrder.
+      void args.now;
       const priced = await priceCheckoutCart(
         ctx,
         args.lines,
-        args.now,
+        Date.now(),
         args.deliveryMethod
       );
       return { status: "ok" as const, ...priced };
@@ -181,7 +188,11 @@ export const validateCartForCheckout = query({
 
 /** Restore inventory when a customer abandons Stripe checkout from the cancel URL. */
 export const acknowledgeStripeCheckoutCancelled = mutation({
-  args: { orderNumber: v.string() },
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const orderNumber = args.orderNumber.trim();
@@ -194,6 +205,10 @@ export const acknowledgeStripeCheckoutCancelled = mutation({
 
     if (
       !order ||
+      !hasOrderAccess(order, {
+        customerEmail: args.customerEmail,
+        accessToken: args.accessToken,
+      }) ||
       order.paymentMethod !== "stripe" ||
       order.paymentStatus !== "pending" ||
       order.status !== "pending"
@@ -242,18 +257,20 @@ export const getOrderByNumber = query({
   args: {
     orderNumber: v.string(),
     customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const email = args.customerEmail?.trim();
+    const accessToken = args.accessToken?.trim();
+    if (!email && !accessToken) return null;
+
     const order = await ctx.db
       .query("orders")
       .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber))
       .unique();
     if (!order) return null;
 
-    if (
-      args.customerEmail &&
-      order.customerEmail.toLowerCase() !== args.customerEmail.trim().toLowerCase()
-    ) {
+    if (!hasOrderAccess(order, { customerEmail: email, accessToken })) {
       return null;
     }
 
@@ -280,6 +297,47 @@ export const getOrderByStripeSession = internalQuery({
         q.eq("stripeSessionId", args.stripeSessionId)
       )
       .unique();
+  },
+});
+
+/** Public lookup after Stripe redirects with session_id (unguessable). */
+export const getOrderByCheckoutSession = query({
+  args: { stripeSessionId: v.string() },
+  handler: async (ctx, args) => {
+    const stripeSessionId = args.stripeSessionId.trim();
+    if (!stripeSessionId.startsWith("cs_")) return null;
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_stripe_session", (q) =>
+        q.eq("stripeSessionId", stripeSessionId)
+      )
+      .unique();
+    if (!order) return null;
+
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
+
+    const promotions = await ctx.db
+      .query("orderPromotions")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
+
+    return { order, items, promotions };
+  },
+});
+
+export const ensureOrderAccessToken = internalMutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return null;
+    if (order.accessToken) return order.accessToken;
+    const accessToken = generateOrderAccessToken();
+    await ctx.db.patch(args.orderId, { accessToken, updatedAt: Date.now() });
+    return accessToken;
   },
 });
 
@@ -372,6 +430,7 @@ async function createCashOrderHandler(
       }))
     );
 
+    const accessToken = generateOrderAccessToken();
     const orderId = await ctx.db.insert("orders", {
       orderNumber: generateOrderNumber(now),
       customerEmail: args.customer.email.trim().toLowerCase(),
@@ -395,6 +454,7 @@ async function createCashOrderHandler(
       total: priced.total,
       currency: priced.currency,
       idempotencyKey: args.idempotencyKey,
+      accessToken,
       createdAt: now,
       updatedAt: now,
     });
@@ -421,9 +481,11 @@ async function createCashOrderHandler(
       orderId,
     });
 
+    const created = await ctx.db.get(orderId);
     return {
       orderId,
-      orderNumber: (await ctx.db.get(orderId))!.orderNumber,
+      orderNumber: created!.orderNumber,
+      accessToken,
     };
 }
 
@@ -455,6 +517,60 @@ export const getOrderTotalsInternal = internalQuery({
   },
 });
 
+async function loadPricedSnapshot(ctx: MutationCtx | import("./_generated/server").QueryCtx, orderId: Id<"orders">) {
+  const order = await ctx.db.get(orderId);
+  if (!order) throw new ConvexError("Order not found");
+  const items = await ctx.db
+    .query("orderItems")
+    .withIndex("by_order_id", (q) => q.eq("orderId", orderId))
+    .collect();
+
+  return {
+    currency: order.currency,
+    shipping: order.shipping,
+    deliveryCharge: order.deliveryCharge,
+    deliveryMethod: order.deliveryMethod,
+    deliveryMethodLabel: order.deliveryMethodLabel,
+    tax: order.tax,
+    total: order.total,
+    subtotal: order.subtotal,
+    discountTotal: order.discountTotal ?? 0,
+    items: items.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      color: item.color,
+      quantity: item.quantity,
+      sku: item.sku,
+      size: item.size,
+      unitPrice: item.finalUnitPrice ?? item.unitPrice,
+      lineTotal: item.lineTotal,
+      imageUrl: item.imageUrl ?? "",
+      originalUnitPrice: item.originalUnitPrice ?? item.unitPrice,
+      discountPercent: item.discountPercent ?? 0,
+      discountAmount: item.discountAmount ?? 0,
+      lineDiscountTotal: item.lineDiscountTotal ?? 0,
+      finalUnitPrice: item.finalUnitPrice ?? item.unitPrice,
+      originalLineSubtotal: item.unitPrice * item.quantity,
+      shippingCharge: item.shippingCharge ?? 0,
+      lineShippingTotal: item.lineShippingTotal ?? 0,
+      isPromotionGift: item.isPromotionGift,
+      promotionId: item.promotionId,
+    })),
+    promotionSummaries: [] as Array<{
+      promotionId: Id<"productPromotions">;
+      freeQuantity: number;
+      savingsAmount: number;
+    }>,
+  };
+}
+
+export const getPricedSnapshotForOrder = internalQuery({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    return await loadPricedSnapshot(ctx, args.orderId);
+  },
+});
+
 export const createPendingStripeOrder = internalMutation({
   args: {
     lines: v.array(cartLineValidator),
@@ -463,9 +579,45 @@ export const createPendingStripeOrder = internalMutation({
     deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
   handler: async (ctx, args) => {
-    await assertUniqueIdempotencyKey(ctx, args.idempotencyKey);
     validateCartLines(args.lines);
     validateCustomerFields(args.customer);
+
+    const existing = await ctx.db
+      .query("orders")
+      .withIndex("by_idempotency_key", (q) =>
+        q.eq("idempotencyKey", args.idempotencyKey)
+      )
+      .unique();
+
+    if (existing) {
+      const reusable =
+        existing.paymentMethod === "stripe" &&
+        existing.paymentStatus === "pending" &&
+        existing.status === "pending";
+      if (!reusable) {
+        throw new ConvexError(
+          "This checkout was already submitted. Please refresh and try again."
+        );
+      }
+
+      const accessToken = existing.accessToken ?? generateOrderAccessToken();
+      if (!existing.accessToken) {
+        await ctx.db.patch(existing._id, {
+          accessToken,
+          updatedAt: Date.now(),
+        });
+      }
+
+      const priced = await loadPricedSnapshot(ctx, existing._id);
+      return {
+        orderId: existing._id,
+        orderNumber: existing.orderNumber,
+        priced,
+        stripeSessionId: existing.stripeSessionId,
+        accessToken,
+        reused: true as const,
+      };
+    }
 
     const now = Date.now();
     const priced = await priceCheckoutCart(
@@ -482,6 +634,7 @@ export const createPendingStripeOrder = internalMutation({
       }))
     );
 
+    const accessToken = generateOrderAccessToken();
     const orderId = await ctx.db.insert("orders", {
       orderNumber: generateOrderNumber(now),
       customerEmail: args.customer.email.trim().toLowerCase(),
@@ -505,6 +658,7 @@ export const createPendingStripeOrder = internalMutation({
       total: priced.total,
       currency: priced.currency,
       idempotencyKey: args.idempotencyKey,
+      accessToken,
       createdAt: now,
       updatedAt: now,
     });
@@ -532,6 +686,9 @@ export const createPendingStripeOrder = internalMutation({
       orderId,
       orderNumber: order!.orderNumber,
       priced,
+      stripeSessionId: undefined,
+      accessToken,
+      reused: false as const,
     };
   },
 });
@@ -540,11 +697,12 @@ export const attachStripeSession = internalMutation({
   args: {
     orderId: v.id("orders"),
     stripeSessionId: v.string(),
+    replaceExisting: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new ConvexError("Order not found");
-    if (order.stripeSessionId) {
+    if (order.stripeSessionId && !args.replaceExisting) {
       throw new ConvexError("Stripe session already exists for this order");
     }
     const now = Date.now();
@@ -562,6 +720,88 @@ export const attachStripeSession = internalMutation({
       stripeSessionId: args.stripeSessionId,
       createdAt: now,
     });
+  },
+});
+
+export const rollbackPendingStripeOrder = internalMutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return { rolledBack: false as const };
+    if (order.paymentStatus === "paid") return { rolledBack: false as const };
+    if (order.paymentMethod !== "stripe" || order.status !== "pending") {
+      return { rolledBack: false as const };
+    }
+
+    const stockLines = await getOrderStockLines(ctx, args.orderId);
+    await restoreStock(ctx, stockLines);
+
+    const now = Date.now();
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+
+    await ctx.db.patch(args.orderId, {
+      status: "cancelled",
+      paymentStatus: "failed",
+      idempotencyKey: `${order.idempotencyKey}:rolled_back:${order._id}`,
+      updatedAt: now,
+    });
+
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "payment_failed",
+      description: "Stripe checkout session creation failed; pending order rolled back",
+      previousPaymentStatus,
+      newPaymentStatus: "failed",
+      actorType: "system",
+      createdAt: now,
+    });
+
+    await insertOrderStatusLog(ctx, {
+      orderId: args.orderId,
+      event: "order_status_updated",
+      description: "Order cancelled after Stripe session creation failed",
+      previousStatus,
+      newStatus: "cancelled",
+      actorType: "system",
+      createdAt: now,
+    });
+
+    return { rolledBack: true as const };
+  },
+});
+
+export const getPendingStripeOrderForResume = internalQuery({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber.trim()))
+      .unique();
+    if (!order) return null;
+    if (
+      !hasOrderAccess(order, {
+        customerEmail: args.customerEmail,
+        accessToken: args.accessToken,
+      })
+    ) {
+      return null;
+    }
+    if (
+      order.paymentMethod !== "stripe" ||
+      order.paymentStatus !== "pending" ||
+      order.status !== "pending"
+    ) {
+      return {
+        order,
+        resumable: false as const,
+      };
+    }
+    return { order, resumable: true as const };
   },
 });
 

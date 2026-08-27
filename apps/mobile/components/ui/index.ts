@@ -1,3 +1,4 @@
+export { ConfirmDialog } from "./ConfirmDialog";
 export { Badge } from "./Badge";
 export { Button } from "./Button";
 export { Card } from "./Card";
@@ -9,6 +10,7 @@ export { PressableScale } from "./PressableScale";
 export { QuantityStepper } from "./QuantityStepper";
 export { SearchBar, SearchBarInput } from "./SearchBar";
 export { SectionHeader } from "./SectionHeader";
+export { SegmentedControl, IconSegmentedControl } from "./SegmentedControl";
 export {
   ProductCardSkeleton,
   CategoryCardSkeleton,

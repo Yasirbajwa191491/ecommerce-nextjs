@@ -7,14 +7,15 @@ export type FooterLink = {
 
 export const FOOTER_SHOP_LINKS: readonly FooterLink[] = [
   { label: "All Products", href: "/(tabs)/shop" },
-  { label: "Categories", href: "/(tabs)/shop" },
-  { label: "Best Sellers", href: "/(tabs)/shop" },
-  { label: "Promotions", href: "/(tabs)/shop" },
+  { label: "Promotions", href: "/promotions" as Href },
+  { label: "Wishlist", href: "/wishlist" as Href },
+  { label: "Visual Search", href: "/visual-search" },
 ];
 
 export const FOOTER_SUPPORT_LINKS: readonly FooterLink[] = [
   { label: "Contact", href: "/contact" },
   { label: "Track Order", href: "/(tabs)/track" },
+  { label: "Settings", href: "/settings" as Href },
   { label: "Shipping", href: "/shipping" },
   { label: "Returns", href: "/return" },
   { label: "FAQ", href: "/about" },

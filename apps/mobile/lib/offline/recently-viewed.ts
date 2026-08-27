@@ -78,3 +78,10 @@ export function subscribeRecentlyViewed(listener: Listener): () => void {
     listeners.delete(listener);
   };
 }
+
+export async function resetRecentlyViewed(): Promise<void> {
+  entries = [];
+  hydrated = true;
+  bump();
+  await writeCache(offlineKeys.recentlyViewed, entries);
+}

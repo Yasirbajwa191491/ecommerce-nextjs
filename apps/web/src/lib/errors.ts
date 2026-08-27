@@ -1,3 +1,8 @@
+const MIXED_CURRENCY_CART_MESSAGE =
+  "Your cart has items in different currencies. Remove items until only one currency remains, then continue to checkout.";
+
+export { MIXED_CURRENCY_CART_MESSAGE };
+
 const FRIENDLY_ERROR_MAP: Record<string, string> = {
   "You cannot ban yourself": "You can't ban your own account.",
   "You cannot delete yourself": "You can't delete your own account.",
@@ -7,6 +12,7 @@ const FRIENDLY_ERROR_MAP: Record<string, string> = {
   "Account is banned": "This account has been banned.",
   "Only super admins can assign admin roles":
     "Only a super admin can assign admin or super admin roles.",
+  "All items must use the same currency": MIXED_CURRENCY_CART_MESSAGE,
 };
 
 /** Raw message from Error or string (may include Convex boilerplate). */

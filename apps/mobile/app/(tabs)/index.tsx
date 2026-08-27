@@ -16,18 +16,24 @@ import { ProductGridInline } from "@/components/products/ProductGridInline";
 import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
 import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { HomeFeedSkeleton } from "@/components/ui/Skeleton";
-import { colors, spacing } from "@/constants/theme";
+import { spacing } from "@/constants/theme";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { api } from "@/lib/convex-api";
 import { offlineKeys } from "@/lib/offline/keys";
 import type { HomeCategory } from "@/lib/offline/types";
 import { refreshNetworkSnapshot } from "@/lib/network";
 import { useNetworkStatus } from "@/providers/NetworkProvider";
+import { useTheme } from "@/providers/theme-context";
 import type { Product } from "@/types/product";
 
 export default function HomeScreen() {
   const { isOffline } = useNetworkStatus();
+  const { colors, preferences } = useTheme();
+  const rootStyle = useScreenRootStyle();
+  const showRecentlyViewed = preferences.shopping.showRecentlyViewed;
+  const showRecommendations = preferences.shopping.showPersonalizedRecommendations;
   const liveFeatured = useQuery(api.products.featured);
   const liveBestSellers = useQuery(api.products.bestSellers, { limit: 12 });
   const liveNewArrivals = useQuery(api.products.newArrivals, { limit: 8 });
@@ -69,8 +75,8 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
-        <Header showLogo showSearch showCart />
+      <View style={[styles.container, rootStyle]}>
+        <Header showLogo showSearch showCart showSettings />
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -143,7 +149,9 @@ export default function HomeScreen() {
                 </HomeSection>
               ) : null}
 
-              <RecommendationSection sectionType="recommended_for_you" limit={8} accent />
+              {showRecommendations ? (
+                <RecommendationSection sectionType="recommended_for_you" limit={8} accent />
+              ) : null}
 
               {bestSellers.data && bestSellers.data.length > 0 ? (
                 <HomeSection
@@ -163,9 +171,11 @@ export default function HomeScreen() {
                 <PromoBanner />
               </View>
 
-              <RecommendationSection sectionType="trending_in_interests" limit={8} />
+              {showRecommendations ? (
+                <RecommendationSection sectionType="trending_in_interests" limit={8} />
+              ) : null}
 
-              {recentlyViewed.length > 0 ? (
+              {showRecentlyViewed && recentlyViewed.length > 0 ? (
                 <HomeSection
                   title="Recently viewed"
                   subtitle="Pick up where you left off"
@@ -198,7 +208,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   aiEntry: {
     paddingTop: spacing.md,

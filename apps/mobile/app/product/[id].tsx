@@ -34,6 +34,7 @@ import { HomeSection } from "@/components/home/HomeSection";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
 import { ProductDeliverySection } from "@/components/products/ProductDeliverySection";
 import { ProductImageGallery } from "@/components/products/ProductImageGallery";
+import { ProductReviewSection } from "@/components/reviews/ProductReviewSection";
 import { ProductWarrantySection } from "@/components/products/ProductWarrantySection";
 import { PromotionOfferBanner } from "@/components/products/PromotionOfferBanner";
 import { RatingStars } from "@/components/products/RatingStars";
@@ -53,6 +54,7 @@ import {
   typography,
 } from "@/constants/theme";
 import { useSimilarProducts } from "@/hooks/useSimilarProducts";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useStableNow } from "@/hooks/useStableNow";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
@@ -78,6 +80,7 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const insets = useSafeAreaInsets();
+  const rootStyle = useScreenRootStyle();
 
   const now = useStableNow();
 
@@ -249,13 +252,25 @@ export default function ProductDetailScreen() {
 
     if (!product) return;
 
+    const productUrl = `https://ecommerce-nextjs-yasir.vercel.app/product/${product._id}`;
+    const description = product.description?.trim().slice(0, 120) ?? "";
+    const shareMessage = [
+      product.name,
+      description ? `${description}${description.length >= 120 ? "…" : ""}` : "",
+      productUrl,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     try {
 
       await Share.share({
 
-        message: `Check out ${product.name}`,
+        message: shareMessage,
 
-        url: `https://ecommerce-nextjs-yasir.vercel.app/product/${product._id}`,
+        url: productUrl,
+
+        title: product.name,
 
       });
 
@@ -307,7 +322,7 @@ export default function ProductDetailScreen() {
     if (isOffline) {
       return (
         <ScreenContainer>
-          <View style={styles.container}>
+          <View style={[styles.container, rootStyle]}>
             <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
               <IconButton
                 icon="chevron-back"
@@ -329,7 +344,7 @@ export default function ProductDetailScreen() {
     }
     return (
       <ScreenContainer>
-        <View style={styles.container}>
+        <View style={[styles.container, rootStyle]}>
           <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
             <IconButton
               icon="chevron-back"
@@ -370,7 +385,7 @@ export default function ProductDetailScreen() {
 
     <ScreenContainer>
 
-      <View style={styles.container}>
+      <View style={[styles.container, rootStyle]}>
 
         <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
 
@@ -501,6 +516,7 @@ export default function ProductDetailScreen() {
               <PriceDisplay
                 price={displayPrice}
                 originalPrice={hasDiscount ? product.price : undefined}
+                currency={product.currency}
                 size="lg"
               />
               <View style={styles.shippingRow}>
@@ -595,6 +611,14 @@ export default function ProductDetailScreen() {
               </View>
 
             ) : null}
+
+
+
+            <View style={styles.section}>
+
+              <ProductReviewSection productId={product._id as Id<"products">} />
+
+            </View>
 
 
 
@@ -694,7 +718,6 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scroll: {
     flex: 1,
@@ -1025,7 +1048,7 @@ const styles = StyleSheet.create({
     minWidth: 20,
     height: 20,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
@@ -1033,7 +1056,7 @@ const styles = StyleSheet.create({
   cartBadgeText: {
     fontSize: typography.xs,
     fontWeight: "700",
-    color: colors.primaryForeground,
+    color: colors.ctaForeground,
   },
 
   footerCta: {

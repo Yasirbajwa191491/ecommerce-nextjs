@@ -1,5 +1,6 @@
 export type TrackByOrderForm = {
   orderNumber: string;
+  email: string;
 };
 
 export type TrackByCustomerForm = {
@@ -23,6 +24,12 @@ export function validateTrackByOrderForm(
 
   if (!orderNumber) {
     errors.orderNumber = "Order number is required";
+  }
+
+  if (!form.email.trim()) {
+    errors.email = "Email is required";
+  } else if (!EMAIL_PATTERN.test(form.email.trim())) {
+    errors.email = "Enter a valid email address";
   }
 
   return errors;

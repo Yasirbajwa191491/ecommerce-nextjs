@@ -22,6 +22,7 @@ import { Loader2, Pencil, Trash2 } from "lucide-react";
 type OrderItemReviewPanelProps = {
   orderNumber: string;
   customerEmail: string;
+  accessToken?: string;
   productId: Id<"products">;
   productName: string;
   status: "not_eligible" | "eligible" | "pending" | "approved";
@@ -39,6 +40,7 @@ const emptyForm = (): ReviewFormValues => ({
 export function OrderItemReviewPanel({
   orderNumber,
   customerEmail,
+  accessToken,
   productId,
   productName,
   status,
@@ -95,6 +97,7 @@ export function OrderItemReviewPanel({
           reviewId: review._id as Id<"productReviews">,
           orderNumber,
           customerEmail,
+          accessToken,
           rating: form.rating,
           title: form.title.trim(),
           content: form.content.trim(),
@@ -105,6 +108,7 @@ export function OrderItemReviewPanel({
         await createReview({
           orderNumber,
           customerEmail,
+          accessToken,
           productId,
           rating: form.rating,
           title: form.title.trim(),
@@ -133,6 +137,7 @@ export function OrderItemReviewPanel({
         reviewId: review._id as Id<"productReviews">,
         orderNumber,
         customerEmail,
+        accessToken,
       });
       toastSuccess("Review deleted");
       setForm(emptyForm());

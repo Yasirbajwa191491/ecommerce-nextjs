@@ -3,12 +3,15 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { colors, spacing, typography } from "@/constants/theme";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 
 export default function NotFoundScreen() {
+  const rootStyle = useScreenRootStyle();
+
   return (
     <>
       <Stack.Screen options={{ title: "Not Found" }} />
-      <View style={styles.container}>
+      <View style={[styles.container, rootStyle]}>
         <Text style={styles.title}>Page not found</Text>
         <Text style={styles.description}>
           The screen you are looking for does not exist or has been moved.
@@ -28,7 +31,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing["2xl"],
     gap: spacing.md,
-    backgroundColor: colors.background,
   },
   title: {
     fontSize: typography["2xl"],

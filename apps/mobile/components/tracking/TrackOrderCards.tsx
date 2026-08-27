@@ -1,13 +1,30 @@
 import { formatCurrencyAmount } from "@ecommerce/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { OrderProgressTimeline } from "@/components/orders/OrderProgressTimeline";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadges";
 import { Button } from "@/components/ui/Button";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import {
+  createTextStyles,
+  radius,
+  spacing,
+  typography,
+  type ColorPalette,
+} from "@/constants/theme";
 import { formatOrderDateTime, type OrderStatus } from "@/lib/order-display";
+import { useTheme } from "@/providers/theme-context";
+
+function useTrackCardStyles() {
+  const { colors, textStyles } = useTheme();
+  const styles = useMemo(
+    () => createStyles(colors, textStyles),
+    [colors, textStyles]
+  );
+  return { colors, styles };
+}
 
 export type TrackedOrderSummary = {
   orderNumber: string;
@@ -19,9 +36,11 @@ export type TrackedOrderSummary = {
 
 type CustomerOrderCardProps = {
   order: TrackedOrderSummary;
+  customerEmail?: string;
 };
 
-export function CustomerOrderCard({ order }: CustomerOrderCardProps) {
+export function CustomerOrderCard({ order, customerEmail }: CustomerOrderCardProps) {
+  const { styles } = useTrackCardStyles();
   const openDetails = () => {
     router.push({
       pathname: "/order/[id]",
@@ -29,6 +48,7 @@ export function CustomerOrderCard({ order }: CustomerOrderCardProps) {
         id: order.orderNumber,
         orderNumber: order.orderNumber,
         source: "track",
+        email: customerEmail ?? "",
       },
     });
   };
@@ -77,6 +97,8 @@ type TrackOrderResultCardProps = {
   createdAt: number;
   paidAt?: number;
   itemCount?: number;
+  customerEmail?: string;
+  accessToken?: string;
 };
 
 export function TrackOrderResultCard({
@@ -89,11 +111,20 @@ export function TrackOrderResultCard({
   createdAt,
   paidAt,
   itemCount,
+  customerEmail,
+  accessToken,
 }: TrackOrderResultCardProps) {
+  const { styles } = useTrackCardStyles();
   const openDetails = () => {
     router.push({
       pathname: "/order/[id]",
-      params: { id: orderNumber, orderNumber, source: "track" },
+      params: {
+        id: orderNumber,
+        orderNumber,
+        source: "track",
+        email: customerEmail ?? "",
+        accessToken: accessToken ?? "",
+      },
     });
   };
 
@@ -149,6 +180,7 @@ export function TrackOrderResultCard({
 }
 
 export function TrackOrderSkeleton() {
+  const { colors, styles } = useTrackCardStyles();
   return (
     <View style={styles.skeletonCard}>
       <View style={styles.skeletonRow}>
@@ -159,7 +191,11 @@ export function TrackOrderSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(
+  colors: ColorPalette,
+  textStyles: ReturnType<typeof createTextStyles>
+) {
+  return StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -211,7 +247,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(98, 84, 243, 0.2)",
+    borderColor: colors.primarySubtle,
   },
   resultHeader: {
     flexDirection: "row",
@@ -269,3 +305,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 });
+}

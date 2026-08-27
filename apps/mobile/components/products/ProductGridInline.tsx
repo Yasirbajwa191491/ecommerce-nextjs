@@ -42,7 +42,7 @@ export function ProductGridInline({
   return (
     <View style={[styles.grid, { paddingHorizontal: horizontalPadding, gap: gridGap }]}>
       {items.map((product, index) => (
-        <View key={product._id} style={{ width: gridItemWidth }}>
+        <View key={product._id} style={{ width: gridItemWidth, alignSelf: "stretch" }}>
           <ProductCard
             product={product}
             showActions={showActions}
@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    alignItems: "stretch",
     paddingBottom: spacing.xs,
   },
 });

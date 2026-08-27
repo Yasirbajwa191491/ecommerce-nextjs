@@ -6,14 +6,17 @@ Native storefront for the Yasir ecommerce monorepo. Shares the Convex backend wi
 
 ## Setup
 
-1. Ensure root `.env.local` has `NEXT_PUBLIC_CONVEX_URL`.
-2. Sync env to mobile:
+The mobile app uses the **same production Convex** as the live website.
 
-```bash
-npm run mobile:env
+`apps/mobile/.env` should contain:
+
+```
+EXPO_PUBLIC_CONVEX_URL=https://hip-salamander-864.convex.cloud
 ```
 
-3. Install dependencies (from repo root):
+Do **not** run `npm run mobile:env` for production — that copies the local/dev Convex URL from `.env.local`.
+
+Install dependencies from the repo root:
 
 ```bash
 npm install

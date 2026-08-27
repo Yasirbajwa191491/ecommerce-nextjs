@@ -65,6 +65,7 @@ export function mergeWishlistIds(
 ): Set<string> {
   const set = new Set(serverIds ?? cachedIds);
   for (const item of pending) {
+    if (item.attempts >= MAX_QUEUE_ATTEMPTS) continue;
     if (item.add) set.add(item.productId);
     else set.delete(item.productId);
   }
@@ -96,6 +97,26 @@ export async function enqueueWishlistChange(
   await persistQueue();
 }
 
+export async function dequeueWishlistChange(
+  productId: Id<"products">
+): Promise<void> {
+  await hydrateWishlistStore();
+  const next = queued.filter((item) => item.productId !== productId);
+  if (next.length === queued.length) return;
+  queued = next;
+  emit();
+  await persistQueue();
+}
+
+export async function dropDeadLetterItems(): Promise<void> {
+  await hydrateWishlistStore();
+  const next = queued.filter((item) => item.attempts < MAX_QUEUE_ATTEMPTS);
+  if (next.length === queued.length) return;
+  queued = next;
+  emit();
+  await persistQueue();
+}
+
 export async function resetWishlistAttempts(): Promise<void> {
   if (queued.every((item) => item.attempts === 0)) return;
   queued = queued.map((item) => ({ ...item, attempts: 0 }));
@@ -115,7 +136,6 @@ export async function drainWishlistQueue(
     for (let index = 0; index < queued.length; index += 1) {
       const item = queued[index];
       if (item.attempts >= MAX_QUEUE_ATTEMPTS) {
-        remaining.push(item);
         continue;
       }
       try {
@@ -142,4 +162,12 @@ export function subscribeWishlistStore(listener: Listener): () => void {
   return () => {
     listeners.delete(listener);
   };
+}
+
+export async function resetWishlistStore(): Promise<void> {
+  queued = [];
+  cachedIds = [];
+  hydrated = true;
+  emit();
+  await Promise.all([persistQueue(), persistIds([])]);
 }

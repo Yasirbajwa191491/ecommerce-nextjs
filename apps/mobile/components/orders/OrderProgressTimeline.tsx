@@ -63,10 +63,17 @@ export function OrderProgressTimeline({ status }: OrderProgressTimelineProps) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.gridWrap}>
-        <View pointerEvents="none" style={styles.connectorTrack} />
         <View
-          pointerEvents="none"
-          style={[styles.connectorFill, { width: `${Math.max(0, progressRatio * 80)}%` }]}
+          style={[
+            styles.connectorTrack,
+            { pointerEvents: "none" },
+          ]}
+        />
+        <View
+          style={[
+            styles.connectorFill,
+            { width: `${Math.max(0, progressRatio * 80)}%`, pointerEvents: "none" },
+          ]}
         />
 
         <View style={styles.stepsRow}>

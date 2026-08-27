@@ -20,6 +20,8 @@ export type CartLineLike = {
 
   price: number;
 
+  currency?: string;
+
   max: number;
 
 };
@@ -302,7 +304,7 @@ export function sanitizeCartItemsWithProducts(
 
   cart: CartLineLike[],
 
-  productsById: Map<string, { colors?: string[]; stock?: number }>
+  productsById: Map<string, { colors?: string[]; stock?: number; currency?: string }>
 
 ): CartLineLike[] {
 
@@ -339,6 +341,8 @@ export function sanitizeCartItemsWithProducts(
         id: buildCartLineId(productId, color),
 
         max: Math.max(product.stock ?? item.max, 1),
+
+        currency: product.currency ?? item.currency,
 
       };
 

@@ -5,10 +5,24 @@ export type PickedVisualSearchImage = {
   mimeType?: string;
 };
 
+function getLibraryPermissionMessage(canAskAgain: boolean): string {
+  if (!canAskAgain) {
+    return "Photo library access is disabled. Enable it in Settings to choose a photo.";
+  }
+  return "Photo library access is required to choose an image.";
+}
+
+function getCameraPermissionMessage(canAskAgain: boolean): string {
+  if (!canAskAgain) {
+    return "Camera access is disabled. Enable it in Settings to take a photo.";
+  }
+  return "Camera access is required to take a photo.";
+}
+
 export async function pickVisualSearchFromLibrary(): Promise<PickedVisualSearchImage | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error("Photo library access is required to choose an image.");
+    throw new Error(getLibraryPermissionMessage(permission.canAskAgain));
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -16,6 +30,8 @@ export async function pickVisualSearchFromLibrary(): Promise<PickedVisualSearchI
     allowsEditing: true,
     aspect: [4, 3],
     quality: 0.7,
+    preferredAssetRepresentationMode:
+      ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
   });
 
   if (result.canceled || !result.assets[0]) {
@@ -32,7 +48,7 @@ export async function pickVisualSearchFromLibrary(): Promise<PickedVisualSearchI
 export async function pickVisualSearchFromCamera(): Promise<PickedVisualSearchImage | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    throw new Error("Camera access is required to take a photo.");
+    throw new Error(getCameraPermissionMessage(permission.canAskAgain));
   }
 
   const result = await ImagePicker.launchCameraAsync({

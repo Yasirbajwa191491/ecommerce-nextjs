@@ -36,7 +36,7 @@ export function Checkbox({
       >
         <View style={[styles.box, checked && styles.boxChecked, error && styles.boxError]}>
           {checked ? (
-            <Ionicons name="checkmark" size={14} color={colors.primaryForeground} />
+            <Ionicons name="checkmark" size={14} color={colors.ctaForeground} />
           ) : null}
         </View>
         <View style={styles.labelWrap}>{typeof label === "string" ? <Text style={styles.label}>{label}</Text> : label}</View>
@@ -70,8 +70,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   boxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.cta,
+    borderColor: colors.cta,
   },
   boxError: {
     borderColor: colors.destructive,

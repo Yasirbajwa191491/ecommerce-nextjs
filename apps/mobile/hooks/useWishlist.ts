@@ -1,11 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
-import { getCachedVisitorId } from "@/lib/visitor-id";
+import { triggerHaptic } from "@/lib/haptics";
+import { useVisitorId } from "@/lib/visitor-id";
 import { api } from "@/lib/convex-api";
 import { getIsOnline } from "@/lib/network";
 import {
   cacheWishlistIds,
+  dequeueWishlistChange,
   enqueueWishlistChange,
   getCachedWishlistIds,
   getWishlistQueue,
@@ -16,7 +18,7 @@ import {
 import type { Id } from "@convex/_generated/dataModel";
 
 export function useWishlist() {
-  const visitorId = getCachedVisitorId();
+  const visitorId = useVisitorId();
   const wishlistIds = useQuery(
     api.recommendationQueries.listWishlistProductIds,
     visitorId ? { visitorId } : "skip"
@@ -53,15 +55,18 @@ export function useWishlist() {
       if (!visitorId) return false;
       const add = !wishlistSet.has(productId);
       await enqueueWishlistChange(productId, add);
+      void triggerHaptic("light");
 
       if (!getIsOnline()) {
         return add;
       }
 
       try {
-        return await toggleWishlist({ visitorId, productId, add });
-      } catch {
-        return add;
+        const result = await toggleWishlist({ visitorId, productId, add });
+        await dequeueWishlistChange(productId);
+        return result;
+      } catch (error) {
+        throw error;
       }
     },
     [visitorId, wishlistSet, toggleWishlist]
@@ -69,7 +74,10 @@ export function useWishlist() {
 
   return {
     wishlistIds: [...wishlistSet] as Id<"products">[],
-    isLoading: wishlistIds === undefined && getCachedWishlistIds().length === 0,
+    isLoading:
+      !visitorId
+        ? getCachedWishlistIds().length === 0 && queue.length === 0
+        : wishlistIds === undefined && getCachedWishlistIds().length === 0,
     isWishlisted,
     toggle,
   };

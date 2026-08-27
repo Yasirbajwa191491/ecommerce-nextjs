@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "convex/react";
-import { router, useLocalSearchParams, type Href } from "expo-router";
+import { useAction, useQuery } from "convex/react";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Header } from "@/components/layout/Header";
@@ -17,10 +18,13 @@ import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
 import { Button } from "@/components/ui/Button";
 import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import {
   clearLastOrderInfo,
+  clearPendingStripeOrder,
   loadLastOrderInfo,
 } from "@/lib/checkout-customer-storage";
+import { getMobileStripeCheckoutUrls, parseCheckoutReturnUrl } from "@/lib/checkout-stripe";
 import { api } from "@/lib/convex-api";
 import {
   getCheckoutSuccessMessage,
@@ -33,35 +37,68 @@ import { useCart } from "@/providers/cart-context";
 export default function CheckoutSuccessScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
+  const rootStyle = useScreenRootStyle();
   const { clearCart } = useCart();
   const clearedRef = useRef(false);
+  const resumeCheckoutSession = useAction(api.stripe.resumeCheckoutSession);
+  const [resuming, setResuming] = useState(false);
 
   const params = useLocalSearchParams<{
     orderNumber?: string;
     pendingPayment?: string;
+    accessToken?: string;
+    session_id?: string;
   }>();
 
   const [storedOrder, setStoredOrder] = useState<{
     orderNumber: string | null;
     email: string | null;
-  }>({ orderNumber: null, email: null });
+    accessToken: string | null;
+  }>({ orderNumber: null, email: null, accessToken: null });
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
-    void loadLastOrderInfo().then(setStoredOrder);
+    void loadLastOrderInfo().then((info) => {
+      setStoredOrder(info);
+      setStorageReady(true);
+    });
   }, []);
 
   const orderNumber =
-    (typeof params.orderNumber === "string" ? params.orderNumber : null) ??
-    storedOrder.orderNumber;
+    (typeof params.orderNumber === "string" && params.orderNumber
+      ? params.orderNumber
+      : null) ?? storedOrder.orderNumber;
+
+  const accessToken =
+    (typeof params.accessToken === "string" && params.accessToken
+      ? params.accessToken
+      : null) ?? storedOrder.accessToken ?? undefined;
 
   const customerEmail = storedOrder.email ?? undefined;
+  const sessionId =
+    typeof params.session_id === "string" && params.session_id.startsWith("cs_")
+      ? params.session_id
+      : undefined;
 
-  const orderData = useQuery(
+  const lookupReady = storageReady && Boolean(customerEmail || accessToken || sessionId);
+
+  const orderByNumber = useQuery(
     api.orders.getOrderByNumber,
-    orderNumber ? { orderNumber, customerEmail } : "skip"
+    lookupReady && orderNumber && (customerEmail || accessToken)
+      ? { orderNumber, customerEmail, accessToken }
+      : "skip"
   );
 
-  const isLoading = Boolean(orderNumber && orderData === undefined);
+  const orderBySession = useQuery(
+    api.orders.getOrderByCheckoutSession,
+    lookupReady && sessionId ? { stripeSessionId: sessionId } : "skip"
+  );
+
+  const orderData = orderByNumber ?? orderBySession;
+
+  const isLoading =
+    Boolean(lookupReady && orderNumber && orderData === undefined) ||
+    Boolean(lookupReady && sessionId && !orderNumber && orderBySession === undefined);
   const order = orderData?.order;
   const items = orderData?.items ?? [];
   const promotions = orderData?.promotions ?? [];
@@ -75,6 +112,7 @@ export default function CheckoutSuccessScreen() {
     clearedRef.current = true;
     clearCart();
     void clearLastOrderInfo();
+    void clearPendingStripeOrder();
   }, [clearCart, order]);
 
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
@@ -83,7 +121,7 @@ export default function CheckoutSuccessScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
+      <View style={[styles.container, rootStyle]}>
         <Header title="Order confirmation" showBack={false} showSearch={false} showCart={false} />
 
         <ScrollView
@@ -209,9 +247,58 @@ export default function CheckoutSuccessScreen() {
               <View style={styles.actions}>
                 {isPendingStripe ? (
                   <Button
-                    label="Retry payment"
+                    label={resuming ? "Reopening payment…" : "Retry payment"}
                     fullWidth
-                    onPress={() => router.replace("/checkout" as Href)}
+                    loading={resuming}
+                    disabled={resuming}
+                    onPress={() => {
+                      void (async () => {
+                        if (!orderNumber) return;
+                        setResuming(true);
+                        try {
+                          const stripeUrls = getMobileStripeCheckoutUrls();
+                          const resumed = await resumeCheckoutSession({
+                            orderNumber,
+                            customerEmail,
+                            accessToken,
+                            successUrl: stripeUrls.successUrl,
+                            cancelUrl: stripeUrls.cancelUrl,
+                          });
+                          if (resumed.alreadyPaid) {
+                            return;
+                          }
+                          WebBrowser.maybeCompleteAuthSession();
+                          const browserResult = await WebBrowser.openAuthSessionAsync(
+                            resumed.url,
+                            stripeUrls.returnUrl
+                          );
+                          if (browserResult.type === "success" && browserResult.url) {
+                            const parsed = parseCheckoutReturnUrl(browserResult.url);
+                            if (parsed.type === "success") {
+                              router.replace({
+                                pathname: "/checkout/success",
+                                params: {
+                                  orderNumber: parsed.orderNumber ?? resumed.orderNumber,
+                                  accessToken:
+                                    parsed.accessToken ?? resumed.accessToken ?? "",
+                                  session_id: parsed.sessionId ?? "",
+                                },
+                              });
+                              return;
+                            }
+                          }
+                          router.replace({
+                            pathname: "/checkout/cancel",
+                            params: {
+                              orderNumber: resumed.orderNumber,
+                              accessToken: resumed.accessToken ?? "",
+                            },
+                          });
+                        } finally {
+                          setResuming(false);
+                        }
+                      })();
+                    }}
                   />
                 ) : null}
                 <Button
@@ -221,7 +308,11 @@ export default function CheckoutSuccessScreen() {
                   onPress={() =>
                     router.push({
                       pathname: "/order/[id]",
-                      params: { id: order._id, orderNumber: order.orderNumber },
+                      params: {
+                        id: order._id,
+                        orderNumber: order.orderNumber,
+                        accessToken: accessToken ?? order.accessToken ?? "",
+                      },
                     })
                   }
                 />
@@ -243,7 +334,6 @@ export default function CheckoutSuccessScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     paddingTop: spacing["2xl"],

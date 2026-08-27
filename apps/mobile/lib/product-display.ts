@@ -1,6 +1,11 @@
-import { formatCurrencyAmount } from "@ecommerce/shared";
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from "@ecommerce/shared";
 
 import type { Product } from "@/types/product";
+
+export function resolveProductCurrency(currency?: string | null): string {
+  const code = currency?.trim();
+  return code && code.length >= 3 ? code.toUpperCase() : DEFAULT_CURRENCY;
+}
 
 type DeliveryOption = {
   type: "standard" | "express" | "same_day" | "next_day" | "pickup";
@@ -121,13 +126,13 @@ export function describeDeliveryOption(
 
 export function formatDeliveryCharge(charge: number, currency?: string | null): string {
   if (charge <= 0) return "Free";
-  return formatCurrencyAmount(charge, currency ?? "USD");
+  return formatCurrencyAmount(charge, resolveProductCurrency(currency));
 }
 
 export function formatShippingLine(product: Product): string {
   if (product.shipping === true) return "Free Shipping";
   return `Shipping Charges: ${formatCurrencyAmount(
     product.shippingCharges ?? 0,
-    product.currency ?? "USD"
+    resolveProductCurrency(product.currency)
   )}`;
 }

@@ -200,9 +200,16 @@ export function CheckoutForm({
         await persistCustomer();
         sessionStorage.setItem("lastOrderNumber", result.orderNumber);
         sessionStorage.setItem("lastOrderEmail", customerPayload.email);
+        if (result.accessToken) {
+          sessionStorage.setItem("lastOrderAccessToken", result.accessToken);
+        }
         toastSuccess("Order placed successfully!");
         router.replace(
-          `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`
+          `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}${
+            result.accessToken
+              ? `&accessToken=${encodeURIComponent(result.accessToken)}`
+              : ""
+          }`
         );
         return;
       }
@@ -211,13 +218,19 @@ export function CheckoutForm({
       await persistCustomer();
       sessionStorage.setItem("lastOrderNumber", result.orderNumber);
       sessionStorage.setItem("lastOrderEmail", customerPayload.email);
+      if (result.accessToken) {
+        sessionStorage.setItem("lastOrderAccessToken", result.accessToken);
+      }
       window.location.href = result.url;
     } catch (error) {
       toastError(error, {
         title: "Checkout failed",
         fallback: "Please review your details and try again.",
       });
-      idempotencyKeyRef.current = createIdempotencyKey();
+      const message = error instanceof Error ? error.message : "";
+      if (!message.toLowerCase().includes("already submitted")) {
+        idempotencyKeyRef.current = createIdempotencyKey();
+      }
     } finally {
       setSubmitting(false);
     }

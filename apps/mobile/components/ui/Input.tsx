@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,7 +7,8 @@ import {
   View,
 } from "react-native";
 
-import { colors, radius, sizes, spacing, typography } from "@/constants/theme";
+import { radius, sizes, spacing, typography } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 
 type InputProps = TextInputProps & {
   label?: string;
@@ -25,8 +26,36 @@ export function Input({
   onBlur,
   ...props
 }: InputProps) {
+  const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
   const inputLabel = accessibilityLabel ?? label;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: { gap: spacing.sm },
+        label: {
+          fontSize: typography.sm,
+          fontWeight: "600",
+          color: colors.foreground,
+        },
+        input: {
+          minHeight: sizes.input,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: radius.md,
+          paddingHorizontal: spacing.lg,
+          fontSize: typography.base,
+          color: colors.foreground,
+          backgroundColor: colors.surface,
+        },
+        inputFocused: { borderColor: colors.primary },
+        inputError: { borderColor: colors.destructive },
+        error: { fontSize: typography.sm, color: colors.destructive },
+        hint: { fontSize: typography.sm, color: colors.muted },
+      }),
+    [colors]
+  );
 
   return (
     <View style={styles.wrapper}>
@@ -60,38 +89,3 @@ export function Input({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.sm,
-  },
-  label: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  input: {
-    minHeight: sizes.input,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    fontSize: typography.base,
-    color: colors.foreground,
-    backgroundColor: colors.surface,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-  },
-  inputError: {
-    borderColor: colors.destructive,
-  },
-  error: {
-    fontSize: typography.sm,
-    color: colors.destructive,
-  },
-  hint: {
-    fontSize: typography.sm,
-    color: colors.muted,
-  },
-});

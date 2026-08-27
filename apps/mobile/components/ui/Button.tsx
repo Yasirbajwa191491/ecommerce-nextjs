@@ -7,7 +7,9 @@ import {
   ViewStyle,
 } from "react-native";
 
-import { colors, radius, sizes, typography } from "@/constants/theme";
+import { lightColors, radius, sizes, typography } from "@/constants/theme";
+import type { ColorPalette } from "@/constants/theme";
+import { useThemeOptional } from "@/providers/theme-context";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "sm" | "md" | "lg";
@@ -20,40 +22,55 @@ type ButtonProps = Omit<PressableProps, "children"> & {
   fullWidth?: boolean;
 };
 
-const variantStyles: Record<
-  ButtonVariant,
-  { container: ViewStyle; text: string; pressed: ViewStyle }
-> = {
-  primary: {
-    container: { backgroundColor: colors.primary },
-    text: colors.primaryForeground,
-    pressed: { backgroundColor: "#5548e0" },
-  },
-  secondary: {
-    container: { backgroundColor: colors.navy },
-    text: colors.primaryForeground,
-    pressed: { backgroundColor: "#0d1a42" },
-  },
-  outline: {
-    container: {
-      backgroundColor: "transparent",
-      borderWidth: 1,
-      borderColor: colors.border,
+function getVariantStyles(
+  colors: ColorPalette,
+  variant: ButtonVariant
+): { container: ViewStyle; text: string; pressed: ViewStyle; spinner: string } {
+  const map: Record<
+    ButtonVariant,
+    { container: ViewStyle; text: string; pressed: ViewStyle; spinner: string }
+  > = {
+    primary: {
+      container: { backgroundColor: colors.cta },
+      text: colors.ctaForeground,
+      pressed: { backgroundColor: colors.ctaPressed },
+      spinner: colors.ctaForeground,
     },
-    text: colors.foreground,
-    pressed: { backgroundColor: colors.primaryMuted },
-  },
-  ghost: {
-    container: { backgroundColor: "transparent" },
-    text: colors.primary,
-    pressed: { backgroundColor: colors.primaryMuted },
-  },
-  destructive: {
-    container: { backgroundColor: colors.destructive },
-    text: colors.destructiveForeground,
-    pressed: { backgroundColor: "#B91C1C" },
-  },
-};
+    secondary: {
+      container: {
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      text: colors.foreground,
+      pressed: { backgroundColor: colors.ctaMuted },
+      spinner: colors.foreground,
+    },
+    outline: {
+      container: {
+        backgroundColor: "transparent",
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      text: colors.foreground,
+      pressed: { backgroundColor: colors.ctaMuted },
+      spinner: colors.foreground,
+    },
+    ghost: {
+      container: { backgroundColor: "transparent" },
+      text: colors.textSecondary,
+      pressed: { backgroundColor: colors.ctaMuted },
+      spinner: colors.foreground,
+    },
+    destructive: {
+      container: { backgroundColor: colors.destructive },
+      text: colors.destructiveForeground,
+      pressed: { backgroundColor: colors.destructive, opacity: 0.85 },
+      spinner: colors.destructiveForeground,
+    },
+  };
+  return map[variant];
+}
 
 const sizeStyles: Record<ButtonSize, { container: ViewStyle; fontSize: number }> = {
   sm: { container: { minHeight: sizes.buttonSm, paddingHorizontal: 14 }, fontSize: typography.sm },
@@ -72,7 +89,8 @@ export function Button({
   accessibilityLabel,
   ...props
 }: ButtonProps) {
-  const variantStyle = variantStyles[variant];
+  const colors = useThemeOptional()?.colors ?? lightColors;
+  const variantStyle = getVariantStyles(colors, variant);
   const sizeStyle = sizeStyles[size];
   const isDisabled = disabled || loading;
 
@@ -94,10 +112,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator
-          color={variant === "outline" || variant === "ghost" ? colors.primary : colors.primaryForeground}
-          size="small"
-        />
+        <ActivityIndicator color={variantStyle.spinner} size="small" />
       ) : (
         <Text style={[styles.label, { color: variantStyle.text, fontSize: sizeStyle.fontSize }]}>
           {label}

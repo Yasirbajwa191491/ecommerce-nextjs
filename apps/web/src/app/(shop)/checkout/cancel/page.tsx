@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 function CheckoutCancelContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get("orderNumber");
+  const accessToken = searchParams.get("accessToken") ?? undefined;
   const acknowledgeCancelled = useMutation(
     api.orders.acknowledgeStripeCheckoutCancelled
   );
@@ -28,11 +29,20 @@ function CheckoutCancelContent() {
 
   useEffect(() => {
     if (!orderNumber || acknowledgedRef.current === orderNumber) return;
+    const customerEmail =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("lastOrderEmail") ?? undefined
+        : undefined;
+    if (!accessToken && !customerEmail) return;
     acknowledgedRef.current = orderNumber;
-    void acknowledgeCancelled({ orderNumber }).catch(() => {
+    void acknowledgeCancelled({
+      orderNumber,
+      accessToken,
+      customerEmail,
+    }).catch(() => {
       // Non-blocking: cancel page should still render if cleanup fails.
     });
-  }, [acknowledgeCancelled, orderNumber]);
+  }, [acknowledgeCancelled, accessToken, orderNumber]);
 
   return (
     <div className="min-h-[60vh] bg-gradient-to-b from-muted/40 via-background to-background">
