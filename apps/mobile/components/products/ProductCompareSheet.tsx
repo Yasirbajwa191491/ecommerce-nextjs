@@ -9,7 +9,9 @@ import { RatingStars } from "@/components/products/RatingStars";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
-import { colors, radius, shadows, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import type { CompareProductSummary } from "@/lib/compare-storage";
 import { useProductCompare } from "@/providers/compare-context";
 
@@ -23,6 +25,8 @@ function pickBestLabels(products: CompareProductSummary[]) {
 }
 
 export function ProductCompareSheet() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createProductCompareSheetStyles);
   const insets = useSafeAreaInsets();
   const { products, sheetOpen, setSheetOpen, removeProduct, clearCompare } =
     useProductCompare();
@@ -151,8 +155,9 @@ export function ProductCompareSheet() {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
+function createProductCompareSheetStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    overlay: {
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "flex-end",
@@ -181,6 +186,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...textStyles.screenTitle,
+    color: colors.foreground,
     fontSize: 20,
   },
   subtitle: {
@@ -246,4 +252,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.textSecondary,
   },
-});
+  });
+}
+

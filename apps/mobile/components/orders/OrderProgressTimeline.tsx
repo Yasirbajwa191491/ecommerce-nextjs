@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import type { OrderStatus } from "@/lib/order-display";
 
 const PROGRESS_STEPS: { key: OrderStatus; label: string }[] = [
@@ -32,6 +34,8 @@ type OrderProgressTimelineProps = {
 };
 
 export function OrderProgressTimeline({ status }: OrderProgressTimelineProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createOrderProgressTimelineStyles);
   const terminal = TERMINAL_STATUSES[status];
 
   if (terminal) {
@@ -118,95 +122,97 @@ export function OrderProgressTimeline({ status }: OrderProgressTimelineProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    width: "100%",
-  },
-  gridWrap: {
-    position: "relative",
-    width: "100%",
-  },
-  connectorTrack: {
-    position: "absolute",
-    top: 26,
-    left: "10%",
-    right: "10%",
-    height: 2,
-    backgroundColor: colors.border,
-    borderRadius: radius.full,
-  },
-  connectorFill: {
-    position: "absolute",
-    top: 26,
-    left: "10%",
-    height: 2,
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-  },
-  stepsRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    width: "100%",
-  },
-  stepBox: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: "center",
-    justifyContent: "flex-start",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    minHeight: 88,
-  },
-  stepBoxCurrent: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryMuted,
-  },
-  stepBoxComplete: {
-    borderColor: "rgba(16, 185, 129, 0.35)",
-    backgroundColor: colors.successMuted,
-  },
-  stepLabel: {
-    fontSize: typography.xs,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 14,
-    color: colors.foreground,
-  },
-  stepLabelCurrent: {
-    color: colors.primary,
-  },
-  stepLabelPending: {
-    color: colors.textSecondary,
-    fontWeight: "500",
-  },
-  terminalBox: {
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.lg,
-    alignItems: "center",
-  },
-  terminalDestructive: {
-    borderColor: "rgba(239, 68, 68, 0.35)",
-    backgroundColor: colors.destructiveMuted,
-  },
-  terminalMuted: {
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  terminalText: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  terminalTextDestructive: {
-    color: colors.destructive,
-  },
-  terminalTextMuted: {
-    color: colors.textSecondary,
-  },
-});
+function createOrderProgressTimelineStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrapper: {
+      width: "100%" as const,
+    },
+    gridWrap: {
+      position: "relative" as const,
+      width: "100%" as const,
+    },
+    connectorTrack: {
+      position: "absolute" as const,
+      top: 26,
+      left: "10%" as const,
+      right: "10%" as const,
+      height: 2,
+      backgroundColor: colors.border,
+      borderRadius: radius.full,
+    },
+    connectorFill: {
+      position: "absolute" as const,
+      top: 26,
+      left: "10%" as const,
+      height: 2,
+      backgroundColor: colors.primary,
+      borderRadius: radius.full,
+    },
+    stepsRow: {
+      flexDirection: "row" as const,
+      gap: spacing.sm,
+      width: "100%" as const,
+    },
+    stepBox: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: "center" as const,
+      justifyContent: "flex-start" as const,
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xs,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      minHeight: 88,
+    },
+    stepBoxCurrent: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryMuted,
+    },
+    stepBoxComplete: {
+      borderColor: "rgba(16, 185, 129, 0.35)",
+      backgroundColor: colors.successMuted,
+    },
+    stepLabel: {
+      fontSize: typography.xs,
+      fontWeight: "600" as const,
+      textAlign: "center" as const,
+      lineHeight: 14,
+      color: colors.foreground,
+    },
+    stepLabelCurrent: {
+      color: colors.primary,
+    },
+    stepLabelPending: {
+      color: colors.textSecondary,
+      fontWeight: "500" as const,
+    },
+    terminalBox: {
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      padding: spacing.lg,
+      alignItems: "center" as const,
+    },
+    terminalDestructive: {
+      borderColor: "rgba(239, 68, 68, 0.35)",
+      backgroundColor: colors.destructiveMuted,
+    },
+    terminalMuted: {
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    terminalText: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      textAlign: "center" as const,
+    },
+    terminalTextDestructive: {
+      color: colors.destructive,
+    },
+    terminalTextMuted: {
+      color: colors.textSecondary,
+    },
+  });
+}

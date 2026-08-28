@@ -15,8 +15,11 @@ import { OrderProgressTimeline } from "@/components/orders/OrderProgressTimeline
 import { OrderPromotionsSummary } from "@/components/orders/OrderPromotionsSummary";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadges";
 import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
+import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
 import { Button } from "@/components/ui/Button";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import {
@@ -35,6 +38,8 @@ import {
 import { useCart } from "@/providers/cart-context";
 
 export default function CheckoutSuccessScreen() {
+  const { colors, textStyles } = useTheme();
+  const styles = useThemedStyles(createSuccessStyles);
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
@@ -165,6 +170,7 @@ export default function CheckoutSuccessScreen() {
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Order number</Text>
                   <Text style={styles.infoValue}>{order.orderNumber}</Text>
+                  <CopyOrderNumber orderNumber={order.orderNumber} />
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.statusHeader}>
@@ -331,8 +337,9 @@ export default function CheckoutSuccessScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createSuccessStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   content: {
@@ -361,10 +368,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...textStyles.screenTitle,
+    color: colors.foreground,
     textAlign: "center",
   },
   subtitle: {
     ...textStyles.bodySmall,
+    color: colors.textSecondary,
     textAlign: "center",
     maxWidth: 320,
   },
@@ -427,6 +436,7 @@ const styles = StyleSheet.create({
   },
   cardSectionTitle: {
     ...textStyles.sectionTitle,
+    color: colors.foreground,
     fontSize: typography.base,
   },
   actions: {
@@ -440,4 +450,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 320,
   },
-});
+  });
+}
+

@@ -56,14 +56,14 @@ export type PublicOrderDetail = PublicOrderSummary & {
 };
 
 export function toPublicOrderItem(item: Doc<"orderItems">): PublicOrderItem {
-  return normalizeOrderItem(item);
+  return omitUndefined(normalizeOrderItem(item));
 }
 
 export function toPublicOrderSummary(
   order: Doc<"orders">,
   items: Doc<"orderItems">[] = []
 ): PublicOrderSummary {
-  return {
+  return omitUndefined({
     orderNumber: order.orderNumber,
     status: order.status,
     paymentStatus: order.paymentStatus,
@@ -79,18 +79,18 @@ export function toPublicOrderSummary(
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     paidAt: order.paidAt,
-  };
+  });
 }
 
 export function toPublicOrderPromotion(
   promo: Doc<"orderPromotions">
 ): PublicOrderPromotion {
-  return {
+  return omitUndefined({
     promotionName: promo.promotionName,
     promotionDescription: promo.promotionDescription,
     freeQuantity: promo.freeQuantity,
     savingsAmount: promo.savingsAmount,
-  };
+  });
 }
 
 export function toPublicOrderDetail(
@@ -101,7 +101,7 @@ export function toPublicOrderDetail(
   options?: { verified?: boolean }
 ): PublicOrderDetail {
   const verified = options?.verified === true;
-  return {
+  return omitUndefined({
     ...toPublicOrderSummary(order, items),
     customerName: verified ? order.customerName : maskCustomerName(order.customerName),
     customerEmail: verified ? order.customerEmail : maskEmail(order.customerEmail),
@@ -111,10 +111,16 @@ export function toPublicOrderDetail(
     tax: order.tax,
     items: items.map(toPublicOrderItem),
     promotions: promotions.map(toPublicOrderPromotion),
-    statusHistory,
+    statusHistory: statusHistory.map((entry) => omitUndefined(entry)),
     accessToken: verified ? order.accessToken : undefined,
     verified,
-  };
+  });
+}
+
+function omitUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, field]) => field !== undefined)
+  ) as T;
 }
 
 export function normalizeEmail(email: string): string {

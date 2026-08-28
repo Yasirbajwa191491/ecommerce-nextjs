@@ -148,8 +148,9 @@ export function SettingsToggleRow({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: colors.border, true: colors.primaryMuted }}
-        thumbColor={value ? colors.primary : colors.surfaceElevated}
+        trackColor={{ false: colors.border, true: colors.primary }}
+        thumbColor="#FFFFFF"
+        ios_backgroundColor={colors.border}
       />
     </View>
   );

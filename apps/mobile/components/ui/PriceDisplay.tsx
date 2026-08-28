@@ -1,7 +1,8 @@
 import { formatCurrencyAmount } from "@ecommerce/shared";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 
-import { colors, spacing, textStyles, typography } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { resolveProductCurrency } from "@/lib/product-display";
 
 type PriceDisplayProps = {
@@ -17,6 +18,7 @@ export function PriceDisplay({
   currency,
   size = "md",
 }: PriceDisplayProps) {
+  const styles = useThemedStyles(createStyles);
   const hasDiscount = originalPrice !== undefined && originalPrice > price;
   const code = resolveProductCurrency(currency);
 
@@ -40,34 +42,41 @@ export function PriceDisplay({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: spacing.sm,
-    flexWrap: "wrap",
-  },
-  price: {
-    ...textStyles.price,
-  },
-  priceSale: {
-    ...textStyles.priceSale,
-  },
-  priceLg: {
-    ...textStyles.priceLarge,
-  },
-  priceLgSale: {
-    ...textStyles.priceLargeSale,
-  },
-  priceSm: {
-    fontSize: typography.sm,
-    fontWeight: "700",
-    color: colors.foreground,
-  },
-  priceSmSale: {
-    color: colors.discount,
-  },
-  original: {
-    ...textStyles.priceStrike,
-  },
-});
+function createStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row" as const,
+      alignItems: "baseline" as const,
+      gap: spacing.sm,
+      flexWrap: "wrap" as const,
+    },
+    price: {
+      ...textStyles.price,
+      color: colors.foreground,
+    },
+    priceSale: {
+      ...textStyles.priceSale,
+      color: colors.discount,
+    },
+    priceLg: {
+      ...textStyles.priceLarge,
+      color: colors.foreground,
+    },
+    priceLgSale: {
+      ...textStyles.priceLargeSale,
+      color: colors.discount,
+    },
+    priceSm: {
+      fontSize: typography.sm,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    priceSmSale: {
+      color: colors.discount,
+    },
+    original: {
+      ...textStyles.priceStrike,
+      color: colors.muted,
+    },
+  });
+}

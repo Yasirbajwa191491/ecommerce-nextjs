@@ -12,12 +12,15 @@ import { PriceBreakdown } from "@/components/checkout/PriceBreakdown";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
+import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
 import { OrderItemsSection } from "@/components/orders/OrderItemsSection";
 import { OrderProgressTimeline } from "@/components/orders/OrderProgressTimeline";
 import { OrderPromotionsSummary } from "@/components/orders/OrderPromotionsSummary";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadges";
 import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { loadLastOrderInfo } from "@/lib/checkout-customer-storage";
@@ -38,6 +41,7 @@ type LoadedPublicOrder = {
   customerPhone: string;
   customerAddress: string;
   accessToken?: string;
+  verified?: boolean;
   subtotal: number;
   tax: number;
   discountTotal?: number;
@@ -67,6 +71,8 @@ type LoadedPublicOrder = {
 };
 
 export default function OrderDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createIdStyles);
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
@@ -76,6 +82,7 @@ export default function OrderDetailScreen() {
     source?: string;
     review?: string;
     email?: string;
+    phone?: string;
     accessToken?: string;
   }>();
 
@@ -105,6 +112,9 @@ export default function OrderDetailScreen() {
       ? params.email
       : null) ?? storedOrder.email ?? undefined;
 
+  const customerPhone =
+    typeof params.phone === "string" && params.phone ? params.phone : undefined;
+
   const accessToken =
     typeof params.accessToken === "string" && params.accessToken
       ? params.accessToken
@@ -118,7 +128,7 @@ export default function OrderDetailScreen() {
   );
 
   useEffect(() => {
-    if (!usePublicTracking || !orderNumber || (!customerEmail && !accessToken)) return;
+    if (!usePublicTracking || !orderNumber) return;
 
     let cancelled = false;
 
@@ -131,6 +141,7 @@ export default function OrderDetailScreen() {
         const result = await getPublicOrderDetail({
           orderNumber,
           customerEmail: customerEmail,
+          customerPhone,
           accessToken,
         });
         if (cancelled) return;
@@ -150,10 +161,10 @@ export default function OrderDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [getPublicOrderDetail, orderNumber, usePublicTracking, customerEmail, accessToken]);
+  }, [getPublicOrderDetail, orderNumber, usePublicTracking, customerEmail, customerPhone, accessToken]);
 
   const isLoading = usePublicTracking
-    ? Boolean(orderNumber && publicLoading)
+    ? Boolean(orderNumber && (publicLoading || (!publicOrder && !publicNotFound)))
     : Boolean(orderNumber && orderData === undefined);
 
   const order = usePublicTracking ? publicOrder : orderData?.order;
@@ -187,7 +198,7 @@ export default function OrderDetailScreen() {
     : (orderData?.promotions ?? []);
 
   const notFound = usePublicTracking
-    ? publicNotFound || (!publicLoading && orderNumber && !publicOrder)
+    ? publicNotFound || !orderNumber
     : !isLoading && !order;
 
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
@@ -224,6 +235,7 @@ export default function OrderDetailScreen() {
                 <View style={styles.headerText}>
                   <Text style={styles.metaLabel}>Order tracking</Text>
                   <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+                  <CopyOrderNumber orderNumber={order.orderNumber} />
                   <Text style={styles.placedAt}>
                     Placed on {formatOrderDateTime(order.createdAt)}
                   </Text>
@@ -256,7 +268,8 @@ export default function OrderDetailScreen() {
 
             <OrderItemsSection items={items} currency={order.currency} />
 
-            {order.status === "delivered" ? (
+            {order.status === "delivered" &&
+            ("verified" in order ? order.verified !== false : Boolean(accessToken)) ? (
               <OrderDeliveredReviews
                 orderNumber={order.orderNumber}
                 customerEmail={order.customerEmail}
@@ -347,8 +360,9 @@ export default function OrderDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createIdStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   centered: {
@@ -391,6 +405,7 @@ const styles = StyleSheet.create({
   },
   orderNumber: {
     ...textStyles.sectionTitle,
+    color: colors.foreground,
   },
   placedAt: {
     fontSize: typography.sm,
@@ -398,6 +413,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...textStyles.sectionTitle,
+    color: colors.foreground,
     fontSize: typography.base,
   },
   card: {
@@ -457,4 +473,6 @@ const styles = StyleSheet.create({
     fontSize: typography.xs,
     color: colors.textSecondary,
   },
-});
+  });
+}
+

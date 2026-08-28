@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, textStyles } from "@/constants/theme";
+import { radius, spacing } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import {
   describeDeliveryOption,
   formatDeliveryCharge,
@@ -14,6 +16,8 @@ type ProductDeliverySectionProps = {
 };
 
 export function ProductDeliverySection({ product }: ProductDeliverySectionProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const options = getEnabledDeliveryOptions(product);
   if (options.length === 0) return null;
 
@@ -49,55 +53,58 @@ export function ProductDeliverySection({ product }: ProductDeliverySectionProps)
   );
 }
 
-const styles = StyleSheet.create({
-  section: {
-    gap: spacing.sm,
-    paddingTop: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  title: {
-    ...textStyles.sectionTitle,
-    fontSize: 17,
-  },
-  list: {
-    gap: spacing.sm,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    backgroundColor: colors.borderLight,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
-  label: {
-    ...textStyles.bodySmall,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  estimate: {
-    ...textStyles.caption,
-    color: colors.muted,
-  },
-  charge: {
-    ...textStyles.bodySmall,
-    fontWeight: "700",
-    color: colors.foreground,
-  },
-  note: {
-    ...textStyles.caption,
-    color: colors.success,
-  },
-});
+function createStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    section: {
+      gap: spacing.sm,
+      paddingTop: spacing.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderLight,
+    },
+    header: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+    },
+    title: {
+      ...textStyles.sectionTitle,
+      fontSize: 17,
+      color: colors.foreground,
+    },
+    list: {
+      gap: spacing.sm,
+    },
+    row: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      gap: spacing.md,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+    },
+    rowText: {
+      flex: 1,
+      gap: 2,
+    },
+    label: {
+      ...textStyles.bodySmall,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    estimate: {
+      ...textStyles.caption,
+      color: colors.muted,
+    },
+    charge: {
+      ...textStyles.bodySmall,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    note: {
+      ...textStyles.caption,
+      color: colors.success,
+    },
+  });
+}

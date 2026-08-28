@@ -29,6 +29,7 @@ import {
   updateAppPreferences,
 } from "@/lib/preferences/storage";
 import {
+  DEFAULT_APP_PREFERENCES,
   DEFAULT_NOTIFICATION_PREFERENCES,
   DEFAULT_SHOPPING_PREFERENCES,
   type AppPreferences,
@@ -116,22 +117,46 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setNotificationPreferences = useCallback(
     (patch: Partial<NotificationPreferences>) => {
-      const current = preferences?.notifications ?? DEFAULT_NOTIFICATION_PREFERENCES;
-      void updateAppPreferences({
-        notifications: { ...current, ...patch },
-      }).then((prefs) => setPreferences(prefs));
+      setPreferences((prev) => {
+        const current = prev?.notifications ?? DEFAULT_NOTIFICATION_PREFERENCES;
+        const nextNotifications = { ...current, ...patch };
+        const optimistic = prev
+          ? { ...prev, notifications: nextNotifications }
+          : {
+              version: 1,
+              theme: preference,
+              notifications: nextNotifications,
+              shopping: DEFAULT_SHOPPING_PREFERENCES,
+            };
+        void updateAppPreferences({ notifications: nextNotifications }).then((prefs) =>
+          setPreferences(prefs)
+        );
+        return optimistic;
+      });
     },
-    [preferences]
+    [preference]
   );
 
   const setShoppingPreferences = useCallback(
     (patch: Partial<ShoppingPreferences>) => {
-      const current = preferences?.shopping ?? DEFAULT_SHOPPING_PREFERENCES;
-      void updateAppPreferences({
-        shopping: { ...current, ...patch },
-      }).then((prefs) => setPreferences(prefs));
+      setPreferences((prev) => {
+        const current = prev?.shopping ?? DEFAULT_SHOPPING_PREFERENCES;
+        const nextShopping = { ...current, ...patch };
+        const optimistic = prev
+          ? { ...prev, shopping: nextShopping }
+          : {
+              version: 1,
+              theme: preference,
+              notifications: DEFAULT_NOTIFICATION_PREFERENCES,
+              shopping: nextShopping,
+            };
+        void updateAppPreferences({ shopping: nextShopping }).then((prefs) =>
+          setPreferences(prefs)
+        );
+        return optimistic;
+      });
     },
-    [preferences]
+    [preference]
   );
 
   const resetPreferences = useCallback(async () => {
@@ -156,20 +181,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       shadows,
       isDark: colorScheme === "dark",
       reduceMotion,
-      preferences: preferences ?? {
-        version: 1,
-        theme: preference,
-        notifications: {
-          orderUpdates: true,
-          promotions: true,
-          recommendations: true,
-          marketingEmails: false,
-        },
-        shopping: {
-          showPersonalizedRecommendations: true,
-          showRecentlyViewed: true,
-        },
-      },
+      preferences: preferences ?? { ...DEFAULT_APP_PREFERENCES, theme: preference },
       setThemePreference,
       setNotificationPreferences,
       setShoppingPreferences,

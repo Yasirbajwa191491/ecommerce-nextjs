@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cacheProducts } from "@/lib/offline/product-store";
 import { readCache, writeCache } from "@/lib/offline/storage";
@@ -43,8 +43,10 @@ export function useOfflineCache<T>(
   const [cached, setCached] = useState<{ data: T; cachedAt: number } | null>(null);
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const ready = readyKey === key;
+  const lastWrittenLive = useRef<T | undefined | null>(undefined);
 
   useEffect(() => {
+    lastWrittenLive.current = undefined;
     let cancelled = false;
     void readCache<T>(key, ttlForKey(key)).then((entry) => {
       if (cancelled) return;
@@ -59,9 +61,15 @@ export function useOfflineCache<T>(
   useEffect(() => {
     if (live === undefined) return;
     if (live === null && !persistNull) return;
+    if (lastWrittenLive.current === live) return;
+    lastWrittenLive.current = live;
 
+    let cancelled = false;
     void writeCache(key, live).then((cachedAt) => {
-      setCached({ data: live as T, cachedAt });
+      if (cancelled) return;
+      setCached((prev) =>
+        prev?.data === live ? prev : { data: live as T, cachedAt }
+      );
     });
 
     if (isProductArray(live)) {
@@ -69,6 +77,10 @@ export function useOfflineCache<T>(
     } else if (isProduct(live)) {
       void cacheProducts([live]);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [key, live, persistNull]);
 
   if (live !== undefined && live !== null) {

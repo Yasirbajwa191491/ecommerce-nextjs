@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Skeleton } from "@/components/ui/Skeleton";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 type ContactInfoCardProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -13,6 +15,9 @@ type ContactInfoCardProps = {
 };
 
 export function ContactInfoCard({ icon, title, lines, href, onPress }: ContactInfoCardProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createContactInfoCardStyles);
+
   const handlePress = () => {
     if (onPress) {
       onPress();
@@ -65,6 +70,8 @@ export function ContactInfoCard({ icon, title, lines, href, onPress }: ContactIn
 }
 
 export function ContactInfoSkeleton() {
+  const styles = useThemedStyles(createContactInfoCardStyles);
+
   return (
     <View style={styles.card}>
       <Skeleton width={44} height={44} borderRadius={radius.md} />
@@ -76,43 +83,47 @@ export function ContactInfoSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    minHeight: 88,
-  },
-  cardPressed: {
-    backgroundColor: colors.primaryMuted,
-  },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textWrap: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  title: {
-    ...textStyles.cardTitle,
-    fontSize: typography.base,
-    fontWeight: "600",
-  },
-  line: {
-    ...textStyles.body,
-    fontSize: typography.sm,
-  },
-  lineTappable: {
-    color: colors.primary,
-  },
-});
+function createContactInfoCardStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      minHeight: 88,
+    },
+    cardPressed: {
+      backgroundColor: colors.primaryMuted,
+    },
+    iconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryMuted,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    textWrap: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    title: {
+      ...textStyles.cardTitle,
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    line: {
+      ...textStyles.body,
+      fontSize: typography.sm,
+      color: colors.text,
+    },
+    lineTappable: {
+      color: colors.primary,
+    },
+  });
+}

@@ -3,22 +3,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import { Image } from "expo-image";
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { isHexColor } from "@/components/cart/ColorSwatch";
 import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
 import { api } from "@/lib/convex-api";
 import { useCart } from "@/providers/cart-context";
@@ -58,6 +52,8 @@ function AddToCartSheetBody({
   fallbackProduct,
   onClose,
 }: Omit<AddToCartSheetProps, "visible">) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createAddToCartSheetStyles);
   const insets = useSafeAreaInsets();
   const { addToCart } = useCart();
   const { showError, showSuccess } = useToast();
@@ -219,8 +215,9 @@ function AddToCartSheetBody({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
+function createAddToCartSheetStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    overlay: {
     flex: 1,
     justifyContent: "flex-end",
   },
@@ -286,6 +283,7 @@ const styles = StyleSheet.create({
   },
   productName: {
     ...textStyles.cardTitle,
+    color: colors.foreground,
     fontSize: typography.base,
   },
   stockText: {
@@ -301,6 +299,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     ...textStyles.sectionTitle,
+    color: colors.foreground,
     fontSize: typography.sm,
   },
   colorRow: {
@@ -336,4 +335,6 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     textTransform: "capitalize",
   },
-});
+  });
+}
+

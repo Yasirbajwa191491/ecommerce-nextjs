@@ -3,15 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  FlatList,
-  ListRenderItem,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/feedback/EmptyState";
@@ -22,7 +14,9 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { SearchBarInput } from "@/components/ui/SearchBar";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useHybridProductSearch } from "@/hooks/useHybridProductSearch";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
@@ -40,6 +34,8 @@ const RECENT_KEY = "mobile-recent-searches";
 const MAX_RECENT = 6;
 
 export default function SearchScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createSearchStyles);
   const insets = useSafeAreaInsets();
   const { q } = useLocalSearchParams<{ q?: string }>();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
@@ -336,8 +332,9 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createSearchStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   searchHeader: {
@@ -373,6 +370,7 @@ const styles = StyleSheet.create({
   },
   blockTitle: {
     ...textStyles.sectionTitle,
+    color: colors.foreground,
     fontSize: typography.base,
   },
   clearRecent: {
@@ -481,4 +479,6 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: spacing.lg,
   },
-});
+  });
+}
+

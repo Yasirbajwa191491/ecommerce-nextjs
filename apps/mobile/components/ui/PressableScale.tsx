@@ -1,6 +1,7 @@
 import { ReactNode, useMemo } from "react";
 import {
   Animated,
+  Platform,
   Pressable,
   PressableProps,
   StyleProp,
@@ -35,7 +36,7 @@ export function PressableScale({
       Animated.timing(anim, {
         toValue: scale,
         duration: animation.durationFast,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }).start();
     }
     onPressIn?.(e);
@@ -46,7 +47,7 @@ export function PressableScale({
       Animated.timing(anim, {
         toValue: 1,
         duration: animation.durationFast,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }).start();
     }
     onPressOut?.(e);

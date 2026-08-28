@@ -1,12 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 
 import { ColorSwatch } from "@/components/cart/ColorSwatch";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import type { CartLineLike } from "@/lib/cart-lines";
 
 type CartLineItemProps = {
@@ -26,6 +28,8 @@ export function CartLineItem({
   onDecrement,
   onRemove,
 }: CartLineItemProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createCartLineItemStyles);
   const displayTotal = lineTotal ?? item.price * item.amount;
 
   return (
@@ -76,53 +80,56 @@ export function CartLineItem({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  imageWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.md,
-    overflow: "hidden",
-    backgroundColor: colors.borderLight,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  details: {
-    flex: 1,
-    gap: 4,
-  },
-  name: {
-    ...textStyles.cardTitle,
-    fontSize: typography.base,
-    lineHeight: 20,
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: spacing.sm,
-  },
-  removeBtn: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: spacing.sm,
-  },
-  removeText: {
-    fontSize: typography.sm,
-    color: colors.destructive,
-    fontWeight: "500",
-  },
-});
+function createCartLineItemStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: "row" as const,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      gap: spacing.md,
+    },
+    imageWrap: {
+      width: 96,
+      height: 96,
+      borderRadius: radius.md,
+      overflow: "hidden" as const,
+      backgroundColor: colors.borderLight,
+    },
+    image: {
+      width: "100%" as const,
+      height: "100%" as const,
+    },
+    imagePlaceholder: {
+      flex: 1,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    details: {
+      flex: 1,
+      gap: 4,
+    },
+    name: {
+      ...textStyles.cardTitle,
+      fontSize: typography.base,
+      lineHeight: 20,
+      color: colors.foreground,
+    },
+    actions: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      marginTop: spacing.sm,
+    },
+    removeBtn: {
+      minHeight: 44,
+      justifyContent: "center" as const,
+      paddingHorizontal: spacing.sm,
+    },
+    removeText: {
+      fontSize: typography.sm,
+      color: colors.destructive,
+      fontWeight: "500" as const,
+    },
+  });
+}

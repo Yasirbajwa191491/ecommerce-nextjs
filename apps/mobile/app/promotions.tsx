@@ -10,7 +10,9 @@ import { Header } from "@/components/layout/Header";
 import { MobileFooter } from "@/components/layout/MobileFooter";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useStableNow } from "@/hooks/useStableNow";
@@ -33,6 +35,7 @@ type StorefrontPromotion = PromotionDisplayInput & {
 };
 
 function PromotionCard({ promotion, now }: { promotion: StorefrontPromotion; now: number }) {
+  const styles = useThemedStyles(createPromotionsStyles);
   const recordClick = useMutation(api.productPromotions.recordClick);
   const { title, offerLine } = getPromotionDisplay(promotion);
   const endsLabel = formatPromotionEndsAt(promotion.endAt, now);
@@ -75,6 +78,8 @@ function PromotionCard({ promotion, now }: { promotion: StorefrontPromotion; now
 }
 
 export default function PromotionsScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createPromotionsStyles);
   const now = useStableNow();
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
@@ -140,8 +145,9 @@ export default function PromotionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createPromotionsStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   loadingWrap: {
@@ -184,6 +190,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...textStyles.cardTitle,
+    color: colors.foreground,
     fontSize: typography.lg,
   },
   cardOffer: {
@@ -196,4 +203,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.primary,
   },
-});
+  });
+}
+

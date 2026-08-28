@@ -5,9 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FooterNavAccordion } from "@/components/footer/FooterNavAccordion";
 import { FooterNewsletter } from "@/components/footer/FooterNewsletter";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useTheme } from "@/providers/theme-context";
 import {
   FOOTER_COMPANY_LINKS,
   FOOTER_NAV_GROUPS,
@@ -23,6 +25,8 @@ type MobileFooterProps = {
 };
 
 export function MobileFooter({ compactBottom = false }: MobileFooterProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createMobileFooterStyles);
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
   const { storeName, address, phone, phoneHref, email, businessHours } =
@@ -180,6 +184,8 @@ function ContactRow({
   onPress?: () => void;
   isLast?: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createMobileFooterStyles);
   const rowStyle = [styles.contactRow, isLast && styles.contactRowLast];
 
   const content = (
@@ -213,168 +219,172 @@ function ContactRow({
   return <View style={rowStyle}>{content}</View>;
 }
 
-const styles = StyleSheet.create({
-  outer: {
-    marginTop: spacing["2xl"],
-    backgroundColor: colors.borderLight,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  wrapper: {
-    paddingTop: spacing["2xl"],
-    gap: spacing.xl,
-  },
-  brandSection: {
-    gap: spacing.sm,
-  },
-  storeName: {
-    ...textStyles.sectionTitle,
-    fontSize: typography.xl,
-    color: colors.navy,
-  },
-  tagline: {
-    ...textStyles.bodySmall,
-    lineHeight: 22,
-  },
-  section: {
-    gap: spacing.md,
-  },
-  sectionLabel: {
-    ...textStyles.caption,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    color: colors.textSecondary,
-  },
-  contactCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  contactRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md + 2,
-    minHeight: 56,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
-  },
-  contactRowLast: {
-    borderBottomWidth: 0,
-  },
-  contactRowPressed: {
-    backgroundColor: colors.primaryMuted,
-  },
-  contactIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primaryMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  contactTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  contactLabel: {
-    fontSize: typography.xs,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  contactValue: {
-    fontSize: typography.sm,
-    color: colors.text,
-    lineHeight: 20,
-  },
-  contactValueTappable: {
-    color: colors.primary,
-  },
-  newsletterSection: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primarySubtle,
-  },
-  newsletterEyebrow: {
-    fontSize: typography.base,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  newsletterLead: {
-    ...textStyles.bodySmall,
-    marginTop: -spacing.xs,
-  },
-  newsletterHint: {
-    ...textStyles.caption,
-    color: colors.muted,
-    marginTop: -spacing.xs,
-  },
-  securitySection: {
-    gap: spacing.sm,
-  },
-  securityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  securityText: {
-    fontSize: typography.sm,
-    fontWeight: "500",
-    color: colors.textSecondary,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  paymentBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  paymentBadgeText: {
-    fontSize: typography.xs,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  legalSection: {
-    alignItems: "center",
-    gap: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  copyright: {
-    fontSize: typography.sm,
-    color: colors.muted,
-    textAlign: "center",
-  },
-  legalLinks: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
-  },
-  legalLink: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: spacing.sm,
-  },
-  legalLinkPressed: {
-    opacity: 0.7,
-  },
-  legalLinkText: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.primary,
-  },
-});
+function createMobileFooterStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    outer: {
+      marginTop: spacing["2xl"],
+      backgroundColor: colors.borderLight,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    wrapper: {
+      paddingTop: spacing["2xl"],
+      gap: spacing.xl,
+    },
+    brandSection: {
+      gap: spacing.sm,
+    },
+    storeName: {
+      ...textStyles.sectionTitle,
+      fontSize: typography.xl,
+      color: colors.navy,
+    },
+    tagline: {
+      ...textStyles.bodySmall,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    },
+    section: {
+      gap: spacing.md,
+    },
+    sectionLabel: {
+      ...textStyles.caption,
+      textTransform: "uppercase" as const,
+      letterSpacing: 0.8,
+      color: colors.textSecondary,
+    },
+    contactCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: "hidden" as const,
+    },
+    contactRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md + 2,
+      minHeight: 56,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderLight,
+    },
+    contactRowLast: {
+      borderBottomWidth: 0,
+    },
+    contactRowPressed: {
+      backgroundColor: colors.primaryMuted,
+    },
+    contactIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.sm,
+      backgroundColor: colors.primaryMuted,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    contactTextWrap: {
+      flex: 1,
+      gap: 2,
+    },
+    contactLabel: {
+      fontSize: typography.xs,
+      fontWeight: "600" as const,
+      color: colors.textSecondary,
+      textTransform: "uppercase" as const,
+      letterSpacing: 0.4,
+    },
+    contactValue: {
+      fontSize: typography.sm,
+      color: colors.text,
+      lineHeight: 20,
+    },
+    contactValueTappable: {
+      color: colors.primary,
+    },
+    newsletterSection: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.primarySubtle,
+    },
+    newsletterEyebrow: {
+      fontSize: typography.base,
+      fontWeight: "700" as const,
+      color: colors.primary,
+    },
+    newsletterLead: {
+      ...textStyles.bodySmall,
+      marginTop: -spacing.xs,
+      color: colors.textSecondary,
+    },
+    newsletterHint: {
+      ...textStyles.caption,
+      color: colors.muted,
+      marginTop: -spacing.xs,
+    },
+    securitySection: {
+      gap: spacing.sm,
+    },
+    securityRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+    },
+    securityText: {
+      fontSize: typography.sm,
+      fontWeight: "500" as const,
+      color: colors.textSecondary,
+    },
+    paymentRow: {
+      flexDirection: "row" as const,
+      flexWrap: "wrap" as const,
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    paymentBadge: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    paymentBadgeText: {
+      fontSize: typography.xs,
+      fontWeight: "600" as const,
+      color: colors.textSecondary,
+    },
+    legalSection: {
+      alignItems: "center" as const,
+      gap: spacing.md,
+      paddingTop: spacing.sm,
+    },
+    copyright: {
+      fontSize: typography.sm,
+      color: colors.muted,
+      textAlign: "center" as const,
+    },
+    legalLinks: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.lg,
+    },
+    legalLink: {
+      minHeight: 44,
+      justifyContent: "center" as const,
+      paddingHorizontal: spacing.sm,
+    },
+    legalLinkPressed: {
+      opacity: 0.7,
+    },
+    legalLinkText: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.primary,
+    },
+  });
+}

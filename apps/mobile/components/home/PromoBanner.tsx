@@ -4,11 +4,15 @@ import { useQuery } from "convex/react";
 
 import { router } from "expo-router";
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 
 
 
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+
+import { useTheme } from "@/providers/theme-context";
 
 import { useStableNow } from "@/hooks/useStableNow";
 
@@ -19,6 +23,10 @@ import { api } from "@/lib/convex-api";
 
 
 export function PromoBanner() {
+
+  const { colors } = useTheme();
+
+  const styles = useThemedStyles(createPromoBannerStyles);
 
   const now = useStableNow();
 
@@ -102,13 +110,15 @@ export function PromoBanner() {
 
 
 
-const styles = StyleSheet.create({
+function createPromoBannerStyles({ colors, textStyles }: ThemeStyleTokens) {
+
+  return StyleSheet.create({
 
   container: {
 
-    flexDirection: "row",
+    flexDirection: "row" as const,
 
-    alignItems: "center",
+    alignItems: "center" as const,
 
     gap: spacing.md,
 
@@ -140,9 +150,9 @@ const styles = StyleSheet.create({
 
     backgroundColor: colors.primaryMuted,
 
-    alignItems: "center",
+    alignItems: "center" as const,
 
-    justifyContent: "center",
+    justifyContent: "center" as const,
 
   },
 
@@ -160,7 +170,9 @@ const styles = StyleSheet.create({
 
     fontSize: typography.base,
 
-    fontWeight: "600",
+    fontWeight: "600" as const,
+
+    color: colors.foreground,
 
   },
 
@@ -169,6 +181,8 @@ const styles = StyleSheet.create({
     ...textStyles.caption,
 
     lineHeight: 16,
+
+    color: colors.textSecondary,
 
   },
 
@@ -192,12 +206,14 @@ const styles = StyleSheet.create({
 
     fontSize: typography.xs,
 
-    fontWeight: "600",
+    fontWeight: "600" as const,
 
     color: colors.foreground,
 
   },
 
 });
+
+}
 
 

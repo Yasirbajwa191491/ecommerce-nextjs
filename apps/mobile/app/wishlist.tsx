@@ -3,14 +3,7 @@ import { useQuery } from "convex/react";
 import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AddToCartSheet } from "@/components/cart/AddToCartSheet";
 import { EmptyState } from "@/components/feedback/EmptyState";
@@ -21,7 +14,9 @@ import { Header } from "@/components/layout/Header";
 import { MobileFooter } from "@/components/layout/MobileFooter";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { Button } from "@/components/ui/Button";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -33,6 +28,8 @@ import { useToast } from "@/providers/toast-context";
 import type { Id } from "@convex/_generated/dataModel";
 
 export default function WishlistScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createWishlistStyles);
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
   const { isOffline } = useNetworkStatus();
@@ -190,8 +187,9 @@ export default function WishlistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createWishlistStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   loadingWrap: {
@@ -232,6 +230,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     ...textStyles.cardTitle,
+    color: colors.foreground,
     fontSize: typography.base,
   },
   itemBrand: {
@@ -250,4 +249,6 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
   },
-});
+  });
+}
+

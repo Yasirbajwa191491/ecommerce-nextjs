@@ -1,18 +1,7 @@
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  ListRenderItem,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type ListRenderItemInfo,
-  type ViewStyle,
-} from "react-native";
+import { ActivityIndicator, FlatList, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, View, type ListRenderItemInfo, type ViewStyle } from "react-native";
 
 import { CatalogActiveFilters } from "@/components/catalog/CatalogActiveFilters";
 import {
@@ -30,7 +19,9 @@ import { IconSegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { SearchBarInput } from "@/components/ui/SearchBar";
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useCatalogHybridSearch } from "@/hooks/useCatalogHybridSearch";
 import { useCatalogLayout } from "@/hooks/useCatalogLayout";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -76,6 +67,8 @@ export function ProductCatalogView({
   initialFilters,
   style,
 }: ProductCatalogViewProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createProductCatalogViewStyles);
   const now = useStableNow();
   const { isOffline } = useNetworkStatus();
   const { horizontalPadding, gridGap } = useLayoutMetrics();
@@ -176,19 +169,25 @@ export function ProductCatalogView({
 
   const hasActiveConstraints = hasActiveCatalogConstraints(filtersWithSearch);
 
+  const liveShopProducts = useMemo(() => {
+    if (
+      hasActiveConstraints ||
+      !catalogQueryEnabled ||
+      status === "LoadingFirstPage" ||
+      products.length === 0
+    ) {
+      return undefined;
+    }
+    return products.length > MAX_CATEGORY_PRODUCTS
+      ? products.slice(0, MAX_CATEGORY_PRODUCTS)
+      : products;
+  }, [hasActiveConstraints, catalogQueryEnabled, status, products]);
+
   const offlineCacheKey =
     cacheKey ??
     offlineKeys.shop(fixedCategoryId ?? filters.categoryId ?? "all");
 
-  const cachedShop = useOfflineCache<Product[]>(
-    offlineCacheKey,
-    !hasActiveConstraints &&
-      catalogQueryEnabled &&
-      status !== "LoadingFirstPage" &&
-      products.length > 0
-      ? products.slice(0, MAX_CATEGORY_PRODUCTS)
-      : undefined
-  );
+  const cachedShop = useOfflineCache<Product[]>(offlineCacheKey, liveShopProducts);
 
   const displayProducts =
     products.length > 0
@@ -559,8 +558,9 @@ export function ProductCatalogView({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
+function createProductCatalogViewStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    root: {
     flex: 1,
   },
   list: {
@@ -670,4 +670,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     alignItems: "center",
   },
-});
+  });
+}
+

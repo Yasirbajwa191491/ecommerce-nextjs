@@ -34,6 +34,7 @@ import {
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { api } from "@/lib/convex-api";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { ensureOnlineNow, getIsOnline, refreshNetworkSnapshot } from "@/lib/network";
 import { loadTrackByOrderCache, saveTrackByOrderCache } from "@/lib/offline/track-cache";
 import type { OrderStatus } from "@/lib/order-display";
@@ -108,15 +109,14 @@ export function TrackOrderView() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const runOrderSearch = useCallback(
-    async (value: string, emailValue: string) => {
+    async (value: string) => {
       const trimmed = value.trim();
-      const email = emailValue.trim();
-      const errors = validateTrackByOrderForm({ orderNumber: trimmed, email });
+      const errors = validateTrackByOrderForm({ orderNumber: trimmed });
       setOrderErrors(errors);
       if (hasTrackByOrderErrors(errors)) return;
 
       if (!getIsOnline()) {
-        const cached = await loadTrackByOrderCache(`${trimmed}:${email.toLowerCase()}`);
+        const cached = await loadTrackByOrderCache(trimmed);
         if (cached) {
           setOrderResult(cached.result as Awaited<ReturnType<typeof trackByOrderNumber>>);
           setLastUpdatedAt(cached.cachedAt);
@@ -142,15 +142,19 @@ export function TrackOrderView() {
       try {
         const result = await trackByOrderNumber({
           orderNumber: trimmed,
-          customerEmail: email,
         });
         setOrderResult(result);
         setLastUpdatedAt(Date.now());
-        await saveTrackByOrderCache(`${trimmed}:${email.toLowerCase()}`, result);
+        await saveTrackByOrderCache(trimmed, result);
         const message = getTrackingErrorMessage(result);
         if (message) showError(message);
-      } catch {
-        showError("Something went wrong. Please check your connection and try again.");
+      } catch (error) {
+        showError(
+          getFriendlyErrorMessage(
+            error,
+            "Something went wrong. Please check your connection and try again."
+          )
+        );
       } finally {
         setIsSearchingOrder(false);
       }
@@ -185,8 +189,13 @@ export function TrackOrderView() {
         setCustomerResults(result);
         const message = getTrackingErrorMessage(result);
         if (message) showError(message);
-      } catch {
-        showError("Something went wrong. Please check your connection and try again.");
+      } catch (error) {
+        showError(
+          getFriendlyErrorMessage(
+            error,
+            "Something went wrong. Please check your connection and try again."
+          )
+        );
       } finally {
         setIsSearchingCustomer(false);
       }
@@ -197,7 +206,7 @@ export function TrackOrderView() {
   useEffect(() => {
     if (!prefillOrderNumber || prefillHandledRef.current) return;
     prefillHandledRef.current = true;
-    void runOrderSearch(prefillOrderNumber, customerEmail);
+    void runOrderSearch(prefillOrderNumber);
   }, [prefillOrderNumber, runOrderSearch]);
 
   const openAiAssistant = () => {
@@ -278,22 +287,11 @@ export function TrackOrderView() {
                 error={orderErrors.orderNumber}
                 accessibilityLabel="Order number"
               />
-              <Input
-                label="Email used at checkout"
-                value={customerEmail}
-                onChangeText={setCustomerEmail}
-                placeholder="you@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                error={orderErrors.email}
-                accessibilityLabel="Email used at checkout"
-              />
               <Button
                 label={isSearchingOrder ? "Tracking…" : "Track order"}
                 loading={isSearchingOrder}
                 fullWidth
-                onPress={() => void runOrderSearch(orderNumber, customerEmail)}
+                onPress={() => void runOrderSearch(orderNumber)}
                 accessibilityLabel="Track order"
               />
 
@@ -315,7 +313,6 @@ export function TrackOrderView() {
                     createdAt={orderResult.order.createdAt}
                     paidAt={orderResult.order.paidAt}
                     itemCount={orderResult.order.items.length}
-                    customerEmail={orderResult.order.customerEmail}
                     accessToken={orderResult.order.accessToken}
                   />
                 </>
@@ -397,7 +394,8 @@ export function TrackOrderView() {
                   {customerResults.orders.map((order) => (
                     <CustomerOrderCard
                       key={order.orderNumber}
-                      customerEmail={customerEmail}
+                      customerEmail={customerField === "email" ? customerEmail : undefined}
+                      customerPhone={customerField === "phone" ? customerPhone : undefined}
                       order={{
                         orderNumber: order.orderNumber,
                         status: order.status as OrderStatus,

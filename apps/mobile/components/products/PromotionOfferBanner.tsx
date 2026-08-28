@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 
-import { colors, radius, spacing, textStyles } from "@/constants/theme";
+import { radius, spacing } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import {
   formatPromotionEndsAt,
   getPromotionDisplay,
@@ -14,6 +16,8 @@ type PromotionOfferBannerProps = {
 };
 
 export function PromotionOfferBanner({ promotion, now }: PromotionOfferBannerProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createPromotionOfferBannerStyles);
   const { title, subtitle } = getPromotionDisplay(promotion);
   const endsLabel =
     promotion.endAt && now !== undefined
@@ -40,57 +44,59 @@ export function PromotionOfferBanner({ promotion, now }: PromotionOfferBannerPro
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.25)",
-    backgroundColor: "rgba(16, 185, 129, 0.06)",
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    flex: 1,
-    gap: 4,
-  },
-  typeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  typeText: {
-    ...textStyles.caption,
-    color: colors.success,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  title: {
-    ...textStyles.cardTitle,
-    color: "#065F46",
-  },
-  subtitle: {
-    ...textStyles.bodySmall,
-    color: "#047857",
-    lineHeight: 20,
-  },
-  ends: {
-    ...textStyles.caption,
-    color: "#059669",
-    marginTop: 2,
-  },
-});
+function createPromotionOfferBannerStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    banner: {
+      flexDirection: "row" as const,
+      alignItems: "flex-start" as const,
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: "rgba(16, 185, 129, 0.25)",
+      backgroundColor: "rgba(16, 185, 129, 0.06)",
+      borderRadius: radius.lg,
+      padding: spacing.md,
+    },
+    iconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.full,
+      backgroundColor: "rgba(16, 185, 129, 0.12)",
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    content: {
+      flex: 1,
+      gap: 4,
+    },
+    typeBadge: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 4,
+      alignSelf: "flex-start" as const,
+      backgroundColor: "rgba(16, 185, 129, 0.1)",
+      borderRadius: radius.full,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+    },
+    typeText: {
+      ...textStyles.caption,
+      color: colors.success,
+      fontWeight: "700" as const,
+      textTransform: "uppercase" as const,
+    },
+    title: {
+      ...textStyles.cardTitle,
+      color: colors.foreground,
+    },
+    subtitle: {
+      ...textStyles.bodySmall,
+      color: colors.text,
+      lineHeight: 20,
+    },
+    ends: {
+      ...textStyles.caption,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+  });
+}

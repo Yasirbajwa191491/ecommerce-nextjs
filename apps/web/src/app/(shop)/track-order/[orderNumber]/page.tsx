@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
 import { OrderDeliveredReviews } from "@/components/reviews/order-delivered-reviews";
 import Image from "next/image";
@@ -22,8 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatCurrencyAmount } from "@/lib/currencies";
 import type { PublicOrderItem } from "@/types/order";
 import { ColorSwatch } from "@/components/cart/cart-product-display";
@@ -42,29 +40,20 @@ const PRIMARY_BUTTON_CLASS =
 
 function TrackOrderDetailContent() {
   const params = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const orderNumber = decodeURIComponent(params.orderNumber as string);
   const highlightProductId = searchParams.get("review") ?? undefined;
   const customerEmail = searchParams.get("email") ?? undefined;
   const accessToken = searchParams.get("accessToken") ?? undefined;
-  const hasProof = Boolean(customerEmail?.trim() || accessToken?.trim());
 
   const getPublicOrderDetail = useAction(api.orderTracking.getPublicOrderDetail);
 
   const [result, setResult] = useState<
     Awaited<ReturnType<typeof getPublicOrderDetail>> | null
   >(null);
-  const [isLoading, setIsLoading] = useState(hasProof);
-  const [emailDraft, setEmailDraft] = useState(customerEmail ?? "");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!hasProof) {
-      setIsLoading(false);
-      setResult(null);
-      return;
-    }
-
     let cancelled = false;
     setIsLoading(true);
 
@@ -79,58 +68,7 @@ function TrackOrderDetailContent() {
     return () => {
       cancelled = true;
     };
-  }, [getPublicOrderDetail, orderNumber, customerEmail, accessToken, hasProof]);
-
-  if (!hasProof) {
-    return (
-      <div className={cn("mx-auto max-w-lg", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
-        <p className={SHOP_META_LABEL}>Order tracking</p>
-        <h1 className={cn("mt-1", SHOP_PAGE_TITLE)}>Verify your order</h1>
-        <p className={cn("mt-2", SHOP_BODY)}>
-          Enter the email used at checkout to view order {orderNumber}.
-        </p>
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const email = emailDraft.trim();
-            if (!email) return;
-            const next = new URLSearchParams();
-            next.set("email", email);
-            const review = searchParams.get("review");
-            if (review) next.set("review", review);
-            router.replace(
-              `/track-order/${encodeURIComponent(orderNumber)}?${next.toString()}`
-            );
-          }}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="track-order-email">Email</Label>
-            <Input
-              id="track-order-email"
-              type="email"
-              autoComplete="email"
-              required
-              value={emailDraft}
-              onChange={(event) => setEmailDraft(event.target.value)}
-              placeholder="you@example.com"
-            />
-          </div>
-          <Button type="submit" className={PRIMARY_BUTTON_CLASS}>
-            View order
-          </Button>
-        </form>
-        <Button
-          variant="ghost"
-          render={<Link href="/track-order" />}
-          className="mt-4 rounded-full px-0 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Back to tracking
-        </Button>
-      </div>
-    );
-  }
+  }, [getPublicOrderDetail, orderNumber, customerEmail, accessToken]);
 
   if (isLoading) {
     return (
@@ -331,7 +269,7 @@ function TrackOrderDetailContent() {
         </CardContent>
       </Card>
 
-      {order.status === "delivered" ? (
+      {order.status === "delivered" && order.verified ? (
         <OrderDeliveredReviews
           orderNumber={order.orderNumber}
           customerEmail={order.customerEmail}

@@ -4,15 +4,7 @@ import { useQuery } from "convex/react";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AddToCartSheet } from "@/components/cart/AddToCartSheet";
@@ -20,7 +12,9 @@ import { RatingStars } from "@/components/products/RatingStars";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
-import { colors, layout, radius, shadows, spacing, textStyles, typography } from "@/constants/theme";
+import { layout, radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { useWishlist } from "@/hooks/useWishlist";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { api } from "@/lib/convex-api";
@@ -41,6 +35,8 @@ export function ProductQuickViewSheet({
   visible,
   onClose,
 }: ProductQuickViewSheetProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createProductQuickViewSheetStyles);
   const insets = useSafeAreaInsets();
   const { showError } = useToast();
   const { isWishlisted, toggle } = useWishlist();
@@ -183,8 +179,9 @@ export function ProductQuickViewSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
+function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    overlay: {
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "flex-end",
@@ -214,6 +211,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...textStyles.screenTitle,
+    color: colors.foreground,
     fontSize: 20,
   },
   loadingWrap: {
@@ -251,6 +249,7 @@ const styles = StyleSheet.create({
   },
   name: {
     ...textStyles.cardTitle,
+    color: colors.foreground,
     fontSize: 18,
   },
   noReviews: {
@@ -276,4 +275,6 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
   },
-});
+  });
+}
+

@@ -25,21 +25,19 @@ import {
 
   animation,
 
-  colors,
-
   layout,
 
   radius,
 
-  shadows,
-
   spacing,
-
-  textStyles,
 
   typography,
 
 } from "@/constants/theme";
+
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+
+import { useTheme } from "@/providers/theme-context";
 
 import { useWishlist } from "@/hooks/useWishlist";
 
@@ -92,6 +90,10 @@ function ProductCardComponent({
   onQuickView,
 
 }: ProductCardProps) {
+
+  const { colors, textStyles } = useTheme();
+
+  const styles = useThemedStyles(createProductCardStyles);
 
   const { showError, showSuccess } = useToast();
 
@@ -859,7 +861,8 @@ export const ProductCard = memo(ProductCardComponent);
 
 
 
-const styles = StyleSheet.create({
+function createProductCardStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
+  return StyleSheet.create({
 
   card: {
 
@@ -1321,5 +1324,6 @@ const styles = StyleSheet.create({
 
   },
 
-});
+  });
+}
 
