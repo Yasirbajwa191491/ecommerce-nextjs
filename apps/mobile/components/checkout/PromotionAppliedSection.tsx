@@ -5,7 +5,9 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Badge } from "@/components/ui/Badge";
 import { formatColorLabel } from "@/lib/color-swatch";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 type PromotionGiftItem = {
   productName: string;
@@ -32,6 +34,9 @@ export function PromotionAppliedSection({
   promotionSavingsTotal = 0,
   currency = "USD",
 }: PromotionAppliedSectionProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createPromotionAppliedSectionStyles);
+
   if (gifts.length === 0 && summaries.length === 0) return null;
 
   return (
@@ -84,86 +89,88 @@ export function PromotionAppliedSection({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#ECFDF5",
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#A7F3D0",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  title: {
-    ...textStyles.sectionTitle,
-    fontSize: typography.base,
-    color: colors.success,
-  },
-  summaryBox: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#A7F3D0",
-    gap: 2,
-  },
-  summaryName: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  summaryMeta: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-  giftRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  thumbWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.sm,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.background,
-  },
-  giftText: {
-    flex: 1,
-    gap: 2,
-  },
-  giftName: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  giftMeta: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-  },
-  savingsTotal: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.success,
-  },
-});
+function createPromotionAppliedSectionStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.successMuted,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      gap: spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(16, 185, 129, 0.35)",
+    },
+    titleRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+    },
+    title: {
+      ...textStyles.sectionTitle,
+      fontSize: typography.base,
+      color: colors.success,
+    },
+    summaryBox: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(16, 185, 129, 0.35)",
+      gap: 2,
+    },
+    summaryName: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    summaryMeta: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+    },
+    giftRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    thumbWrap: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.sm,
+      overflow: "hidden" as const,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    thumb: {
+      width: "100%" as const,
+      height: "100%" as const,
+    },
+    thumbPlaceholder: {
+      flex: 1,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      backgroundColor: colors.background,
+    },
+    giftText: {
+      flex: 1,
+      gap: 2,
+    },
+    giftName: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    giftMeta: {
+      fontSize: typography.xs,
+      color: colors.textSecondary,
+    },
+    savingsTotal: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.success,
+    },
+  });
+}

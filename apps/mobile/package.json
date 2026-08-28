@@ -20,6 +20,7 @@
     "ajv": "^8.20.0",
     "convex": "^1.40.0",
     "expo": "^54.0.0",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",

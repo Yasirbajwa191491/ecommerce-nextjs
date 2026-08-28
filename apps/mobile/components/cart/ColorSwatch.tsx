@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import {
   formatColorLabel,
   resolveSwatchBackground,
@@ -21,6 +22,7 @@ export function ColorSwatch({
   label,
   style,
 }: ColorSwatchProps) {
+  const styles = useThemedStyles(createColorSwatchStyles);
   const swatchBackground = resolveSwatchBackground(color);
   const displayLabel = label ?? formatColorLabel(color);
 
@@ -51,39 +53,41 @@ export function ColorSwatch({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    alignSelf: "flex-start",
-    backgroundColor: colors.borderLight,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  dot: {
-    width: 16,
-    height: 16,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.8)",
-  },
-  namedDot: {
-    backgroundColor: colors.mutedForeground,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dotInitial: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: colors.surface,
-  },
-  label: {
-    fontSize: typography.xs,
-    fontWeight: "500",
-    color: colors.foreground,
-  },
-});
+function createColorSwatchStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+      alignSelf: "flex-start" as const,
+      backgroundColor: colors.borderLight,
+      borderRadius: radius.full,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: 4,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    dot: {
+      width: 16,
+      height: 16,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.8)",
+    },
+    namedDot: {
+      backgroundColor: colors.mutedForeground,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    dotInitial: {
+      fontSize: 9,
+      fontWeight: "700" as const,
+      color: colors.surface,
+    },
+    label: {
+      fontSize: typography.xs,
+      fontWeight: "500" as const,
+      color: colors.foreground,
+    },
+  });
+}

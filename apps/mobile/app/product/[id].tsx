@@ -6,21 +6,7 @@ import { useQuery } from "convex/react";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-
-  Pressable,
-
-  ScrollView,
-
-  Share,
-
-  StyleSheet,
-
-  Text,
-
-  View,
-
-} from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -46,13 +32,11 @@ import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { ProductDetailSkeleton } from "@/components/ui/Skeleton";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import {
-  colors,
   radius,
-  shadows,
   spacing,
-  textStyles,
   typography,
 } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useSimilarProducts } from "@/hooks/useSimilarProducts";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useStableNow } from "@/hooks/useStableNow";
@@ -69,6 +53,7 @@ import { getCachedProduct } from "@/lib/offline/product-store";
 import { offlineKeys } from "@/lib/offline/keys";
 import { useCart } from "@/providers/cart-context";
 import { useToast } from "@/providers/toast-context";
+import { useTheme } from "@/providers/theme-context";
 import { useNetworkStatus } from "@/providers/NetworkProvider";
 import { orderImagesForDisplay } from "@ecommerce/shared";
 import type { Id } from "@convex/_generated/dataModel";
@@ -76,6 +61,9 @@ import type { Id } from "@convex/_generated/dataModel";
 
 
 export default function ProductDetailScreen() {
+
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createProductDetailStyles);
 
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -714,7 +702,8 @@ export default function ProductDetailScreen() {
 
 
 
-const styles = StyleSheet.create({
+function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
+  return StyleSheet.create({
 
   container: {
     flex: 1,
@@ -763,6 +752,7 @@ const styles = StyleSheet.create({
     ...textStyles.display,
     fontSize: 26,
     lineHeight: 32,
+    color: colors.foreground,
   },
   shortDescription: {
     ...textStyles.bodySmall,
@@ -867,6 +857,8 @@ const styles = StyleSheet.create({
     ...textStyles.sectionTitle,
 
     fontSize: 15,
+
+    color: colors.foreground,
 
   },
 
@@ -1062,6 +1054,7 @@ const styles = StyleSheet.create({
   footerCta: {
     flex: 1,
   },
-});
+  });
+}
 
 

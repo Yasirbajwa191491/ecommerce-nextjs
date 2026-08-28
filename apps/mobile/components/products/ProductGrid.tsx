@@ -12,7 +12,8 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { ProductCard } from "@/components/products/ProductCard";
-import { colors, spacing } from "@/constants/theme";
+import { spacing } from "@/constants/theme";
+import { useTheme } from "@/providers/theme-context";
 import type { Product } from "@/types/product";
 
 type ProductGridProps = Omit<
@@ -44,6 +45,7 @@ export function ProductGrid({
   onRefresh,
   ...listProps
 }: ProductGridProps) {
+  const { colors } = useTheme();
   const renderItem: ListRenderItem<Product> = useCallback(
     ({ item }) => (
       <View style={styles.itemWrap}>

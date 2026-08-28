@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, textStyles } from "@/constants/theme";
+import { radius, spacing } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { getWarrantyLabel } from "@/lib/product-display";
 import type { Product } from "@/types/product";
 
@@ -10,6 +12,8 @@ type ProductWarrantySectionProps = {
 };
 
 export function ProductWarrantySection({ product }: ProductWarrantySectionProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const label = getWarrantyLabel(product);
   if (!label) return null;
 
@@ -29,37 +33,40 @@ export function ProductWarrantySection({ product }: ProductWarrantySectionProps)
   );
 }
 
-const styles = StyleSheet.create({
-  section: {
-    paddingTop: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  content: {
-    flex: 1,
-    gap: 4,
-  },
-  title: {
-    ...textStyles.cardTitle,
-    fontSize: 15,
-  },
-  label: {
-    ...textStyles.bodySmall,
-    color: colors.muted,
-  },
-  details: {
-    ...textStyles.caption,
-    color: colors.muted,
-    marginTop: 2,
-  },
-});
+function createStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    section: {
+      paddingTop: spacing.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderLight,
+    },
+    card: {
+      flexDirection: "row" as const,
+      alignItems: "flex-start" as const,
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+    },
+    content: {
+      flex: 1,
+      gap: 4,
+    },
+    title: {
+      ...textStyles.cardTitle,
+      fontSize: 15,
+      color: colors.foreground,
+    },
+    label: {
+      ...textStyles.bodySmall,
+      color: colors.textSecondary,
+    },
+    details: {
+      ...textStyles.caption,
+      color: colors.muted,
+      marginTop: 2,
+    },
+  });
+}

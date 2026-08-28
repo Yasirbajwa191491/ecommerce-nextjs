@@ -1,16 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { useEffect, useState } from "react";
-import {
-  Keyboard,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Keyboard, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { api } from "@/lib/convex-api";
 import { ensureOnlineNow } from "@/lib/network";
@@ -25,6 +22,8 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type NewsletterStatus = "idle" | "loading" | "success" | "already_subscribed" | "error";
 
 export function FooterNewsletter() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createFooterNewsletterStyles);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<NewsletterStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -147,46 +146,49 @@ export function FooterNewsletter() {
   );
 }
 
-const styles = StyleSheet.create({
-  form: {
-    gap: spacing.sm,
-  },
-  successBox: {
-    backgroundColor: colors.successMuted,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(16, 185, 129, 0.25)",
-  },
-  successRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  successTitle: {
-    fontSize: typography.base,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  successBody: {
-    ...textStyles.bodySmall,
-    color: colors.text,
-  },
-  infoBox: {
-    backgroundColor: colors.primaryMuted,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.primarySubtle,
-  },
-  infoTitle: {
-    fontSize: typography.base,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  infoBody: {
-    ...textStyles.bodySmall,
-  },
-});
+function createFooterNewsletterStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    form: {
+      gap: spacing.sm,
+    },
+    successBox: {
+      backgroundColor: colors.successMuted,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      gap: spacing.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(16, 185, 129, 0.25)",
+    },
+    successRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+    },
+    successTitle: {
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    successBody: {
+      ...textStyles.bodySmall,
+      color: colors.text,
+    },
+    infoBox: {
+      backgroundColor: colors.primaryMuted,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      gap: spacing.xs,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.primarySubtle,
+    },
+    infoTitle: {
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    infoBody: {
+      ...textStyles.bodySmall,
+      color: colors.textSecondary,
+    },
+  });
+}

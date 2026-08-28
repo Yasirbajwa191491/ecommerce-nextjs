@@ -1,19 +1,13 @@
 import { useMutation } from "convex/react";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import {
   CONTACT_INQUIRY_SUBJECTS,
   contactSubjectLabel,
@@ -30,6 +24,7 @@ import {
   validateContactForm,
   type ContactFormValues,
 } from "@/lib/validation/contact-form";
+import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
 
 const emptyForm = (): ContactFormValues => ({
@@ -40,6 +35,8 @@ const emptyForm = (): ContactFormValues => ({
 });
 
 export function ContactForm() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createContactFormStyles);
   const { showError, showSuccess } = useToast();
   const submit = useMutation(api.contactMessages.submit);
 
@@ -279,7 +276,8 @@ export function ContactForm() {
   );
 }
 
-const styles = StyleSheet.create({
+function createContactFormStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
   formCard: {
     gap: spacing.lg,
     borderRadius: radius.lg,
@@ -287,17 +285,19 @@ const styles = StyleSheet.create({
   formTitle: {
     ...textStyles.sectionTitle,
     fontSize: typography.xl,
+    color: colors.foreground,
   },
   formHint: {
     ...textStyles.bodySmall,
     marginTop: -spacing.sm,
+    color: colors.textSecondary,
   },
   field: {
     gap: 6,
   },
   label: {
     fontSize: typography.sm,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: colors.foreground,
   },
   selectTrigger: {
@@ -306,9 +306,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
     backgroundColor: colors.surface,
   },
   selectError: {
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   successCard: {
-    alignItems: "center",
+    alignItems: "center" as const,
     gap: spacing.md,
     borderRadius: radius.lg,
     paddingVertical: spacing["2xl"],
@@ -342,17 +342,18 @@ const styles = StyleSheet.create({
   successTitle: {
     ...textStyles.sectionTitle,
     fontSize: typography.xl,
+    color: colors.foreground,
   },
   successBody: {
     ...textStyles.body,
-    textAlign: "center",
+    textAlign: "center" as const,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   modalBackdrop: {
     flex: 1,
     backgroundColor: colors.overlay,
-    justifyContent: "flex-end",
+    justifyContent: "flex-end" as const,
   },
   modalSheet: {
     backgroundColor: colors.surface,
@@ -360,10 +361,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing["2xl"],
-    maxHeight: "70%",
+    maxHeight: "70%" as const,
   },
   modalHandle: {
-    alignSelf: "center",
+    alignSelf: "center" as const,
     width: 40,
     height: 4,
     borderRadius: radius.full,
@@ -373,11 +374,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     ...textStyles.sectionTitle,
     marginBottom: spacing.md,
+    color: colors.foreground,
   },
   modalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
     paddingVertical: spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
@@ -397,6 +399,7 @@ const styles = StyleSheet.create({
   },
   modalOptionTextSelected: {
     color: colors.primary,
-    fontWeight: "600",
+    fontWeight: "600" as const,
   },
 });
+}

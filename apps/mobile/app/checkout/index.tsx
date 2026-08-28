@@ -4,14 +4,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DeliveryMethodSelector } from "@/components/checkout/DeliveryMethodSelector";
@@ -28,7 +21,8 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useCartPricing } from "@/hooks/useCartPricing";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
@@ -76,6 +70,7 @@ const emptyForm = (): CheckoutFormValues => ({
 });
 
 export default function CheckoutScreen() {
+  const styles = useThemedStyles(createIndexStyles);
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
@@ -607,8 +602,9 @@ export default function CheckoutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createIndexStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   loadingWrap: {
@@ -629,6 +625,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...textStyles.sectionTitle,
+    color: colors.foreground,
     fontSize: typography.base,
   },
   textArea: {
@@ -665,4 +662,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.foreground,
   },
-});
+  });
+}
+

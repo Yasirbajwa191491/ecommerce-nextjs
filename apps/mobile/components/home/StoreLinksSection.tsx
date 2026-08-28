@@ -2,8 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 const LINKS = [
   {
@@ -21,6 +23,8 @@ const LINKS = [
 ];
 
 export function StoreLinksSection() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStoreLinksSectionStyles);
   const { horizontalPadding } = useLayoutMetrics();
 
   return (
@@ -50,52 +54,55 @@ export function StoreLinksSection() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    paddingTop: spacing.xl,
-    gap: spacing.md,
-  },
-  heading: {
-    ...textStyles.sectionTitle,
-    fontSize: typography.xl,
-  },
-  list: {
-    gap: spacing.sm,
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    minHeight: 76,
-  },
-  cardPressed: {
-    backgroundColor: colors.primaryMuted,
-  },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    fontSize: typography.base,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  description: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-});
+function createStoreLinksSectionStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrap: {
+      paddingTop: spacing.xl,
+      gap: spacing.md,
+    },
+    heading: {
+      ...textStyles.sectionTitle,
+      fontSize: typography.xl,
+      color: colors.foreground,
+    },
+    list: {
+      gap: spacing.sm,
+    },
+    card: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      minHeight: 76,
+    },
+    cardPressed: {
+      backgroundColor: colors.primaryMuted,
+    },
+    iconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryMuted,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    textWrap: {
+      flex: 1,
+      gap: 2,
+    },
+    title: {
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    description: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+  });
+}

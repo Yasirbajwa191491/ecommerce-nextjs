@@ -1,8 +1,10 @@
 import { formatCurrencyAmount } from "@ecommerce/shared";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 export type DeliveryMethodOption = {
   type: string;
@@ -26,13 +28,16 @@ export function DeliveryMethodSelector({
   currency = "USD",
   disabled = false,
 }: DeliveryMethodSelectorProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createDeliveryMethodSelectorStyles);
+
   if (methods.length === 0) return null;
 
   return (
     <View style={styles.section}>
       <View style={styles.header}>
         <Ionicons name="car-outline" size={18} color={colors.primary} />
-        <Text style={textStyles.sectionTitle}>Delivery method</Text>
+        <Text style={styles.sectionTitle}>Delivery method</Text>
       </View>
       <View style={styles.options}>
         {methods.map((method) => {
@@ -77,79 +82,85 @@ export function DeliveryMethodSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  section: {
-    gap: spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  options: {
-    gap: spacing.sm,
-  },
-  option: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  optionSelected: {
-    borderColor: colors.cta,
-    backgroundColor: colors.ctaMuted,
-  },
-  optionPressed: {
-    opacity: 0.92,
-  },
-  optionDisabled: {
-    opacity: 0.6,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-    marginTop: 2,
-  },
-  radioSelected: {
-    backgroundColor: colors.cta,
-    borderColor: colors.cta,
-  },
-  optionContent: {
-    flex: 1,
-    gap: 4,
-  },
-  optionTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  optionTitle: {
-    flex: 1,
-    fontSize: typography.base,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  optionTitleSelected: {
-    color: colors.cta,
-  },
-  charge: {
-    fontSize: typography.base,
-    fontWeight: "700",
-    color: colors.foreground,
-  },
-  estimate: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-});
+function createDeliveryMethodSelectorStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    section: {
+      gap: spacing.md,
+    },
+    header: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+    },
+    sectionTitle: {
+      ...textStyles.sectionTitle,
+      color: colors.foreground,
+    },
+    options: {
+      gap: spacing.sm,
+    },
+    option: {
+      flexDirection: "row" as const,
+      alignItems: "flex-start" as const,
+      gap: spacing.md,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    optionSelected: {
+      borderColor: colors.cta,
+      backgroundColor: colors.ctaMuted,
+    },
+    optionPressed: {
+      opacity: 0.92,
+    },
+    optionDisabled: {
+      opacity: 0.6,
+    },
+    radio: {
+      width: 22,
+      height: 22,
+      borderRadius: radius.full,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      backgroundColor: colors.surface,
+      marginTop: 2,
+    },
+    radioSelected: {
+      backgroundColor: colors.cta,
+      borderColor: colors.cta,
+    },
+    optionContent: {
+      flex: 1,
+      gap: 4,
+    },
+    optionTopRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      gap: spacing.md,
+    },
+    optionTitle: {
+      flex: 1,
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    optionTitleSelected: {
+      color: colors.cta,
+    },
+    charge: {
+      fontSize: typography.base,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    estimate: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+    },
+  });
+}

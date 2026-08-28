@@ -10,7 +10,8 @@ import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Header } from "@/components/layout/Header";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
@@ -21,6 +22,7 @@ import { useNetworkStatus } from "@/providers/NetworkProvider";
 import type { Id } from "@convex/_generated/dataModel";
 
 export default function CategoryScreen() {
+  const styles = useThemedStyles(createSlugStyles);
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { isOffline } = useNetworkStatus();
   const { horizontalPadding } = useLayoutMetrics();
@@ -148,8 +150,9 @@ export default function CategoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function createSlugStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
     flex: 1,
   },
   headerExtra: {
@@ -185,4 +188,6 @@ const styles = StyleSheet.create({
   loadingCell: {
     flex: 1,
   },
-});
+  });
+}
+

@@ -5,7 +5,8 @@ import {
   PaymentMethodBadge,
   PaymentStatusBadge,
 } from "@/components/orders/OrderStatusBadges";
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { formatOrderDateTime, type PaymentMethod, type PaymentStatus } from "@/lib/order-display";
 
 type OrderSummaryCardsProps = {
@@ -25,6 +26,8 @@ export function OrderSummaryCards({
   createdAt,
   paidAt,
 }: OrderSummaryCardsProps) {
+  const styles = useThemedStyles(createOrderSummaryCardsStyles);
+
   return (
     <View style={styles.grid}>
       <View style={styles.card}>
@@ -55,40 +58,42 @@ export function OrderSummaryCards({
   );
 }
 
-const styles = StyleSheet.create({
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  card: {
-    flexGrow: 1,
-    flexBasis: "46%",
-    minWidth: 140,
-    backgroundColor: colors.background,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  label: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  totalValue: {
-    fontSize: typography.lg,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  value: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-});
+function createOrderSummaryCardsStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    grid: {
+      flexDirection: "row" as const,
+      flexWrap: "wrap" as const,
+      gap: spacing.md,
+    },
+    card: {
+      flexGrow: 1,
+      flexBasis: "46%" as const,
+      minWidth: 140,
+      backgroundColor: colors.background,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    label: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+    },
+    badgeRow: {
+      flexDirection: "row" as const,
+      flexWrap: "wrap" as const,
+      gap: spacing.sm,
+    },
+    totalValue: {
+      fontSize: typography.lg,
+      fontWeight: "700" as const,
+      color: colors.primary,
+    },
+    value: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+  });
+}

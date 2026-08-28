@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 
-import { colors, radius, sizes, typography } from "@/constants/theme";
+import { radius, sizes, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 type QuantityStepperProps = {
   value: number;
@@ -20,6 +22,8 @@ export function QuantityStepper({
   max,
   accessibilityLabel = "Quantity",
 }: QuantityStepperProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const atMin = value <= min;
   const atMax = max !== undefined && value >= max;
 
@@ -54,29 +58,31 @@ export function QuantityStepper({
   );
 }
 
-const styles = StyleSheet.create({
-  control: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  button: {
-    width: sizes.qtyControl,
-    height: sizes.qtyControl,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  value: {
-    minWidth: 28,
-    textAlign: "center",
-    fontSize: typography.base,
-    fontWeight: "700",
-    color: colors.foreground,
-  },
-});
+function createStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    control: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    button: {
+      width: sizes.qtyControl,
+      height: sizes.qtyControl,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+    value: {
+      minWidth: 28,
+      textAlign: "center" as const,
+      fontSize: typography.base,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+  });
+}

@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import {
   clearAllCatalogFilters,
   togglePromotionSlug,
@@ -27,6 +29,9 @@ function FilterChip({
   label: string;
   onRemove: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createCatalogActiveFiltersStyles);
+
   return (
     <View style={styles.chip}>
       <Text style={styles.chipText} numberOfLines={1}>
@@ -54,6 +59,7 @@ export function CatalogActiveFilters({
   onChange,
   preserveCategoryId = false,
 }: CatalogActiveFiltersProps) {
+  const styles = useThemedStyles(createCatalogActiveFiltersStyles);
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
 
   if (filters.categoryId && categoryName) {
@@ -167,49 +173,51 @@ export function CatalogActiveFilters({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: spacing.sm,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingRight: spacing.md,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    maxWidth: 160,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
-    backgroundColor: colors.chipBackground,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  chipText: {
-    flexShrink: 1,
-    fontSize: typography.sm,
-    fontWeight: "500",
-    color: colors.foreground,
-  },
-  chipRemove: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  clearAll: {
-    minHeight: 32,
-    paddingHorizontal: spacing.sm,
-    justifyContent: "center",
-  },
-  clearAllText: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-});
+function createCatalogActiveFiltersStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrapper: {
+      marginBottom: spacing.sm,
+    },
+    row: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+      paddingRight: spacing.md,
+    },
+    chip: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.xs,
+      maxWidth: 160,
+      paddingLeft: spacing.md,
+      paddingRight: spacing.xs,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.full,
+      backgroundColor: colors.chipBackground,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    chipText: {
+      flexShrink: 1,
+      fontSize: typography.sm,
+      fontWeight: "500" as const,
+      color: colors.foreground,
+    },
+    chipRemove: {
+      width: 24,
+      height: 24,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    clearAll: {
+      minHeight: 32,
+      paddingHorizontal: spacing.sm,
+      justifyContent: "center" as const,
+    },
+    clearAllText: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.textSecondary,
+    },
+  });
+}

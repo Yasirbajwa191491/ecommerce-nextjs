@@ -15,10 +15,14 @@ import {
   HOW_IT_WORKS_STEPS,
   WHY_SHOP_FEATURES,
 } from "@/lib/about-content";
-import { colors, radius, shadows, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 export function AboutPageContent() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createAboutStyles);
   const insets = useSafeAreaInsets();
   const { horizontalPadding, contentWidth } = useLayoutMetrics();
   const featureColumnWidth = (contentWidth - horizontalPadding * 2 - spacing.sm) / 2;
@@ -191,7 +195,8 @@ export function AboutPageContent() {
   );
 }
 
-const styles = StyleSheet.create({
+function createAboutStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
+  return StyleSheet.create({
   heroSection: {
     paddingTop: spacing.lg,
     paddingBottom: spacing["2xl"],
@@ -394,4 +399,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.primaryForeground,
   },
-});
+  });
+}

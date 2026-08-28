@@ -37,9 +37,14 @@ export type TrackedOrderSummary = {
 type CustomerOrderCardProps = {
   order: TrackedOrderSummary;
   customerEmail?: string;
+  customerPhone?: string;
 };
 
-export function CustomerOrderCard({ order, customerEmail }: CustomerOrderCardProps) {
+export function CustomerOrderCard({
+  order,
+  customerEmail,
+  customerPhone,
+}: CustomerOrderCardProps) {
   const { styles } = useTrackCardStyles();
   const openDetails = () => {
     router.push({
@@ -49,6 +54,7 @@ export function CustomerOrderCard({ order, customerEmail }: CustomerOrderCardPro
         orderNumber: order.orderNumber,
         source: "track",
         email: customerEmail ?? "",
+        phone: customerPhone ?? "",
       },
     });
   };

@@ -8,8 +8,10 @@ import { Image } from "expo-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
-import { colors, spacing } from "@/constants/theme";
+import { spacing } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import type { Product } from "@/types/product";
 
 type ProductImageGalleryProps = {
@@ -25,6 +27,8 @@ export function ProductImageGallery({
   activeIndex: controlledIndex,
   onActiveIndexChange,
 }: ProductImageGalleryProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createProductImageGalleryStyles);
   const { contentWidth } = useLayoutMetrics();
   const [measuredWidth, setMeasuredWidth] = useState(0);
   const galleryWidth = measuredWidth > 0 ? measuredWidth : contentWidth;
@@ -176,35 +180,37 @@ export function ProductImageGallery({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    width: "100%",
-    overflow: "hidden",
-  },
-  container: {
-    backgroundColor: colors.surface,
-    overflow: "hidden",
-  },
-  placeholder: {
-    flex: 1,
-    width: "100%",
-    backgroundColor: colors.background,
-  },
-  dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: spacing.md,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.border,
-  },
-  dotActive: {
-    backgroundColor: colors.primary,
-    width: 20,
-  },
-});
+function createProductImageGalleryStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrapper: {
+      width: "100%" as const,
+      overflow: "hidden" as const,
+    },
+    container: {
+      backgroundColor: colors.surface,
+      overflow: "hidden" as const,
+    },
+    placeholder: {
+      flex: 1,
+      width: "100%" as const,
+      backgroundColor: colors.background,
+    },
+    dots: {
+      flexDirection: "row" as const,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+      gap: 6,
+      paddingVertical: spacing.md,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.border,
+    },
+    dotActive: {
+      backgroundColor: colors.primary,
+      width: 20,
+    },
+  });
+}

@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import type { PaymentMethod } from "@/lib/validation/checkout-form";
 
 type PaymentMethodSelectorProps = {
@@ -37,9 +39,12 @@ export function PaymentMethodSelector({
   error,
   disabled = false,
 }: PaymentMethodSelectorProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createPaymentMethodSelectorStyles);
+
   return (
     <View style={styles.section}>
-      <Text style={textStyles.sectionTitle}>3. Payment method</Text>
+      <Text style={styles.sectionTitle}>3. Payment method</Text>
       <View style={styles.options}>
         {OPTIONS.map((option) => {
           const selected = value === option.id;
@@ -84,77 +89,83 @@ export function PaymentMethodSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  section: {
-    gap: spacing.md,
-  },
-  options: {
-    gap: spacing.sm,
-  },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  optionSelected: {
-    borderColor: colors.cta,
-    backgroundColor: colors.ctaMuted,
-  },
-  optionPressed: {
-    opacity: 0.92,
-  },
-  optionDisabled: {
-    opacity: 0.6,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.borderLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconWrapSelected: {
-    backgroundColor: colors.ctaMuted,
-  },
-  optionContent: {
-    flex: 1,
-    gap: 2,
-  },
-  optionTitle: {
-    fontSize: typography.base,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  optionTitleSelected: {
-    color: colors.cta,
-  },
-  optionDescription: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-  },
-  radioSelected: {
-    backgroundColor: colors.cta,
-    borderColor: colors.cta,
-  },
-  error: {
-    fontSize: typography.sm,
-    color: colors.destructive,
-  },
-});
+function createPaymentMethodSelectorStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    section: {
+      gap: spacing.md,
+    },
+    sectionTitle: {
+      ...textStyles.sectionTitle,
+      color: colors.foreground,
+    },
+    options: {
+      gap: spacing.sm,
+    },
+    option: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.md,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    optionSelected: {
+      borderColor: colors.cta,
+      backgroundColor: colors.ctaMuted,
+    },
+    optionPressed: {
+      opacity: 0.92,
+    },
+    optionDisabled: {
+      opacity: 0.6,
+    },
+    iconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      backgroundColor: colors.borderLight,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    iconWrapSelected: {
+      backgroundColor: colors.ctaMuted,
+    },
+    optionContent: {
+      flex: 1,
+      gap: 2,
+    },
+    optionTitle: {
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    optionTitleSelected: {
+      color: colors.cta,
+    },
+    optionDescription: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    radio: {
+      width: 22,
+      height: 22,
+      borderRadius: radius.full,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      backgroundColor: colors.surface,
+    },
+    radioSelected: {
+      backgroundColor: colors.cta,
+      borderColor: colors.cta,
+    },
+    error: {
+      fontSize: typography.sm,
+      color: colors.destructive,
+    },
+  });
+}

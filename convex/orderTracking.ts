@@ -9,6 +9,7 @@ import {
 import {
   normalizeEmail,
   normalizePhone,
+  phonesMatch,
   toPublicOrderDetail,
   toPublicOrderSummary,
   type PublicOrderDetail,
@@ -51,18 +52,21 @@ function rateLimited(): TrackingNotFound {
 export const trackByOrderNumber = action({
   args: {
     orderNumber: v.string(),
-    customerEmail: v.string(),
+    customerEmail: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<TrackByOrderNumberResult> => {
     const orderNumber = args.orderNumber.trim();
-    const customerEmail = args.customerEmail.trim();
+    const customerEmail = args.customerEmail?.trim();
 
-    if (!orderNumber || !customerEmail) {
+    if (!orderNumber) {
       return notFound();
     }
 
     const rateLimit = await ctx.runMutation(internal.orders.applyTrackingRateLimit, {
-      bucketKey: buildTrackingBucketKey("order", `${orderNumber}:${normalizeEmail(customerEmail)}`),
+      bucketKey: buildTrackingBucketKey(
+        "order",
+        `${orderNumber}:${normalizeEmail(customerEmail ?? "anon")}`
+      ),
     });
     if (!rateLimit.allowed) {
       return rateLimited();
@@ -73,13 +77,19 @@ export const trackByOrderNumber = action({
     });
 
     if (!result) return notFound();
-    if (!emailsMatch(result.order.customerEmail, customerEmail)) {
+
+    const verified = Boolean(
+      customerEmail && emailsMatch(result.order.customerEmail, customerEmail)
+    );
+    if (customerEmail && !verified) {
       return notFound();
     }
 
-    const accessToken = await ctx.runMutation(internal.orders.ensureOrderAccessToken, {
-      orderId: result.order._id,
-    });
+    const accessToken = verified
+      ? await ctx.runMutation(internal.orders.ensureOrderAccessToken, {
+          orderId: result.order._id,
+        })
+      : undefined;
 
     return {
       found: true,
@@ -88,7 +98,7 @@ export const trackByOrderNumber = action({
         result.items,
         result.statusHistory,
         result.promotions,
-        { verified: true }
+        { verified }
       ),
     };
   },
@@ -133,11 +143,13 @@ export const getPublicOrderDetail = action({
   args: {
     orderNumber: v.string(),
     customerEmail: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
     accessToken: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<PublicOrderDetailResult> => {
     const orderNumber = args.orderNumber.trim();
     const customerEmail = args.customerEmail?.trim();
+    const customerPhone = args.customerPhone?.trim();
     const accessToken = args.accessToken?.trim();
 
     if (!orderNumber) {
@@ -147,7 +159,7 @@ export const getPublicOrderDetail = action({
     const rateLimit = await ctx.runMutation(internal.orders.applyTrackingRateLimit, {
       bucketKey: buildTrackingBucketKey(
         "detail",
-        `${orderNumber}:${normalizeEmail(customerEmail ?? accessToken ?? "anon")}`
+        `${orderNumber}:${normalizeEmail(customerEmail ?? accessToken ?? customerPhone ?? "anon")}`
       ),
     });
     if (!rateLimit.allowed) {
@@ -160,17 +172,17 @@ export const getPublicOrderDetail = action({
 
     if (!result) return notFound();
 
-    const verified =
+    const verified = Boolean(
       (customerEmail && emailsMatch(result.order.customerEmail, customerEmail)) ||
-      (accessToken && result.order.accessToken === accessToken);
+        (customerPhone && phonesMatch(result.order.customerPhone, customerPhone)) ||
+        (accessToken && result.order.accessToken === accessToken)
+    );
 
-    if (!verified) {
-      return notFound();
-    }
-
-    const ensuredToken = await ctx.runMutation(internal.orders.ensureOrderAccessToken, {
-      orderId: result.order._id,
-    });
+    const ensuredToken = verified
+      ? await ctx.runMutation(internal.orders.ensureOrderAccessToken, {
+          orderId: result.order._id,
+        })
+      : undefined;
 
     return {
       found: true,
@@ -179,7 +191,7 @@ export const getPublicOrderDetail = action({
         result.items,
         result.statusHistory,
         result.promotions,
-        { verified: true }
+        { verified }
       ),
     };
   },

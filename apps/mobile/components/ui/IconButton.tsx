@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { Pressable, View, type ViewStyle, StyleSheet } from "react-native";
 
-import { colors, radius, shadows, touchTarget } from "@/constants/theme";
+import { radius, touchTarget } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 type IconButtonProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -24,6 +26,8 @@ export function IconButton({
   style,
   badge,
 }: IconButtonProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const iconColor =
     color ?? (variant === "primary" ? colors.ctaForeground : colors.foreground);
 
@@ -43,31 +47,31 @@ export function IconButton({
     >
       <Ionicons name={icon} size={size} color={iconColor} />
       {badge !== undefined && badge > 0 ? (
-        <View style={styles.badge} accessibilityElementsHidden>
-          {/* badge rendered by parent if needed */}
-        </View>
+        <View style={styles.badge} accessibilityElementsHidden />
       ) : null}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    width: touchTarget,
-    height: touchTarget,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.full,
-  },
-  surface: {
-    backgroundColor: colors.surface,
-    ...shadows.sm,
-  },
-  primary: {
-    backgroundColor: colors.cta,
-  },
-  pressed: {
-    opacity: 0.75,
-  },
-  badge: {},
-});
+function createStyles({ colors, shadows }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    base: {
+      width: touchTarget,
+      height: touchTarget,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      borderRadius: radius.full,
+    },
+    surface: {
+      backgroundColor: colors.surface,
+      ...shadows.sm,
+    },
+    primary: {
+      backgroundColor: colors.cta,
+    },
+    pressed: {
+      opacity: 0.75,
+    },
+    badge: {},
+  });
+}

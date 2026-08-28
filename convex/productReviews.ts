@@ -1,7 +1,9 @@
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
+import { requireAdmin } from "./lib/requireAdmin";
 import { clearTagIndexForReview } from "./lib/ai/tagIndex";
 import { slugifyTag } from "./lib/ai/tagUtils";
 import { paginateArray } from "./lib/pagination";
@@ -263,61 +265,75 @@ export const checkReviewEligibility = query({
   },
 });
 
+const orderReviewStatusValidator = v.array(
+  v.object({
+    productId: v.id("products"),
+    productName: v.string(),
+    status: v.union(
+      v.literal("not_eligible"),
+      v.literal("eligible"),
+      v.literal("pending"),
+      v.literal("approved")
+    ),
+    reviewId: v.optional(v.id("productReviews")),
+  })
+);
+
+async function buildOrderReviewStatus(ctx: QueryCtx, order: Doc<"orders">) {
+  const items = await ctx.db
+    .query("orderItems")
+    .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+    .collect();
+
+  const isDelivered = order.status === "delivered";
+  const results = [];
+
+  for (const item of items) {
+    const review = await getReviewByOrderProduct(ctx, order._id, item.productId);
+
+    let status: "not_eligible" | "eligible" | "pending" | "approved" =
+      "not_eligible";
+    if (review) {
+      status = review.isApproved ? "approved" : "pending";
+    } else if (isDelivered) {
+      status = "eligible";
+    }
+
+    results.push({
+      productId: item.productId,
+      productName: item.productName,
+      status,
+      reviewId: review?._id,
+    });
+  }
+
+  return results;
+}
+
 export const getOrderReviewStatus = query({
   args: {
     orderNumber: v.string(),
     customerEmail: v.string(),
     accessToken: v.optional(v.string()),
   },
-  returns: v.array(
-    v.object({
-      productId: v.id("products"),
-      productName: v.string(),
-      status: v.union(
-        v.literal("not_eligible"),
-        v.literal("eligible"),
-        v.literal("pending"),
-        v.literal("approved")
-      ),
-      reviewId: v.optional(v.id("productReviews")),
-    })
-  ),
+  returns: orderReviewStatusValidator,
   handler: async (ctx, args) => {
     const order = await lookupOrderByNumber(ctx, args.orderNumber);
     assertReviewProof(order, args.customerEmail, args.accessToken);
+    return buildOrderReviewStatus(ctx, order);
+  },
+});
 
-    const items = await ctx.db
-      .query("orderItems")
-      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-      .collect();
-
-    const isDelivered = order.status === "delivered";
-    const results = [];
-
-    for (const item of items) {
-      const review = await getReviewByOrderProduct(
-        ctx,
-        order._id,
-        item.productId
-      );
-
-      let status: "not_eligible" | "eligible" | "pending" | "approved" =
-        "not_eligible";
-      if (review) {
-        status = review.isApproved ? "approved" : "pending";
-      } else if (isDelivered) {
-        status = "eligible";
-      }
-
-      results.push({
-        productId: item.productId,
-        productName: item.productName,
-        status,
-        reviewId: review?._id,
-      });
+export const adminGetOrderReviewStatus = query({
+  args: { orderId: v.id("orders") },
+  returns: orderReviewStatusValidator,
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new ConvexError("Order not found");
     }
-
-    return results;
+    return buildOrderReviewStatus(ctx, order);
   },
 });
 

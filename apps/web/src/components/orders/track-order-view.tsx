@@ -181,9 +181,9 @@ export function TrackOrderView() {
   }, [searchParams, storefront?.trackOrderPrefill]);
 
   const runOrderSearch = useCallback(
-    async (value: string, emailValue: string) => {
+    async (value: string, emailValue?: string) => {
       const trimmed = value.trim();
-      const email = emailValue.trim();
+      const email = emailValue?.trim();
       const errors = validateTrackByOrderForm({ orderNumber: trimmed, email });
       setOrderErrors(errors);
       if (hasTrackByOrderErrors(errors)) return;
@@ -193,7 +193,7 @@ export function TrackOrderView() {
       try {
         const result = await trackByOrderNumber({
           orderNumber: trimmed,
-          customerEmail: email,
+          customerEmail: email || undefined,
         });
         setOrderResult(result);
         if (!result.found) {
@@ -241,7 +241,7 @@ export function TrackOrderView() {
     setPrefillApplied(true);
     setOrderNumber(urlOrderNumber);
     setActiveTab("order-number");
-    void runOrderSearch(urlOrderNumber, searchParams.get("email")?.trim() ?? customerEmail);
+    void runOrderSearch(urlOrderNumber, searchParams.get("email")?.trim());
   }, [searchParams, prefillApplied, runOrderSearch]);
 
   useEffect(() => {
@@ -267,7 +267,7 @@ export function TrackOrderView() {
     if (prefill.orderNumber) {
       setOrderNumber(prefill.orderNumber);
       setActiveTab("order-number");
-      void runOrderSearch(prefill.orderNumber, prefill.email ?? customerEmail);
+      void runOrderSearch(prefill.orderNumber, prefill.email);
     }
   }, [
     customerEmail,
@@ -279,7 +279,7 @@ export function TrackOrderView() {
 
   const handleTrackByOrder = async (event: React.FormEvent) => {
     event.preventDefault();
-    await runOrderSearch(orderNumber, customerEmail);
+    await runOrderSearch(orderNumber);
   };
 
   const handleTrackByCustomer = async (event: React.FormEvent) => {
@@ -364,25 +364,6 @@ export function TrackOrderView() {
                     autoComplete="off"
                   />
                 </AdminFormField>
-                <AdminFormField
-                  label="Email used at checkout"
-                  htmlFor="track-order-email"
-                  error={orderErrors.email}
-                  required
-                >
-                  <Input
-                    id="track-order-email"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className={cn(
-                      "h-11",
-                      invalidInputClass(orderErrors.email)
-                    )}
-                    autoComplete="email"
-                  />
-                </AdminFormField>
                 <div className="flex justify-center">
                   <Button
                     type="submit"
@@ -455,9 +436,11 @@ export function TrackOrderView() {
                       className={PRIMARY_BUTTON_CLASS}
                       onClick={() =>
                         router.push(
-                          `/track-order/${encodeURIComponent(orderResult.order.orderNumber)}?email=${encodeURIComponent(
-                            orderResult.order.customerEmail
-                          )}&accessToken=${encodeURIComponent(orderResult.order.accessToken ?? "")}`
+                          `/track-order/${encodeURIComponent(orderResult.order.orderNumber)}${
+                            orderResult.order.accessToken
+                              ? `?accessToken=${encodeURIComponent(orderResult.order.accessToken)}`
+                              : ""
+                          }`
                         )
                       }
                     >

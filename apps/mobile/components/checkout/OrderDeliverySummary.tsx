@@ -2,7 +2,9 @@ import { formatCurrencyAmount } from "@ecommerce/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 type OrderDeliverySummaryProps = {
   deliveryMethod?: string;
@@ -21,6 +23,8 @@ export function OrderDeliverySummary({
   shipping = 0,
   currency = "USD",
 }: OrderDeliverySummaryProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createOrderDeliverySummaryStyles);
   const isStandardDelivery = !deliveryMethod || deliveryMethod === "standard";
   const displayCharge = isStandardDelivery ? shipping : deliveryCharge;
 
@@ -51,50 +55,52 @@ export function OrderDeliverySummary({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.borderLight,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  title: {
-    fontSize: typography.sm,
-    fontWeight: "700",
-    color: colors.foreground,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
-  label: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.foreground,
-  },
-  estimate: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-  charge: {
-    fontSize: typography.sm,
-    fontWeight: "700",
-    color: colors.foreground,
-  },
-  freeCharge: {
-    color: colors.success,
-  },
-});
+function createOrderDeliverySummaryStyles({ colors }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    card: {
+      gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      backgroundColor: colors.borderLight,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+    },
+    header: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.sm,
+    },
+    title: {
+      fontSize: typography.sm,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    row: {
+      flexDirection: "row" as const,
+      alignItems: "flex-start" as const,
+      justifyContent: "space-between" as const,
+      gap: spacing.md,
+    },
+    rowText: {
+      flex: 1,
+      gap: 2,
+    },
+    label: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    estimate: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+    },
+    charge: {
+      fontSize: typography.sm,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    freeCharge: {
+      color: colors.success,
+    },
+  });
+}

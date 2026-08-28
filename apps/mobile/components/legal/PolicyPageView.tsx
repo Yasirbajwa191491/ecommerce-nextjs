@@ -5,9 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
 import { useLegalPageContent } from "@/hooks/useLegalPageContent";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 import type { PolicySettingKey } from "@/lib/legal-content";
 
 type PolicyVariant = "terms" | "privacy" | "shipping" | "return";
@@ -60,6 +62,8 @@ type PolicyPageViewProps = {
 };
 
 export function PolicyPageView({ variant }: PolicyPageViewProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createPolicyPageViewStyles);
   const config = POLICY_PAGES[variant];
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
@@ -112,51 +116,54 @@ export function PolicyPageView({ variant }: PolicyPageViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingTop: spacing.lg,
-    gap: spacing["2xl"],
-  },
-  hero: {
-    gap: spacing.sm,
-  },
-  eyebrowRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  eyebrow: {
-    fontSize: typography.xs,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: colors.primary,
-  },
-  heroTitle: {
-    ...textStyles.display,
-    fontSize: typography["3xl"],
-  },
-  heroSub: {
-    ...textStyles.body,
-    color: colors.textSecondary,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing["2xl"],
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    gap: spacing.md,
-  },
-  paragraph: {
-    ...textStyles.body,
-    color: colors.text,
-  },
-  skeletonWrap: {
-    gap: spacing.sm,
-  },
-});
+function createPolicyPageViewStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      paddingTop: spacing.lg,
+      gap: spacing["2xl"],
+    },
+    hero: {
+      gap: spacing.sm,
+    },
+    eyebrowRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.xs,
+    },
+    eyebrow: {
+      fontSize: typography.xs,
+      fontWeight: "700" as const,
+      letterSpacing: 0.8,
+      textTransform: "uppercase" as const,
+      color: colors.primary,
+    },
+    heroTitle: {
+      ...textStyles.display,
+      fontSize: typography["3xl"],
+      color: colors.foreground,
+    },
+    heroSub: {
+      ...textStyles.body,
+      color: colors.textSecondary,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      padding: spacing["2xl"],
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      gap: spacing.md,
+    },
+    paragraph: {
+      ...textStyles.body,
+      color: colors.text,
+    },
+    skeletonWrap: {
+      gap: spacing.sm,
+    },
+  });
+}

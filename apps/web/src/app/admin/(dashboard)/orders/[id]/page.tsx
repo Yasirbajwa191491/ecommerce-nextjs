@@ -111,13 +111,8 @@ export default function AdminOrderDetailPage() {
   const logs = detail?.transactionLogs ?? [];
 
   const reviewStatus = useQuery(
-    api.productReviews.getOrderReviewStatus,
-    order?.status === "delivered"
-      ? {
-          orderNumber: order.orderNumber,
-          customerEmail: order.customerEmail,
-        }
-      : "skip"
+    api.productReviews.adminGetOrderReviewStatus,
+    order?.status === "delivered" ? { orderId } : "skip"
   );
   const discountTotal = order
     ? normalizeOrderDiscountTotal(order, items)

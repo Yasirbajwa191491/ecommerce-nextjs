@@ -177,7 +177,9 @@ export function Header({
               ) : null}
             </Pressable>
           ) : null}
-          {showCart ? <CartBadge onPress={() => router.push("/cart")} /> : null}
+          {showCart ? (
+            <CartBadge onPress={() => router.push("/cart")} color={colors.foreground} />
+          ) : null}
         </View>
       </View>
 

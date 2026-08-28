@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 type AboutSectionHeaderProps = {
   badge: string;
@@ -18,6 +20,8 @@ export function AboutSectionHeader({
   description,
   align = "left",
 }: AboutSectionHeaderProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const centered = align === "center";
 
   return (
@@ -36,49 +40,52 @@ export function AboutSectionHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    gap: spacing.sm,
-  },
-  wrapCenter: {
-    alignItems: "center",
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryMuted,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(98, 84, 243, 0.15)",
-  },
-  badgeCenter: {
-    alignSelf: "center",
-  },
-  badgeText: {
-    fontSize: typography.xs,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: colors.primary,
-  },
-  title: {
-    ...textStyles.sectionTitle,
-    fontSize: typography["2xl"],
-    lineHeight: 30,
-  },
-  titleCenter: {
-    textAlign: "center",
-  },
-  description: {
-    ...textStyles.body,
-    color: colors.textSecondary,
-    lineHeight: 24,
-  },
-  descriptionCenter: {
-    textAlign: "center",
-  },
-});
+function createStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrap: {
+      gap: spacing.sm,
+    },
+    wrapCenter: {
+      alignItems: "center" as const,
+    },
+    badge: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      alignSelf: "flex-start" as const,
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.full,
+      backgroundColor: colors.primaryMuted,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.primarySubtle,
+    },
+    badgeCenter: {
+      alignSelf: "center" as const,
+    },
+    badgeText: {
+      fontSize: typography.xs,
+      fontWeight: "700" as const,
+      letterSpacing: 0.8,
+      textTransform: "uppercase" as const,
+      color: colors.primary,
+    },
+    title: {
+      ...textStyles.sectionTitle,
+      fontSize: typography["2xl"],
+      lineHeight: 30,
+      color: colors.foreground,
+    },
+    titleCenter: {
+      textAlign: "center" as const,
+    },
+    description: {
+      ...textStyles.body,
+      color: colors.textSecondary,
+      lineHeight: 24,
+    },
+    descriptionCenter: {
+      textAlign: "center" as const,
+    },
+  });
+}

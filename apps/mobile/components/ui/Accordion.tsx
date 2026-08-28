@@ -1,17 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import {
-  Animated,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  UIManager,
-  View,
-} from "react-native";
+import { Animated, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
 
-import { colors, radius, spacing, textStyles, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { useTheme } from "@/providers/theme-context";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -28,6 +21,8 @@ type AccordionProps = {
 };
 
 export function Accordion({ items }: AccordionProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const toggle = (id: string) => {
@@ -67,42 +62,46 @@ export function Accordion({ items }: AccordionProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.sm,
-  },
-  item: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  trigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    minHeight: 56,
-  },
-  triggerPressed: {
-    backgroundColor: colors.primaryMuted,
-  },
-  question: {
-    ...textStyles.cardTitle,
-    flex: 1,
-    fontSize: typography.base,
-    fontWeight: "600",
-  },
-  answerWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    paddingTop: 0,
-  },
-  answer: {
-    ...textStyles.bodySmall,
-    lineHeight: 22,
-  },
-});
+function createStyles({ colors, textStyles }: ThemeStyleTokens) {
+  return StyleSheet.create({
+    wrapper: {
+      gap: spacing.sm,
+    },
+    item: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: "hidden" as const,
+    },
+    trigger: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      gap: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.lg,
+      minHeight: 56,
+    },
+    triggerPressed: {
+      backgroundColor: colors.primaryMuted,
+    },
+    question: {
+      ...textStyles.cardTitle,
+      flex: 1,
+      fontSize: typography.base,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    answerWrap: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.lg,
+      paddingTop: 0,
+    },
+    answer: {
+      ...textStyles.bodySmall,
+      color: colors.text,
+      lineHeight: 22,
+    },
+  });
+}
