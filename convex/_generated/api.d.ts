@@ -39,7 +39,6 @@ import type * as imageEmbeddingMutations from "../imageEmbeddingMutations.js";
 import type * as imageEmbeddingQueries from "../imageEmbeddingQueries.js";
 import type * as lib_adminActivityLogs from "../lib/adminActivityLogs.js";
 import type * as lib_adminAuth from "../lib/adminAuth.js";
-import type * as lib_aiValidators from "../lib/aiValidators.js";
 import type * as lib_ai_businessIntelligence from "../lib/ai/businessIntelligence.js";
 import type * as lib_ai_constants from "../lib/ai/constants.js";
 import type * as lib_ai_copilotGeneration from "../lib/ai/copilotGeneration.js";
@@ -89,6 +88,7 @@ import type * as lib_ai_scheduleProductIntelligence from "../lib/ai/scheduleProd
 import type * as lib_ai_tagIndex from "../lib/ai/tagIndex.js";
 import type * as lib_ai_tagUtils from "../lib/ai/tagUtils.js";
 import type * as lib_ai_types from "../lib/ai/types.js";
+import type * as lib_aiValidators from "../lib/aiValidators.js";
 import type * as lib_authRoles from "../lib/authRoles.js";
 import type * as lib_backfillOrderLogs from "../lib/backfillOrderLogs.js";
 import type * as lib_campaignQueue from "../lib/campaignQueue.js";
@@ -262,7 +262,6 @@ declare const fullApi: ApiFromModules<{
   imageEmbeddingQueries: typeof imageEmbeddingQueries;
   "lib/adminActivityLogs": typeof lib_adminActivityLogs;
   "lib/adminAuth": typeof lib_adminAuth;
-  "lib/aiValidators": typeof lib_aiValidators;
   "lib/ai/businessIntelligence": typeof lib_ai_businessIntelligence;
   "lib/ai/constants": typeof lib_ai_constants;
   "lib/ai/copilotGeneration": typeof lib_ai_copilotGeneration;
@@ -312,6 +311,7 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/tagIndex": typeof lib_ai_tagIndex;
   "lib/ai/tagUtils": typeof lib_ai_tagUtils;
   "lib/ai/types": typeof lib_ai_types;
+  "lib/aiValidators": typeof lib_aiValidators;
   "lib/authRoles": typeof lib_authRoles;
   "lib/backfillOrderLogs": typeof lib_backfillOrderLogs;
   "lib/campaignQueue": typeof lib_campaignQueue;
