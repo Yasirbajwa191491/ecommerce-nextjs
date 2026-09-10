@@ -151,9 +151,10 @@ export const getUnreadCount = query({
     const customerEmail = normalizeEmail(args.customerEmail);
     const unread = await ctx.db
       .query("inAppNotifications")
-      .withIndex("by_customer_email_unread", (q) =>
-        q.eq("customerEmail", customerEmail).eq("readAt", undefined)
+      .withIndex("by_customer_email_created", (q) =>
+        q.eq("customerEmail", customerEmail)
       )
+      .filter((q) => q.eq(q.field("readAt"), undefined))
       .take(UNREAD_COUNT_CAP + 1);
 
     const activeUnread = unread.filter((notification) => !notification.archivedAt);

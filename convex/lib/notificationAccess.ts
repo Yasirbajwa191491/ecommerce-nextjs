@@ -27,19 +27,33 @@ export async function assertNotificationCustomerAccess(
   }
 
   if (visitorId) {
-    const visitorTokens = await ctx.db
+    const activeTokens = await ctx.db
       .query("pushTokens")
-      .withIndex("by_visitor_id", (q) => q.eq("visitorId", visitorId))
+      .withIndex("by_customer_email_active", (q) =>
+        q.eq("customerEmail", customerEmail).eq("isActive", true)
+      )
       .collect();
 
-    if (
-      visitorTokens.some(
-        (token) => token.isActive && emailsMatch(token.customerEmail, customerEmail)
-      )
-    ) {
+    if (activeTokens.some((token) => token.visitorId === visitorId)) {
       return;
     }
   }
 
   throw new ConvexError("Notification access could not be verified.");
+}
+
+export async function hasNotificationCustomerAccess(
+  ctx: QueryCtx | MutationCtx,
+  args: {
+    customerEmail: string;
+    visitorId?: string;
+    accessToken?: string;
+  }
+): Promise<boolean> {
+  try {
+    await assertNotificationCustomerAccess(ctx, args);
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   loadCheckoutCustomer,
+  loadLastOrderInfo,
   loadPushEnrollmentProof,
 } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { useVisitorId } from "@/lib/visitor-id";
+import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 
 export type NotificationAccessProof = {
   customerEmail: string;
@@ -16,18 +18,21 @@ export type NotificationAccessProof = {
 
 export function useNotificationCenterAccess() {
   const visitorId = useVisitorId();
+  const push = usePushNotificationContextOptional();
   const [proof, setProof] = useState<NotificationAccessProof | null>(null);
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [customer, enrollmentProof] = await Promise.all([
+    const [customer, enrollmentProof, lastOrder] = await Promise.all([
       loadCheckoutCustomer(),
       loadPushEnrollmentProof(),
+      loadLastOrderInfo(),
     ]);
 
     const customerEmail =
       customer?.email?.trim().toLowerCase() ??
       enrollmentProof?.email?.trim().toLowerCase() ??
+      lastOrder.email?.trim().toLowerCase() ??
       null;
 
     if (!customerEmail || !visitorId) {
@@ -36,10 +41,15 @@ export function useNotificationCenterAccess() {
       return null;
     }
 
+    const accessToken =
+      enrollmentProof?.accessToken?.trim() ??
+      lastOrder.accessToken?.trim() ??
+      undefined;
+
     const nextProof: NotificationAccessProof = {
       customerEmail,
       visitorId,
-      accessToken: enrollmentProof?.accessToken ?? undefined,
+      accessToken,
     };
     setProof(nextProof);
     setReady(true);
@@ -55,15 +65,19 @@ export function useNotificationCenterAccess() {
     setReady(false);
   }, []);
 
-  return { proof, ready, refresh, clearProof };
+  const pushVerified =
+    push?.permission === "granted" && Boolean(push.expoPushToken);
+  const verified = Boolean(proof && (proof.accessToken || pushVerified));
+
+  return { proof, ready, verified, refresh, clearProof };
 }
 
 export function useUnreadNotificationCount() {
-  const { proof, ready } = useNotificationCenterAccess();
+  const { proof, ready, verified } = useNotificationCenterAccess();
 
   const unread = useQuery(
     api.inAppNotifications.getUnreadCount,
-    proof
+    ready && verified && proof
       ? {
           customerEmail: proof.customerEmail,
           visitorId: proof.visitorId,
@@ -76,6 +90,6 @@ export function useUnreadNotificationCount() {
     ready,
     count: unread?.count ?? 0,
     capped: unread?.capped ?? false,
-    hasAccess: Boolean(proof),
+    hasAccess: verified,
   };
 }
