@@ -59,6 +59,7 @@ export default function CheckoutSuccessScreen() {
 
   const params = useLocalSearchParams<{
     orderNumber?: string;
+    customerEmail?: string;
     pendingPayment?: string;
     accessToken?: string;
   }>();
@@ -87,17 +88,25 @@ export default function CheckoutSuccessScreen() {
       ? params.accessToken
       : null) ?? storedOrder.accessToken ?? undefined;
 
-  const customerEmail = storedOrder.email ?? undefined;
-  const lookupReady = storageReady && Boolean(customerEmail || accessToken);
+  const customerEmail =
+    (typeof params.customerEmail === "string" && params.customerEmail
+      ? params.customerEmail.trim().toLowerCase()
+      : null) ??
+    storedOrder.email?.trim().toLowerCase() ??
+    undefined;
+
+  const hasLookupCredentials = Boolean(customerEmail || accessToken);
+  const awaitingStoredCredentials =
+    Boolean(orderNumber) && !hasLookupCredentials && !storageReady;
+  const canQueryOrder = Boolean(orderNumber && hasLookupCredentials);
 
   const orderData = useQuery(
     api.orders.getOrderByNumber,
-    lookupReady && orderNumber && (customerEmail || accessToken)
-      ? { orderNumber, customerEmail, accessToken }
-      : "skip"
+    canQueryOrder ? { orderNumber: orderNumber!, customerEmail, accessToken } : "skip"
   );
 
-  const isLoading = Boolean(lookupReady && orderNumber && orderData === undefined);
+  const isLoading = awaitingStoredCredentials || (canQueryOrder && orderData === undefined);
+  const orderNotFound = canQueryOrder && orderData === null;
   const order = orderData?.order;
   const items = orderData?.items ?? [];
   const promotions = orderData?.promotions ?? [];
@@ -193,7 +202,10 @@ export default function CheckoutSuccessScreen() {
         pathname: "/checkout/success",
         params: {
           orderNumber: resumed.orderNumber,
-          accessToken: resumed.accessToken ?? accessToken ?? "",
+          customerEmail: order?.customerEmail ?? customerEmail ?? "",
+          ...(resumed.accessToken ?? accessToken
+            ? { accessToken: resumed.accessToken ?? accessToken }
+            : {}),
           pendingPayment: "1",
         },
       });
@@ -234,7 +246,7 @@ export default function CheckoutSuccessScreen() {
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Loading your order…</Text>
             </View>
-          ) : !orderNumber || !order ? (
+          ) : !orderNumber || orderNotFound || !order ? (
             <View style={styles.loadingWrap}>
               <Ionicons name="alert-circle-outline" size={48} color={colors.muted} />
               <Text style={textStyles.sectionTitle}>Order not found</Text>

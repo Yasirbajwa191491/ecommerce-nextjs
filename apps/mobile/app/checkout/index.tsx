@@ -267,7 +267,8 @@ export default function CheckoutScreen() {
           pathname: "/checkout/success",
           params: {
             orderNumber: result.orderNumber,
-            accessToken: result.accessToken ?? "",
+            customerEmail: customerPayload.email.trim().toLowerCase(),
+            ...(result.accessToken ? { accessToken: result.accessToken } : {}),
           },
         });
         return;
@@ -301,7 +302,8 @@ export default function CheckoutScreen() {
           pathname: "/checkout/success",
           params: {
             orderNumber: result.orderNumber,
-            accessToken: result.accessToken ?? "",
+            customerEmail: customerPayload.email.trim().toLowerCase(),
+            ...(result.accessToken ? { accessToken: result.accessToken } : {}),
           },
         });
         return;
@@ -327,7 +329,8 @@ export default function CheckoutScreen() {
         pathname: "/checkout/success",
         params: {
           orderNumber: result.orderNumber,
-          accessToken: result.accessToken ?? "",
+          customerEmail: customerPayload.email.trim().toLowerCase(),
+          ...(result.accessToken ? { accessToken: result.accessToken } : {}),
           pendingPayment: "1",
         },
       });
