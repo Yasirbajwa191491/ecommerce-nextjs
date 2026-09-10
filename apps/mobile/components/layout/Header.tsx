@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CartBadge } from "@/components/layout/CartBadge";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { sizes, spacing } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
@@ -23,6 +24,7 @@ type HeaderProps = {
   showWishlist?: boolean;
   showCompare?: boolean;
   showSettings?: boolean;
+  showNotifications?: boolean;
   onBack?: () => void;
 };
 
@@ -36,6 +38,7 @@ export function Header({
   showWishlist = false,
   showCompare = false,
   showSettings = false,
+  showNotifications = false,
   onBack,
 }: HeaderProps) {
   const insets = useSafeAreaInsets();
@@ -161,6 +164,7 @@ export function Header({
               <Ionicons name="heart-outline" size={sizes.iconMd} color={colors.foreground} />
             </Pressable>
           ) : null}
+          {showNotifications ? <NotificationBell color={colors.foreground} /> : null}
           {showCompare ? (
             <Pressable
               accessibilityRole="button"

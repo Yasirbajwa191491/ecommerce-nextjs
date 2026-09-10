@@ -102,6 +102,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 export type PushNotificationData = {
   type?: string;
   event?: string;
+  eventKey?: string;
   orderId?: string;
   orderNumber?: string;
   deepLinkPath?: string;
@@ -117,6 +118,7 @@ export function parsePushNotificationData(
   return {
     type: typeof data.type === "string" ? data.type : undefined,
     event: typeof data.event === "string" ? data.event : undefined,
+    eventKey: typeof data.eventKey === "string" ? data.eventKey : undefined,
     orderId: typeof data.orderId === "string" ? data.orderId : undefined,
     orderNumber: typeof data.orderNumber === "string" ? data.orderNumber : undefined,
     deepLinkPath: typeof data.deepLinkPath === "string" ? data.deepLinkPath : undefined,

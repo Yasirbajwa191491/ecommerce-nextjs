@@ -25,6 +25,11 @@ import {
 import { insertOrderStatusLog, insertPaymentLog, getOrderStatusLogsForPublic } from "./lib/orderLogs";
 import { mergeVisitorIntoCustomer } from "./lib/recommendations/profileBuilder";
 import { orderStatusValidator } from "./lib/orderValidators";
+import {
+  canRetryStripePayment,
+  isPendingStripeOrder,
+  resolveLateStripePaymentAction,
+} from "./lib/orderNotificationLogic";
 import { checkAndIncrementRateLimit } from "./lib/rateLimit";
 import { normalizeEmail, phonesMatch } from "./lib/publicOrderDto";
 import {
@@ -835,17 +840,118 @@ export const getPendingStripeOrderForResume = internalQuery({
     ) {
       return null;
     }
+    const resumable = isPendingStripeOrder({
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      status: order.status,
+    });
+    const retryable =
+      !resumable &&
+      canRetryStripePayment({
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+      });
+    return {
+      order,
+      resumable,
+      retryable,
+    };
+  },
+});
+
+export const reviveStripeOrderForRetry = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new ConvexError("Order not found");
+
+    if (order.paymentStatus === "paid") {
+      return { revived: false as const, alreadyPaid: true as const };
+    }
+
     if (
-      order.paymentMethod !== "stripe" ||
-      order.paymentStatus !== "pending" ||
-      order.status !== "pending"
+      isPendingStripeOrder({
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+      })
     ) {
+      const priced = await loadPricedSnapshot(ctx, args.orderId);
       return {
-        order,
-        resumable: false as const,
+        revived: false as const,
+        alreadyPaid: false as const,
+        priced,
+        stripePaymentIntentId: order.stripePaymentIntentId,
+        orderNumber: order.orderNumber,
+        accessToken: order.accessToken,
+        idempotencyKey: order.idempotencyKey,
+        customerEmail: order.customerEmail,
       };
     }
-    return { order, resumable: true as const };
+
+    if (
+      !canRetryStripePayment({
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+      })
+    ) {
+      throw new ConvexError("This order is no longer awaiting payment.");
+    }
+
+    const stockLines = await getOrderStockLines(ctx, args.orderId);
+    await decrementStock(ctx, stockLines);
+
+    const now = Date.now();
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+
+    await ctx.db.patch(args.orderId, {
+      status: "pending",
+      paymentStatus: "pending",
+      updatedAt: now,
+    });
+
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "payment_pending",
+      description: "Customer retried payment after a failed or expired Stripe checkout",
+      previousPaymentStatus,
+      newPaymentStatus: "pending",
+      actorType: "system",
+      createdAt: now,
+    });
+
+    await insertOrderStatusLog(ctx, {
+      orderId: args.orderId,
+      event: "order_status_updated",
+      description: "Order reopened for Stripe payment retry",
+      previousStatus,
+      newStatus: "pending",
+      actorType: "customer",
+      createdAt: now,
+    });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.orderPaymentRecovery.schedulePendingStripeOrderRecovery,
+      { orderId: args.orderId }
+    );
+
+    const priced = await loadPricedSnapshot(ctx, args.orderId);
+    return {
+      revived: true as const,
+      alreadyPaid: false as const,
+      priced,
+      stripePaymentIntentId: order.stripePaymentIntentId,
+      orderNumber: order.orderNumber,
+      accessToken: order.accessToken,
+      idempotencyKey: order.idempotencyKey,
+      customerEmail: order.customerEmail,
+    };
   },
 });
 
@@ -862,7 +968,61 @@ export const markOrderPaid = internalMutation({
     if (!order) throw new ConvexError("Order not found");
 
     if (order.paymentStatus === "paid") {
-      return { alreadyPaid: true as const };
+      return { alreadyPaid: true as const, needsRefund: false as const };
+    }
+
+    const paymentAction = resolveLateStripePaymentAction({
+      paymentStatus: order.paymentStatus,
+      status: order.status,
+    });
+    const stripePaymentIntentId =
+      args.stripePaymentIntentId ?? order.stripePaymentIntentId;
+
+    if (paymentAction === "refund") {
+      await insertPaymentLog(ctx, {
+        orderId: args.orderId,
+        event: "payment_failed",
+        description:
+          "Stripe payment succeeded after the order was cancelled or refunded; automatic refund required",
+        previousPaymentStatus: order.paymentStatus,
+        newPaymentStatus: order.paymentStatus,
+        actorType: "webhook",
+        stripePaymentIntentId,
+        stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,
+        createdAt: Date.now(),
+      });
+      return {
+        alreadyPaid: false as const,
+        needsRefund: true as const,
+        refundReason: "order_not_payable",
+        stripePaymentIntentId,
+      };
+    }
+
+    if (paymentAction === "rereserve_and_fulfill") {
+      try {
+        const stockLines = await getOrderStockLines(ctx, args.orderId);
+        await decrementStock(ctx, stockLines);
+      } catch {
+        await insertPaymentLog(ctx, {
+          orderId: args.orderId,
+          event: "payment_failed",
+          description:
+            "Stripe payment succeeded after expiry or failure, but inventory could not be reserved; automatic refund required",
+          previousPaymentStatus: order.paymentStatus,
+          newPaymentStatus: order.paymentStatus,
+          actorType: "webhook",
+          stripePaymentIntentId,
+          stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,
+          createdAt: Date.now(),
+        });
+        return {
+          alreadyPaid: false as const,
+          needsRefund: true as const,
+          refundReason: "insufficient_stock",
+          stripePaymentIntentId,
+        };
+      }
     }
 
     const now = Date.now();
@@ -930,7 +1090,7 @@ export const markOrderPaid = internalMutation({
       { orderId: args.orderId }
     );
 
-    return { alreadyPaid: false as const };
+    return { alreadyPaid: false as const, needsRefund: false as const };
   },
 });
 
@@ -1006,6 +1166,10 @@ export const markOrderRefunded = internalMutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new ConvexError("Order not found");
 
+    if (order.paymentStatus === "refunded") {
+      return { success: true as const, alreadyRefunded: true as const };
+    }
+
     const now = Date.now();
     const previousStatus = order.status;
     const previousPaymentStatus = order.paymentStatus;
@@ -1046,12 +1210,10 @@ export const markOrderRefunded = internalMutation({
       });
     }
 
-    if (previousPaymentStatus !== "refunded") {
-      await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
-        orderId: args.orderId,
-        event: "order.refunded",
-      });
-    }
+    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+      orderId: args.orderId,
+      event: "order.refunded",
+    });
 
     return { success: true as const };
   },

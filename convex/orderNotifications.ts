@@ -13,6 +13,7 @@ import {
   buildOrderNotificationCopy,
 } from "./lib/notificationTemplates";
 import { orderNotificationEventValidator } from "./lib/notificationTypes";
+import { upsertInAppNotificationForEvent } from "./lib/inAppNotificationPersistence";
 import {
   buildNotificationEventKey,
   shouldSkipConfirmedAfterPaymentSucceeded,
@@ -71,6 +72,23 @@ export const emitOrderNotificationEvent = internalMutation({
       emailDelivered: false,
       smsDelivered: false,
       createdAt: Date.now(),
+    });
+
+    const copy = buildOrderNotificationCopy(args.event, order.orderNumber, {
+      cancellationReason: args.cancellationReason,
+      trackingInfo: args.trackingInfo,
+    });
+    const deepLinkPath = buildOrderDeepLinkPath(order.orderNumber, args.event);
+
+    await upsertInAppNotificationForEvent(ctx, {
+      eventKey,
+      customerEmail: order.customerEmail,
+      type: args.event,
+      title: copy.title,
+      body: copy.body,
+      orderId: args.orderId,
+      orderNumber: order.orderNumber,
+      deepLinkPath,
     });
 
     await ctx.scheduler.runAfter(0, internal.orderNotifications.deliverOrderNotificationEvent, {
@@ -136,6 +154,7 @@ export const deliverOrderNotificationEvent = internalAction({
           title: copy.title,
           body: copy.body,
           event: args.event,
+          eventKey: args.eventKey,
           orderId: args.orderId,
           orderNumber: order.orderNumber,
           deepLinkPath,
@@ -199,16 +218,6 @@ export const deliverOrderNotificationEvent = internalAction({
       emailDelivered,
       smsDelivered,
       pushFailureReason,
-    });
-
-    await ctx.runMutation(internal.inAppNotifications.createInAppNotification, {
-      customerEmail: order.customerEmail,
-      type: args.event,
-      title: copy.title,
-      body: copy.body,
-      orderId: args.orderId,
-      orderNumber: order.orderNumber,
-      deepLinkPath,
     });
 
     console.info(
@@ -283,6 +292,7 @@ export const deliverPushForOrderEvent = internalAction({
     title: v.string(),
     body: v.string(),
     event: orderNotificationEventValidator,
+    eventKey: v.string(),
     orderId: v.id("orders"),
     orderNumber: v.string(),
     deepLinkPath: v.string(),
@@ -324,6 +334,7 @@ export const deliverPushForOrderEvent = internalAction({
       data: {
         type: "order.notification",
         event: args.event,
+        eventKey: args.eventKey,
         orderId: args.orderId,
         orderNumber: args.orderNumber,
         deepLinkPath: args.deepLinkPath,

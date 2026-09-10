@@ -1,6 +1,8 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { pushPlatformValidator } from "./lib/notificationTypes";
+import { emailsMatch } from "./lib/orderAccess";
 import { normalizeEmail } from "./lib/publicOrderDto";
 import { upsertNotificationPreferences } from "./lib/notificationPreferences";
 
@@ -11,6 +13,50 @@ function isValidExpoPushToken(token: string): boolean {
   );
 }
 
+async function assertPushEmailAuthorization(
+  ctx: MutationCtx,
+  args: {
+    customerEmail: string;
+    visitorId: string;
+    expoPushToken: string;
+    accessToken?: string;
+  }
+): Promise<void> {
+  const existingByToken = await ctx.db
+    .query("pushTokens")
+    .withIndex("by_expo_push_token", (q) => q.eq("expoPushToken", args.expoPushToken))
+    .unique();
+
+  if (existingByToken && emailsMatch(existingByToken.customerEmail, args.customerEmail)) {
+    return;
+  }
+
+  const visitorTokens = await ctx.db
+    .query("pushTokens")
+    .withIndex("by_visitor_id", (q) => q.eq("visitorId", args.visitorId))
+    .collect();
+
+  if (visitorTokens.some((token) => emailsMatch(token.customerEmail, args.customerEmail))) {
+    return;
+  }
+
+  const accessToken = args.accessToken?.trim();
+  if (!accessToken) {
+    throw new ConvexError(
+      "Verify a recent order before enabling push notifications for this email."
+    );
+  }
+
+  const order = await ctx.db
+    .query("orders")
+    .withIndex("by_access_token", (q) => q.eq("accessToken", accessToken))
+    .unique();
+
+  if (!order || !emailsMatch(order.customerEmail, args.customerEmail)) {
+    throw new ConvexError("Push notification registration could not be verified.");
+  }
+}
+
 export const registerPushToken = mutation({
   args: {
     customerEmail: v.string(),
@@ -19,6 +65,7 @@ export const registerPushToken = mutation({
     platform: pushPlatformValidator,
     deviceName: v.optional(v.string()),
     appVersion: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
   },
   returns: v.object({
     tokenId: v.id("pushTokens"),
@@ -38,6 +85,13 @@ export const registerPushToken = mutation({
     if (!isValidExpoPushToken(expoPushToken)) {
       throw new ConvexError("Invalid Expo push token format.");
     }
+
+    await assertPushEmailAuthorization(ctx, {
+      customerEmail,
+      visitorId,
+      expoPushToken,
+      accessToken: args.accessToken,
+    });
 
     const now = Date.now();
     const existing = await ctx.db
@@ -99,9 +153,6 @@ export const touchPushToken = mutation({
       lastSeenAt: now,
       updatedAt: now,
       isActive: true,
-      ...(args.customerEmail
-        ? { customerEmail: normalizeEmail(args.customerEmail) }
-        : {}),
       ...(args.visitorId ? { visitorId: args.visitorId.trim() } : {}),
     });
 

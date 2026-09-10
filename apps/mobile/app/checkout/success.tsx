@@ -28,8 +28,10 @@ import {
   loadLastOrderInfo,
 } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
-import { getFriendlyErrorMessage } from "@/lib/errors";
+import { getFriendlyErrorMessage, logAppError } from "@/lib/errors";
+import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
 import {
+  canRetryStripePayment,
   getCheckoutSuccessMessage,
   getCheckoutSuccessTitle,
   getPaymentMethodLabel,
@@ -104,16 +106,31 @@ export default function CheckoutSuccessScreen() {
     order?.paymentMethod === "stripe" && order.paymentStatus === "pending";
   const isFailedStripe =
     order?.paymentMethod === "stripe" && order.paymentStatus === "failed";
+  const canRetryPayment = order ? canRetryStripePayment(order) : false;
 
   useEffect(() => {
     if (!order || clearedRef.current) return;
     if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") return;
     if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") return;
     clearedRef.current = true;
+    addMonitoringBreadcrumb("Payment confirmed", "checkout", {
+      orderNumber: order.orderNumber,
+      paymentStatus: order.paymentStatus,
+    });
+    addMonitoringBreadcrumb("Cart cleared", "checkout");
     clearCart();
     void clearLastOrderInfo();
     void clearPendingStripeOrder();
   }, [clearCart, order]);
+
+  useEffect(() => {
+    if (!order) return;
+    addMonitoringBreadcrumb("Success screen opened", "checkout", {
+      orderNumber: order.orderNumber,
+      paymentStatus: order.paymentStatus,
+      pendingPayment: isPendingStripe,
+    });
+  }, [isPendingStripe, order]);
 
   useEffect(() => {
     if (!order || pushPromptRef.current || !pushNotifications) {
@@ -126,8 +143,8 @@ export default function CheckoutSuccessScreen() {
     }
 
     pushPromptRef.current = true;
-    void pushNotifications.enablePushNotifications(email);
-  }, [customerEmail, order, pushNotifications]);
+    void pushNotifications.enablePushNotifications(email, accessToken);
+  }, [accessToken, customerEmail, order, pushNotifications]);
 
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
   const statusTitle = order ? getCheckoutSuccessTitle(order) : "Order confirmed!";
@@ -142,6 +159,7 @@ export default function CheckoutSuccessScreen() {
     }
 
     setResuming(true);
+    addMonitoringBreadcrumb("PaymentSheet retry started", "checkout");
     try {
       const resumed = await resumeMobilePaymentIntent({
         orderNumber,
@@ -180,6 +198,7 @@ export default function CheckoutSuccessScreen() {
         },
       });
     } catch (error) {
+      logAppError(error, { segment: "checkout-retry-payment" });
       showError(getFriendlyErrorMessage(error, "Unable to reopen payment. Please try again."));
     } finally {
       setResuming(false);
@@ -334,7 +353,7 @@ export default function CheckoutSuccessScreen() {
               </Text>
 
               <View style={styles.actions}>
-                {isPendingStripe || isFailedStripe ? (
+                {canRetryPayment ? (
                   <Button
                     label={resuming ? "Opening payment…" : "Retry payment"}
                     fullWidth
@@ -346,7 +365,7 @@ export default function CheckoutSuccessScreen() {
                 <Button
                   label="View order"
                   fullWidth
-                  variant={isPendingStripe || isFailedStripe ? "outline" : "primary"}
+                  variant={canRetryPayment ? "outline" : "primary"}
                   onPress={() =>
                     router.push({
                       pathname: "/order/[id]",
@@ -358,7 +377,7 @@ export default function CheckoutSuccessScreen() {
                     })
                   }
                 />
-                {isPendingStripe || isFailedStripe ? (
+                {canRetryPayment ? (
                   <Button
                     label="Return to cart"
                     variant="outline"

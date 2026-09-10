@@ -32,10 +32,12 @@ import {
   saveCheckoutCustomer,
   saveLastOrderInfo,
   savePendingStripeOrder,
+  savePushEnrollmentProof,
 } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { getStripePublishableKey } from "@/lib/stripe-config";
-import { getFriendlyErrorMessage } from "@/lib/errors";
+import { getFriendlyErrorMessage, logAppError } from "@/lib/errors";
+import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
 import {
   ensureOnlineNow,
   isLikelyOfflineError,
@@ -73,6 +75,10 @@ export default function CheckoutScreen() {
   const { cart, itemCount, hydrated, clearCart } = useCart();
   const { showError, showSuccess } = useToast();
   const { isOnline, isOffline, isConnected } = useNetworkStatus();
+
+  useEffect(() => {
+    addMonitoringBreadcrumb("Checkout opened", "checkout");
+  }, []);
 
   const [form, setForm] = useState<CheckoutFormValues>(emptyForm);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethodType | undefined>();
@@ -222,6 +228,9 @@ export default function CheckoutScreen() {
 
     submittingRef.current = true;
     setSubmitting(true);
+    addMonitoringBreadcrumb("Checkout submitted", "checkout", {
+      paymentMethod: form.paymentMethod,
+    });
 
     const customerPayload = {
       fullName: form.fullName.trim(),
@@ -244,9 +253,14 @@ export default function CheckoutScreen() {
       await ensureOnlineNow(`${OFFLINE_TITLE}. ${OFFLINE_MESSAGE}`);
 
       if (form.paymentMethod === "cod") {
+        addMonitoringBreadcrumb("Order creation started", "checkout", { method: "cod" });
         const result = await createCashOrder(payload);
+        addMonitoringBreadcrumb("Order created", "checkout", {
+          orderNumber: result.orderNumber,
+        });
         await persistCustomer();
         await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
+        await savePushEnrollmentProof(customerPayload.email, result.accessToken);
         clearCart();
         showSuccess("Order placed successfully!");
         router.replace({
@@ -266,10 +280,16 @@ export default function CheckoutScreen() {
         return;
       }
 
+      addMonitoringBreadcrumb("PaymentIntent creation started", "checkout");
       const result = await createMobilePaymentIntent(payload);
+      addMonitoringBreadcrumb("PaymentIntent created", "checkout", {
+        orderNumber: result.orderNumber,
+        alreadyPaid: Boolean(result.alreadyPaid),
+      });
 
       await persistCustomer();
       await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
+      await savePushEnrollmentProof(customerPayload.email, result.accessToken);
       await savePendingStripeOrder({
         orderNumber: result.orderNumber,
         email: customerPayload.email,
@@ -299,6 +319,10 @@ export default function CheckoutScreen() {
         return;
       }
 
+      addMonitoringBreadcrumb("Waiting for webhook confirmation", "checkout", {
+        orderNumber: result.orderNumber,
+      });
+
       router.replace({
         pathname: "/checkout/success",
         params: {
@@ -308,6 +332,7 @@ export default function CheckoutScreen() {
         },
       });
     } catch (error) {
+      logAppError(error, { segment: "checkout-submit" });
       const message = getFriendlyErrorMessage(
         error,
         "Checkout failed. Please review your details and try again."

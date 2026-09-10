@@ -139,6 +139,34 @@ export async function clearPendingStripeOrder(): Promise<void> {
   await removeSecureItem(LAST_PENDING_STRIPE_KEY);
 }
 
+const PUSH_ENROLLMENT_EMAIL_KEY = "pushEnrollmentEmail";
+const PUSH_ENROLLMENT_ACCESS_TOKEN_KEY = "pushEnrollmentAccessToken";
+
+export async function savePushEnrollmentProof(
+  email: string,
+  accessToken?: string
+): Promise<void> {
+  const trimmedEmail = email.trim().toLowerCase();
+  if (!trimmedEmail) return;
+
+  await setSecureItem(PUSH_ENROLLMENT_EMAIL_KEY, trimmedEmail);
+  if (accessToken?.trim()) {
+    await setSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY, accessToken.trim());
+  }
+}
+
+export async function loadPushEnrollmentProof(): Promise<{
+  email: string;
+  accessToken: string | null;
+} | null> {
+  const [email, accessToken] = await Promise.all([
+    getSecureItem(PUSH_ENROLLMENT_EMAIL_KEY),
+    getSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY),
+  ]);
+  if (!email) return null;
+  return { email, accessToken };
+}
+
 export function createIdempotencyKey(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;

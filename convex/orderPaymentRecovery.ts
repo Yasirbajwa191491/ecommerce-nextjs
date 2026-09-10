@@ -137,6 +137,13 @@ export const expirePendingStripeOrder = internalMutation({
       eventKey: buildNotificationEventKey(args.orderId, "order.expired"),
     });
 
+    if (order.stripePaymentIntentId || order.stripeSessionId) {
+      await ctx.scheduler.runAfter(0, internal.stripe.cancelOpenStripePayment, {
+        paymentIntentId: order.stripePaymentIntentId,
+        checkoutSessionId: order.stripeSessionId,
+      });
+    }
+
     console.info(`[notifications] expired pending stripe orderId=${args.orderId}`);
 
     return null;

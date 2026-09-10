@@ -4,7 +4,9 @@ import {
   buildNotificationEventKey,
   buildOrderStatusEventKey,
   buildPaymentStatusEventKey,
+  canRetryStripePayment,
   isPendingStripeOrder,
+  resolveLateStripePaymentAction,
   resolveOrderStatusTransitionEvent,
   resolvePaymentTransitionEvent,
   shouldSkipConfirmedAfterPaymentSucceeded,
@@ -84,6 +86,58 @@ describe("order notification logic", () => {
         status: "confirmed",
       })
     ).toBe(false);
+  });
+
+  it("allows retry for pending, failed, and expired stripe orders", () => {
+    expect(
+      canRetryStripePayment({
+        paymentMethod: "stripe",
+        paymentStatus: "pending",
+        status: "pending",
+      })
+    ).toBe(true);
+    expect(
+      canRetryStripePayment({
+        paymentMethod: "stripe",
+        paymentStatus: "failed",
+        status: "failed",
+      })
+    ).toBe(true);
+    expect(
+      canRetryStripePayment({
+        paymentMethod: "stripe",
+        paymentStatus: "failed",
+        status: "expired",
+      })
+    ).toBe(true);
+    expect(
+      canRetryStripePayment({
+        paymentMethod: "stripe",
+        paymentStatus: "failed",
+        status: "cancelled",
+      })
+    ).toBe(false);
+  });
+
+  it("re-reserves stock when a late Stripe payment arrives after expiry", () => {
+    expect(
+      resolveLateStripePaymentAction({
+        paymentStatus: "failed",
+        status: "expired",
+      })
+    ).toBe("rereserve_and_fulfill");
+    expect(
+      resolveLateStripePaymentAction({
+        paymentStatus: "failed",
+        status: "cancelled",
+      })
+    ).toBe("refund");
+    expect(
+      resolveLateStripePaymentAction({
+        paymentStatus: "paid",
+        status: "confirmed",
+      })
+    ).toBe("already_paid");
   });
 
   it("does not emit payment transition when unchanged", () => {

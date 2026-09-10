@@ -26,6 +26,7 @@ import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { loadLastOrderInfo } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { formatOrderDateTime, getPaymentMethodLabel, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@/lib/order-display";
+import { resolveRouteOrderNumber } from "@/lib/order-route";
 
 type LoadedPublicOrder = {
   orderNumber: string;
@@ -104,8 +105,10 @@ export default function OrderDetailScreen() {
   }, []);
 
   const orderNumber =
-    (typeof params.orderNumber === "string" ? params.orderNumber : null) ??
-    storedOrder.orderNumber;
+    resolveRouteOrderNumber({
+      id: typeof params.id === "string" ? params.id : undefined,
+      orderNumber: typeof params.orderNumber === "string" ? params.orderNumber : undefined,
+    }) ?? storedOrder.orderNumber;
 
   const customerEmail =
     (typeof params.email === "string" && params.email

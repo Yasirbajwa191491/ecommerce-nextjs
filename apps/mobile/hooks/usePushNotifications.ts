@@ -2,8 +2,10 @@ import { useMutation } from "convex/react";
 import Constants from "expo-constants";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadCheckoutCustomer } from "@/lib/checkout-customer-storage";
+import { loadCheckoutCustomer, loadPushEnrollmentProof } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
+import { logAppError } from "@/lib/errors";
+import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
 import {
   ensureAndroidNotificationChannel,
   getExpoPushToken,
@@ -46,7 +48,11 @@ export function usePushNotifications() {
   }, []);
 
   const syncTokenWithBackend = useCallback(
-    async (options?: { requestPermission?: boolean; customerEmail?: string }) => {
+    async (options?: {
+      requestPermission?: boolean;
+      customerEmail?: string;
+      accessToken?: string;
+    }) => {
       setState((current) => ({ ...current, syncing: true, lastError: null }));
 
       try {
@@ -54,10 +60,15 @@ export function usePushNotifications() {
 
         let permission = await getNotificationPermissionStatus();
         if (options?.requestPermission && permission !== "granted") {
+          addMonitoringBreadcrumb("Push permission requested", "notification");
           permission = await requestNotificationPermission();
         }
 
         if (permission !== "granted") {
+          addMonitoringBreadcrumb(
+            permission === "denied" ? "Push permission denied" : "Push permission undetermined",
+            "notification"
+          );
           setState((current) => ({
             ...current,
             permission: permission === "denied" ? "denied" : "undetermined",
@@ -67,8 +78,17 @@ export function usePushNotifications() {
         }
 
         const token = await getExpoPushToken();
+        if (token) {
+          addMonitoringBreadcrumb("Expo push token obtained", "notification");
+        }
         tokenRef.current = token;
         const customerEmail = options?.customerEmail ?? (await resolveCustomerEmail());
+        const enrollmentProof = await loadPushEnrollmentProof();
+        const accessToken =
+          options?.accessToken?.trim() ||
+          (enrollmentProof && customerEmail && enrollmentProof.email === customerEmail
+            ? enrollmentProof.accessToken
+            : null);
 
         if (!token || !visitorId || !customerEmail) {
           setState((current) => ({
@@ -84,6 +104,7 @@ export function usePushNotifications() {
           };
         }
 
+        addMonitoringBreadcrumb("Push token sync started", "notification");
         await registerPushToken({
           customerEmail,
           visitorId,
@@ -93,7 +114,9 @@ export function usePushNotifications() {
             Constants.expoConfig?.version ??
             Constants.nativeAppVersion ??
             undefined,
+          ...(accessToken ? { accessToken } : {}),
         });
+        addMonitoringBreadcrumb("Push token sync succeeded", "notification");
 
         setState({
           permission: "granted",
@@ -105,6 +128,8 @@ export function usePushNotifications() {
         return { success: true as const };
       } catch (error) {
         const message = error instanceof Error ? error.message : "Push sync failed";
+        addMonitoringBreadcrumb("Push token sync failed", "notification");
+        logAppError(error, { segment: "push-token-sync" });
         setState((current) => ({
           ...current,
           syncing: false,

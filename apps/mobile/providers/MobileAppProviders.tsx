@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppErrorBoundary } from "@/components/feedback/AppErrorBoundary";
+import { MonitoringUserContext } from "@/components/monitoring/MonitoringUserContext";
 import { OfflineBanner } from "@/components/feedback/OfflineBanner";
 import { installGlobalErrorHandlers } from "@/components/feedback/installGlobalErrorHandlers";
 import { ToastBanner } from "@/components/feedback/ToastBanner";
@@ -47,6 +48,7 @@ export function MobileAppProviders({ children }: { children: ReactNode }) {
                       <CartProvider>
                         <CompareProvider>
                           <VisitorIdHydrator>
+                            <MonitoringUserContext />
                             <OfflineSyncBridge />
                             {children}
                             <ProductCompareSheet />

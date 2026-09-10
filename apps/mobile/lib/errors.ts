@@ -1,4 +1,8 @@
 import { isLikelyOfflineError, OfflineError } from "@/lib/network";
+import {
+  captureMonitoringError,
+  captureMonitoringMessage,
+} from "@/lib/monitoring/sentry";
 
 export const MIXED_CURRENCY_CART_MESSAGE =
   "Your cart has items in different currencies. Remove items until only one currency remains, then continue to checkout.";
@@ -91,9 +95,25 @@ function cleanTrailingStack(message: string): string {
     .trim();
 }
 
+export function isExpectedUserError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return (
+    message.includes("cancel") ||
+    message.includes("permission") ||
+    message.includes("offline") ||
+    message.includes("network request failed")
+  );
+}
+
 export function logAppError(
   error: unknown,
-  context?: { segment?: string; digest?: string }
+  context?: {
+    segment?: string;
+    digest?: string;
+    expected?: boolean;
+    tags?: Record<string, string>;
+    extra?: Record<string, string | number | boolean | null | undefined>;
+  }
 ) {
   const message = getErrorMessage(error);
   console.error(
@@ -101,4 +121,21 @@ export function logAppError(
     error,
     context?.digest ? { digest: context.digest } : undefined
   );
+
+  const expected = context?.expected ?? isExpectedUserError(error);
+  if (expected) {
+    captureMonitoringMessage(message, {
+      segment: context?.segment,
+      level: "info",
+      tags: context?.tags,
+    });
+    return;
+  }
+
+  captureMonitoringError(error, {
+    segment: context?.segment,
+    digest: context?.digest,
+    tags: context?.tags,
+    extra: context?.extra,
+  });
 }

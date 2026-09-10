@@ -76,7 +76,7 @@ export default function HomeScreen() {
   return (
     <ScreenContainer>
       <View style={[styles.container, rootStyle]}>
-        <Header showLogo showSearch showCart showSettings />
+        <Header showLogo showSearch showCart showSettings showNotifications />
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
