@@ -35,9 +35,11 @@ export const strings = {
     themeSystem: "System",
     notifications: "Notifications",
     notificationsNote:
-      "Push notifications are not yet available. These preferences will apply when they are enabled.",
+      "Order and payment alerts use push notifications when enabled on this device.",
     orderUpdates: "Order updates",
-    promotions: "Promotions",
+    paymentUpdates: "Payment updates",
+    promotions: "Promotional notifications",
+    notificationCenter: "Notification center",
     recommendations: "Recommendations",
     marketingEmails: "Marketing emails",
     shopping: "Shopping Preferences",

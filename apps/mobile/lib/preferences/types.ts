@@ -5,6 +5,7 @@ export const PREFERENCES_VERSION = 1;
 
 export type NotificationPreferences = {
   orderUpdates: boolean;
+  paymentUpdates: boolean;
   promotions: boolean;
   recommendations: boolean;
   marketingEmails: boolean;
@@ -24,7 +25,8 @@ export type AppPreferences = {
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   orderUpdates: true,
-  promotions: true,
+  paymentUpdates: true,
+  promotions: false,
   recommendations: true,
   marketingEmails: false,
 };

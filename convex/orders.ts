@@ -249,6 +249,11 @@ export const acknowledgeStripeCheckoutCancelled = mutation({
       createdAt: now,
     });
 
+    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+      orderId: order._id,
+      event: "order.cancelled",
+    });
+
     return null;
   },
 });
@@ -344,12 +349,12 @@ export const ensureOrderAccessToken = internalMutation({
 export const getOrderByPaymentIntent = internalQuery({
   args: { stripePaymentIntentId: v.string() },
   handler: async (ctx, args) => {
-    const orders = await ctx.db.query("orders").collect();
-    return (
-      orders.find(
-        (order) => order.stripePaymentIntentId === args.stripePaymentIntentId
-      ) ?? null
-    );
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_stripe_payment_intent", (q) =>
+        q.eq("stripePaymentIntentId", args.stripePaymentIntentId)
+      )
+      .unique();
   },
 });
 
@@ -477,8 +482,9 @@ async function createCashOrderHandler(
     }
     await logOrderCreated(ctx, orderId, "cod", now);
 
-    await ctx.scheduler.runAfter(0, internal.notifications.sendOrderConfirmationNotifications, {
+    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
       orderId,
+      event: "order.created",
     });
 
     const created = await ctx.db.get(orderId);
@@ -614,6 +620,7 @@ export const createPendingStripeOrder = internalMutation({
         orderNumber: existing.orderNumber,
         priced,
         stripeSessionId: existing.stripeSessionId,
+        stripePaymentIntentId: existing.stripePaymentIntentId,
         accessToken,
         reused: true as const,
       };
@@ -681,15 +688,52 @@ export const createPendingStripeOrder = internalMutation({
     }
     await logOrderCreated(ctx, orderId, "stripe", now);
 
+    await ctx.scheduler.runAfter(
+      0,
+      internal.orderPaymentRecovery.schedulePendingStripeOrderRecovery,
+      { orderId }
+    );
+
     const order = await ctx.db.get(orderId);
     return {
       orderId,
       orderNumber: order!.orderNumber,
       priced,
       stripeSessionId: undefined,
+      stripePaymentIntentId: undefined,
       accessToken,
       reused: false as const,
     };
+  },
+});
+
+export const attachPaymentIntent = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    stripePaymentIntentId: v.string(),
+    replaceExisting: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new ConvexError("Order not found");
+    if (order.stripePaymentIntentId && !args.replaceExisting) {
+      throw new ConvexError("Payment intent already exists for this order");
+    }
+    const now = Date.now();
+    await ctx.db.patch(args.orderId, {
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      updatedAt: now,
+    });
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "checkout_session_created",
+      description: "Stripe payment intent created for mobile PaymentSheet",
+      previousPaymentStatus: order.paymentStatus,
+      newPaymentStatus: order.paymentStatus,
+      actorType: "system",
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      createdAt: now,
+    });
   },
 });
 
@@ -871,8 +915,9 @@ export const markOrderPaid = internalMutation({
       });
     }
 
-    await ctx.scheduler.runAfter(0, internal.notifications.sendOrderConfirmationNotifications, {
+    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
       orderId: args.orderId,
+      event: "payment.succeeded",
     });
 
     await ctx.scheduler.runAfter(0, internal.subscriberInterests.recomputeForEmail, {
@@ -940,6 +985,13 @@ export const markOrderFailed = internalMutation({
       });
     }
 
+    if (previousPaymentStatus !== "failed") {
+      await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+        orderId: args.orderId,
+        event: args.status === "expired" ? "order.expired" : "payment.failed",
+      });
+    }
+
     return { skipped: false as const };
   },
 });
@@ -991,6 +1043,13 @@ export const markOrderRefunded = internalMutation({
         newStatus: "refunded",
         actorType: "system",
         createdAt: now,
+      });
+    }
+
+    if (previousPaymentStatus !== "refunded") {
+      await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+        orderId: args.orderId,
+        event: "order.refunded",
       });
     }
 

@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Header } from "@/components/layout/Header";
@@ -18,6 +17,7 @@ import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
 import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
 import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
+import { usePaymentSheetCheckout } from "@/hooks/usePaymentSheetCheckout";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
@@ -27,15 +27,18 @@ import {
   clearPendingStripeOrder,
   loadLastOrderInfo,
 } from "@/lib/checkout-customer-storage";
-import { getMobileStripeCheckoutUrls, parseCheckoutReturnUrl } from "@/lib/checkout-stripe";
 import { api } from "@/lib/convex-api";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import {
   getCheckoutSuccessMessage,
   getCheckoutSuccessTitle,
   getPaymentMethodLabel,
   type OrderStatus,
 } from "@/lib/order-display";
+import { getStripePublishableKey } from "@/lib/stripe-config";
 import { useCart } from "@/providers/cart-context";
+import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
+import { useToast } from "@/providers/toast-context";
 
 export default function CheckoutSuccessScreen() {
   const { colors, textStyles } = useTheme();
@@ -44,15 +47,18 @@ export default function CheckoutSuccessScreen() {
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
   const { clearCart } = useCart();
+  const { showError } = useToast();
   const clearedRef = useRef(false);
-  const resumeCheckoutSession = useAction(api.stripe.resumeCheckoutSession);
+  const pushPromptRef = useRef(false);
+  const pushNotifications = usePushNotificationContextOptional();
+  const resumeMobilePaymentIntent = useAction(api.stripe.resumeMobilePaymentIntent);
+  const { presentPayment } = usePaymentSheetCheckout();
   const [resuming, setResuming] = useState(false);
 
   const params = useLocalSearchParams<{
     orderNumber?: string;
     pendingPayment?: string;
     accessToken?: string;
-    session_id?: string;
   }>();
 
   const [storedOrder, setStoredOrder] = useState<{
@@ -80,49 +86,114 @@ export default function CheckoutSuccessScreen() {
       : null) ?? storedOrder.accessToken ?? undefined;
 
   const customerEmail = storedOrder.email ?? undefined;
-  const sessionId =
-    typeof params.session_id === "string" && params.session_id.startsWith("cs_")
-      ? params.session_id
-      : undefined;
+  const lookupReady = storageReady && Boolean(customerEmail || accessToken);
 
-  const lookupReady = storageReady && Boolean(customerEmail || accessToken || sessionId);
-
-  const orderByNumber = useQuery(
+  const orderData = useQuery(
     api.orders.getOrderByNumber,
     lookupReady && orderNumber && (customerEmail || accessToken)
       ? { orderNumber, customerEmail, accessToken }
       : "skip"
   );
 
-  const orderBySession = useQuery(
-    api.orders.getOrderByCheckoutSession,
-    lookupReady && sessionId ? { stripeSessionId: sessionId } : "skip"
-  );
-
-  const orderData = orderByNumber ?? orderBySession;
-
-  const isLoading =
-    Boolean(lookupReady && orderNumber && orderData === undefined) ||
-    Boolean(lookupReady && sessionId && !orderNumber && orderBySession === undefined);
+  const isLoading = Boolean(lookupReady && orderNumber && orderData === undefined);
   const order = orderData?.order;
   const items = orderData?.items ?? [];
   const promotions = orderData?.promotions ?? [];
 
   const isPendingStripe =
     order?.paymentMethod === "stripe" && order.paymentStatus === "pending";
+  const isFailedStripe =
+    order?.paymentMethod === "stripe" && order.paymentStatus === "failed";
 
   useEffect(() => {
     if (!order || clearedRef.current) return;
     if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") return;
+    if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") return;
     clearedRef.current = true;
     clearCart();
     void clearLastOrderInfo();
     void clearPendingStripeOrder();
   }, [clearCart, order]);
 
+  useEffect(() => {
+    if (!order || pushPromptRef.current || !pushNotifications) {
+      return;
+    }
+
+    const email = order.customerEmail || customerEmail;
+    if (!email) {
+      return;
+    }
+
+    pushPromptRef.current = true;
+    void pushNotifications.enablePushNotifications(email);
+  }, [customerEmail, order, pushNotifications]);
+
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
   const statusTitle = order ? getCheckoutSuccessTitle(order) : "Order confirmed!";
   const statusMessage = order ? getCheckoutSuccessMessage(order) : "";
+
+  const handleRetryPayment = useCallback(async () => {
+    if (!orderNumber || resuming) return;
+
+    if (!getStripePublishableKey()) {
+      showError("Card payments are not configured on this device.");
+      return;
+    }
+
+    setResuming(true);
+    try {
+      const resumed = await resumeMobilePaymentIntent({
+        orderNumber,
+        customerEmail,
+        accessToken,
+      });
+
+      if (resumed.alreadyPaid) {
+        return;
+      }
+
+      const customerDetails = {
+        fullName: order?.customerName ?? "",
+        email: order?.customerEmail ?? customerEmail ?? "",
+        phone: order?.customerPhone ?? "",
+        address: order?.customerAddress ?? "",
+      };
+
+      const paymentResult = await presentPayment(resumed.clientSecret, customerDetails);
+
+      if (paymentResult.type === "canceled") {
+        return;
+      }
+
+      if (paymentResult.type === "init_failed" || paymentResult.type === "failed") {
+        showError(paymentResult.message);
+        return;
+      }
+
+      router.replace({
+        pathname: "/checkout/success",
+        params: {
+          orderNumber: resumed.orderNumber,
+          accessToken: resumed.accessToken ?? accessToken ?? "",
+          pendingPayment: "1",
+        },
+      });
+    } catch (error) {
+      showError(getFriendlyErrorMessage(error, "Unable to reopen payment. Please try again."));
+    } finally {
+      setResuming(false);
+    }
+  }, [
+    accessToken,
+    customerEmail,
+    order,
+    orderNumber,
+    presentPayment,
+    resumeMobilePaymentIntent,
+    resuming,
+    showError,
+  ]);
 
   return (
     <ScreenContainer>
@@ -157,14 +228,26 @@ export default function CheckoutSuccessScreen() {
             <>
               <View style={styles.iconWrap}>
                 <Ionicons
-                  name={isPendingStripe ? "time-outline" : "checkmark-circle"}
+                  name={
+                    isFailedStripe
+                      ? "close-circle"
+                      : isPendingStripe
+                        ? "time-outline"
+                        : "checkmark-circle"
+                  }
                   size={56}
-                  color={colors.success}
+                  color={isFailedStripe ? colors.destructive : colors.success}
                 />
               </View>
 
               <Text style={styles.title}>{statusTitle}</Text>
               <Text style={styles.subtitle}>{statusMessage}</Text>
+
+              {isPendingStripe ? (
+                <Text style={styles.processingNote}>
+                  Your order status updates automatically once payment is confirmed.
+                </Text>
+              ) : null}
 
               <View style={styles.card}>
                 <View style={styles.infoRow}>
@@ -251,66 +334,19 @@ export default function CheckoutSuccessScreen() {
               </Text>
 
               <View style={styles.actions}>
-                {isPendingStripe ? (
+                {isPendingStripe || isFailedStripe ? (
                   <Button
-                    label={resuming ? "Reopening payment…" : "Retry payment"}
+                    label={resuming ? "Opening payment…" : "Retry payment"}
                     fullWidth
                     loading={resuming}
                     disabled={resuming}
-                    onPress={() => {
-                      void (async () => {
-                        if (!orderNumber) return;
-                        setResuming(true);
-                        try {
-                          const stripeUrls = getMobileStripeCheckoutUrls();
-                          const resumed = await resumeCheckoutSession({
-                            orderNumber,
-                            customerEmail,
-                            accessToken,
-                            successUrl: stripeUrls.successUrl,
-                            cancelUrl: stripeUrls.cancelUrl,
-                          });
-                          if (resumed.alreadyPaid) {
-                            return;
-                          }
-                          WebBrowser.maybeCompleteAuthSession();
-                          const browserResult = await WebBrowser.openAuthSessionAsync(
-                            resumed.url,
-                            stripeUrls.returnUrl
-                          );
-                          if (browserResult.type === "success" && browserResult.url) {
-                            const parsed = parseCheckoutReturnUrl(browserResult.url);
-                            if (parsed.type === "success") {
-                              router.replace({
-                                pathname: "/checkout/success",
-                                params: {
-                                  orderNumber: parsed.orderNumber ?? resumed.orderNumber,
-                                  accessToken:
-                                    parsed.accessToken ?? resumed.accessToken ?? "",
-                                  session_id: parsed.sessionId ?? "",
-                                },
-                              });
-                              return;
-                            }
-                          }
-                          router.replace({
-                            pathname: "/checkout/cancel",
-                            params: {
-                              orderNumber: resumed.orderNumber,
-                              accessToken: resumed.accessToken ?? "",
-                            },
-                          });
-                        } finally {
-                          setResuming(false);
-                        }
-                      })();
-                    }}
+                    onPress={() => void handleRetryPayment()}
                   />
                 ) : null}
                 <Button
                   label="View order"
                   fullWidth
-                  variant={isPendingStripe ? "outline" : "primary"}
+                  variant={isPendingStripe || isFailedStripe ? "outline" : "primary"}
                   onPress={() =>
                     router.push({
                       pathname: "/order/[id]",
@@ -322,6 +358,14 @@ export default function CheckoutSuccessScreen() {
                     })
                   }
                 />
+                {isPendingStripe || isFailedStripe ? (
+                  <Button
+                    label="Return to cart"
+                    variant="outline"
+                    fullWidth
+                    onPress={() => router.replace("/(tabs)/cart")}
+                  />
+                ) : null}
                 <Button
                   label="Continue shopping"
                   variant="outline"
@@ -340,116 +384,116 @@ export default function CheckoutSuccessScreen() {
 function createSuccessStyles({ colors, textStyles }: ThemeStyleTokens) {
   return StyleSheet.create({
     container: {
-    flex: 1,
-  },
-  content: {
-    paddingTop: spacing["2xl"],
-    alignItems: "center",
-    gap: spacing.lg,
-  },
-  loadingWrap: {
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing["3xl"],
-  },
-  loadingText: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    textAlign: "center",
-    maxWidth: 280,
-  },
-  iconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.full,
-    backgroundColor: colors.successMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    ...textStyles.screenTitle,
-    color: colors.foreground,
-    textAlign: "center",
-  },
-  subtitle: {
-    ...textStyles.bodySmall,
-    color: colors.textSecondary,
-    textAlign: "center",
-    maxWidth: 320,
-  },
-  card: {
-    width: "100%",
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  fullWidthCard: {
-    width: "100%",
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  infoBlock: {
-    gap: spacing.xs,
-  },
-  infoLabel: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-  infoValue: {
-    fontSize: typography.sm,
-    fontWeight: "600",
-    color: colors.foreground,
-    textAlign: "right",
-    flexShrink: 1,
-  },
-  infoValueBold: {
-    fontSize: typography.lg,
-    fontWeight: "800",
-    color: colors.foreground,
-  },
-  infoValueMultiline: {
-    fontSize: typography.sm,
-    fontWeight: "500",
-    color: colors.foreground,
-    lineHeight: 20,
-  },
-  infoSubValue: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
-  },
-  statusHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  cardSectionTitle: {
-    ...textStyles.sectionTitle,
-    color: colors.foreground,
-    fontSize: typography.base,
-  },
-  actions: {
-    width: "100%",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  confirmationNote: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    textAlign: "center",
-    maxWidth: 320,
-  },
+      flex: 1,
+    },
+    content: {
+      paddingTop: spacing["2xl"],
+      alignItems: "center",
+      gap: spacing.lg,
+    },
+    loadingWrap: {
+      alignItems: "center",
+      gap: spacing.md,
+      paddingVertical: spacing["3xl"],
+    },
+    loadingText: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 280,
+    },
+    iconWrap: {
+      width: 96,
+      height: 96,
+      borderRadius: radius.full,
+      backgroundColor: colors.successMuted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    title: {
+      ...textStyles.screenTitle,
+      color: colors.foreground,
+      textAlign: "center",
+    },
+    subtitle: {
+      ...textStyles.bodySmall,
+      color: colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 320,
+    },
+    processingNote: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 320,
+    },
+    card: {
+      width: "100%",
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      gap: spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    fullWidthCard: {
+      width: "100%",
+    },
+    infoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    infoBlock: {
+      gap: spacing.xs,
+    },
+    infoLabel: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+    },
+    infoValue: {
+      fontSize: typography.sm,
+      fontWeight: "600",
+      color: colors.foreground,
+      textAlign: "right",
+      flexShrink: 1,
+    },
+    infoValueMultiline: {
+      fontSize: typography.sm,
+      fontWeight: "500",
+      color: colors.foreground,
+      lineHeight: 20,
+    },
+    infoSubValue: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.borderLight,
+    },
+    statusHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    cardSectionTitle: {
+      ...textStyles.sectionTitle,
+      color: colors.foreground,
+      fontSize: typography.base,
+    },
+    actions: {
+      width: "100%",
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    confirmationNote: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 320,
+    },
   });
 }
-

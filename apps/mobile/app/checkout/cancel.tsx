@@ -15,6 +15,7 @@ import { loadLastOrderInfo } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { useTheme } from "@/providers/theme-context";
 
+/** Legacy screen for hosted Stripe Checkout cancel deep links. Native PaymentSheet dismissals stay on checkout. */
 export default function CheckoutCancelScreen() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();

@@ -1,650 +1,712 @@
-# Ecommerce — AI-Powered Full-Stack Ecommerce Platform
+# Ecommerce Platform — Project Overview
 
-A production-grade ecommerce platform that combines traditional online retail with intelligent automation. Built on **Next.js 16**, **Convex**, and a multi-provider **AI layer**, it delivers realtime shopping experiences, semantic product discovery, voice commerce, AI-driven marketing, and an admin business copilot — all on a scalable, cloud-native architecture.
+This document is the **current source of truth** for the Ecommerce monorepo. It describes what is implemented in code today (web storefront, web admin, Expo mobile app, Convex backend, and supporting services). Planned work is isolated in [Roadmap](#17-roadmap--remaining-work).
 
----
+**Status labels used below**
 
-## Table of Contents
-
-1. [AI-Powered Features](#ai-powered-features)
-2. [Technology Stack](#technology-stack)
-3. [Architecture Overview](#architecture-overview)
-4. [Core Ecommerce Features](#core-ecommerce-features)
-5. [Admin Dashboard & Operations](#admin-dashboard--operations)
-6. [SMS Configuration](#sms-configuration)
-7. [Future Roadmap](#future-roadmap)
-8. [Portfolio Summary](#portfolio-summary)
+| Label | Meaning |
+|-------|---------|
+| **Implemented** | Shipped in code and wired to UI or backend |
+| **Partial** | Present but limited, env-gated, or not at feature parity across platforms |
+| **Not implemented** | Not in the product today |
 
 ---
 
-## AI-Powered Features
+## Table of contents
 
-AI is a first-class capability across the entire platform — not an add-on. From product discovery to review moderation, content generation, voice shopping, and business intelligence, every major workflow is augmented by large language models and embedding-based search.
+1. [Platform overview](#1-platform-overview)
+2. [Monorepo structure](#2-monorepo-structure)
+3. [Architecture and data flow](#3-architecture-and-data-flow)
+4. [Technology stack](#4-technology-stack)
+5. [Web storefront](#5-web-storefront)
+6. [Web admin](#6-web-admin)
+7. [AI features](#7-ai-features)
+8. [Mobile app](#8-mobile-app)
+9. [Mobile offline architecture](#9-mobile-offline-architecture)
+10. [Cross-platform / iOS / Android](#10-cross-platform--ios--android)
+11. [Checkout and payments](#11-checkout-and-payments)
+12. [Backend / Convex](#12-backend--convex)
+13. [Security and reliability](#13-security-and-reliability)
+14. [Performance and UX](#14-performance-and-ux)
+15. [Accessibility](#15-accessibility)
+16. [Feature matrix](#16-feature-matrix)
+17. [Roadmap / remaining work](#17-roadmap--remaining-work)
 
-### Semantic & Hybrid Product Search
-
-Shoppers find products using natural language, not just exact keyword matches. The platform combines **vector similarity search** (384-dimensional embeddings) with **keyword ranking** to deliver hybrid results that understand intent — for example, "comfortable running shoes under $80" resolves category, price, and semantic meaning together.
-
-- Product embeddings are generated via **Google Gemini** (`gemini-embedding-001`) or optional **OpenAI** embeddings
-- Query embeddings are cached to reduce latency on repeat searches
-- Search analytics track trending queries for merchandising insights
-- Available in the storefront header, product catalog, and the Vapi voice assistant
-
-**Key implementation:** `convex/productSearch.ts`, `convex/lib/search/hybridRank.ts`, `convex/lib/ai/productIntelligence.ts`
-
----
-
-### AI Product Recommendations
-
-The platform surfaces relevant products through multiple recommendation strategies:
-
-- **Embedding-based similarity** — "Similar products" on product detail pages use vector distance on product embeddings
-- **Product intelligence summaries** — AI-generated keywords, use cases, and summaries enrich catalog metadata for better matching
-- **Voice assistant recommendations** — Vapi applies category, budget, and preference filters for conversational product suggestions
-- **Bundle builder** — AI-assisted product bundles for complementary purchases
-
-**Key implementation:** `convex/productSearch.ts` (`getSimilarProducts`), `convex/vapi/tools.ts`, `convex/vapi/bundleBuilder.ts`
+Setup and environment variables: [README.md](../README.md). Mobile UX conventions: [apps/mobile/docs/mobile-ux.md](../apps/mobile/docs/mobile-ux.md).
 
 ---
 
-### AI Review Intelligence
+## 1. Platform overview
 
-Customer reviews are analyzed automatically when submitted:
+The repository `ecommerce-nextjs/` is an **npm workspaces monorepo**. One Convex deployment is the shared backend for:
 
-- **Sentiment analysis** — Positive, neutral, or negative classification
-- **Content moderation** — Flags inappropriate or spam content before publication
-- **Topic extraction** — Identifies recurring themes (quality, shipping, sizing, etc.)
-- **Semantic review search** — Shoppers can search within reviews using natural language
-- **Product-level insights** — Aggregated AI summaries and topic breakdowns on product pages
+- **Web storefront** — guest shopping on Next.js (`apps/web`)
+- **Web admin dashboard** — authenticated operators on Next.js (`apps/web` `/admin`)
+- **Mobile storefront** — Expo / React Native (`apps/mobile`)
+- **Shared helpers** — currency, images, cart line types (`packages/shared`)
+- **Optional AI worker** — local review-AI HTTP service (`services/review-ai-worker`)
 
-The review pipeline supports a **multi-provider architecture**: Gemini, OpenAI, Anthropic, Groq, or a local **AI worker** (Xenova Transformers + Ollama) for on-premise processing.
-
-**Key implementation:** `convex/reviewAi.ts`, `convex/reviewAiActions.ts`, `convex/productReviewInsights.ts`, `services/review-ai-worker/`
-
----
-
-### AI Review Reply Generation
-
-Store administrators receive AI-drafted replies to customer reviews. The system generates context-aware responses that address specific feedback points, which admins can edit, approve, and publish — maintaining brand voice while saving hours of manual response work.
-
-**Key implementation:** `convex/adminReviews.ts`, `convex/reviewAiActions.ts`
-
----
-
-### AI Voice Assistant (Vapi)
-
-A full **voice and chat shopping assistant** powered by **Vapi AI** enables hands-free ecommerce:
-
-- **Product search** — Semantic and hybrid search via voice or text
-- **Product selection** — Browse, compare, and add items to cart conversationally
-- **Cart management** — View, update quantities, and remove items
-- **Checkout** — Complete orders via Stripe or Cash on Delivery from the assistant
-- **Order tracking** — Look up order status by number or customer details
-- **Lead capture & support** — Collect customer inquiries and route support tickets
-
-The assistant integrates with Convex backend tools via webhooks, with a floating widget on the storefront and a dedicated admin configuration panel.
-
-**Key implementation:** `convex/vapi/`, `src/components/vapi/`, `src/hooks/use-vapi-assistant.ts`
-
----
-
-### AI Outbound Review Calls
-
-After order delivery, the platform can automatically place **outbound phone calls** via Vapi to collect customer reviews. The voice agent guides customers through a structured review process, capturing ratings and feedback that flow into the standard review pipeline with AI analysis.
-
-- Configurable scheduling after delivery
-- Admin dashboard for call status, retries, and collected reviews
-- Integrates with Twilio for international phone number support
-
-**Key implementation:** `convex/reviewCalls.ts`, `convex/reviewCallActions.ts`, `convex/vapi/reviewCallTools.ts`
-
----
-
-### AI Product Content Generation
-
-Administrators generate rich product content with a single click using **Gemini** (including vision for image analysis):
-
-- **Product descriptions** — Compelling, SEO-friendly copy from product attributes and images
-- **SEO metadata** — Auto-generated `seoTitle`, `seoDescription`, and `seoKeywords`
-- **Product highlights** — Bullet-point feature lists for product detail pages
-- **Image alt text** — Accessible alt tags derived from product image analysis
-- **Batch generation** — Generate all content fields at once or individually
-
-**Key implementation:** `convex/adminProductContent.ts`, `convex/lib/ai/productContentGeneration.ts`, `convex/lib/ai/productContentImages.ts`
-
----
-
-### AI Email Marketing Campaigns
-
-The email marketing module includes a full **AI campaign assistant** powered by Gemini:
-
-- **Full campaign generation** — Subject lines, preview text, and HTML body from a brief prompt
-- **Subject line optimizer** — A/B-style subject line suggestions for higher open rates
-- **CTA and promo copy** — Call-to-action and promotional text tailored to products or categories
-- **Audience segmentation** — Category-based, behavioral (recent buyers, high-value, inactive), and keyword-interest segments
-- **Seasonal and category campaigns** — Templates and AI prompts for summer sales, category promotions, and more
-
-Campaigns are sent via **Resend** with open/click tracking, revenue attribution, and batch processing for large subscriber lists.
-
-**Key implementation:** `convex/emailCampaignAi.ts`, `convex/emailCampaigns.ts`, `convex/lib/emailSegments.ts`, `src/app/admin/(dashboard)/email-marketing/`
-
----
-
-### AI Business Copilot
-
-An **admin-only conversational intelligence layer** answers natural-language business questions:
-
-- Revenue trends, order volume, and average order value
-- Inventory and low-stock alerts
-- Review sentiment and product feedback analysis
-- Promotion and merchandising recommendations
-- Search trend insights from customer queries
-
-The copilot aggregates live data from orders, products, reviews, and search analytics, routes questions by intent, and responds with structured cards. Conversations and saved insights persist per admin user.
-
-**Key implementation:** `convex/aiBusinessCopilot.ts`, `convex/lib/ai/copilotGeneration.ts`, `convex/lib/ai/businessIntelligence.ts`, `src/app/admin/(dashboard)/ai-copilot/`
-
----
-
-### Multi-Provider AI Architecture
-
-The platform is not locked to a single AI vendor. Provider selection is configurable via environment variables:
-
-| Provider | Capabilities |
-|----------|-------------|
-| **Google Gemini** | Primary — chat, vision, embeddings (`gemini-2.5-flash`, `gemini-embedding-001`) |
-| **OpenAI** | Chat, embeddings (`text-embedding-3-small`), moderation |
-| **Anthropic** | Chat via Messages API |
-| **Groq** | Fast inference via OpenAI-compatible API |
-| **Local AI Worker** | Xenova Transformers (sentiment, embeddings) + Ollama (tags, replies, summaries) |
-
-**Key implementation:** `convex/lib/ai/getProvider.ts`, `convex/lib/ai/providers/`
-
----
-
-## Technology Stack
-
-### Frontend
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 16.2.7 | App Router, SSR, API routes, middleware |
-| **React** | 19.2.4 | UI components and hooks |
-| **TypeScript** | 5.x | Strict type safety end-to-end |
-| **Tailwind CSS** | 4.3.0 | Utility-first styling |
-| **shadcn/ui** | 4.10.0 | Accessible component library (55+ components) |
-| **Base UI** | 1.5.0 | Headless primitives for dialogs, popovers |
-| **Framer Motion** | 12.x | Animations and transitions |
-| **Recharts** | 3.x | Admin dashboard charts |
-| **Embla Carousel** | 8.x | Product image galleries and carousels |
-| **TipTap** | 3.x | Rich text editor for email templates |
-| **Sonner** | 2.x | Toast notifications |
-| **next-themes** | 0.4.x | Dark/light mode support |
-| **Lucide React** | 1.x | Icon system |
-| **cmdk** | 1.x | Command palette patterns |
-| **react-day-picker** | 10.x | Date selection in admin |
-| **react-phone-number-input** | 3.x | International phone input with validation |
-
-### Backend
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Convex** | 1.40.0 | Realtime database, serverless functions, vector search, file storage |
-| **Better Auth** | 1.6.9 | Authentication with email OTP |
-| **@convex-dev/better-auth** | 0.12.2 | Convex integration for auth sessions |
-
-Convex provides:
-- Reactive queries that auto-update the UI on data changes
-- Vector indexes for semantic search (384-dim embeddings on products and reviews)
-- File storage for product images, review photos, and profile pictures
-- HTTP actions for Stripe webhooks, Vapi webhooks, and auth routes
-- Scheduled functions for AI processing, campaign batches, and review call scheduling
-
-### Payments & Commerce
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Stripe** | 22.2.0 | Checkout Sessions, payment processing, webhooks |
-
-### Communications
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Resend** | 6.12.4 | Transactional email (orders, OTP) and marketing campaigns |
-| **React Email** | 6.5.0 | Type-safe email templates |
-| **Twilio** | 6.0.2 | Order confirmation SMS |
-
-### AI & Voice
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Google Gemini** | API | Primary LLM — chat, vision, embeddings |
-| **OpenAI** | API | Optional — chat, embeddings, moderation |
-| **Anthropic** | API | Optional — chat |
-| **Groq** | API | Optional — fast inference |
-| **Vapi** | 2.5.2 | Voice and chat shopping assistant |
-| **Xenova Transformers** | — | Local sentiment analysis and embeddings |
-| **Ollama** | — | Local LLM for tags, replies, summaries |
-
-### DevOps & Tooling
-
-| Technology | Purpose |
-|------------|---------|
-| **Vercel** | Production hosting with preview deployments |
-| **ESLint** | Code quality with Next.js and Convex rules |
-| **npm-run-all** | Parallel dev servers (Next.js + Convex) |
-| **Docker Compose** | Optional local AI worker container |
-
----
-
-## Architecture Overview
-
-```mermaid
-flowchart TB
-  subgraph frontend [Next.js_16_App_Router]
-    Shop[Shop_UI]
-    Admin[Admin_Dashboard]
-    VapiWidget[Vapi_Voice_Chat_Widget]
-  end
-  subgraph convex [Convex_Backend]
-    DB[(Realtime_DB)]
-    VectorSearch[Vector_Search]
-    Storage[File_Storage]
-    HTTP[HTTP_Actions]
-  end
-  subgraph ai [AI_Layer]
-    Gemini[Gemini_Primary]
-    MultiProvider[OpenAI_Anthropic_Groq]
-    AIWorker[Local_AI_Worker]
-  end
-  subgraph integrations [Integrations]
-    Stripe[Stripe]
-    Resend[Resend_Email]
-    Twilio[Twilio_SMS]
-    Vapi[Vapi_Voice]
-  end
-  Shop --> convex
-  Admin --> convex
-  VapiWidget --> Vapi
-  Vapi --> HTTP
-  convex --> ai
-  HTTP --> Stripe
-  convex --> Resend
-  convex --> Twilio
+```text
+ecommerce-nextjs/
+├── apps/
+│   ├── web/                 # Next.js 16 — storefront + admin
+│   └── mobile/              # Expo SDK 54 — customer app
+├── packages/
+│   └── shared/              # Platform-agnostic helpers
+├── convex/                  # Schema, queries, mutations, actions, HTTP
+├── services/
+│   └── review-ai-worker/    # Optional local Transformers/Ollama worker
+├── docs/                    # Architecture and product docs
+└── package.json             # Workspace scripts
 ```
 
-**Data flow highlights:**
+### How web and mobile relate
 
-- **Shop frontend** subscribes to Convex queries — catalog, cart, and order updates appear instantly without polling
-- **Admin dashboard** reads aggregated KPIs, manages products/orders, and triggers AI workflows
-- **Vapi assistant** calls Convex HTTP endpoints as tools for search, cart, checkout, and tracking
-- **Stripe webhooks** hit Convex HTTP routes for payment verification and order fulfillment
-- **AI actions** run as Convex actions (Node.js) calling external LLM APIs, with results stored via mutations
+| Concern | Shared | Separate |
+|---------|--------|----------|
+| Catalog, orders, payments, search, reviews, promotions, settings | Convex API | UI implementations |
+| Cart persistence | Same key (`yasirCart`) and line shape | Web: `localStorage` · Mobile: AsyncStorage |
+| Wishlist | Convex wishlist exists | Web uses **browser localStorage only**; mobile uses **Convex + offline queue** — lists are **not synced** across platforms |
+| Auth | Better Auth on Convex | **Admin only**. Storefront is guest checkout on web and mobile |
+| Voice assistant (Vapi) | Convex tools + webhooks | **Web widget only** (env-gated). Mobile has no Vapi SDK |
+| Visual search | Convex action + vector indexes | Image embeddings are computed by the **Next.js** `/api/ai/embed-image` route (SigLIP/CLIP). Convex must reach `SITE_URL` |
 
----
-
-## Core Ecommerce Features
-
-### Product Management
-
-A full-featured product catalog with admin CRUD and rich merchandising controls.
-
-#### Product CRUD
-
-- Create, read, update, and soft-delete (deactivate) products from the admin panel
-- Paginated product lists with search, filters, and column visibility controls
-- Public catalog with infinite-scroll pagination, grid/list views, and sort options
-- Realtime updates — catalog changes propagate instantly to all connected browsers
-
-#### Categories
-
-- Hierarchical category management with name, description, slug, and sort order
-- Active/inactive toggle per category
-- Product count per category for merchandising decisions
-- Drag-and-drop reorder support in admin
-
-#### Product Images
-
-- Multiple images per product stored in **Convex file storage**
-- Secure upload URLs generated server-side
-- Image gallery with carousel on product detail pages
-- AI-generated alt text for accessibility and SEO
-
-#### Product Variants
-
-- Color options per product (configurable color array)
-- Size selection on order line items where applicable
-- Variant selection flows through cart and checkout with price snapshots
-
-#### Product Status
-
-- **Active** products appear in the public catalog
-- **Inactive** products are hidden from shoppers but retained in admin for restoration
-- Admin tabs for quick filtering between active and inactive inventory
-
-#### Featured Products
-
-- **Featured** flag for homepage hero sections
-- **Best Sellers** and **New Arrivals** merchandising flags
-- Manual reorder for curated product placement
-- Discounted products list for promotional sections
-
-#### Discount Management
-
-- Per-product **discount percentage** with automatic final price calculation
-- Line-level discount snapshots on orders for accurate historical pricing
-- Cart pricing hook computes totals with discounts and shipping in realtime
-
-#### Shipping Charges
-
-- Per-product **shipping flag** and **shipping charges** amount
-- Shipping costs roll up in cart and checkout order summaries
-- Configurable per product for mixed free-shipping and paid-shipping catalogs
-
-#### SEO Metadata
-
-- `seoTitle`, `seoDescription`, and `seoKeywords` fields per product
-- Admin form with character-count warnings for optimal SEO length
-- JSON-LD structured data on the homepage for search engine rich results
-- AI-generated SEO content from product attributes
-
-#### Product Highlights
-
-- Bullet-point highlight arrays for product detail pages
-- AI-generated highlights from product name, description, and images
-- Displayed prominently on single product views
-
-#### Additional Product Features
-
-- **Stock / inventory** tracking with decrement on checkout and restore on cancellation
-- **Low-stock alerts** on admin dashboard with configurable threshold
-- **Brand filtering** via the `company` field with brand list query
-- **SKU** field for internal inventory reference
-- **Multi-currency** support at product level
+**Dev note:** `http://localhost:3000` is the Next.js site. `http://localhost:8081` is Expo (including Expo web). They are not the same app.
 
 ---
 
-### Checkout & Payments
+## 2. Monorepo structure
 
-A secure, multi-method checkout flow supporting both online and offline payment.
+| Path | Purpose |
+|------|---------|
+| `apps/web` | Next.js App Router: customer shop `(shop)/` and admin `(admin)/`. Vercel root directory. |
+| `apps/mobile` | Expo Router storefront. Same Convex URL via `EXPO_PUBLIC_CONVEX_URL`. |
+| `packages/shared` | `APP_NAME` / brand, `formatCurrencyAmount`, product image helpers, `CART_STORAGE_KEY` / `CheckoutCartLine`. |
+| `convex` | Single backend: schema, public storefront functions, admin functions, Stripe/Vapi/n8n HTTP, AI actions. |
+| `services/review-ai-worker` | Optional Node worker (`@xenova/transformers`, optional Ollama). Selected when `AI_PROVIDER=remote` and `AI_WORKER_URL` is set. |
+| `docs` | This overview plus focused architecture notes (visual search, recommendations, review AI, AI QA). |
+| `n8n/workflows` | Optional automation. Core catalog, checkout, and search work without n8n. |
 
-#### Cash On Delivery (COD)
+### Workspace commands (root `package.json`)
 
-- Customers select COD at checkout with no online payment required
-- Orders created immediately with `pending` payment status
-- Admin can update COD payment status (pending → paid) upon delivery collection
-- Full order lifecycle independent of payment gateway
-
-#### Stripe Checkout
-
-- **Stripe Checkout Sessions** for secure card payments
-- Pending order created before redirect to Stripe hosted checkout page
-- Success and cancel pages with order confirmation details
-- Supports Stripe's built-in payment methods and fraud protection
-
-#### Secure Payment Processing
-
-- Server-side session creation — no card data touches the application
-- Idempotency keys prevent duplicate orders on retry
-- Cart validation against live product prices and stock before order creation
-
-#### Payment Verification
-
-- **Stripe webhooks** verify payment completion server-side
-- Webhook signature validation prevents spoofed events
-- Idempotent event log (`stripeWebhookEvents`) prevents duplicate processing
-- Payment status updated atomically with order status
-
-#### Stripe Webhooks
-
-- HTTP endpoint at `/stripe/webhook` on Convex site URL
-- Handles `checkout.session.completed`, payment intent events, and refunds
-- Automatic order confirmation emails and SMS triggered on successful payment
-
-#### Order Creation
-
-- Order document with customer info, totals, payment method, and status
-- Order line items with **price snapshots** (original price, discount, final price)
-- Order status logs and payment logs for full audit trail
-- Customer profile persistence by email for faster repeat checkout
-
-#### Payment Status Tracking
-
-- Payment statuses: `pending`, `paid`, `failed`, `refunded`
-- Visible in admin order detail and public order tracking
-- Payment log entries record actor (system, admin, webhook) and timestamp
-
-#### Post-Checkout Notifications
-
-- Order confirmation email via Resend with React Email template
-- Optional order confirmation SMS via Twilio (admin-configurable toggle)
-- Review invitation emails sent from admin after delivery
-
-#### Voice Checkout
-
-- Vapi assistant can initiate Stripe or COD checkout from conversational cart
-- Stripe checkout link delivered in chat for secure payment completion
+| Command | What it runs |
+|---------|----------------|
+| `npm run dev` | Next.js (`apps/web`) + `convex dev` in parallel |
+| `npm run dev:web` | Next.js only |
+| `npm run dev:backend` | `convex dev` |
+| `npm run mobile` | Expo (`scripts/mobile-start.mjs`) |
+| `npm run mobile:env` | Copy `NEXT_PUBLIC_CONVEX_URL` from root `.env.local` → `apps/mobile/.env` |
+| `npm run mobile:tunnel` | Expo with tunnel |
+| `npm run seed` | `convex run seed:seedAll` |
+| `npm run seed:admin` | Seed admin + system settings |
+| `npm run build` / `npm run build:vercel` | Web production build (Vercel also deploys Convex) |
+| `npm run typecheck` / `typecheck:mobile` / `typecheck:all` | TypeScript |
+| `npm run ui:add` | shadcn add in `apps/web` |
+| `npm run vapi:setup` / `vapi:setup-review` / `vapi:setup:prod` | Vapi assistant scripts |
+| `npm run dev:ai-worker` | Local review-AI worker |
 
 ---
 
-### Order Management
+## 3. Architecture and data flow
 
-End-to-end order lifecycle from placement to delivery with full visibility for admins and customers.
+```text
+Next.js storefront ──┐
+Next.js admin ───────┼── Convex (queries / mutations / actions)
+Expo mobile ─────────┘         │
+                               ├── Convex database + file storage + vector indexes
+                               ├── Stripe (web Checkout Sessions + mobile PaymentIntents + webhooks)
+                               ├── Resend (OTP, order email, campaigns)
+                               ├── Twilio (optional order SMS)
+                               ├── Vapi (web voice/chat + outbound review calls)
+                               ├── LLM providers (Gemini / Groq / OpenRouter / OpenAI / Anthropic)
+                               ├── Next.js /api/ai/embed-image (SigLIP / CLIP)
+                               └── Optional: n8n workers, review-ai-worker
+```
 
-#### Order Creation
+### Checkout (both clients)
 
-- Triggered by COD submission or Stripe webhook confirmation
-- Inventory decremented atomically with stock assertion
-- Unique order numbers generated for customer reference
-- Idempotent creation prevents duplicates from network retries
+```text
+Client cart (local storage)
+        ↓
+Convex validateCartForCheckout / priceCheckoutCart
+        ↓  live products, discounts, promotions, delivery, stock
+COD → createCashOrder          Web Stripe → createCheckoutSession
+        ↓                        Mobile Stripe → createMobilePaymentIntent
+Order + line snapshots              Pending order + PaymentIntent / Checkout
+        ↓                                    ↓
+Email / optional SMS                Webhook → paid / failed / cancelled
+```
 
-#### Order Status Tracking
+Cached catalog prices on mobile are **not** used as checkout prices. Checkout always re-prices on the server while online.
 
-Full fulfillment lifecycle:
+### Hybrid product search
 
-| Status | Description |
-|--------|-------------|
-| `pending` | Order placed, awaiting processing |
-| `processing` | Being prepared for shipment |
-| `confirmed` | Order confirmed by store |
-| `shipped` | Dispatched to customer |
-| `delivered` | Successfully delivered |
-| `cancelled` | Cancelled by admin or customer |
-| `refunded` | Payment refunded |
-| `failed` / `expired` | Payment or checkout failures |
+```text
+Query text
+  → parse intent (category, price, attributes)
+  → keyword rank + vector search (product text embeddings, 384-d)
+  → hybrid merge
+  → catalog filters (web URL / mobile sheet)
+```
 
-Status changes logged with actor (system, admin, customer) and timestamp.
+### Visual search
 
-#### Payment Status Tracking
-
-- Separate payment status from fulfillment status
-- COD orders track collection separately from shipping progress
-- Stripe orders auto-update to `paid` on webhook confirmation
-
-#### Customer Information
-
-- Name, email, phone, and full shipping address captured at checkout
-- Customer profiles saved by email for pre-filled repeat purchases
-- Phone numbers validated to E.164 format for SMS delivery
-
-#### Order History
-
-- Admin paginated order list with filters by status, payment method, date range, and amount
-- Sort by newest, oldest, highest amount, or lowest amount
-- Order detail view with line items, pricing breakdown, status timeline, and payment logs
-
-#### Public Order Tracking
-
-- Customers track orders at `/track-order` without logging in
-- Lookup by **order number** or **email/phone**
-- Rate limiting prevents abuse
-- Progress timeline visualization with current status
-- Dedicated URL per order: `/track-order/[orderNumber]`
-
----
-
-### Customer Features
-
-Engagement tools that build trust and drive repeat purchases.
-
-#### Product Reviews
-
-- **Verified-purchase reviews** tied to delivered order items
-- Star rating (1–5), title, and text with optional image uploads
-- Review eligibility check ensures only purchasers can review
-- Create, update, and delete own reviews from order history
-- Admin moderation workflow (approve/reject) before public display
-
-#### Product Ratings
-
-- Aggregate star rating and review count on product cards and detail pages
-- Rating breakdown visualization (5-star distribution)
-- Ratings update automatically when reviews are approved
-
-#### Review Management
-
-- Admin review inbox with filters by status, sentiment, and product
-- AI retry for failed analysis pipelines
-- Helpful vote system with voter deduplication
-- Homepage testimonials surfaced from top approved reviews
-
-#### Order Tracking
-
-- Public order tracking page (see Order Management above)
-- Order-delivered review prompts on tracking page
-- Email review invitations sent from admin
-
-#### Newsletter Subscription
-
-- Footer newsletter signup on every page
-- Token-based unsubscribe at `/unsubscribe/[token]`
-- Admin subscriber management with export to CSV
-- Subscriber interests detected from purchase behavior for segmentation
-
-#### Contact Form
-
-- Public contact page with validated form submission
-- Admin inbox with read/unread status and delete
-- Store contact info (address, phone, email, hours) from settings displayed on contact page
-
-#### Static Pages
-
-- About page with company story, stats, and FAQ
-- Terms of Service and Privacy Policy pages
-- JSON-LD and SEO metadata for discoverability
+```text
+Image upload → Convex storage
+  → visualProductSearch.searchByImage
+  → Next.js /api/ai/embed-image (SigLIP, CLIP fallback)
+  → vector search on product image embeddings
+  → optional text query + catalog filters
+  → last resort: Gemini Vision attributes → hybrid text search
+```
 
 ---
 
-## Admin Dashboard & Operations
+## 4. Technology stack
 
-A comprehensive command center for store operators.
+Versions are from current workspace `package.json` files.
 
-### Dashboard KPIs & Analytics
+### Web (`apps/web`)
 
-- **Revenue**, **order count**, and **average order value** with period-over-period comparison
-- Time-range filters (today, 7 days, 30 days, 90 days, custom)
-- Revenue trend chart (Recharts)
-- Order status and payment method breakdowns
-- Top products and top categories by sales
-- Review analytics (sentiment distribution, pending moderation count)
+| Technology | Version (approx.) | Role |
+|------------|-------------------|------|
+| Next.js | 16.2.7 | App Router, SSR, API routes |
+| React | 19.2.4 | UI |
+| TypeScript | 5.x | Strict |
+| Tailwind CSS | 4.3 | Styling |
+| shadcn/ui + Base UI | — | Accessible primitives |
+| Convex | 1.40 | Client |
+| Better Auth + `@convex-dev/better-auth` | 1.6.9 / 0.12 | Admin auth |
+| Stripe | 22.x | Checkout Sessions |
+| Resend + React Email | — | Email |
+| Twilio | — | Optional SMS |
+| Vapi web SDK | 2.5.2 | Storefront voice/chat widget |
+| Recharts | 3.x | Admin charts |
+| TipTap | 3.x | Email template editor |
+| next-themes | 0.4 | Theme provider (storefront is **light-only** today) |
+| `@xenova/transformers` | 2.17 | In-process SigLIP/CLIP for `/api/ai/embed-image` |
 
-### Operational Alerts
+### Mobile (`apps/mobile`)
 
-- **Low-stock alerts** with configurable threshold from settings
-- Recent orders feed with quick navigation to detail
-- Admin activity feed from audit logs
+| Technology | Version (approx.) | Role |
+|------------|-------------------|------|
+| Expo | SDK 54 | Toolchain, EAS |
+| React Native | 0.81.5 | Native UI |
+| React | 19.1.0 | UI |
+| Expo Router | 6.x | File-based navigation |
+| Convex | 1.40 | Same backend |
+| NetInfo | 11.4 | Authoritative network state |
+| AsyncStorage | 2.2 | Cart, cache, prefs |
+| expo-image / image-picker / manipulator | — | Images and visual search |
+| @stripe/stripe-react-native | 0.50.x | Native PaymentSheet (requires dev/EAS build) |
+| expo-secure-store | — | Contact draft |
+| expo-clipboard / haptics | — | Copy order number, feedback |
 
-### User Management
+### Backend and services
 
-- Better Auth with email OTP login
-- Role-based access: `admin` and `superAdmin`
-- User CRUD: create, ban, role assignment
-- Profile management with avatar upload and password change
+| Technology | Role |
+|------------|------|
+| Convex | Database, reactive queries, actions, cron/scheduler, file storage, vector search, HTTP actions |
+| Better Auth (Convex component) | Admin sessions, email OTP |
+| Stripe | Hosted checkout, webhooks |
+| Gemini / Groq / OpenRouter / OpenAI / Anthropic | Configurable LLM chain |
+| Vapi | Storefront assistant webhooks; outbound review calls |
+| review-ai-worker | Optional local sentiment/embeddings/LLM |
 
-### Settings
-
-- Store contact information, business hours, and policies
-- Email from-address configuration with Resend sync
-- SMS order confirmation toggle
-- Review call scheduling configuration
-- Custom system settings extensible via key-value store
-
-### Email Marketing Hub
-
-- **Templates** — Rich text editor (TipTap), product linking, draft/published workflow, duplicate
-- **Campaigns** — Create, schedule, send, batch processing, open/click/revenue stats
-- **Subscribers** — List, segment, export, interest detection
-- **AI Assistant** — Campaign generation, subject optimizer, CTA suggestions
-- Marketing dashboard KPIs for campaign performance
-
-### Review Operations
-
-- Review moderation queue with AI sentiment and moderation flags
-- AI reply draft generation and publish workflow
-- Review call management — schedule, retry, view collected reviews
-- Vapi conversation panel for assistant interaction logs
-
-### AI Assistant Configuration
-
-- Vapi assistant setup and webhook configuration
-- Admin panel for monitoring voice/chat sessions
-- Production setup scripts for Vapi deployment
+Hosting: **Vercel** for `apps/web` (see `apps/web/vercel.json`). Mobile: **EAS** profiles in `apps/mobile/eas.json` (dev client, preview APK, production env). Convex URL is per-environment (`NEXT_PUBLIC_CONVEX_URL` / `EXPO_PUBLIC_CONVEX_URL`).
 
 ---
 
-## SMS Configuration
+## 5. Web storefront
 
-Transactional SMS keeps customers informed without marketing spam.
+**Implemented.** Guest shopping; no customer login. Shell: header, footer, cart/filter providers, product compare sheet, optional Vapi widget (`apps/web/src/app/(shop)/`).
 
-### Twilio Integration
+`/` redirects to `/home`. Theme is **forced light** (`app/layout.tsx`, `ShadcnProviders` `enableSystem={false}`). There is no storefront dark-mode toggle.
 
-- Order confirmation SMS sent automatically after successful order placement
-- Message includes order number and key details
-- Credentials configured via environment variables (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`)
+### Routes
 
-### Admin Configuration
+| Route | What customers can do |
+|-------|------------------------|
+| `/home` | Hero, category tiles, best sellers, new arrivals, promotions, recommendation bands, AI shopping CTA, testimonials |
+| `/products` | Catalog with filters (category, price, brand, color family, promotions, rating, stock), sort, grid/list, URL-synced filters. **Infinite scroll** (12 per page). `?search=` uses **hybrid search** |
+| `/products/visual-search` | Upload/capture image, optional text, visually similar products, load-more |
+| `/product/[id]` | Gallery, price/discount, stock, shipping, color/qty, add to cart, tabs (description/specs/warranty/shipping), **read** reviews, similar products, recommendation bands. Records recently viewed (localStorage). `/singleproduct/[id]` redirects here |
+| `/cart` | Quantities, remove, promotion gifts/discounts, server-priced summary, checkout |
+| `/checkout` | Customer details, delivery method, **COD** or **Stripe**, terms/privacy. Empty cart redirects to cart |
+| `/checkout/success` · `/checkout/cancel` | Confirmation or cancelled Stripe session |
+| `/wishlist` | Guest list in **localStorage**. Not linked from header/footer nav |
+| `/promotions` | Active deals |
+| `/ai-shopping` | Explains AI search / visual / voice; opens Vapi when configured |
+| `/track-order` · `/track-order/[orderNumber]` | Track by **order number** (optional email for full PII) or **email/phone**. Delivered orders: write reviews with images |
+| `/contact` | Store info + inquiry form |
+| `/about` | Story, FAQ accordion |
+| `/privacy` · `/terms` · `/shipping` · `/return` | Policy pages from settings/legal content |
+| `/unsubscribe/[token]` | Marketing unsubscribe |
 
-- **SMS Order Confirmation** toggle in Admin → Settings
-- When disabled, only email notifications are sent
-- Public settings API respects toggle for notification orchestration
+Header search: debounced hybrid typeahead, recent searches, suggestions, camera link to visual search.
 
-### Phone Validation
+### Other storefront behavior
 
-- Customer phone numbers validated to **E.164** international format via `libphonenumber-js`
-- Invalid numbers skip SMS gracefully without blocking order creation
-- Configurable max message length for trial vs. paid Twilio accounts
-
-### Scope
-
-SMS is limited to **transactional order confirmations**. SMS marketing, OTP via SMS, and promotional texts are not implemented — admin OTP uses email via Resend.
-
----
-
-## Future Roadmap
-
-The following capabilities are **planned** for future development and are not yet implemented:
-
-| Feature | Description |
-|---------|-------------|
-| **AI Inventory Forecasting** | Predict stock demand from sales velocity, seasonality, and trends to prevent stockouts and overstock |
-| **AI Dynamic Pricing** | Real-time price optimization based on demand, competition, and inventory levels |
-| **AI Customer Segmentation** | Automated RFM and behavioral clustering for targeted marketing |
-| **AI Sales Forecasting** | Revenue and order volume predictions for business planning |
-| **AI Promotion Optimization** | A/B test and optimize discount strategies, timing, and audience targeting |
-| **Advanced Analytics** | Cohort analysis, funnel visualization, customer lifetime value, and attribution modeling |
-
----
-
-## Portfolio Summary
-
-**Ecommerce Store** is a modern AI-powered ecommerce platform that combines traditional online retail functionality with intelligent automation at every layer of the stack. Built on **Next.js 16** and **Convex**, it delivers realtime catalog updates, semantic product search powered by **Gemini embeddings**, and a **Vapi voice assistant** that handles the full shopping journey — from product discovery to checkout and order tracking.
-
-On the operations side, an **AI Business Copilot** gives store administrators natural-language access to revenue, inventory, and review analytics, while **AI email marketing** generates campaigns with behavioral segmentation. Customer reviews are enriched with sentiment analysis, topic extraction, and AI-generated reply drafts, and **outbound review calls** collect feedback proactively after delivery.
-
-The platform integrates **Stripe** for secure payments, **Resend** for transactional and marketing email, and **Twilio** for order confirmation SMS — all orchestrated through Convex serverless functions with webhook verification, audit logging, and idempotent processing. A multi-provider AI architecture (Gemini, OpenAI, Anthropic, Groq, local worker) ensures flexibility and cost control.
-
-Whether evaluated by recruiters, clients, investors, or portfolio visitors, this project demonstrates end-to-end full-stack engineering: reactive backend design, production payment flows, voice commerce, embedding-based search, and AI-augmented business intelligence — unified in a single scalable, cloud-native application deployed on **Vercel** with **Convex** as the realtime data layer.
+| Feature | Status | Notes |
+|---------|--------|--------|
+| Recommendations | Implemented | Home, PDP, cart, checkout sections |
+| Best sellers / new arrivals | Implemented | Home + catalog sort (`popular`, `newest`) |
+| Quick view | Implemented | Dialog from product cards |
+| Compare | Implemented | Up to 4 products; **sheet only**, no `/compare` route |
+| Newsletter | Implemented | Footer → Convex `subscribers.subscribe` |
+| Reviews on PDP | Implemented (read) | Filters, load-more, helpful votes, semantic search, AI summary when available. **Write** after delivery via track-order |
+| Vapi widget | Partial | Renders only if `NEXT_PUBLIC_VAPI_PUBLIC_KEY` and assistant ID are set |
+| Recently viewed on web home | Not mounted | Component exists; PDP still writes localStorage |
+| Customer accounts | Not implemented | Guest checkout only |
+| PayPal / Apple Pay | Not implemented | Footer badges are decorative. Pay methods: COD + Stripe Checkout |
 
 ---
 
-*For development setup and environment configuration, see the project [README.md](../README.md).*
+## 6. Web admin
+
+**Implemented.** Better Auth (email/password + OTP). Roles: `user`, `admin`, `superAdmin`. Dashboard routes require `isAdmin`. First signed-in user can bootstrap super admin if none exists. Enforcement: `convex/lib/requireAdmin.ts`.
+
+Nav (`apps/web/src/components/admin/admin-shell.tsx`):
+
+| Module | Route | What an admin can do |
+|--------|-------|----------------------|
+| Dashboard | `/admin/home` | Date-range KPIs (revenue, orders, AOV, customers), charts, status/payment mix, top products/categories, recent orders, low stock, review analytics, activity feed |
+| Products | `/admin/products`, `/new`, `/[id]/edit` | CRUD, active/inactive, search/filters, reorder, soft-delete/restore, images, stock, SEO, highlights, warranty. **AI content** (description, SEO, highlights, alt text). **AI pricing health**. Review insights on edit. Backfill **text embeddings** |
+| Image embeddings | `/admin/image-embeddings` | SigLIP/CLIP index coverage, visual-search log, job queue, retry, backfill/rebuild |
+| Promotions | `/admin/promotions` | BOGO / buy-X-get-Y / free gift / cross-product; schedule; performance; deactivate/restore |
+| Orders | `/admin/orders`, `/[id]` | Search/filter/sort. Detail: status, COD payment status, Stripe fields (read-only), line items, promotions, transaction log, review invitation email, Vapi **collect review** on delivered orders |
+| Reviews | `/admin/reviews`, `/[id]` | Moderate (approve/reject/delete), AI flags, bulk reprocess, reply draft/publish, generation history |
+| Review AI | `/admin/review-ai` | Queue health, 30-day metrics, recent jobs |
+| Review calls | `/admin/review-calls` | Outbound Vapi call KPIs, transcripts, retry |
+| Categories | `/admin/product-categories` | CRUD, slug, active, reorder |
+| Email marketing | `/admin/email-marketing/*` | Overview KPIs; TipTap templates; campaigns (segments, send, stats); subscribers (search, export CSV, refresh interests); **AI campaign assistant** and subject-line optimizer |
+| Contact | `/admin/contact-messages` | Inbox, read/unread, delete, mailto |
+| AI Assistant | `/admin/ai-assistant` | Vapi conversation analytics, transcripts, leads, support tickets, setup checklist |
+| AI Business Copilot | `/admin/ai-copilot` | Natural-language Q&A over store data, conversation history, saved insights, structured cards |
+| Recommendations | `/admin/recommendations` | Settings snapshot, rebuild frequently-bought-together, impressions/clicks, jobs |
+| Settings | `/admin/settings` | Store contact, hours, legal HTML, `email_from` (Resend sync), SMS toggle, review-call auto schedule, recommendation flags, low-stock threshold |
+| Users | `/admin/users` | **Staff accounts** (not shoppers): create, role, ban, delete |
+| Profile | `/admin/profile` | Name, avatar, password, revoke sessions (account menu, not sidebar) |
+
+**Not present as standalone modules:** customer CRM, inventory warehouse UI, Stripe key UI. Stock lives on products; low-stock on the dashboard; payments via env + order detail.
+
+Login: `/admin/login`, `/admin/login/forgot-password`.
+
+---
+
+## 7. AI features
+
+Provider selection is **environment-driven**, not hardcoded to one vendor.
+
+**LLM selection** (`convex/lib/ai/getProvider.ts`, `providerChain.ts`):
+
+- Explicit `AI_PROVIDER`, or first available key: Gemini → Groq → OpenRouter → OpenAI → Anthropic → remote worker (`AI_WORKER_URL`)
+- Fallback chain: `AI_PROVIDER_CHAIN` (default `gemini,groq,openrouter,openai`)
+- Remote worker: `services/review-ai-worker` when configured
+
+**Not LLM:** visual embeddings use SigLIP/CLIP on Next.js. Gemini Vision is a visual-search fallback.
+
+### Implemented AI capabilities
+
+| Capability | Where | Behavior |
+|------------|-------|----------|
+| Hybrid / semantic catalog search | Web header + `/products?search=`; mobile search/shop | Keyword + 384-d product embeddings; query embedding cache; search events |
+| Similar products | PDP (web + mobile) | Vector similarity (`getSimilarProducts`) |
+| Visual search | Web + mobile | Image → embed API → vector indexes (768 SigLIP / 512 CLIP) |
+| Recommendations | Both storefronts | Personalized and merchandising sections; admin analytics; optional n8n jobs |
+| Product intelligence | Admin / search quality | Keywords, summaries, use cases on products |
+| Review sentiment, tags, moderation flags | After review submit | Queue + providers or n8n |
+| Semantic review search | PDP (web + mobile) | Natural language over reviews |
+| Review insights / AI summary | PDP | Aggregated when pipeline has completed |
+| AI review replies | Admin review detail | Draft, edit, publish |
+| Product content generation | Admin product form | Description, SEO, highlights, alt text (Gemini vision for images when used) |
+| AI pricing recommendations | Admin product form | Health/suggestions — **does not auto-change storefront prices** |
+| Email campaign AI | Admin email marketing | Campaign copy, subject optimizer |
+| Vapi shopping assistant | **Web only** | Search, cart, compare, checkout links, tracking — webhook tools on Convex |
+| Outbound review calls | Admin orders + review-calls | Vapi after delivery (settings delay); Twilio/Vapi number constraints apply |
+| Business copilot | Admin | NL questions; includes **heuristic** inventory/sales insight cards (velocity, coverage), not a separate forecasting product |
+
+### Partial / env-gated
+
+- Vapi storefront widget: unset public key → no widget
+- n8n workflows: optional; Convex schedulers cover jobs if n8n is off
+- Local AI worker: only if `AI_WORKER_URL` is set
+- Mobile **AI tab**: prompt chips that navigate to **hybrid search**, not a conversational assistant
+
+### Not implemented as standalone products
+
+Automatic storefront dynamic pricing, full demand-planning, RFM clustering UI beyond email segments, cohort/CLV funnels. Email **audience segments** (recent buyers, high-value, inactive, category) **are** implemented.
+
+---
+
+## 8. Mobile app
+
+**Implemented** Expo Router app (`apps/mobile`). Shares Convex with web. Cart: AsyncStorage `yasirCart`.
+
+### Tabs (current code)
+
+```text
+Home → Shop → AI → Cart → Track
+```
+
+`apps/mobile/app/(tabs)/_layout.tsx` + `PremiumTabBar`. Settings gear is in the **Home and Shop headers**, not in the tab bar. Legacy `/orders` redirects to Track.
+
+| Tab | Behavior |
+|-----|----------|
+| Home | Featured, categories, best sellers, new arrivals, recommendations, recently viewed, footer (newsletter, links) |
+| Shop | Catalog: filters sheet, sort, grid/list, hybrid search, infinite-style loading |
+| AI | Natural-language **search** entry (online only) → `/search` |
+| Cart | Lines, server pricing when online, checkout CTA |
+| Track | Order number **or** email/phone |
+
+### Stack screens
+
+| Route | Purpose |
+|-------|---------|
+| `/product/[id]` | PDP: gallery, variants, cart sheet, wishlist, compare, reviews, similar, share |
+| `/category/[slug]` | Category catalog |
+| `/search` | Hybrid search, trending/suggestions, recent searches, visual-search entry |
+| `/visual-search` | Camera or library; HEIC→JPEG on iOS |
+| `/wishlist` | Convex + offline queue |
+| `/promotions` | Active promotions |
+| `/checkout`, `/checkout/success`, `/checkout/cancel` | COD / Stripe |
+| `/order/[id]` | Public order detail; delivered reviews |
+| `/settings` | Theme, shopping prefs, data/privacy clears, about |
+| `/about`, `/contact`, `/privacy`, `/terms`, `/shipping`, `/return` | Content / forms |
+| `+not-found` | Fallback |
+
+### Notable mobile behavior
+
+- **Theme:** light / dark / **system** (default). Persisted `@preferences/v1`
+- **Wishlist:** Convex `toggleWishlistItem` + visitor id; offline queue (see §9)
+- **Compare:** up to 4 products, AsyncStorage, global sheet
+- **Reviews:** PDP read (filters, semantic search, AI summary); write/edit/images on delivered order detail
+- **Newsletter / contact:** implemented; **online-only submit**; drafts saved
+- **Quick view:** `ProductQuickViewSheet` on catalog cards
+- **Vapi:** **not implemented** on mobile
+- **Push notifications:** settings toggles stored locally and **disabled** (no push backend)
+- **i18n:** English strings in `lib/i18n/strings.ts`; no second locale yet
+
+---
+
+## 9. Mobile offline architecture
+
+**Implemented** for browsing and drafts. **Not** a full offline commerce client.
+
+Authoritative network: **NetInfo** (`NetworkProvider`, `lib/network.ts`). Unknown reachability is **not** treated as offline. Do not use `navigator.onLine` on native.
+
+### Layers
+
+| Layer | Role |
+|-------|------|
+| `NetworkProvider` / `useOnlineStatus` | Connection + “just reconnected” |
+| AsyncStorage `@offline/v1/*` | TTL envelopes (`lib/offline/`) |
+| `product-store` | LRU product blobs (max **80**) |
+| `OfflineSyncBridge` | On confirmed online: drain wishlist queue |
+| `OfflineBanner` | Dismissible offline; auto “Back online” |
+| `CachedDataNotice` / `OfflineNotice` | Per-screen |
+
+### Cached (stale-while-revalidate style)
+
+Home feeds, categories, shop/category lists, product details in the LRU store, recently viewed (max **30**), site settings, search trending/suggestions, local text search over cached products, wishlist IDs, last **track-by-order-number** result (30 minutes, same query), contact draft (Secure Store), newsletter email draft.
+
+**Cached prices are display-only.** Checkout re-validates on the server.
+
+### TTLs and limits (`lib/offline/constants.ts`)
+
+| Data | TTL / cap |
+|------|-----------|
+| Home / shop lists | 6h |
+| Categories / settings | 24h |
+| Recommendations | 2h |
+| Similar products | 6h |
+| Search meta | 12h |
+| Track-by-order cache | 30m |
+| Product LRU | 80 items |
+| Category list caches | 8 × 20 products |
+| Wishlist queue | 50 ops, 5 attempts then drop |
+| Wishlist / drafts | No TTL |
+
+### Online-only (no local order/payment/AI queue)
+
+**Orders, checkout, Stripe, COD, AI requests, visual search, live tracking (email/phone), contact submission, and newsletter subscription require an internet connection.**
+
+Also online-only: review mutations and image upload, semantic review search, hybrid search **load more**, live cart pricing, stock sanitization.
+
+On reconnect: wishlist queue drains; **checkout, payments, forms, and AI are not auto-submitted.**
+
+### Why checkout is not queued
+
+Checkout needs live stock, server-side promotion pricing, and either Stripe or an immediate COD mutation. A queued offline order could charge the wrong amount or oversell. The app blocks checkout when offline (`ensureOnlineNow` + offline notice).
+
+---
+
+## 10. Cross-platform / iOS / Android
+
+**Code-level compatibility is implemented. Physical-device and store-release QA are not documented as complete.**
+
+| Area | Implementation |
+|------|----------------|
+| Expo Go / simulators | README: QR, `a` / `i`, tunnel |
+| Android | `softwareKeyboardLayoutMode: pan`; package `com.yasir.ecommerce`; EAS preview **APK** |
+| iOS | Bundle id `com.yasir.ecommerce`; camera/photo usage strings; `associatedDomains` when `EXPO_PUBLIC_SITE_URL` is set |
+| Safe areas | `SafeAreaProvider` + insets on tab bar, headers, checkout footer |
+| Keyboard | iOS `KeyboardAvoidingView` on checkout, AI, visual search, track |
+| Camera / library | `expo-image-picker` plugin; visual search camera + library |
+| HEIC/HEIF | Visual search converts to JPEG (`expo-image-manipulator`). Review uploads accept JPEG/PNG/WebP only |
+| Stripe | Native **PaymentSheet** (`@stripe/stripe-react-native`); `ecommerce://stripe-redirect` for 3DS return; requires **development/EAS build** (not Expo Go) |
+| Deep links | Scheme `ecommerce://`; Android intent filters for product, category, track-order, checkout, promotions when site URL is set |
+| Accessibility | 44px touch targets, labels, roles, reduce-motion |
+| Haptics | Native only; skipped on web |
+| New Architecture | `newArchEnabled: true` |
+| EAS | `apps/mobile/eas.json`: development client, preview APK, production Convex URL env |
+
+**Not verified in-repo:** TestFlight, App Store, Play Store production listing, or a named physical-device test matrix.
+
+Expo **web** (`react-native-web`) is a development preview of the mobile UI, not the Next.js storefront.
+
+---
+
+## 11. Checkout and payments
+
+**Implemented** on web and mobile. Same Convex mutations/actions.
+
+### Cart
+
+- Client-side only (no server cart table)
+- Lines: `productId`, `color`, `quantity` (`packages/shared`)
+- Preview totals: `validateCartForCheckout` / cart pricing hooks
+- Promotions evaluated **on the server** (gifts, discounts)
+
+### Server-side pricing
+
+`convex/lib/checkoutPricing.ts`: load live products → line prices/discounts → promotion engine → delivery method charges → tax/shipping/total. Rejects mixed currencies and stale prices.
+
+### COD
+
+`orders.createCashOrder`: validate → price → decrement stock → order + item/promotion snapshots → logs → email / optional SMS. Payment status starts pending; admin can mark paid.
+
+### Stripe
+
+**Web:** `stripe.createCheckoutSession` — pending order (stock held) → Stripe Checkout Session (amount asserted against server total) → customer pays on Stripe hosted page → `POST /stripe/webhook` → paid/failed/refunded. Cancel URL restores stock via `acknowledgeStripeCheckoutCancelled`.
+
+**Mobile:** `stripe.createMobilePaymentIntent` — same pending-order + server-side pricing → Stripe **PaymentIntent** → native **PaymentSheet** in the app → webhook confirms payment. Dismissing PaymentSheet does **not** fail the order; retry via `resumeMobilePaymentIntent`. Cart clears only after server reports `paymentStatus: paid`.
+
+**Idempotency:** unique `idempotencyKey` on orders; duplicate submits reuse a pending order and existing PaymentIntent when still usable.
+
+**Mobile env:** `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (publishable key only). Backend: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+### Offline
+
+Mobile (and any client) must be **online** to create orders. No queued COD/Stripe.
+
+### Notifications
+
+Order confirmation **email** (Resend). **SMS** if Twilio env + Admin Settings toggle. Review invitations from admin after delivery.
+
+### Security notes
+
+- Card data never hits the app (Stripe hosted)
+- Webhook signature verification + `stripeWebhookEvents` idempotency
+- Public tracking: order-number lookup returns **masked PII** until email, phone, or access token verifies (`orderTracking.ts`)
+- Tracking lookups are **rate-limited**
+
+Voice checkout (Stripe/COD links) exists on **Vapi/web**, not on the Expo app.
+
+---
+
+## 12. Backend / Convex
+
+One deployment serves web admin, web shop, and mobile.
+
+### Major domains
+
+| Domain | Modules (representative) | Shared by |
+|--------|--------------------------|-----------|
+| Products / categories | `products.ts`, `productCategories.ts` | Web, mobile, admin |
+| Promotions | `productPromotions.ts`, `lib/promotions/` | Web, mobile, admin, checkout |
+| Orders / checkout | `orders.ts`, `lib/checkoutPricing.ts` | Web, mobile, Vapi |
+| Stripe | `stripe.ts`, `stripeWebhooks.ts` | Web, mobile |
+| Tracking | `orderTracking.ts` | Web, mobile |
+| Reviews | `productReviews.ts`, insights, search | Web, mobile, admin |
+| Search | `productSearch.ts` | Web, mobile, Vapi |
+| Visual search | `visualProductSearch.ts`, image embedding jobs | Web, mobile, admin |
+| Recommendations / wishlist | `recommendations.ts`, `recommendationMutations.ts` | Both apps (web wishlist UI does not call Convex toggle) |
+| Settings | `settings.ts` | Public list + admin CRUD |
+| Contact / subscribers | `contactMessages.ts`, `subscribers.ts` | Web, mobile, admin |
+| Auth / users | `auth.ts`, `adminUsers.ts`, `betterAuth/` | Admin |
+| Admin analytics | `adminDashboard.ts`, `adminOrders.ts`, … | Admin |
+| Review AI | `reviewAi*.ts`, n8n HTTP | Admin + pipelines |
+| Copilot | `aiBusinessCopilot.ts` | Admin |
+| Email campaigns | `emailCampaigns.ts`, `emailCampaignAi.ts` | Admin |
+| Vapi | `convex/vapi/` | Web widget + review calls |
+| SMS / email send | `sms.ts`, `notifications.ts` | Internal after order |
+| Storage | Product images, review photos, visual-search uploads, avatars | All |
+
+### HTTP (`convex/http.ts`)
+
+- Better Auth routes
+- `POST /stripe/webhook`
+- `POST /vapi/webhook`
+- `/n8n/review-ai/*`, `/n8n/product-ai/*`, `/n8n/image-embedding/*`, `/n8n/recommendations/*` (secret header)
+
+Public storefront functions are unauthenticated. Admin mutations use `requireAdmin`. Internal functions handle webhooks and job processors.
+
+**Pagination:** list endpoints use indexed queries and cursors. Unbounded `.collect()` is avoided on large tables (project rule).
+
+---
+
+## 13. Security and reliability
+
+**Implemented protections (from code):**
+
+- Server-side cart validation and pricing; client totals are not trusted
+- Checkout idempotency keys
+- Stripe webhook verification and event de-duplication
+- Stock decrement on order create; restore on Stripe cancel / applicable failures
+- Admin session + role checks; banned users blocked
+- Public order tracking rate limits; masked PII until verification
+- Image embed API optional shared secret (`IMAGE_EMBED_API_SECRET`)
+- n8n HTTP secret (`lib/n8nAuth.ts`)
+- Copilot / some AI admin actions rate-limited
+- Storefront error UI; mobile `getFriendlyErrorMessage` (no raw Convex dumps)
+- No automatic offline order submission
+- Contact drafts in Secure Store on mobile (not payment data)
+
+**Auth scope:** Better Auth is **admin**. There is no shopper account system.
+
+**Do not store** (mobile policy): passwords, cards, Convex admin secrets.
+
+---
+
+## 14. Performance and UX
+
+| Technique | Where |
+|-----------|--------|
+| Indexed Convex queries + pagination | Catalog, admin lists, reviews |
+| Infinite scroll / sentinel | Web `/products`; mobile shop/catalog |
+| Load-more | Visual search, PDP reviews |
+| Debounced search | Web header (~300ms); mobile search hooks |
+| Query embedding cache | Hybrid search |
+| Recommendation section cache | Convex + mobile TTL 2h |
+| `expo-image` + placeholders | Mobile product images |
+| Next.js / Convex storage URLs | Web images |
+| Memoized product cards | Mobile |
+| Skeletons / loading views | Web catalog; mobile `Skeleton`, `LoadingView` |
+| Pull-to-refresh | Mobile home, shop, category, wishlist, promotions |
+| Avoid request storms | Mobile offline cache skip when live slice unchanged; skip live queries when offline |
+| Responsive shop layout | Web Tailwind breakpoints; mobile `useLayoutMetrics` |
+
+Realtime: Convex `useQuery` updates catalog/admin views without polling.
+
+---
+
+## 15. Accessibility
+
+### Web
+
+- `lang="en"`
+- Header search `role="search"`; labeled nav, cart, filters, ratings, swatches
+- shadcn Dialog/Sheet for quick view, menus, compare, Vapi
+- Form labels on checkout/contact
+- `useReducedMotion` on some motion sections
+
+Not a certified WCAG audit. Storefront is light-only (contrast not theme-switchable).
+
+### Mobile
+
+Documented in `apps/mobile/docs/mobile-ux.md` and applied in UI:
+
+- Minimum **44×44** touch targets (`touchTarget`)
+- `accessibilityLabel` / `Role` / `State` on controls
+- Reduce motion from `AccessibilityInfo`
+- Alerts for offline/errors/toasts
+- System font scaling; `maxFontSizeMultiplier` on dense layouts when used
+
+---
+
+## 16. Feature matrix
+
+Legend: **Yes** = implemented on that surface · **Partial** = limited or different mechanism · **No** = not on that surface · **N/A** = not applicable.
+
+| Feature | Web shop | Mobile | Convex / services |
+|---------|----------|--------|-------------------|
+| Product catalog | Yes | Yes | Yes |
+| Categories | Yes (filter + home tiles) | Yes (grid + `/category/[slug]`) | Yes |
+| Product detail | Yes | Yes | Yes |
+| Hybrid / AI text search | Yes | Yes | Yes |
+| Visual search | Yes | Yes | Yes (+ Next embed API) |
+| Recommendations | Yes | Yes | Yes |
+| Best sellers / new arrivals | Yes | Yes | Yes |
+| Quick view | Yes | Yes | N/A |
+| Compare (4 products) | Yes (sheet) | Yes (sheet) | N/A (client lists) |
+| Wishlist | Yes (localStorage) | Yes (Convex + queue) | Yes (mobile path) |
+| Promotions | Yes | Yes | Yes |
+| Cart | Yes | Yes | Validate/price only |
+| Checkout | Yes | Yes | Yes |
+| Stripe | Yes | Yes | Yes |
+| COD | Yes | Yes | Yes |
+| Order tracking | Yes | Yes | Yes |
+| Post-delivery reviews | Yes | Yes | Yes |
+| PDP review read / AI summary | Yes | Yes | Yes |
+| Contact form | Yes | Yes | Yes |
+| Newsletter | Yes | Yes | Yes |
+| About / legal / shipping / return | Yes | Yes | Settings content |
+| AI shopping page / Vapi | Yes (Vapi env-gated) | Partial (search tab only) | Vapi webhooks |
+| Dark / light / system theme | No (light only) | Yes | N/A |
+| Offline catalog browse | No | Yes | N/A |
+| Offline checkout / payments | No | No (blocked) | N/A |
+| Customer login | No | No | Admin only |
+| Admin dashboard | Yes (`/admin`) | No | Yes |
+| Email marketing | Admin | No | Yes |
+| Review calls | Admin | No | Yes |
+| Business copilot | Admin | No | Yes |
+
+Wishlist **lists are not shared** between web localStorage and mobile Convex.
+
+---
+
+## 17. Roadmap / remaining work
+
+These are **not implemented** or not finished. Do not treat them as shipped.
+
+| Item | Notes |
+|------|--------|
+| Shopper accounts | No login, profile, or cross-device order history |
+| Shared wishlist | Web localStorage vs mobile Convex |
+| Vapi on mobile | No `@vapi-ai` native/web SDK in `apps/mobile` |
+| Conversational AI tab | Mobile AI tab is hybrid search only |
+| Web dark mode | Storefront theme locked to light |
+| Header discoverability | Web wishlist/compare not in primary nav |
+| Recently viewed on web home | Component unused |
+| Push notifications | Mobile toggles are inert |
+| Dedicated inventory / CRM admin | Stock on products; customers via orders only |
+| Automatic dynamic pricing | Admin suggestions only |
+| Full forecasting / cohort analytics | Copilot heuristic cards ≠ dedicated BI product |
+| iOS physical-device QA | Not documented |
+| App Store / TestFlight | EAS submit config empty of store metadata |
+| Play Store production | Preview APK profile exists; store listing not documented |
+| Second locale / RTL | i18n file is English-only |
+| SMS marketing / SMS OTP | Transactional order SMS only; admin OTP is email |
+
+Optional ops (already coded, need env): Vapi keys, Twilio, Resend, n8n, `AI_WORKER_URL`, image-embed secret, matching Convex URL on web vs mobile.
+
+---
+
+## Related documentation
+
+| Doc | Topic |
+|-----|--------|
+| [README.md](../README.md) | Setup, Vercel, env, Vapi review-call numbers |
+| [AGENTS.md](../AGENTS.md) | Agent/dev conventions |
+| [apps/mobile/README.md](../apps/mobile/README.md) | Expo runbook |
+| [apps/mobile/docs/mobile-ux.md](../apps/mobile/docs/mobile-ux.md) | Mobile UX, theme, offline rules |
+| [docs/visual-search-architecture.md](visual-search-architecture.md) | SigLIP/CLIP / n8n |
+| [docs/recommendation-platform.md](recommendation-platform.md) | Recommendation engine |
+| [docs/review-ai-architecture.md](review-ai-architecture.md) | Review AI pipeline |
+| [docs/AI_FEATURE_QA_CHECKLIST.md](AI_FEATURE_QA_CHECKLIST.md) | AI QA before release |
+| [convex/vapi/VOICE_ASSISTANT_GUIDE.md](../convex/vapi/VOICE_ASSISTANT_GUIDE.md) | Vapi tools |
+
+---
+
+*This overview reflects the monorepo as implemented. For commands and secrets, use the README; for Convex function names, use `convex/`.*

@@ -27,6 +27,10 @@ import {
   paymentStatusValidator,
 } from "./lib/orderValidators";
 import {
+  orderNotificationEventValidator,
+  pushPlatformValidator,
+} from "./lib/notificationTypes";
+import {
   reviewCallStatusValidator,
   reviewCollectedEntryValidator,
 } from "./lib/reviewCallValidators";
@@ -383,6 +387,7 @@ export default defineSchema({
   })
     .index("by_order_number", ["orderNumber"])
     .index("by_stripe_session", ["stripeSessionId"])
+    .index("by_stripe_payment_intent", ["stripePaymentIntentId"])
     .index("by_access_token", ["accessToken"])
     .index("by_idempotency_key", ["idempotencyKey"])
     .index("by_customer_email", ["customerEmail"])
@@ -1079,4 +1084,59 @@ export default defineSchema({
     .index("by_section_time", ["sectionType", "occurredAt"])
     .index("by_product_time", ["productId", "occurredAt"])
     .index("by_visitor_time", ["visitorId", "occurredAt"]),
+
+  pushTokens: defineTable({
+    customerEmail: v.string(),
+    visitorId: v.string(),
+    expoPushToken: v.string(),
+    platform: pushPlatformValidator,
+    deviceName: v.optional(v.string()),
+    appVersion: v.optional(v.string()),
+    isActive: v.boolean(),
+    lastSeenAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_expo_push_token", ["expoPushToken"])
+    .index("by_customer_email_active", ["customerEmail", "isActive"])
+    .index("by_visitor_id", ["visitorId"]),
+
+  customerNotificationPreferences: defineTable({
+    customerEmail: v.string(),
+    orderUpdates: v.boolean(),
+    paymentUpdates: v.boolean(),
+    promotionalNotifications: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_customer_email", ["customerEmail"]),
+
+  notificationEvents: defineTable({
+    eventKey: v.string(),
+    eventType: orderNotificationEventValidator,
+    orderId: v.optional(v.id("orders")),
+    customerEmail: v.string(),
+    channelsAttempted: v.array(v.string()),
+    pushDelivered: v.boolean(),
+    emailDelivered: v.boolean(),
+    smsDelivered: v.boolean(),
+    pushFailureReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_event_key", ["eventKey"])
+    .index("by_customer_email_created", ["customerEmail", "createdAt"]),
+
+  inAppNotifications: defineTable({
+    customerEmail: v.string(),
+    visitorId: v.optional(v.string()),
+    type: orderNotificationEventValidator,
+    title: v.string(),
+    body: v.string(),
+    orderId: v.optional(v.id("orders")),
+    orderNumber: v.optional(v.string()),
+    deepLinkPath: v.optional(v.string()),
+    readAt: v.optional(v.number()),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_customer_email_created", ["customerEmail", "createdAt"])
+    .index("by_customer_email_unread", ["customerEmail", "readAt"]),
 });

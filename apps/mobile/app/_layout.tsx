@@ -48,6 +48,7 @@ function RootStack() {
         <Stack.Screen name="shipping" options={{ headerShown: false }} />
         <Stack.Screen name="return" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />
       </Stack>
       <StatusBar style={isDark ? "light" : "dark"} />

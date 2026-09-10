@@ -189,6 +189,68 @@ export const sendOrderConfirmation = internalAction({
   },
 });
 
+export const sendPaymentRecoveryEmail = internalAction({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      const from = await ctx.runQuery(internal.settings.getEmailFrom, {});
+      const orderData = await ctx.runQuery(internal.orders.getOrderForEmail, {
+        orderId: args.orderId,
+      });
+
+      if (!orderData) {
+        console.warn(`[orders] Order ${args.orderId} not found for recovery email`);
+        return;
+      }
+
+      const { order } = orderData;
+
+      if (!apiKey) {
+        console.warn(
+          `[orders] RESEND_API_KEY not set — skipping recovery email for ${order.orderNumber}`
+        );
+        return;
+      }
+
+      const appUrl = getSiteUrl();
+      const resumeUrl = `${appUrl}/checkout/success?orderNumber=${encodeURIComponent(order.orderNumber)}&pendingPayment=1`;
+      const subject = `Complete your order — ${order.orderNumber}`;
+      const html = `
+        <p>Hi ${order.customerName},</p>
+        <p>Your order <strong>#${order.orderNumber}</strong> is still waiting for payment.</p>
+        <p>Complete your payment soon to keep your reserved items.</p>
+        <p><a href="${resumeUrl}">Complete payment</a></p>
+        <p>If you no longer wish to complete this order, you can ignore this message and the reserved items will be released automatically.</p>
+      `;
+
+      const resend = new Resend(apiKey);
+      const { data, error } = await resend.emails.send({
+        from,
+        to: order.customerEmail,
+        subject,
+        html,
+      });
+
+      if (error) {
+        console.error("[orders] Payment recovery email failed:", error);
+        throw new ConvexError(
+          resendFailureMessage(error.message, order.customerEmail, from)
+        );
+      }
+
+      console.log(
+        `[orders] Recovery email sent (id: ${data?.id ?? "unknown"}) → ${order.customerEmail}`
+      );
+    } catch (error) {
+      console.error("[orders] Payment recovery email unexpected error:", error);
+      throw error;
+    }
+  },
+});
+
 function formatMoney(amount: number, currency: string) {
   try {
     return new Intl.NumberFormat("en-US", {

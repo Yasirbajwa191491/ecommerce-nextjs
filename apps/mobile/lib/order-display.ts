@@ -61,9 +61,13 @@ export function getPaymentStatusBadgeVariant(
 export function getCheckoutSuccessTitle(order: {
   paymentMethod?: string;
   paymentStatus?: string;
+  status?: string;
 }): string {
+  if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") {
+    return "Payment failed";
+  }
   if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") {
-    return "Payment processing";
+    return "Confirming payment";
   }
   return "Order confirmed!";
 }
@@ -71,9 +75,13 @@ export function getCheckoutSuccessTitle(order: {
 export function getCheckoutSuccessMessage(order: {
   paymentMethod?: string;
   paymentStatus?: string;
+  status?: string;
 }): string {
+  if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") {
+    return "Your payment could not be completed. You can retry payment or return to your cart.";
+  }
   if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") {
-    return "We are confirming your payment. This may take a moment.";
+    return "We are confirming your payment with your bank. This usually takes a few seconds.";
   }
   if (order.paymentMethod === "cod") {
     return "Your order has been placed. Please prepare payment on delivery.";

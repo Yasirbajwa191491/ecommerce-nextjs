@@ -28,7 +28,7 @@ const OPTIONS: {
   {
     id: "stripe",
     title: "Card",
-    description: "You'll securely complete your card payment with Stripe.",
+    description: "Pay securely with your card using native Stripe checkout.",
     icon: "card-outline",
   },
 ];

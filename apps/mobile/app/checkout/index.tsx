@@ -1,8 +1,6 @@
 import { formatCurrencyAmount } from "@ecommerce/shared";
 import { useAction, useMutation } from "convex/react";
-import type { Id } from "@convex/_generated/dataModel";
 import { router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +23,7 @@ import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useCartPricing } from "@/hooks/useCartPricing";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
+import { usePaymentSheetCheckout } from "@/hooks/usePaymentSheetCheckout";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
@@ -34,11 +33,8 @@ import {
   saveLastOrderInfo,
   savePendingStripeOrder,
 } from "@/lib/checkout-customer-storage";
-import {
-  getMobileStripeCheckoutUrls,
-  parseCheckoutReturnUrl,
-} from "@/lib/checkout-stripe";
 import { api } from "@/lib/convex-api";
+import { getStripePublishableKey } from "@/lib/stripe-config";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import {
   ensureOnlineNow,
@@ -87,8 +83,9 @@ export default function CheckoutScreen() {
   const idempotencyKeyRef = useRef(createIdempotencyKey());
   const submittingRef = useRef(false);
   const createCashOrder = useMutation(api.orders.createCashOrder);
-  const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
+  const createMobilePaymentIntent = useAction(api.stripe.createMobilePaymentIntent);
   const saveCustomerProfile = useMutation(api.orders.saveCustomerProfile);
+  const { presentPayment } = usePaymentSheetCheckout();
 
   const {
     priced,
@@ -262,12 +259,14 @@ export default function CheckoutScreen() {
         return;
       }
 
-      const stripeUrls = getMobileStripeCheckoutUrls();
-      const result = await createCheckoutSession({
-        ...payload,
-        successUrl: stripeUrls.successUrl,
-        cancelUrl: stripeUrls.cancelUrl,
-      });
+      if (!getStripePublishableKey()) {
+        showError(
+          "Card payments are not configured on this device. Please use cash on delivery or try again later."
+        );
+        return;
+      }
+
+      const result = await createMobilePaymentIntent(payload);
 
       await persistCustomer();
       await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
@@ -277,33 +276,35 @@ export default function CheckoutScreen() {
         accessToken: result.accessToken,
       });
 
-      WebBrowser.maybeCompleteAuthSession();
+      if (result.alreadyPaid) {
+        router.replace({
+          pathname: "/checkout/success",
+          params: {
+            orderNumber: result.orderNumber,
+            accessToken: result.accessToken ?? "",
+          },
+        });
+        return;
+      }
 
-      const browserResult = await WebBrowser.openAuthSessionAsync(
-        result.url,
-        stripeUrls.returnUrl
-      );
+      const paymentResult = await presentPayment(result.clientSecret, customerPayload);
 
-      if (browserResult.type === "success" && browserResult.url) {
-        const parsed = parseCheckoutReturnUrl(browserResult.url);
-        if (parsed.type === "success") {
-          router.replace({
-            pathname: "/checkout/success",
-            params: {
-              orderNumber: parsed.orderNumber ?? result.orderNumber,
-              accessToken: parsed.accessToken ?? result.accessToken ?? "",
-              session_id: parsed.sessionId ?? "",
-            },
-          });
-          return;
-        }
+      if (paymentResult.type === "canceled") {
+        showError("Payment was cancelled. Your cart is unchanged — you can try again.");
+        return;
+      }
+
+      if (paymentResult.type === "init_failed" || paymentResult.type === "failed") {
+        showError(paymentResult.message);
+        return;
       }
 
       router.replace({
-        pathname: "/checkout/cancel",
+        pathname: "/checkout/success",
         params: {
           orderNumber: result.orderNumber,
           accessToken: result.accessToken ?? "",
+          pendingPayment: "1",
         },
       });
     } catch (error) {
@@ -329,8 +330,9 @@ export default function CheckoutScreen() {
     lines,
     clearCart,
     createCashOrder,
-    createCheckoutSession,
+    createMobilePaymentIntent,
     form,
+    presentPayment,
     isFormValid,
     persistCustomer,
     selectedDeliveryMethod,
@@ -344,9 +346,9 @@ export default function CheckoutScreen() {
 
   const ctaLabel = useMemo(() => {
     if (submitting) {
-      return form.paymentMethod === "stripe" ? "Preparing payment…" : "Placing order…";
+      return form.paymentMethod === "stripe" ? "Opening payment…" : "Placing order…";
     }
-    return form.paymentMethod === "stripe" ? "Continue to payment" : "Place order";
+    return form.paymentMethod === "stripe" ? "Pay with card" : "Place order";
   }, [form.paymentMethod, submitting]);
 
   if (!hydrated || !customerLoaded || isConnected === null) {
