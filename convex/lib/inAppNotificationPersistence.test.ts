@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { Id } from "../_generated/dataModel";
 import { deriveInAppNotificationEventKey } from "./inAppNotificationPersistence";
 import { buildNotificationEventKey } from "./orderNotificationLogic";
 
@@ -29,7 +30,7 @@ describe("in-app notification idempotency", () => {
     const derived = deriveInAppNotificationEventKey({
       customerEmail: "User@Example.com",
       type: "payment.succeeded",
-      orderId: "order789",
+      orderId: "order789" as Id<"orders">,
       createdAt: 1_700_000_000_000,
       eventKey: undefined,
     });
