@@ -6,7 +6,7 @@ const crons = cronJobs();
 crons.daily(
   "purge expired in-app notifications",
   { hourUTC: 3, minuteUTC: 15 },
-  internal.notificationRetention.purgeExpiredNotifications,
+  internal.inAppNotifications.purgeExpiredNotifications,
   {}
 );
 
