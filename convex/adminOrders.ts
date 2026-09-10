@@ -19,6 +19,11 @@ import {
   type OrderStatus,
 } from "./lib/orderValidators";
 import type { Doc } from "./_generated/dataModel";
+import {
+  buildOrderStatusEventKey,
+  buildPaymentStatusEventKey,
+  resolveOrderStatusTransitionEvent,
+} from "./lib/orderNotificationLogic";
 
 const TRACKING_NOT_FOUND = "We couldn't find any orders matching your details.";
 
@@ -236,6 +241,15 @@ export const updateOrderStatus = mutation({
       createdAt: now,
     });
 
+    const statusEvent = resolveOrderStatusTransitionEvent(previousStatus, args.status);
+    if (statusEvent) {
+      await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+        orderId: args.orderId,
+        event: statusEvent,
+        eventKey: buildOrderStatusEventKey(args.orderId, args.status),
+      });
+    }
+
     if (args.status === "delivered" && previousStatus !== "delivered") {
       const delayDays = await ctx.runQuery(
         internal.settings.getReviewCallAutoDelayDays,
@@ -313,6 +327,14 @@ export const updateCodPaymentStatus = mutation({
       await ctx.scheduler.runAfter(0, internal.subscriberInterests.recomputeForEmail, {
         email: order.customerEmail,
       });
+
+      if (previousPaymentStatus !== "paid") {
+        await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+          orderId: args.orderId,
+          event: "payment.received",
+          eventKey: buildPaymentStatusEventKey(args.orderId, "paid"),
+        });
+      }
     }
 
     return { success: true as const };

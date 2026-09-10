@@ -21,6 +21,7 @@ import {
   resetAllPreferences,
 } from "@/lib/preferences/actions";
 import { strings } from "@/lib/i18n/strings";
+import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
 
@@ -77,8 +78,40 @@ export default function SettingsScreen() {
     refreshPreferences,
     colors,
   } = useTheme();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
+  const pushNotifications = usePushNotificationContextOptional();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+
+  const syncPushPreferences = useCallback(
+    async (patch: Partial<typeof preferences.notifications>) => {
+      const next = { ...preferences.notifications, ...patch };
+      setNotificationPreferences(patch);
+      await pushNotifications?.syncPreferences({
+        orderUpdates: next.orderUpdates,
+        paymentUpdates: next.paymentUpdates,
+        promotionalNotifications: next.promotions,
+      });
+    },
+    [preferences.notifications, pushNotifications, setNotificationPreferences]
+  );
+
+  const handleNotificationToggle = useCallback(
+    async (
+      patch: Partial<typeof preferences.notifications>,
+      requiresPermission = false
+    ) => {
+      if (requiresPermission && pushNotifications) {
+        const enabled = await pushNotifications.enablePushNotifications();
+        if (!enabled) {
+          showError("Notifications are disabled on this device.");
+          return;
+        }
+      }
+
+      await syncPushPreferences(patch);
+    },
+    [pushNotifications, showError, syncPushPreferences]
+  );
 
   const appVersion =
     Constants.expoConfig?.version ??
@@ -110,13 +143,14 @@ export default function SettingsScreen() {
         showSuccess("Offline data cleared");
         break;
       case "resetPreferences":
+        await pushNotifications?.deactivateCurrentDevice();
         await resetAllPreferences();
         await refreshPreferences();
         showSuccess(strings.toast.preferencesReset);
         break;
     }
     setConfirmAction(null);
-  }, [confirmAction, refreshPreferences, showSuccess]);
+  }, [confirmAction, pushNotifications, refreshPreferences, showSuccess]);
 
   const confirmConfig = confirmAction ? CONFIRM_CONFIG[confirmAction] : null;
 
@@ -136,22 +170,35 @@ export default function SettingsScreen() {
           title={strings.settings.notifications}
           footer={strings.settings.notificationsNote}
         >
+          <SettingsRow
+            label={strings.settings.notificationCenter}
+            showChevron
+            onPress={() => router.push("/notifications" as Href)}
+          />
           <SettingsToggleRow
             label={strings.settings.orderUpdates}
             value={preferences.notifications.orderUpdates}
-            disabled
-            onValueChange={(orderUpdates) => setNotificationPreferences({ orderUpdates })}
+            onValueChange={(orderUpdates) =>
+              void handleNotificationToggle({ orderUpdates }, true)
+            }
+          />
+          <SettingsToggleRow
+            label={strings.settings.paymentUpdates}
+            value={preferences.notifications.paymentUpdates}
+            onValueChange={(paymentUpdates) =>
+              void handleNotificationToggle({ paymentUpdates }, true)
+            }
           />
           <SettingsToggleRow
             label={strings.settings.promotions}
             value={preferences.notifications.promotions}
-            disabled
-            onValueChange={(promotions) => setNotificationPreferences({ promotions })}
+            onValueChange={(promotions) =>
+              void handleNotificationToggle({ promotions }, true)
+            }
           />
           <SettingsToggleRow
             label={strings.settings.recommendations}
             value={preferences.notifications.recommendations}
-            disabled
             onValueChange={(recommendations) =>
               setNotificationPreferences({ recommendations })
             }
@@ -159,7 +206,6 @@ export default function SettingsScreen() {
           <SettingsToggleRow
             label={strings.settings.marketingEmails}
             value={preferences.notifications.marketingEmails}
-            disabled
             onValueChange={(marketingEmails) =>
               setNotificationPreferences({ marketingEmails })
             }
@@ -242,9 +288,11 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
-        <Text style={[styles.footerNote, { color: colors.muted }]}>
-          Push notifications require server infrastructure and are not yet enabled.
-        </Text>
+        {pushNotifications?.permission === "denied" ? (
+          <Text style={[styles.footerNote, { color: colors.muted }]}>
+            Notifications are blocked in system settings. The app will continue working normally.
+          </Text>
+        ) : null}
       </ScrollView>
 
       {confirmConfig ? (

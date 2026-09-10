@@ -24,6 +24,21 @@ function getStripe(): Stripe {
   return new Stripe(key);
 }
 
+const REUSABLE_PAYMENT_INTENT_STATUSES = new Set([
+  "requires_payment_method",
+  "requires_confirmation",
+  "requires_action",
+  "processing",
+]);
+
+const mobilePaymentIntentResultValidator = v.object({
+  clientSecret: v.string(),
+  orderId: v.id("orders"),
+  orderNumber: v.string(),
+  accessToken: v.optional(v.string()),
+  alreadyPaid: v.optional(v.boolean()),
+});
+
 function buildStripeLineItems(
   priced: {
     currency: string;
@@ -158,6 +173,71 @@ function appendCheckoutRedirectParams(
   return `${url}${separator}${encoded}`;
 }
 
+export const createMobilePaymentIntent = action({
+  args: {
+    lines: v.array(cartLineValidator),
+    customer: customerInfoValidator,
+    idempotencyKey: v.string(),
+    deliveryMethod: v.optional(deliveryMethodTypeValidator),
+  },
+  returns: mobilePaymentIntentResultValidator,
+  handler: async (ctx, args) => {
+    return await createMobilePaymentIntentHandler(ctx, args);
+  },
+});
+
+export const resumeMobilePaymentIntent = action({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+  },
+  returns: mobilePaymentIntentResultValidator,
+  handler: async (ctx, args): Promise<{
+    clientSecret: string;
+    orderId: Id<"orders">;
+    orderNumber: string;
+    accessToken?: string;
+    alreadyPaid?: boolean;
+  }> => {
+    const pending = await ctx.runQuery(internal.orders.getPendingStripeOrderForResume, {
+      orderNumber: args.orderNumber,
+      customerEmail: args.customerEmail,
+      accessToken: args.accessToken,
+    });
+    if (!pending) {
+      throw new ConvexError("We couldn't find a pending payment for this order.");
+    }
+    if (!pending.resumable) {
+      if (pending.order.paymentStatus === "paid") {
+        return {
+          clientSecret: "",
+          orderId: pending.order._id,
+          orderNumber: pending.order.orderNumber,
+          accessToken: pending.order.accessToken,
+          alreadyPaid: true,
+        };
+      }
+      throw new ConvexError("This order is no longer awaiting payment.");
+    }
+
+    const priced = await ctx.runQuery(internal.orders.getPricedSnapshotForOrder, {
+      orderId: pending.order._id,
+    });
+
+    return await createPaymentIntentForOrder(ctx, {
+      orderId: pending.order._id,
+      orderNumber: pending.order.orderNumber,
+      accessToken: pending.order.accessToken,
+      customerEmail: pending.order.customerEmail,
+      idempotencyKey: pending.order.idempotencyKey,
+      priced,
+      existingPaymentIntentId: pending.order.stripePaymentIntentId,
+      rollbackOnFailure: false,
+    });
+  },
+});
+
 export const createCheckoutSession = action({
   args: {
     lines: v.array(cartLineValidator),
@@ -273,6 +353,148 @@ export const createCheckoutSessionForVoice = internalAction({
     };
   },
 });
+
+async function createMobilePaymentIntentHandler(
+  ctx: ActionCtx,
+  args: {
+    lines: Array<{ productId: Id<"products">; color: string; quantity: number }>;
+    customer: {
+      fullName: string;
+      email: string;
+      phone: string;
+      address: string;
+      notes?: string;
+      termsAccepted: boolean;
+      privacyAccepted: boolean;
+    };
+    idempotencyKey: string;
+    deliveryMethod?: import("./lib/productValidators").DeliveryMethodType;
+  }
+): Promise<{
+  clientSecret: string;
+  orderId: Id<"orders">;
+  orderNumber: string;
+  accessToken?: string;
+  alreadyPaid?: boolean;
+}> {
+  const pending = await ctx.runMutation(
+    internal.orders.createPendingStripeOrder,
+    args
+  );
+
+  return await createPaymentIntentForOrder(ctx, {
+    orderId: pending.orderId,
+    orderNumber: pending.orderNumber,
+    accessToken: pending.accessToken,
+    customerEmail: args.customer.email,
+    idempotencyKey: args.idempotencyKey,
+    priced: pending.priced,
+    existingPaymentIntentId: pending.stripePaymentIntentId,
+    rollbackOnFailure: !pending.reused,
+  });
+}
+
+async function createPaymentIntentForOrder(
+  ctx: ActionCtx,
+  args: {
+    orderId: Id<"orders">;
+    orderNumber: string;
+    accessToken?: string;
+    customerEmail: string;
+    idempotencyKey: string;
+    priced: {
+      currency: string;
+      total: number;
+    };
+    existingPaymentIntentId?: string;
+    rollbackOnFailure: boolean;
+  }
+): Promise<{
+  clientSecret: string;
+  orderId: Id<"orders">;
+  orderNumber: string;
+  accessToken?: string;
+  alreadyPaid?: boolean;
+}> {
+  const stripe = getStripe();
+  const expectedCents = Math.round(args.priced.total * 100);
+
+  if (args.existingPaymentIntentId) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(
+        args.existingPaymentIntentId
+      );
+      if (existing.status === "succeeded") {
+        return {
+          clientSecret: "",
+          orderId: args.orderId,
+          orderNumber: args.orderNumber,
+          accessToken: args.accessToken,
+          alreadyPaid: true,
+        };
+      }
+      if (
+        REUSABLE_PAYMENT_INTENT_STATUSES.has(existing.status) &&
+        existing.client_secret &&
+        existing.amount === expectedCents
+      ) {
+        return {
+          clientSecret: existing.client_secret,
+          orderId: args.orderId,
+          orderNumber: args.orderNumber,
+          accessToken: args.accessToken,
+        };
+      }
+    } catch {
+      // Create a replacement payment intent below.
+    }
+  }
+
+  const stripeIdempotencyKey = args.existingPaymentIntentId
+    ? `mobile-pi:${args.idempotencyKey}:replace:${args.existingPaymentIntentId}`
+    : `mobile-pi:${args.idempotencyKey}`;
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: expectedCents,
+        currency: args.priced.currency.toLowerCase(),
+        automatic_payment_methods: { enabled: true },
+        receipt_email: args.customerEmail.trim(),
+        metadata: {
+          orderId: args.orderId,
+          orderNumber: args.orderNumber,
+          idempotencyKey: args.idempotencyKey,
+        },
+      },
+      { idempotencyKey: stripeIdempotencyKey }
+    );
+
+    if (!paymentIntent.client_secret) {
+      throw new ConvexError("Failed to create Stripe payment intent");
+    }
+
+    await ctx.runMutation(internal.orders.attachPaymentIntent, {
+      orderId: args.orderId,
+      stripePaymentIntentId: paymentIntent.id,
+      replaceExisting: Boolean(args.existingPaymentIntentId),
+    });
+
+    return {
+      clientSecret: paymentIntent.client_secret,
+      orderId: args.orderId,
+      orderNumber: args.orderNumber,
+      accessToken: args.accessToken,
+    };
+  } catch (error) {
+    if (args.rollbackOnFailure) {
+      await ctx.runMutation(internal.orders.rollbackPendingStripeOrder, {
+        orderId: args.orderId,
+      });
+    }
+    throw error;
+  }
+}
 
 async function createCheckoutSessionHandler(
   ctx: ActionCtx,

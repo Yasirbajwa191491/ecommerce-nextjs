@@ -13,6 +13,8 @@ import { MobileConvexProvider } from "@/providers/MobileConvexProvider";
 import { NetworkProvider } from "@/providers/NetworkProvider";
 import { OfflineSyncBridge } from "@/providers/OfflineSyncBridge";
 import { ThemeProvider } from "@/providers/theme-context";
+import { StripeProvider } from "@/providers/StripeProvider";
+import { PushNotificationProvider } from "@/providers/PushNotificationProvider";
 import { ToastProvider } from "@/providers/toast-context";
 
 function VisitorIdHydrator({ children }: { children: ReactNode }) {
@@ -39,19 +41,23 @@ export function MobileAppProviders({ children }: { children: ReactNode }) {
           <GlobalErrorHandlers>
             <NetworkProvider>
               <MobileConvexProvider>
-                <ToastProvider>
-                  <CartProvider>
-                    <CompareProvider>
-                      <VisitorIdHydrator>
-                        <OfflineSyncBridge />
-                        {children}
-                        <ProductCompareSheet />
-                        <OfflineBanner />
-                        <ToastBanner />
-                      </VisitorIdHydrator>
-                    </CompareProvider>
-                  </CartProvider>
-                </ToastProvider>
+                <PushNotificationProvider>
+                  <StripeProvider>
+                    <ToastProvider>
+                      <CartProvider>
+                        <CompareProvider>
+                          <VisitorIdHydrator>
+                            <OfflineSyncBridge />
+                            {children}
+                            <ProductCompareSheet />
+                            <OfflineBanner />
+                            <ToastBanner />
+                          </VisitorIdHydrator>
+                        </CompareProvider>
+                      </CartProvider>
+                    </ToastProvider>
+                  </StripeProvider>
+                </PushNotificationProvider>
               </MobileConvexProvider>
             </NetworkProvider>
           </GlobalErrorHandlers>

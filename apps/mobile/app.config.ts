@@ -17,6 +17,8 @@ const config: ExpoConfig = {
         "Allow camera access to take a photo and find similar products.",
       NSPhotoLibraryUsageDescription:
         "Allow access to your photo library to find similar products.",
+      NSUserNotificationsUsageDescription:
+        "Allow notifications so we can send order and payment updates.",
     },
     ...(process.env.EXPO_PUBLIC_SITE_URL
       ? {
@@ -97,8 +99,23 @@ const config: ExpoConfig = {
           "Allow camera access to take a photo and find similar products.",
       },
     ],
-    "expo-web-browser",
+    [
+      "@stripe/stripe-react-native",
+      {
+        // Apple Pay entitlement is added only when a non-empty identifier is set.
+        merchantIdentifier: process.env.EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER ?? "",
+        enableGooglePay: process.env.EXPO_PUBLIC_STRIPE_GOOGLE_PAY === "true",
+      },
+    ],
     "expo-secure-store",
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/icon.png",
+        color: "#6254f3",
+        defaultChannel: "order-updates",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

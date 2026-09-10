@@ -114,7 +114,7 @@ Next.js storefront ──┐
 Next.js admin ───────┼── Convex (queries / mutations / actions)
 Expo mobile ─────────┘         │
                                ├── Convex database + file storage + vector indexes
-                               ├── Stripe (Checkout Sessions + webhooks)
+                               ├── Stripe (web Checkout Sessions + mobile PaymentIntents + webhooks)
                                ├── Resend (OTP, order email, campaigns)
                                ├── Twilio (optional order SMS)
                                ├── Vapi (web voice/chat + outbound review calls)
@@ -130,9 +130,9 @@ Client cart (local storage)
         ↓
 Convex validateCartForCheckout / priceCheckoutCart
         ↓  live products, discounts, promotions, delivery, stock
-COD → createCashOrder          Stripe → createCheckoutSession
-        ↓                                    ↓
-Order + line snapshots              Pending order + Stripe hosted page
+COD → createCashOrder          Web Stripe → createCheckoutSession
+        ↓                        Mobile Stripe → createMobilePaymentIntent
+Order + line snapshots              Pending order + PaymentIntent / Checkout
         ↓                                    ↓
 Email / optional SMS                Webhook → paid / failed / cancelled
 ```
@@ -198,7 +198,7 @@ Versions are from current workspace `package.json` files.
 | NetInfo | 11.4 | Authoritative network state |
 | AsyncStorage | 2.2 | Cart, cache, prefs |
 | expo-image / image-picker / manipulator | — | Images and visual search |
-| expo-web-browser | — | Stripe Checkout |
+| @stripe/stripe-react-native | 0.50.x | Native PaymentSheet (requires dev/EAS build) |
 | expo-secure-store | — | Contact draft |
 | expo-clipboard / haptics | — | Copy order number, feedback |
 
@@ -454,7 +454,7 @@ Checkout needs live stock, server-side promotion pricing, and either Stripe or a
 | Keyboard | iOS `KeyboardAvoidingView` on checkout, AI, visual search, track |
 | Camera / library | `expo-image-picker` plugin; visual search camera + library |
 | HEIC/HEIF | Visual search converts to JPEG (`expo-image-manipulator`). Review uploads accept JPEG/PNG/WebP only |
-| Stripe | `ecommerce://checkout/success` · `cancel` · return `ecommerce://checkout` via `expo-web-browser` auth session |
+| Stripe | Native **PaymentSheet** (`@stripe/stripe-react-native`); `ecommerce://stripe-redirect` for 3DS return; requires **development/EAS build** (not Expo Go) |
 | Deep links | Scheme `ecommerce://`; Android intent filters for product, category, track-order, checkout, promotions when site URL is set |
 | Accessibility | 44px touch targets, labels, roles, reduce-motion |
 | Haptics | Native only; skipped on web |
@@ -488,9 +488,13 @@ Expo **web** (`react-native-web`) is a development preview of the mobile UI, not
 
 ### Stripe
 
-`stripe.createCheckoutSession`: pending order (stock held) → Stripe Checkout Session (amount asserted against server total) → customer pays on Stripe → `POST /stripe/webhook` → paid/failed/refunded. Cancel restores stock. Success/cancel pages (web URLs or `ecommerce://` on mobile).
+**Web:** `stripe.createCheckoutSession` — pending order (stock held) → Stripe Checkout Session (amount asserted against server total) → customer pays on Stripe hosted page → `POST /stripe/webhook` → paid/failed/refunded. Cancel URL restores stock via `acknowledgeStripeCheckoutCancelled`.
 
-**Idempotency:** unique `idempotencyKey` on orders; duplicate Stripe retries reuse a pending order when allowed.
+**Mobile:** `stripe.createMobilePaymentIntent` — same pending-order + server-side pricing → Stripe **PaymentIntent** → native **PaymentSheet** in the app → webhook confirms payment. Dismissing PaymentSheet does **not** fail the order; retry via `resumeMobilePaymentIntent`. Cart clears only after server reports `paymentStatus: paid`.
+
+**Idempotency:** unique `idempotencyKey` on orders; duplicate submits reuse a pending order and existing PaymentIntent when still usable.
+
+**Mobile env:** `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (publishable key only). Backend: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 ### Offline
 

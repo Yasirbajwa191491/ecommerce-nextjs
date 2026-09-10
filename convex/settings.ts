@@ -23,6 +23,8 @@ export const SYSTEM_SETTING_KEYS = [
   "sms_order_confirmation_enabled",
   "review_call_auto_enabled",
   "review_call_auto_delay_days",
+  "stripe_pending_order_reminder_minutes",
+  "stripe_pending_order_expiry_minutes",
   ...RECOMMENDATION_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
@@ -162,6 +164,16 @@ export const SYSTEM_DEFAULTS: {
     name: "Review Call Delay (Days)",
     value: "5",
   },
+  {
+    key: "stripe_pending_order_reminder_minutes",
+    name: "Stripe Pending Order Reminder (Minutes)",
+    value: "30",
+  },
+  {
+    key: "stripe_pending_order_expiry_minutes",
+    name: "Stripe Pending Order Expiry (Minutes)",
+    value: "1440",
+  },
   ...RECOMMENDATION_SYSTEM_DEFAULTS,
 ];
 
@@ -196,6 +208,15 @@ function assertValidSettingValue(key: string, value: string) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || ![3, 5, 7].includes(parsed)) {
       throw new ConvexError("Review call delay must be 3, 5, or 7 days");
+    }
+  }
+  if (
+    key === "stripe_pending_order_reminder_minutes" ||
+    key === "stripe_pending_order_expiry_minutes"
+  ) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new ConvexError("Stripe pending order timing must be a positive integer (minutes)");
     }
   }
   if (key.startsWith("recommendation_")) {

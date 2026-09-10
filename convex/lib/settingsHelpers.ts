@@ -46,6 +46,28 @@ export async function getSmsOrderConfirmationEnabledValue(
   return row?.value.trim().toLowerCase() === "true";
 }
 
+const DEFAULT_STRIPE_PENDING_REMINDER_MINUTES = 30;
+const DEFAULT_STRIPE_PENDING_EXPIRY_MINUTES = 24 * 60;
+
+function parsePositiveInteger(raw: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(raw ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export async function getStripePendingOrderReminderMinutes(
+  ctx: QueryCtx | MutationCtx
+): Promise<number> {
+  const row = await findSettingByKey(ctx, "stripe_pending_order_reminder_minutes");
+  return parsePositiveInteger(row?.value, DEFAULT_STRIPE_PENDING_REMINDER_MINUTES);
+}
+
+export async function getStripePendingOrderExpiryMinutes(
+  ctx: QueryCtx | MutationCtx
+): Promise<number> {
+  const row = await findSettingByKey(ctx, "stripe_pending_order_expiry_minutes");
+  return parsePositiveInteger(row?.value, DEFAULT_STRIPE_PENDING_EXPIRY_MINUTES);
+}
+
 export async function getReviewReplyStoreContext(
   ctx: QueryCtx | MutationCtx
 ): Promise<ReviewReplyStoreContext> {
