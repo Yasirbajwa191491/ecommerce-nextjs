@@ -21,6 +21,7 @@ import {
   resetAllPreferences,
 } from "@/lib/preferences/actions";
 import { strings } from "@/lib/i18n/strings";
+import { clearMonitoringUserContext } from "@/lib/monitoring/sentry";
 import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
@@ -145,6 +146,7 @@ export default function SettingsScreen() {
       case "resetPreferences":
         await pushNotifications?.deactivateCurrentDevice();
         await resetAllPreferences();
+        clearMonitoringUserContext();
         await refreshPreferences();
         showSuccess(strings.toast.preferencesReset);
         break;

@@ -93,8 +93,10 @@ export function buildOrderDeepLinkPath(
   orderNumber: string,
   event: OrderNotificationEvent
 ): string {
+  const encodedOrderNumber = encodeURIComponent(orderNumber);
   if (event === "payment.failed" || event === "order.recovery.reminder") {
-    return `/checkout/success?orderNumber=${encodeURIComponent(orderNumber)}&pendingPayment=1`;
+    return `/checkout/success?orderNumber=${encodedOrderNumber}&pendingPayment=1`;
   }
-  return `/order/${encodeURIComponent(orderNumber)}`;
+  // Mobile order detail reads `orderNumber` from search params, not only the [id] segment.
+  return `/order/${encodedOrderNumber}?orderNumber=${encodedOrderNumber}`;
 }

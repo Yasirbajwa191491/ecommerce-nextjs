@@ -92,6 +92,23 @@ export function getCheckoutSuccessMessage(order: {
   return "Your order has been received.";
 }
 
+export function canRetryStripePayment(order: {
+  paymentMethod?: string;
+  paymentStatus?: string;
+  status?: string;
+}): boolean {
+  if (order.paymentMethod !== "stripe") {
+    return false;
+  }
+  if (order.paymentStatus === "pending" && order.status === "pending") {
+    return true;
+  }
+  return (
+    order.paymentStatus === "failed" &&
+    (order.status === "failed" || order.status === "expired")
+  );
+}
+
 export function formatOrderDateTime(timestamp: number): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",

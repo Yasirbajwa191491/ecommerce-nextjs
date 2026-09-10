@@ -208,8 +208,30 @@ export const resumeMobilePaymentIntent = action({
     if (!pending) {
       throw new ConvexError("We couldn't find a pending payment for this order.");
     }
+    if (pending.order.paymentStatus === "paid") {
+      return {
+        clientSecret: "",
+        orderId: pending.order._id,
+        orderNumber: pending.order.orderNumber,
+        accessToken: pending.order.accessToken,
+        alreadyPaid: true,
+      };
+    }
+
+    let priced = await ctx.runQuery(internal.orders.getPricedSnapshotForOrder, {
+      orderId: pending.order._id,
+    });
+    let existingPaymentIntentId = pending.order.stripePaymentIntentId;
+
     if (!pending.resumable) {
-      if (pending.order.paymentStatus === "paid") {
+      if (!pending.retryable) {
+        throw new ConvexError("This order is no longer awaiting payment.");
+      }
+
+      const revived = await ctx.runMutation(internal.orders.reviveStripeOrderForRetry, {
+        orderId: pending.order._id,
+      });
+      if (revived.alreadyPaid) {
         return {
           clientSecret: "",
           orderId: pending.order._id,
@@ -218,12 +240,12 @@ export const resumeMobilePaymentIntent = action({
           alreadyPaid: true,
         };
       }
-      throw new ConvexError("This order is no longer awaiting payment.");
+      if (!revived.priced) {
+        throw new ConvexError("Unable to reopen this payment. Please try again.");
+      }
+      priced = revived.priced;
+      existingPaymentIntentId = revived.stripePaymentIntentId;
     }
-
-    const priced = await ctx.runQuery(internal.orders.getPricedSnapshotForOrder, {
-      orderId: pending.order._id,
-    });
 
     return await createPaymentIntentForOrder(ctx, {
       orderId: pending.order._id,
@@ -232,7 +254,7 @@ export const resumeMobilePaymentIntent = action({
       customerEmail: pending.order.customerEmail,
       idempotencyKey: pending.order.idempotencyKey,
       priced,
-      existingPaymentIntentId: pending.order.stripePaymentIntentId,
+      existingPaymentIntentId,
       rollbackOnFailure: false,
     });
   },
@@ -646,3 +668,76 @@ async function createStripeSessionForOrder(
       throw error;
     }
 }
+
+const CANCELABLE_PAYMENT_INTENT_STATUSES = new Set([
+  "requires_payment_method",
+  "requires_confirmation",
+  "requires_action",
+  "requires_capture",
+]);
+
+export const cancelOpenStripePayment = internalAction({
+  args: {
+    paymentIntentId: v.optional(v.string()),
+    checkoutSessionId: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (_ctx, args) => {
+    const stripe = getStripe();
+
+    if (args.checkoutSessionId) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(args.checkoutSessionId);
+        if (session.status === "open") {
+          await stripe.checkout.sessions.expire(args.checkoutSessionId);
+        }
+      } catch (error) {
+        console.warn("[stripe] failed to expire checkout session", error);
+      }
+    }
+
+    if (args.paymentIntentId) {
+      try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(args.paymentIntentId);
+        if (CANCELABLE_PAYMENT_INTENT_STATUSES.has(paymentIntent.status)) {
+          await stripe.paymentIntents.cancel(args.paymentIntentId);
+        }
+      } catch (error) {
+        console.warn("[stripe] failed to cancel payment intent", error);
+      }
+    }
+
+    return null;
+  },
+});
+
+export const refundUnfulfillablePayment = internalAction({
+  args: {
+    orderId: v.id("orders"),
+    paymentIntentId: v.string(),
+    reason: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const stripe = getStripe();
+    try {
+      await stripe.refunds.create({
+        payment_intent: args.paymentIntentId,
+        metadata: {
+          orderId: args.orderId,
+          reason: args.reason,
+        },
+      });
+      await ctx.runMutation(internal.orders.markOrderRefunded, {
+        orderId: args.orderId,
+        stripePaymentIntentId: args.paymentIntentId,
+      });
+    } catch (error) {
+      console.error(
+        `[stripe] automatic refund failed orderId=${args.orderId} pi=${args.paymentIntentId}`,
+        error
+      );
+    }
+    return null;
+  },
+});

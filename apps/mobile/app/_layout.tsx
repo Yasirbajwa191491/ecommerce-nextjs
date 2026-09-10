@@ -1,3 +1,5 @@
+import "@/lib/monitoring/init";
+
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 

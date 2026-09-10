@@ -78,6 +78,27 @@ async function resolveOrderId(
   return null;
 }
 
+async function refundIfUnfulfillable(
+  ctx: GenericActionCtx<DataModel>,
+  orderId: Id<"orders">,
+  result: {
+    alreadyPaid: boolean;
+    needsRefund?: boolean;
+    refundReason?: string;
+    stripePaymentIntentId?: string;
+  }
+): Promise<void> {
+  if (!result.needsRefund || !result.stripePaymentIntentId) {
+    return;
+  }
+
+  await ctx.runAction(internal.stripe.refundUnfulfillablePayment, {
+    orderId,
+    paymentIntentId: result.stripePaymentIntentId,
+    reason: result.refundReason ?? "unfulfillable",
+  });
+}
+
 function extractTransactionId(
   paymentIntent: Stripe.PaymentIntent | string | null | undefined,
   stripe: Stripe
@@ -154,13 +175,14 @@ export const processWebhook = internalAction({
           const stripeTransactionId = paymentIntentId
             ? await extractTransactionId(paymentIntentId, stripe)
             : undefined;
-          await ctx.runMutation(internal.orders.markOrderPaid, {
+          const result = await ctx.runMutation(internal.orders.markOrderPaid, {
             orderId: resolvedOrderId,
             stripePaymentIntentId: paymentIntentId,
             stripeSessionId: session.id,
             stripeTransactionId,
             paidTotalCents: session.amount_total ?? undefined,
           });
+          await refundIfUnfulfillable(ctx, resolvedOrderId, result);
         }
         break;
       }
@@ -172,11 +194,12 @@ export const processWebhook = internalAction({
             typeof paymentIntent.latest_charge === "string"
               ? paymentIntent.latest_charge
               : paymentIntent.latest_charge?.id;
-          await ctx.runMutation(internal.orders.markOrderPaid, {
+          const result = await ctx.runMutation(internal.orders.markOrderPaid, {
             orderId: resolvedOrderId,
             stripePaymentIntentId: paymentIntent.id,
             stripeTransactionId,
           });
+          await refundIfUnfulfillable(ctx, resolvedOrderId, result);
         }
         break;
       }

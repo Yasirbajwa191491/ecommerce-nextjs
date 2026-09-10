@@ -1,5 +1,44 @@
 import type { ExpoConfig } from "expo/config";
 
+const plugins: NonNullable<ExpoConfig["plugins"]> = [
+  "expo-router",
+  [
+    "expo-image-picker",
+    {
+      photosPermission:
+        "Allow access to your photo library to find similar products.",
+      cameraPermission:
+        "Allow camera access to take a photo and find similar products.",
+    },
+  ],
+  [
+    "@stripe/stripe-react-native",
+    {
+      merchantIdentifier: process.env.EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER ?? "",
+      enableGooglePay: process.env.EXPO_PUBLIC_STRIPE_GOOGLE_PAY === "true",
+    },
+  ],
+  "expo-secure-store",
+  [
+    "expo-notifications",
+    {
+      icon: "./assets/icon.png",
+      color: "#6254f3",
+      defaultChannel: "order-updates",
+    },
+  ],
+];
+
+if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
+  plugins.push([
+    "@sentry/react-native/expo",
+    {
+      organization: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+    },
+  ]);
+}
+
 const config: ExpoConfig = {
   name: "Ecommerce Store",
   slug: "ecommerce-mobile",
@@ -88,35 +127,7 @@ const config: ExpoConfig = {
     // static = prerendered pages for EAS Hosting (free *.expo.app URL)
     output: "static",
   },
-  plugins: [
-    "expo-router",
-    [
-      "expo-image-picker",
-      {
-        photosPermission:
-          "Allow access to your photo library to find similar products.",
-        cameraPermission:
-          "Allow camera access to take a photo and find similar products.",
-      },
-    ],
-    [
-      "@stripe/stripe-react-native",
-      {
-        // Apple Pay entitlement is added only when a non-empty identifier is set.
-        merchantIdentifier: process.env.EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER ?? "",
-        enableGooglePay: process.env.EXPO_PUBLIC_STRIPE_GOOGLE_PAY === "true",
-      },
-    ],
-    "expo-secure-store",
-    [
-      "expo-notifications",
-      {
-        icon: "./assets/icon.png",
-        color: "#6254f3",
-        defaultChannel: "order-updates",
-      },
-    ],
-  ],
+  plugins,
   experiments: {
     typedRoutes: true,
   },

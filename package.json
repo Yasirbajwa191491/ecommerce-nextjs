@@ -36,7 +36,7 @@
     "typecheck:all": "npm run typecheck && npm run typecheck:mobile",
     "lint:mobile": "npm run lint --workspace @ecommerce/mobile",
     "validate:mobile": "npm run validate --workspace @ecommerce/mobile",
-    "test:notifications": "vitest run convex/lib/orderNotificationLogic.test.ts"
+    "test:notifications": "vitest run convex/lib/orderNotificationLogic.test.ts convex/lib/notificationRetention.test.ts convex/lib/inAppNotificationPersistence.test.ts"
   },
   "dependencies": {
     "ajv": "^8.20.0",

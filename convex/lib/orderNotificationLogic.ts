@@ -118,3 +118,42 @@ export function isPendingStripeOrder(args: {
     args.status === "pending"
   );
 }
+
+export function canRetryStripePayment(args: {
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+}): boolean {
+  if (args.paymentMethod !== "stripe") {
+    return false;
+  }
+  if (isPendingStripeOrder(args)) {
+    return true;
+  }
+  return (
+    args.paymentStatus === "failed" &&
+    (args.status === "failed" || args.status === "expired")
+  );
+}
+
+export type LateStripePaymentAction =
+  | "already_paid"
+  | "fulfill"
+  | "rereserve_and_fulfill"
+  | "refund";
+
+export function resolveLateStripePaymentAction(args: {
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+}): LateStripePaymentAction {
+  if (args.paymentStatus === "paid") {
+    return "already_paid";
+  }
+  if (args.status === "cancelled" || args.status === "refunded") {
+    return "refund";
+  }
+  if (args.status === "expired" || args.status === "failed") {
+    return "rereserve_and_fulfill";
+  }
+  return "fulfill";
+}

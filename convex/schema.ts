@@ -1126,6 +1126,7 @@ export default defineSchema({
 
   inAppNotifications: defineTable({
     customerEmail: v.string(),
+    eventKey: v.string(),
     visitorId: v.optional(v.string()),
     type: orderNotificationEventValidator,
     title: v.string(),
@@ -1134,9 +1135,14 @@ export default defineSchema({
     orderNumber: v.optional(v.string()),
     deepLinkPath: v.optional(v.string()),
     readAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
     metadata: v.optional(v.string()),
     createdAt: v.number(),
   })
+    .index("by_event_key", ["eventKey"])
     .index("by_customer_email_created", ["customerEmail", "createdAt"])
-    .index("by_customer_email_unread", ["customerEmail", "readAt"]),
+    .index("by_customer_email_unread", ["customerEmail", "readAt"])
+    .index("by_order_id", ["orderId"])
+    .index("by_expires_at", ["expiresAt"]),
 });
