@@ -2,7 +2,10 @@ import { v, ConvexError } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { assertNotificationCustomerAccess } from "./lib/notificationAccess";
-import { upsertInAppNotificationForEvent } from "./lib/inAppNotificationPersistence";
+import {
+  deriveInAppNotificationEventKey,
+  upsertInAppNotificationForEvent,
+} from "./lib/inAppNotificationPersistence";
 import { computeNotificationExpiresAt } from "./lib/notificationRetention";
 import { orderNotificationEventValidator } from "./lib/notificationTypes";
 import { hasOrderAccess } from "./lib/orderAccess";
@@ -11,6 +14,36 @@ import { paginationOptsValidator } from "convex/server";
 
 const UNREAD_COUNT_CAP = 99;
 const PURGE_BATCH_SIZE = 100;
+
+const BACKFILL_BATCH_SIZE = 100;
+
+export const backfillInAppNotificationEventKeys = internalMutation({
+  args: {},
+  returns: v.object({
+    patched: v.number(),
+  }),
+  handler: async (ctx) => {
+    const notifications = await ctx.db.query("inAppNotifications").take(BACKFILL_BATCH_SIZE * 3);
+    let patched = 0;
+
+    for (const notification of notifications) {
+      if (notification.eventKey || patched >= BACKFILL_BATCH_SIZE) {
+        continue;
+      }
+
+      await ctx.db.patch(notification._id, {
+        eventKey: deriveInAppNotificationEventKey(notification),
+      });
+      patched += 1;
+    }
+
+    if (patched > 0) {
+      console.info(`[notifications] backfilled ${patched} in-app notification event keys`);
+    }
+
+    return { patched };
+  },
+});
 
 export const purgeExpiredNotifications = internalMutation({
   args: {},

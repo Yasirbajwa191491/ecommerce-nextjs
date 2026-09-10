@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { Id } from "../_generated/dataModel";
+import { deriveInAppNotificationEventKey } from "./inAppNotificationPersistence";
 import { buildNotificationEventKey } from "./orderNotificationLogic";
 
 describe("in-app notification idempotency", () => {
@@ -22,5 +24,17 @@ describe("in-app notification idempotency", () => {
     const retry = buildNotificationEventKey(orderId, event);
 
     expect(first).toBe(retry);
+  });
+
+  it("derives legacy event keys for older notification rows", () => {
+    const derived = deriveInAppNotificationEventKey({
+      customerEmail: "User@Example.com",
+      type: "payment.succeeded",
+      orderId: "order789" as Id<"orders">,
+      createdAt: 1_700_000_000_000,
+      eventKey: undefined,
+    });
+
+    expect(derived).toBe("order:order789:payment.succeeded");
   });
 });

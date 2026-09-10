@@ -1126,7 +1126,8 @@ export default defineSchema({
 
   inAppNotifications: defineTable({
     customerEmail: v.string(),
-    eventKey: v.string(),
+    /** Required for new records; optional for legacy rows migrated via backfill. */
+    eventKey: v.optional(v.string()),
     visitorId: v.optional(v.string()),
     type: orderNotificationEventValidator,
     title: v.string(),
