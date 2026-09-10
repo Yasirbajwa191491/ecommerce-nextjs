@@ -30,7 +30,7 @@ import { useTheme } from "@/providers/theme-context";
 export default function NotificationsScreen() {
   const { colors, textStyles } = useTheme();
   const styles = useThemedStyles(createStyles);
-  const { proof, ready, refresh } = useNotificationCenterAccess();
+  const { proof, ready, verified, refresh } = useNotificationCenterAccess();
   const [refreshing, setRefreshing] = useState(false);
 
   const convex = useConvex();
@@ -38,13 +38,14 @@ export default function NotificationsScreen() {
   const markAllAsRead = useMutation(api.inAppNotifications.markAllAsRead);
   const archiveNotification = useMutation(api.inAppNotifications.archiveNotification);
 
-  const queryArgs = proof
-    ? {
-        customerEmail: proof.customerEmail,
-        visitorId: proof.visitorId,
-        accessToken: proof.accessToken,
-      }
-    : "skip";
+  const queryArgs =
+    verified && proof
+      ? {
+          customerEmail: proof.customerEmail,
+          visitorId: proof.visitorId,
+          accessToken: proof.accessToken,
+        }
+      : "skip";
 
   const unread = useQuery(api.inAppNotifications.getUnreadCount, queryArgs);
 
@@ -154,6 +155,20 @@ export default function NotificationsScreen() {
         <EmptyState
           title="No saved customer details"
           description="Complete checkout once so we can show your order notifications here."
+          actionLabel="Track an order"
+          onAction={() => router.push("/(tabs)/track")}
+        />
+      </ThemedScreen>
+    );
+  }
+
+  if (!verified) {
+    return (
+      <ThemedScreen>
+        <Header title="Notifications" showSearch={false} showBack showCart={false} />
+        <EmptyState
+          title="Verify your access"
+          description="Place an order or enable push notifications so we can securely show your notification history."
           actionLabel="Track an order"
           onAction={() => router.push("/(tabs)/track")}
         />
