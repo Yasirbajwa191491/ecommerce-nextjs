@@ -1,8 +1,26 @@
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { OrderNotificationEvent } from "./notificationTypes";
 import { computeNotificationExpiresAt } from "./notificationRetention";
+import { buildNotificationEventKey } from "./orderNotificationLogic";
 import { normalizeEmail } from "./publicOrderDto";
+
+export function deriveInAppNotificationEventKey(
+  notification: Pick<
+    Doc<"inAppNotifications">,
+    "customerEmail" | "type" | "orderId" | "createdAt" | "eventKey"
+  >
+): string {
+  if (notification.eventKey) {
+    return notification.eventKey;
+  }
+
+  if (notification.orderId) {
+    return buildNotificationEventKey(notification.orderId, notification.type);
+  }
+
+  return `legacy:${normalizeEmail(notification.customerEmail)}:${notification.type}:${notification.createdAt}`;
+}
 
 export async function upsertInAppNotificationForEvent(
   ctx: MutationCtx,
