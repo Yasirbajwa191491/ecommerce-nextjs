@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { DataModel, Id } from "./_generated/dataModel";
 import type { GenericActionCtx } from "convex/server";
+import { isRetryablePaymentIntentStatus } from "./lib/stripePaymentIntent";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -207,6 +208,14 @@ export const processWebhook = internalAction({
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const resolvedOrderId = orderId;
         if (resolvedOrderId) {
+          // A declined card leaves the PaymentIntent retryable. Failing the order
+          // here released stock and blocked the customer's immediate retry.
+          if (isRetryablePaymentIntentStatus(paymentIntent.status)) {
+            console.log(
+              `[stripe] payment attempt failed but PI remains retryable (${paymentIntent.status}) orderId=${resolvedOrderId}`
+            );
+            break;
+          }
           await ctx.runMutation(internal.orders.markOrderFailed, {
             orderId: resolvedOrderId,
             status: "failed",

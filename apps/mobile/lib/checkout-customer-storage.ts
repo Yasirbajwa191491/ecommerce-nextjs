@@ -107,6 +107,7 @@ export async function savePendingStripeOrder(info: {
   orderNumber: string;
   email: string;
   accessToken?: string;
+  cartFingerprint?: string;
 }): Promise<void> {
   await setSecureItem(LAST_PENDING_STRIPE_KEY, JSON.stringify(info));
 }
@@ -115,6 +116,7 @@ export async function loadPendingStripeOrder(): Promise<{
   orderNumber: string;
   email: string;
   accessToken?: string;
+  cartFingerprint?: string;
 } | null> {
   try {
     const raw = await getSecureItem(LAST_PENDING_STRIPE_KEY);
@@ -123,12 +125,14 @@ export async function loadPendingStripeOrder(): Promise<{
       orderNumber?: string;
       email?: string;
       accessToken?: string;
+      cartFingerprint?: string;
     };
     if (!parsed.orderNumber || !parsed.email) return null;
     return {
       orderNumber: parsed.orderNumber,
       email: parsed.email,
       accessToken: parsed.accessToken,
+      cartFingerprint: parsed.cartFingerprint,
     };
   } catch {
     return null;

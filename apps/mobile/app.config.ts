@@ -109,6 +109,11 @@ const config: ExpoConfig = {
                 {
                   scheme: "https" as const,
                   host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
+                  pathPrefix: "/order",
+                },
+                {
+                  scheme: "https" as const,
+                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
                   pathPrefix: "/promotions",
                 },
               ],

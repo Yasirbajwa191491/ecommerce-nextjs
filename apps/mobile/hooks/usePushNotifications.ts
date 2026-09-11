@@ -6,6 +6,7 @@ import { loadCheckoutCustomer, loadPushEnrollmentProof } from "@/lib/checkout-cu
 import { api } from "@/lib/convex-api";
 import { logAppError } from "@/lib/errors";
 import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
+import { getPushExecutionEnvironment } from "@/lib/push-environment";
 import {
   ensureAndroidNotificationChannel,
   getExpoPushToken,
@@ -114,6 +115,7 @@ export function usePushNotifications() {
             Constants.expoConfig?.version ??
             Constants.nativeAppVersion ??
             undefined,
+          executionEnvironment: getPushExecutionEnvironment(),
           ...(accessToken ? { accessToken } : {}),
         });
         addMonitoringBreadcrumb("Push token sync succeeded", "notification");

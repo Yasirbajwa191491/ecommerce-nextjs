@@ -19,7 +19,14 @@ export default function ShopScreen() {
 
       <View style={[styles.container, rootStyle]}>
 
-        <Header title="Shop" showSearch={false} showWishlist showCompare showSettings />
+        <Header
+          title="Shop"
+          showSearch={false}
+          showWishlist
+          showCompare
+          showNotifications
+          showSettings
+        />
 
         <ProductCatalogView showCategoryChips style={styles.catalog} />
 

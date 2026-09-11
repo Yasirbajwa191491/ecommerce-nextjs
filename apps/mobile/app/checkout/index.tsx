@@ -29,11 +29,16 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
   createIdempotencyKey,
   loadCheckoutCustomer,
+  loadPendingStripeOrder,
   saveCheckoutCustomer,
   saveLastOrderInfo,
   savePendingStripeOrder,
   savePushEnrollmentProof,
 } from "@/lib/checkout-customer-storage";
+import {
+  buildCheckoutCartFingerprint,
+  pendingStripeOrderMatchesCart,
+} from "@/lib/checkout-cart-fingerprint";
 import { api } from "@/lib/convex-api";
 import { getStripePublishableKey } from "@/lib/stripe-config";
 import { getFriendlyErrorMessage, logAppError } from "@/lib/errors";
@@ -52,6 +57,7 @@ import {
 } from "@/lib/validation/checkout-form";
 import { getVisitorId } from "@/lib/visitor-id";
 import { useCart } from "@/providers/cart-context";
+import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useToast } from "@/providers/toast-context";
 
 type DeliveryMethodType = "standard" | "express" | "same_day" | "next_day" | "pickup";
@@ -74,6 +80,7 @@ export default function CheckoutScreen() {
   const rootStyle = useScreenRootStyle();
   const { cart, itemCount, hydrated, clearCart } = useCart();
   const { showError, showSuccess } = useToast();
+  const pushNotifications = usePushNotificationContextOptional();
   const { isOnline, isOffline, isConnected } = useNetworkStatus();
 
   useEffect(() => {
@@ -90,6 +97,7 @@ export default function CheckoutScreen() {
   const submittingRef = useRef(false);
   const createCashOrder = useMutation(api.orders.createCashOrder);
   const createMobilePaymentIntent = useAction(api.stripe.createMobilePaymentIntent);
+  const resumeMobilePaymentIntent = useAction(api.stripe.resumeMobilePaymentIntent);
   const saveCustomerProfile = useMutation(api.orders.saveCustomerProfile);
   const { presentPayment } = usePaymentSheetCheckout();
 
@@ -261,6 +269,10 @@ export default function CheckoutScreen() {
         await persistCustomer();
         await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
         await savePushEnrollmentProof(customerPayload.email, result.accessToken);
+        void pushNotifications?.enablePushNotifications(
+          customerPayload.email.trim().toLowerCase(),
+          result.accessToken
+        );
         clearCart();
         showSuccess("Order placed successfully!");
         router.replace({
@@ -282,7 +294,37 @@ export default function CheckoutScreen() {
       }
 
       addMonitoringBreadcrumb("PaymentIntent creation started", "checkout");
-      const result = await createMobilePaymentIntent(payload);
+      let result: Awaited<ReturnType<typeof createMobilePaymentIntent>> | null = null;
+      const cartFingerprint = buildCheckoutCartFingerprint({
+        email: customerPayload.email,
+        deliveryMethod: selectedDeliveryMethod,
+        lines: cartLines,
+      });
+      const pendingSaved = await loadPendingStripeOrder();
+      if (pendingStripeOrderMatchesCart(pendingSaved, cartFingerprint) && pendingSaved) {
+        try {
+          result = await resumeMobilePaymentIntent({
+            orderNumber: pendingSaved.orderNumber,
+            customerEmail: pendingSaved.email,
+            accessToken: pendingSaved.accessToken,
+          });
+          addMonitoringBreadcrumb("Pending payment resumed", "checkout", {
+            orderNumber: result.orderNumber,
+            alreadyPaid: Boolean(result.alreadyPaid),
+          });
+        } catch (error) {
+          addMonitoringBreadcrumb("Pending payment resume skipped", "checkout", {
+            reason: getFriendlyErrorMessage(error, "resume_failed"),
+          });
+        }
+      } else if (pendingSaved?.orderNumber) {
+        addMonitoringBreadcrumb("Pending payment resume skipped", "checkout", {
+          reason: "cart_mismatch",
+        });
+      }
+      if (!result) {
+        result = await createMobilePaymentIntent(payload);
+      }
       addMonitoringBreadcrumb("PaymentIntent created", "checkout", {
         orderNumber: result.orderNumber,
         alreadyPaid: Boolean(result.alreadyPaid),
@@ -295,7 +337,12 @@ export default function CheckoutScreen() {
         orderNumber: result.orderNumber,
         email: customerPayload.email,
         accessToken: result.accessToken,
+        cartFingerprint,
       });
+      void pushNotifications?.enablePushNotifications(
+        customerPayload.email.trim().toLowerCase(),
+        result.accessToken
+      );
 
       if (result.alreadyPaid) {
         router.replace({
@@ -359,6 +406,7 @@ export default function CheckoutScreen() {
     clearCart,
     createCashOrder,
     createMobilePaymentIntent,
+    resumeMobilePaymentIntent,
     form,
     presentPayment,
     isFormValid,

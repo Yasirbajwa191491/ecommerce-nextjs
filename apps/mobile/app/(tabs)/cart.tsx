@@ -52,7 +52,7 @@ export default function CartScreen() {
     return (
       <ScreenContainer>
         <View style={[styles.container, rootStyle]}>
-          <Header title="Cart" showSearch={false} showCart={false} />
+          <Header title="Cart" showSearch={false} showCart={false} showNotifications />
           <View style={[styles.loadingWrap, { paddingHorizontal: horizontalPadding }]}>
             <Skeleton height={100} borderRadius={radius.lg} />
             <Skeleton height={100} borderRadius={radius.lg} />
@@ -66,7 +66,7 @@ export default function CartScreen() {
     return (
       <ScreenContainer>
         <View style={[styles.container, rootStyle]}>
-          <Header title="Cart" showSearch={false} showCart={false} />
+          <Header title="Cart" showSearch={false} showCart={false} showNotifications />
           <EmptyState
             icon="cart-outline"
             title="Your cart is empty"
@@ -87,6 +87,7 @@ export default function CartScreen() {
           subtitle={`${itemCount} item${itemCount === 1 ? "" : "s"}`}
           showSearch={false}
           showCart={false}
+          showNotifications
         />
 
         <FlatList

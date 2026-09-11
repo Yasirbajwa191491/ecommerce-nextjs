@@ -43,6 +43,7 @@ export const getActiveTokensForEmail = internalQuery({
       _id: token._id,
       expoPushToken: token.expoPushToken,
       platform: token.platform,
+      executionEnvironment: token.executionEnvironment,
     }));
   },
 });

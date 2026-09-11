@@ -13,6 +13,7 @@ import { deliveryMethodTypeValidator } from "./lib/checkoutPricing";
 import type { Id } from "./_generated/dataModel";
 import type { PricedLineItem } from "./lib/orderPricing";
 import { getSiteUrl } from "./lib/siteUrl";
+import { isRetryablePaymentIntentStatus } from "./lib/stripePaymentIntent";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -23,13 +24,6 @@ function getStripe(): Stripe {
   }
   return new Stripe(key);
 }
-
-const REUSABLE_PAYMENT_INTENT_STATUSES = new Set([
-  "requires_payment_method",
-  "requires_confirmation",
-  "requires_action",
-  "processing",
-]);
 
 const mobilePaymentIntentResultValidator = v.object({
   clientSecret: v.string(),
@@ -456,7 +450,7 @@ async function createPaymentIntentForOrder(
         };
       }
       if (
-        REUSABLE_PAYMENT_INTENT_STATUSES.has(existing.status) &&
+        isRetryablePaymentIntentStatus(existing.status) &&
         existing.client_secret &&
         existing.amount === expectedCents
       ) {

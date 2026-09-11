@@ -15,6 +15,7 @@ import { OrderPromotionsSummary } from "@/components/orders/OrderPromotionsSumma
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadges";
 import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
 import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
+import { OrderActions } from "@/components/orders/OrderActions";
 import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
 import { usePaymentSheetCheckout } from "@/hooks/usePaymentSheetCheckout";
@@ -363,6 +364,18 @@ export default function CheckoutSuccessScreen() {
               <Text style={styles.confirmationNote}>
                 A confirmation email will be sent to {order.customerEmail}.
               </Text>
+
+              <View style={styles.fullWidthCard}>
+                <OrderActions
+                  orderNumber={order.orderNumber}
+                  customerEmail={customerEmail ?? order.customerEmail}
+                  accessToken={accessToken ?? order.accessToken}
+                  status={order.status as OrderStatus}
+                  paymentMethod={order.paymentMethod}
+                  paymentStatus={order.paymentStatus}
+                  hasVerifiedAccess={hasLookupCredentials}
+                />
+              </View>
 
               <View style={styles.actions}>
                 {canRetryPayment ? (

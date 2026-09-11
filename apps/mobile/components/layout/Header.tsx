@@ -142,6 +142,7 @@ export function Header({
         )}
 
         <View style={styles.actions}>
+          {showNotifications ? <NotificationBell color={colors.foreground} /> : null}
           {showSettings ? (
             <Pressable
               accessibilityRole="button"
@@ -164,7 +165,6 @@ export function Header({
               <Ionicons name="heart-outline" size={sizes.iconMd} color={colors.foreground} />
             </Pressable>
           ) : null}
-          {showNotifications ? <NotificationBell color={colors.foreground} /> : null}
           {showCompare ? (
             <Pressable
               accessibilityRole="button"

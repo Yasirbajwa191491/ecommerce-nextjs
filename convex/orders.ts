@@ -33,9 +33,24 @@ import {
 import { checkAndIncrementRateLimit } from "./lib/rateLimit";
 import { normalizeEmail, phonesMatch } from "./lib/publicOrderDto";
 import {
+  assertOrderAccess,
   generateOrderAccessToken,
   hasOrderAccess,
 } from "./lib/orderAccess";
+import {
+  formatCancellationReason,
+  parseCancellationReason,
+  resolveCancellationEligibility,
+  shouldCancelOpenStripePayment,
+  shouldInitiateStripeRefund,
+  shouldReleaseStockOnCancel,
+} from "./lib/orderCancellation";
+import {
+  canReorderOrder,
+  evaluateReorderLine,
+  type ReorderAvailableItem,
+  type ReorderUnavailableItem,
+} from "./lib/orderReorder";
 
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -601,14 +616,42 @@ export const createPendingStripeOrder = internalMutation({
       .unique();
 
     if (existing) {
-      const reusable =
-        existing.paymentMethod === "stripe" &&
-        existing.paymentStatus === "pending" &&
-        existing.status === "pending";
-      if (!reusable) {
+      const reusable = isPendingStripeOrder({
+        paymentMethod: existing.paymentMethod,
+        paymentStatus: existing.paymentStatus,
+        status: existing.status,
+      });
+      const retryable = canRetryStripePayment({
+        paymentMethod: existing.paymentMethod,
+        paymentStatus: existing.paymentStatus,
+        status: existing.status,
+      });
+
+      if (!reusable && !retryable) {
         throw new ConvexError(
           "This checkout was already submitted. Please refresh and try again."
         );
+      }
+
+      if (!reusable && retryable) {
+        const revived = await ctx.runMutation(internal.orders.reviveStripeOrderForRetry, {
+          orderId: existing._id,
+        });
+        if (revived.alreadyPaid || !revived.priced) {
+          throw new ConvexError(
+            "This checkout was already submitted. Please refresh and try again."
+          );
+        }
+        return {
+          orderId: existing._id,
+          orderNumber: existing.orderNumber,
+          priced: revived.priced,
+          stripeSessionId: existing.stripeSessionId,
+          stripePaymentIntentId:
+            revived.stripePaymentIntentId ?? existing.stripePaymentIntentId,
+          accessToken: revived.accessToken ?? existing.accessToken,
+          reused: true as const,
+        };
       }
 
       const accessToken = existing.accessToken ?? generateOrderAccessToken();
@@ -1385,5 +1428,220 @@ export const lookupPublicOrderDetail = internalQuery({
       .collect();
     const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
     return { order, items, promotions, statusHistory };
+  },
+});
+
+export const getOrderCancellationEligibility = query({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const email = args.customerEmail?.trim();
+    const accessToken = args.accessToken?.trim();
+    if (!email && !accessToken) {
+      return { found: false as const };
+    }
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber.trim()))
+      .unique();
+    if (!order || !hasOrderAccess(order, { customerEmail: email, accessToken })) {
+      return { found: false as const };
+    }
+
+    const eligibility = resolveCancellationEligibility(order);
+    return {
+      found: true as const,
+      canCancel: eligibility.canCancel,
+      message: eligibility.message,
+      orderStatus: order.status,
+      paymentStatus: order.paymentStatus,
+    };
+  },
+});
+
+export const prepareReorder = query({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const email = args.customerEmail?.trim();
+    const accessToken = args.accessToken?.trim();
+    if (!email && !accessToken) {
+      return { found: false as const, message: "Order access verification is required." };
+    }
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber.trim()))
+      .unique();
+    if (!order || !hasOrderAccess(order, { customerEmail: email, accessToken })) {
+      return { found: false as const, message: "We couldn't find an order matching your details." };
+    }
+
+    if (!canReorderOrder(order.status)) {
+      return {
+        found: true as const,
+        canReorder: false as const,
+        message: "This order cannot be reordered yet.",
+      };
+    }
+
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+      .collect();
+
+    const available: ReorderAvailableItem[] = [];
+    const unavailable: ReorderUnavailableItem[] = [];
+
+    for (const item of items) {
+      const product = await ctx.db.get(item.productId);
+      const result = evaluateReorderLine({ item, product });
+      if ("reason" in result) {
+        unavailable.push(result);
+      } else {
+        available.push(result);
+      }
+    }
+
+    return {
+      found: true as const,
+      canReorder: true as const,
+      orderNumber: order.orderNumber,
+      available,
+      unavailable,
+      hasPartialQuantities: available.some(
+        (item) => item.quantity < item.requestedQuantity
+      ),
+    };
+  },
+});
+
+/** Customer-initiated order cancellation with stock release and payment handling. */
+export const cancelOrder = mutation({
+  args: {
+    orderNumber: v.string(),
+    customerEmail: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+    cancellationReason: v.optional(v.string()),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    alreadyCancelled: v.optional(v.boolean()),
+    refundPending: v.optional(v.boolean()),
+    message: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const orderNumber = args.orderNumber.trim();
+    if (!orderNumber) {
+      return { success: false, message: "Order number is required." };
+    }
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_order_number", (q) => q.eq("orderNumber", orderNumber))
+      .unique();
+
+    if (!order) {
+      return { success: false, message: "We couldn't find an order matching your details." };
+    }
+
+    try {
+      assertOrderAccess(order, {
+        customerEmail: args.customerEmail,
+        accessToken: args.accessToken,
+      });
+    } catch {
+      return { success: false, message: "You are not authorized to cancel this order." };
+    }
+
+    if (order.status === "cancelled") {
+      return { success: true, alreadyCancelled: true };
+    }
+
+    const eligibility = resolveCancellationEligibility(order);
+    if (!eligibility.canCancel) {
+      return { success: false, message: eligibility.message ?? "This order cannot be cancelled." };
+    }
+
+    const parsedReason = parseCancellationReason(args.cancellationReason);
+    const reasonLabel = parsedReason ? formatCancellationReason(parsedReason) : undefined;
+
+    const now = Date.now();
+    const previousStatus = order.status;
+    const previousPaymentStatus = order.paymentStatus;
+    const initiateRefund = shouldInitiateStripeRefund(order);
+    const cancelOpenPayment = shouldCancelOpenStripePayment(order);
+    const releaseStock = shouldReleaseStockOnCancel(order);
+
+    const nextPaymentStatus = cancelOpenPayment
+      ? ("failed" as const)
+      : order.paymentStatus;
+
+    await ctx.db.patch(order._id, {
+      status: "cancelled",
+      paymentStatus: nextPaymentStatus,
+      updatedAt: now,
+      ...(releaseStock ? { stockReleasedAt: now } : {}),
+    });
+
+    if (releaseStock) {
+      const stockLines = await getOrderStockLines(ctx, order._id);
+      await restoreStock(ctx, stockLines);
+    }
+
+    if (cancelOpenPayment && previousPaymentStatus !== "failed") {
+      await insertPaymentLog(ctx, {
+        orderId: order._id,
+        event: "payment_failed",
+        description: "Payment cancelled by customer",
+        previousPaymentStatus,
+        newPaymentStatus: "failed",
+        actorType: "system",
+        createdAt: now,
+      });
+    }
+
+    await insertOrderStatusLog(ctx, {
+      orderId: order._id,
+      event: "order_status_updated",
+      description: reasonLabel
+        ? `Order cancelled by customer (${reasonLabel})`
+        : "Order cancelled by customer",
+      previousStatus,
+      newStatus: "cancelled",
+      actorType: "customer",
+      createdAt: now,
+    });
+
+    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
+      orderId: order._id,
+      event: "order.cancelled",
+      cancellationReason: reasonLabel,
+    });
+
+    if (cancelOpenPayment && (order.stripePaymentIntentId || order.stripeSessionId)) {
+      await ctx.scheduler.runAfter(0, internal.stripe.cancelOpenStripePayment, {
+        paymentIntentId: order.stripePaymentIntentId,
+        checkoutSessionId: order.stripeSessionId,
+      });
+    }
+
+    if (initiateRefund && order.stripePaymentIntentId) {
+      await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
+        orderId: order._id,
+        paymentIntentId: order.stripePaymentIntentId,
+        reason: "customer_cancelled",
+      });
+      return { success: true, refundPending: true };
+    }
+
+    return { success: true };
   },
 });
