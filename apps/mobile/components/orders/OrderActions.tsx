@@ -1,8 +1,15 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
+import {
+  CANCELLATION_REASONS,
+  CancelOrderDialog,
+} from "@/components/orders/CancelOrderDialog";
+import { CancelOrderAction } from "@/components/orders/CancelOrderAction";
+import { OrderReceiptImage } from "@/components/orders/OrderReceiptImage";
+import { ReceiptActionsRow } from "@/components/orders/ReceiptActionsRow";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { radius, spacing, typography } from "@/constants/theme";
@@ -16,12 +23,12 @@ import {
   canShowReceiptActions,
   canShowReorderAction,
 } from "@/lib/order-actions";
+import type { OrderReceiptData } from "@/lib/order-receipt-format";
 import {
-  resolveReceiptActionLabels,
-  shareReceiptFile,
-  writeReceiptFile,
-  type OrderReceiptData,
-} from "@/lib/order-receipt";
+  captureReceiptImage,
+  saveReceiptImageToGallery,
+  shareReceiptImage,
+} from "@/lib/order-receipt-image";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/order-display";
 import { useCart } from "@/providers/cart-context";
 import { useToast } from "@/providers/toast-context";
@@ -67,14 +74,6 @@ function toCartProduct(item: ReorderAvailableLine): Product {
   } as unknown as Product;
 }
 
-const CANCELLATION_REASONS = [
-  { value: "changed_mind", label: "Changed my mind" },
-  { value: "ordered_by_mistake", label: "Ordered by mistake" },
-  { value: "found_better_option", label: "Found a better option" },
-  { value: "delivery_too_long", label: "Delivery taking too long" },
-  { value: "other", label: "Other" },
-] as const;
-
 type OrderActionsProps = {
   orderNumber: string;
   customerEmail?: string;
@@ -116,7 +115,12 @@ export function OrderActions({
       : "skip"
   );
 
+  const receiptCaptureRef = useRef<View>(null);
   const [receiptLoading, setReceiptLoading] = useState<"download" | "share" | null>(null);
+  const [receiptForCapture, setReceiptForCapture] = useState<OrderReceiptData | null>(null);
+  const [pendingReceiptAction, setPendingReceiptAction] = useState<"download" | "share" | null>(
+    null
+  );
   const [cancelVisible, setCancelVisible] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>(CANCELLATION_REASONS[0].value);
   const [cancelling, setCancelling] = useState(false);
@@ -172,39 +176,75 @@ export function OrderActions({
     return result.receipt as OrderReceiptData;
   }, [accessToken, customerEmail, getOrderReceipt, orderNumber, showError]);
 
-  const handleDownloadReceipt = useCallback(async () => {
-    setReceiptLoading("download");
-    try {
-      const receipt = await fetchReceipt();
-      if (!receipt) return;
-      await writeReceiptFile(receipt);
-      showSuccess(`${resolveReceiptActionLabels(receipt).downloadLabel} saved locally.`);
-    } catch (error) {
-      logAppError(error, { segment: "receipt-download" });
-      showError(
-        getFriendlyErrorMessage(error, "Couldn't save the receipt. Please try again.")
-      );
-    } finally {
-      setReceiptLoading(null);
-    }
-  }, [fetchReceipt, showError, showSuccess]);
-
-  const handleShareReceipt = useCallback(async () => {
-    setReceiptLoading("share");
-    try {
-      const receipt = await fetchReceipt();
-      if (!receipt) return;
-      await shareReceiptFile(receipt);
-    } catch (error) {
-      const message = getFriendlyErrorMessage(error, "Couldn't share the receipt.");
-      if (!message.toLowerCase().includes("cancel")) {
-        logAppError(error, { segment: "receipt-share" });
-        showError(message);
+  const queueReceiptCapture = useCallback(
+    async (mode: "download" | "share") => {
+      setReceiptLoading(mode);
+      try {
+        const receipt = await fetchReceipt();
+        if (!receipt) {
+          setReceiptLoading(null);
+          return;
+        }
+        setReceiptForCapture(receipt);
+        setPendingReceiptAction(mode);
+      } catch (error) {
+        logAppError(error, { segment: "receipt-fetch" });
+        showError(getFriendlyErrorMessage(error, "Couldn't generate the receipt."));
+        setReceiptLoading(null);
       }
-    } finally {
-      setReceiptLoading(null);
-    }
-  }, [fetchReceipt, showError]);
+    },
+    [fetchReceipt, showError]
+  );
+
+  useEffect(() => {
+    if (!receiptForCapture || !pendingReceiptAction) return;
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const imageUri = await captureReceiptImage(receiptCaptureRef);
+          if (cancelled) return;
+
+          if (pendingReceiptAction === "download") {
+            await saveReceiptImageToGallery(imageUri);
+            showSuccess("Receipt saved to your photos.");
+          } else {
+            await shareReceiptImage(imageUri, receiptForCapture.receiptTitle);
+          }
+        } catch (error) {
+          if (cancelled) return;
+          const message = getFriendlyErrorMessage(
+            error,
+            pendingReceiptAction === "download"
+              ? "Couldn't save the receipt."
+              : "Couldn't share the receipt."
+          );
+          if (
+            pendingReceiptAction !== "share" ||
+            !message.toLowerCase().includes("cancel")
+          ) {
+            logAppError(error, {
+              segment:
+                pendingReceiptAction === "download" ? "receipt-download" : "receipt-share",
+            });
+            showError(message);
+          }
+        } finally {
+          if (!cancelled) {
+            setReceiptForCapture(null);
+            setPendingReceiptAction(null);
+            setReceiptLoading(null);
+          }
+        }
+      })();
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pendingReceiptAction, receiptForCapture, showError, showSuccess]);
 
   const handleCancelOrder = useCallback(async () => {
     if (!isOnline) {
@@ -333,26 +373,14 @@ export function OrderActions({
       <Text style={styles.title}>Order actions</Text>
 
       {showReceipt ? (
-        <View style={styles.row}>
-          <Button
-            label={receiptLoading === "download" ? "Saving…" : receiptLabels.downloadLabel}
-            variant="outline"
-            loading={receiptLoading === "download"}
-            disabled={Boolean(receiptLoading) || !isOnline}
-            onPress={() => void handleDownloadReceipt()}
-            accessibilityLabel={receiptLabels.downloadLabel}
-            style={styles.flexButton}
-          />
-          <Button
-            label={receiptLoading === "share" ? "Sharing…" : receiptLabels.shareLabel}
-            variant="outline"
-            loading={receiptLoading === "share"}
-            disabled={Boolean(receiptLoading) || !isOnline}
-            onPress={() => void handleShareReceipt()}
-            accessibilityLabel={receiptLabels.shareLabel}
-            style={styles.flexButton}
-          />
-        </View>
+        <ReceiptActionsRow
+          downloadLabel={receiptLabels.downloadLabel}
+          shareLabel={receiptLabels.shareLabel}
+          loading={receiptLoading}
+          disabled={!isOnline}
+          onDownload={() => void queueReceiptCapture("download")}
+          onShare={() => void queueReceiptCapture("share")}
+        />
       ) : null}
 
       {showReorder ? (
@@ -367,77 +395,26 @@ export function OrderActions({
       ) : null}
 
       {showCancel ? (
-        <Button
-          label="Cancel order"
-          variant="destructive"
-          disabled={!isOnline || cancelling}
-          onPress={() => setCancelVisible(true)}
-          accessibilityLabel="Cancel order"
-        />
+        <>
+          {showReceipt || showReorder ? <View style={styles.actionDivider} /> : null}
+          <CancelOrderAction
+            disabled={!isOnline}
+            loading={cancelling}
+            onPress={() => setCancelVisible(true)}
+          />
+        </>
       ) : null}
 
-      <Modal
+      <CancelOrderDialog
         visible={cancelVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
+        cancelling={cancelling}
+        selectedReason={cancelReason}
+        onSelectReason={setCancelReason}
+        onKeepOrder={() => {
           if (!cancelling) setCancelVisible(false);
         }}
-      >
-        <Pressable
-          style={styles.overlay}
-          onPress={() => {
-            if (!cancelling) setCancelVisible(false);
-          }}
-        >
-          <Pressable style={styles.dialog} onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.dialogTitle}>Cancel this order?</Text>
-            <Text style={styles.dialogMessage}>
-              Choose a reason and confirm. Stock will be released and eligible card payments
-              will be refunded.
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reasonRow}>
-              {CANCELLATION_REASONS.map((reason) => (
-                <Pressable
-                  key={reason.value}
-                  accessibilityRole="button"
-                  accessibilityLabel={reason.label}
-                  onPress={() => setCancelReason(reason.value)}
-                  style={[
-                    styles.reasonChip,
-                    cancelReason === reason.value && styles.reasonChipActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.reasonChipText,
-                      cancelReason === reason.value && styles.reasonChipTextActive,
-                    ]}
-                  >
-                    {reason.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={styles.dialogActions}>
-              <Button
-                label="Keep order"
-                variant="outline"
-                onPress={() => setCancelVisible(false)}
-                disabled={cancelling}
-                style={styles.flexButton}
-              />
-              <Button
-                label={cancelling ? "Cancelling…" : "Confirm cancel"}
-                variant="destructive"
-                loading={cancelling}
-                onPress={() => void handleCancelOrder()}
-                style={styles.flexButton}
-              />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onConfirmCancel={() => void handleCancelOrder()}
+      />
 
       <ConfirmDialog
         visible={cartMergeVisible}
@@ -448,6 +425,12 @@ export function OrderActions({
         onCancel={() => applyReorderToCart("merge")}
         onConfirm={() => applyReorderToCart("replace")}
       />
+
+      {receiptForCapture ? (
+        <View style={styles.captureHost} pointerEvents="none">
+          <OrderReceiptImage ref={receiptCaptureRef} receipt={receiptForCapture} />
+        </View>
+      ) : null}
 
       <Modal
         visible={reorderNoticeVisible}
@@ -505,9 +488,16 @@ function createOrderActionsStyles({ colors, textStyles }: ThemeStyleTokens) {
       ...textStyles.sectionTitle,
       fontSize: typography.base,
     },
-    row: {
-      flexDirection: "row",
-      gap: spacing.sm,
+    captureHost: {
+      position: "absolute",
+      left: -5000,
+      top: 0,
+      opacity: 0,
+    },
+    actionDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.borderLight,
+      marginVertical: spacing.xs,
     },
     flexButton: {
       flex: 1,
@@ -538,34 +528,6 @@ function createOrderActionsStyles({ colors, textStyles }: ThemeStyleTokens) {
       fontSize: typography.sm,
       color: colors.textSecondary,
       lineHeight: 20,
-    },
-    reasonRow: {
-      flexGrow: 0,
-    },
-    reasonChip: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      borderRadius: radius.full,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      marginRight: spacing.sm,
-      backgroundColor: colors.background,
-    },
-    reasonChipActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primaryMuted,
-    },
-    reasonChipText: {
-      fontSize: typography.sm,
-      color: colors.textSecondary,
-    },
-    reasonChipTextActive: {
-      color: colors.primary,
-      fontWeight: "600",
-    },
-    dialogActions: {
-      flexDirection: "row",
-      gap: spacing.sm,
     },
     unavailableBlock: {
       gap: spacing.xs,

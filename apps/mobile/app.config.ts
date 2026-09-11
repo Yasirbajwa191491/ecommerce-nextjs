@@ -27,6 +27,16 @@ const plugins: NonNullable<ExpoConfig["plugins"]> = [
       defaultChannel: "order-updates",
     },
   ],
+  [
+    "expo-media-library",
+    {
+      photosPermission:
+        "Allow access to save order receipts to your photo library.",
+      savePhotosPermission:
+        "Allow access to save order receipts to your photo library.",
+      isAccessMediaLocationEnabled: false,
+    },
+  ],
 ];
 
 if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
@@ -55,7 +65,9 @@ const config: ExpoConfig = {
       NSCameraUsageDescription:
         "Allow camera access to take a photo and find similar products.",
       NSPhotoLibraryUsageDescription:
-        "Allow access to your photo library to find similar products.",
+        "Allow access to your photo library to save receipts and find similar products.",
+      NSPhotoLibraryAddUsageDescription:
+        "Allow access to save order receipts to your photo library.",
       NSUserNotificationsUsageDescription:
         "Allow notifications so we can send order and payment updates.",
     },
