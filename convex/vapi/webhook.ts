@@ -423,7 +423,7 @@ async function executeTool(
         if (Array.isArray(parameters.productIds)) {
           const resolvedIds = (
             await Promise.all(
-              parameters.productIds.map(async (id) => {
+              parameters.productIds.map(async (id: unknown) => {
                 const reference = String(id ?? "").trim();
                 if (!reference) return null;
                 return await ctx.runQuery(

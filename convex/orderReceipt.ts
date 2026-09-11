@@ -1,6 +1,7 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { buildTrackingBucketKey } from "./lib/rateLimit";
 import { hasOrderAccess } from "./lib/orderAccess";
 import { buildOrderReceiptDto, resolveReceiptEligibility } from "./lib/orderReceipt";
@@ -61,7 +62,7 @@ export const getOrderReceipt = action({
     const receipt = buildOrderReceiptDto({
       order,
       items,
-      promotions: promotions.map((promo) => ({
+      promotions: promotions.map((promo: Doc<"orderPromotions">) => ({
         promotionName: promo.promotionName,
         promotionDescription: promo.promotionDescription,
         freeQuantity: promo.freeQuantity,
