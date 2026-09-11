@@ -2,6 +2,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Infer } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import {
   recommendationResultValidator,
   recommendationSectionTypeValidator,
@@ -37,7 +38,7 @@ export const getRecommendations = action({
     );
 
     return {
-      products: result.productIds.map((productId, index) => ({
+      products: result.productIds.map((productId: Id<"products">, index: number) => ({
         productId,
         score: result.scores[index] ?? 0,
       })),

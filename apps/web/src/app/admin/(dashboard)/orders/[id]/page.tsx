@@ -466,7 +466,7 @@ export default function AdminOrderDetailPage() {
               <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
                 Promotions applied
               </p>
-              {promotions.map((promo) => (
+              {promotions.map((promo: Doc<"orderPromotions">) => (
                 <div key={promo._id} className="text-sm">
                   <span className="font-medium">{promo.promotionName}</span>
                   <span className="text-muted-foreground">

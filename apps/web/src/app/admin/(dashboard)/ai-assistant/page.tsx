@@ -46,6 +46,21 @@ import {
 
 const PAGE_SIZE = 10;
 
+type DailyAnalyticsRow = {
+  dateKey: string;
+  conversations: number;
+  productSearches: number;
+  orderTrackingRequests: number;
+  leadsCaptured: number;
+  humanEscalations: number;
+};
+
+type SetupChecklistItem = {
+  key: string;
+  description: string;
+  location: string;
+};
+
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
@@ -142,7 +157,7 @@ export default function AdminAiAssistantPage() {
   };
 
   const chartData =
-    dailyAnalytics?.map((row) => ({
+    dailyAnalytics?.map((row: DailyAnalyticsRow) => ({
       date: row.dateKey.slice(5),
       conversations: row.conversations,
       searches: row.productSearches,
@@ -392,7 +407,7 @@ export default function AdminAiAssistantPage() {
               <CardTitle className="text-base">Environment checklist</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {setupInfo?.envChecklist.map((item) => (
+              {setupInfo?.envChecklist.map((item: SetupChecklistItem) => (
                 <div key={item.key} className="rounded-lg border p-3">
                   <p className="font-medium text-sm">{item.key}</p>
                   <p className="text-sm text-muted-foreground">{item.description}</p>

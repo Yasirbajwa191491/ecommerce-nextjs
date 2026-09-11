@@ -1,7 +1,7 @@
 import { internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { isProductActive } from "../lib/productActive";
 import { enrichProduct, enrichProducts } from "../lib/products";
@@ -751,7 +751,7 @@ async function lookupCustomerOrdersForVapi(
 
   return {
     found: true as const,
-    orders: orders.map((order) =>
+    orders: orders.map((order: Doc<"orders">) =>
       toVapiOrderSummary(toPublicOrderSummary(order))
     ),
   };

@@ -46,7 +46,8 @@ export function useProductForm({
     productId ? { id: productId } : "skip"
   );
   const categoriesData = useQuery(api.productCategories.listActive);
-  const categories = categoriesData ?? EMPTY_CATEGORIES;
+  const categories: ProductCategory[] = (categoriesData ??
+    EMPTY_CATEGORIES) as ProductCategory[];
   const takenNames = useQuery(
     api.products.listTakenNames,
     productId ? { excludeId: productId } : {}

@@ -55,6 +55,47 @@ import {
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
+type OrderPricedSnapshot = {
+  currency: string;
+  shipping: number;
+  deliveryCharge?: number;
+  deliveryMethod?: DeliveryMethodType;
+  deliveryMethodLabel?: string;
+  tax: number;
+  total: number;
+  subtotal: number;
+  discountTotal: number;
+  items: PricedLineItem[];
+  promotionSummaries: Array<{
+    promotionId: Id<"productPromotions">;
+    freeQuantity: number;
+    savingsAmount: number;
+  }>;
+};
+
+type PendingStripeOrderResult = {
+  orderId: Id<"orders">;
+  orderNumber: string;
+  priced: OrderPricedSnapshot;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  accessToken?: string;
+  reused: boolean;
+};
+
+type ReviveStripeOrderResult =
+  | { revived: false; alreadyPaid: true }
+  | {
+      revived: boolean;
+      alreadyPaid: false;
+      priced: OrderPricedSnapshot;
+      stripePaymentIntentId?: string;
+      orderNumber: string;
+      accessToken?: string;
+      idempotencyKey: string;
+      customerEmail: string;
+    };
+
 async function assertUniqueIdempotencyKey(
   ctx: MutationCtx,
   idempotencyKey: string
@@ -543,7 +584,10 @@ export const getOrderTotalsInternal = internalQuery({
   },
 });
 
-async function loadPricedSnapshot(ctx: MutationCtx | import("./_generated/server").QueryCtx, orderId: Id<"orders">) {
+async function loadPricedSnapshot(
+  ctx: MutationCtx | import("./_generated/server").QueryCtx,
+  orderId: Id<"orders">
+): Promise<OrderPricedSnapshot> {
   const order = await ctx.db.get(orderId);
   if (!order) throw new ConvexError("Order not found");
   const items = await ctx.db
@@ -604,7 +648,7 @@ export const createPendingStripeOrder = internalMutation({
     idempotencyKey: v.string(),
     deliveryMethod: v.optional(deliveryMethodTypeValidator),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<PendingStripeOrderResult> => {
     validateCartLines(args.lines);
     validateCustomerFields(args.customer);
 
@@ -907,7 +951,7 @@ export const reviveStripeOrderForRetry = internalMutation({
   args: {
     orderId: v.id("orders"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ReviveStripeOrderResult> => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new ConvexError("Order not found");
 

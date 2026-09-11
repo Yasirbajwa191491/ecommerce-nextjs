@@ -121,7 +121,7 @@ async function applyCatalogFilters(
       internal.productSearchQueries.getActiveCategories,
       {}
     );
-    const cat = categories.find((c) => c.slug === filters.categorySlug);
+    const cat = categories.find((c: { slug: string; name: string }) => c.slug === filters.categorySlug);
     if (cat) {
       filtered = filtered.filter(
         (p) => p.categoryName.toLowerCase() === cat.name.toLowerCase()
