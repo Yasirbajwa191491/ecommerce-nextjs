@@ -1,15 +1,14 @@
 import { formatCurrencyAmount } from "@ecommerce/shared";
 import { forwardRef } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { ReceiptQrCode } from "@/components/orders/ReceiptQrCode";
 import type { OrderReceiptData } from "@/lib/order-receipt-format";
 
 const RECEIPT_WIDTH = 380;
-const QR_SIZE = 96;
 
 type OrderReceiptImageProps = {
   receipt: OrderReceiptData;
-  qrDataUrl: string;
 };
 
 function formatReceiptDate(timestamp: number): string {
@@ -24,7 +23,7 @@ function money(amount: number, currency: string): string {
 }
 
 export const OrderReceiptImage = forwardRef<View, OrderReceiptImageProps>(
-  function OrderReceiptImage({ receipt, qrDataUrl }, ref) {
+  function OrderReceiptImage({ receipt }, ref) {
     const isProvisional = receipt.receiptKind === "provisional";
 
     return (
@@ -134,11 +133,7 @@ export const OrderReceiptImage = forwardRef<View, OrderReceiptImageProps>(
 
           <View style={styles.footer}>
             <View style={styles.qrBlock}>
-              <Image
-                source={{ uri: qrDataUrl }}
-                style={styles.qrImage}
-                accessibilityLabel="Order tracking QR code"
-              />
+              <ReceiptQrCode orderNumber={receipt.orderNumber} size={96} />
               <Text style={styles.qrCaption}>Scan to track order</Text>
             </View>
             <View style={styles.footerInfo}>
@@ -383,12 +378,6 @@ const styles = StyleSheet.create({
   qrBlock: {
     alignItems: "center",
     gap: 6,
-  },
-  qrImage: {
-    width: QR_SIZE,
-    height: QR_SIZE,
-    borderRadius: 8,
-    backgroundColor: "#ffffff",
   },
   qrCaption: {
     fontSize: 10,

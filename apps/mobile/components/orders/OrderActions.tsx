@@ -29,7 +29,6 @@ import {
   saveReceiptImageToGallery,
   shareReceiptImage,
 } from "@/lib/order-receipt-image";
-import { generateReceiptQrDataUrl } from "@/lib/order-receipt-qr";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/order-display";
 import { useCart } from "@/providers/cart-context";
 import { useToast } from "@/providers/toast-context";
@@ -118,10 +117,7 @@ export function OrderActions({
 
   const receiptCaptureRef = useRef<View>(null);
   const [receiptLoading, setReceiptLoading] = useState<"download" | "share" | null>(null);
-  const [receiptForCapture, setReceiptForCapture] = useState<{
-    receipt: OrderReceiptData;
-    qrDataUrl: string;
-  } | null>(null);
+  const [receiptForCapture, setReceiptForCapture] = useState<OrderReceiptData | null>(null);
   const [pendingReceiptAction, setPendingReceiptAction] = useState<"download" | "share" | null>(
     null
   );
@@ -189,8 +185,7 @@ export function OrderActions({
           setReceiptLoading(null);
           return;
         }
-        const qrDataUrl = await generateReceiptQrDataUrl(receipt.orderNumber);
-        setReceiptForCapture({ receipt, qrDataUrl });
+        setReceiptForCapture(receipt);
         setPendingReceiptAction(mode);
       } catch (error) {
         logAppError(error, { segment: "receipt-fetch" });
@@ -215,7 +210,7 @@ export function OrderActions({
             await saveReceiptImageToGallery(imageUri);
             showSuccess("Receipt saved to your photos.");
           } else {
-            await shareReceiptImage(imageUri, receiptForCapture.receipt.receiptTitle);
+            await shareReceiptImage(imageUri, receiptForCapture.receiptTitle);
           }
         } catch (error) {
           if (cancelled) return;
@@ -433,11 +428,7 @@ export function OrderActions({
 
       {receiptForCapture ? (
         <View style={styles.captureHost} pointerEvents="none">
-          <OrderReceiptImage
-            ref={receiptCaptureRef}
-            receipt={receiptForCapture.receipt}
-            qrDataUrl={receiptForCapture.qrDataUrl}
-          />
+          <OrderReceiptImage ref={receiptCaptureRef} receipt={receiptForCapture} />
         </View>
       ) : null}
 
