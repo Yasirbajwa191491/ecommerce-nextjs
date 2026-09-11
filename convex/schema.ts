@@ -377,6 +377,8 @@ export default defineSchema({
     accessToken: v.optional(v.string()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
+    /** Set when reserved stock has been returned for this order. */
+    stockReleasedAt: v.optional(v.number()),
     reviewInvitationSentAt: v.optional(v.number()),
     deliveryMethod: v.optional(deliveryMethodTypeValidator),
     deliveryMethodLabel: v.optional(v.string()),
@@ -1092,6 +1094,7 @@ export default defineSchema({
     platform: pushPlatformValidator,
     deviceName: v.optional(v.string()),
     appVersion: v.optional(v.string()),
+    executionEnvironment: v.optional(v.string()),
     isActive: v.boolean(),
     lastSeenAt: v.number(),
     createdAt: v.number(),

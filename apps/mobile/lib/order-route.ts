@@ -13,3 +13,21 @@ export function resolveRouteOrderNumber(params: {
 
   return null;
 }
+
+export function resolveRouteCustomerEmail(params: {
+  customerEmail?: string;
+  email?: string;
+}): string | null {
+  const fromNotification = params.customerEmail?.trim();
+  if (fromNotification) {
+    return fromNotification;
+  }
+
+  const fromTracking = params.email?.trim();
+  if (fromTracking) {
+    return fromTracking;
+  }
+
+  return null;
+}
+

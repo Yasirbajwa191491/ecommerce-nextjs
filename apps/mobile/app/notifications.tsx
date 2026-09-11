@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { Header } from "@/components/layout/Header";
 import { ThemedScreen } from "@/components/layout/ThemedScreen";
 import { Button } from "@/components/ui/Button";
+import { NotificationListSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { spacing } from "@/constants/theme";
 import { useNotificationCenterAccess } from "@/hooks/useNotificationCenter";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
@@ -24,6 +25,7 @@ import {
   formatNotificationTimestamp,
   getNotificationIcon,
 } from "@/lib/notification-display";
+import { resolveNotificationHref } from "@/lib/notification-navigation";
 import { addMonitoringBreadcrumb, captureMonitoringError } from "@/lib/monitoring/sentry";
 import { useTheme } from "@/providers/theme-context";
 
@@ -91,19 +93,20 @@ export default function NotificationsScreen() {
           return;
         }
 
-        if (target.deepLinkPath) {
-          router.push(target.deepLinkPath as Href);
-          return;
-        }
+        const href = target.deepLinkPath
+          ? resolveNotificationHref(target.deepLinkPath, {
+              customerEmail: proof.customerEmail,
+              accessToken: proof.accessToken,
+            })
+          : target.orderNumber
+            ? resolveNotificationHref(`/order/${target.orderNumber}`, {
+                customerEmail: proof.customerEmail,
+                accessToken: proof.accessToken,
+              })
+            : null;
 
-        if (target.orderNumber) {
-          router.push({
-            pathname: "/order/[id]",
-            params: {
-              id: target.orderNumber,
-              orderNumber: target.orderNumber,
-            },
-          });
+        if (href) {
+          router.push(href);
         }
       } catch (error) {
         captureMonitoringError(error, {
@@ -176,12 +179,26 @@ export default function NotificationsScreen() {
     );
   }
 
+  const isInitialLoading = status === "LoadingFirstPage" || unread === undefined;
+
+  if (isInitialLoading) {
+    return (
+      <ThemedScreen>
+        <Header title="Notifications" showSearch={false} showBack showCart={false} />
+        <View style={styles.summaryRow}>
+          <Skeleton width={96} height={14} borderRadius={7} />
+        </View>
+        <NotificationListSkeleton />
+      </ThemedScreen>
+    );
+  }
+
   return (
     <ThemedScreen>
       <Header title="Notifications" showSearch={false} showBack showCart={false} />
       <View style={styles.summaryRow}>
         <Text style={[textStyles.bodySmall, styles.summaryText]}>
-          {unread?.count ? `${unread.count}${unread.capped ? "+" : ""} unread` : "All caught up"}
+          {unread.count ? `${unread.count}${unread.capped ? "+" : ""} unread` : "All caught up"}
         </Text>
         {results.length > 0 ? (
           <Button
@@ -210,10 +227,12 @@ export default function NotificationsScreen() {
           ) : null
         }
         ListEmptyComponent={
-          <EmptyState
-            title="No notifications yet"
-            description="Order and payment updates will appear here, even if push notifications are disabled."
-          />
+          status === "Exhausted" ? (
+            <EmptyState
+              title="No notifications yet"
+              description="Order and payment updates will appear here, even if push notifications are disabled."
+            />
+          ) : null
         }
         renderItem={({ item }) => (
           <Pressable

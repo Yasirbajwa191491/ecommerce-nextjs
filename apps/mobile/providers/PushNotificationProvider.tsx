@@ -1,6 +1,6 @@
 import { useConvex, useMutation } from "convex/react";
 import * as Notifications from "expo-notifications";
-import { router, type Href } from "expo-router";
+import { router } from "expo-router";
 import {
   createContext,
   ReactNode,
@@ -25,6 +25,10 @@ import {
   captureMonitoringError,
 } from "@/lib/monitoring/sentry";
 import { logAppError } from "@/lib/errors";
+import {
+  resolveNotificationTargetHref,
+  type NotificationNavigationCredentials,
+} from "@/lib/notification-navigation";
 import { getVisitorId } from "@/lib/visitor-id";
 
 type PushNotificationContextValue = {
@@ -45,10 +49,9 @@ const PushNotificationContext = createContext<PushNotificationContextValue | nul
   null
 );
 
-type NotificationAccess = {
+type NotificationAccess = NotificationNavigationCredentials & {
   customerEmail: string;
   visitorId: string;
-  accessToken?: string;
 };
 
 async function resolveNotificationAccess(): Promise<NotificationAccess | null> {
@@ -105,6 +108,12 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       });
 
       const access = await resolveNotificationAccess();
+      const credentials: NotificationNavigationCredentials | undefined = access
+        ? {
+            customerEmail: access.customerEmail,
+            accessToken: access.accessToken,
+          }
+        : undefined;
 
       if (parsed.eventKey && access) {
         try {
@@ -137,39 +146,27 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
           }
         );
 
-        if (target?.deepLinkPath) {
-          router.push(target.deepLinkPath as Href);
-          addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
-          return;
-        }
-
-        if (target?.orderNumber) {
-          router.push({
-            pathname: "/order/[id]",
-            params: {
-              id: target.orderNumber,
-              orderNumber: target.orderNumber,
-            },
-          });
-          addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
-          return;
-        }
-      }
-
-      if (parsed.deepLinkPath) {
-        router.push(parsed.deepLinkPath as Href);
-        addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
-        return;
-      }
-
-      if (parsed.orderNumber) {
-        router.push({
-          pathname: "/order/[id]",
-          params: {
-            id: parsed.orderNumber,
-            orderNumber: parsed.orderNumber,
-          },
+        const href = resolveNotificationTargetHref({
+          parsed,
+          deepLinkPath: target?.deepLinkPath,
+          orderNumber: target?.orderNumber,
+          credentials,
         });
+
+        if (href) {
+          router.push(href);
+          addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
+          return;
+        }
+      }
+
+      const fallbackHref = resolveNotificationTargetHref({
+        parsed,
+        credentials,
+      });
+
+      if (fallbackHref) {
+        router.push(fallbackHref);
         addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
       }
     },

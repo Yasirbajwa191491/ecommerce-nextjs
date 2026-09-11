@@ -5,6 +5,7 @@ import { pushPlatformValidator } from "./lib/notificationTypes";
 import { emailsMatch } from "./lib/orderAccess";
 import { normalizeEmail } from "./lib/publicOrderDto";
 import { upsertNotificationPreferences } from "./lib/notificationPreferences";
+import { isStandalonePushEnvironment } from "./lib/pushTokenSelection";
 
 function isValidExpoPushToken(token: string): boolean {
   return (
@@ -65,6 +66,7 @@ export const registerPushToken = mutation({
     platform: pushPlatformValidator,
     deviceName: v.optional(v.string()),
     appVersion: v.optional(v.string()),
+    executionEnvironment: v.optional(v.string()),
     accessToken: v.optional(v.string()),
   },
   returns: v.object({
@@ -99,6 +101,31 @@ export const registerPushToken = mutation({
       .withIndex("by_expo_push_token", (q) => q.eq("expoPushToken", expoPushToken))
       .unique();
 
+    const executionEnvironment = args.executionEnvironment?.trim() || undefined;
+
+    if (
+      executionEnvironment &&
+      isStandalonePushEnvironment(executionEnvironment)
+    ) {
+      const visitorTokens = await ctx.db
+        .query("pushTokens")
+        .withIndex("by_visitor_id", (q) => q.eq("visitorId", visitorId))
+        .collect();
+
+      for (const token of visitorTokens) {
+        if (
+          token.isActive &&
+          token.expoPushToken !== expoPushToken &&
+          token.executionEnvironment === "storeClient"
+        ) {
+          await ctx.db.patch(token._id, {
+            isActive: false,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         customerEmail,
@@ -106,6 +133,7 @@ export const registerPushToken = mutation({
         platform: args.platform,
         deviceName: args.deviceName?.trim() || undefined,
         appVersion: args.appVersion?.trim() || undefined,
+        executionEnvironment,
         isActive: true,
         lastSeenAt: now,
         updatedAt: now,
@@ -120,6 +148,7 @@ export const registerPushToken = mutation({
       platform: args.platform,
       deviceName: args.deviceName?.trim() || undefined,
       appVersion: args.appVersion?.trim() || undefined,
+      executionEnvironment,
       isActive: true,
       lastSeenAt: now,
       createdAt: now,

@@ -7,6 +7,7 @@ import {
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { getChannelsForEvent, shouldSendPushForEvent } from "./lib/notificationChannels";
+import { selectPushTokensForDelivery } from "./lib/pushTokenSelection";
 import { getNotificationPreferencesForEmail } from "./lib/notificationPreferences";
 import {
   buildOrderDeepLinkPath,
@@ -307,11 +308,14 @@ export const deliverPushForOrderEvent = internalAction({
   ): Promise<{ delivered: boolean; failureReason?: string }> => {
     const tokens: Array<{
       expoPushToken: string;
+      executionEnvironment?: string;
     }> = await ctx.runQuery(internal.pushNotificationsInternal.getActiveTokensForEmail, {
       customerEmail: args.customerEmail,
     });
 
-    if (tokens.length === 0) {
+    const deliveryTokens = selectPushTokensForDelivery(tokens);
+
+    if (deliveryTokens.length === 0) {
       return {
         delivered: false,
         failureReason: "no_active_tokens",
@@ -325,7 +329,7 @@ export const deliverPushForOrderEvent = internalAction({
       sound: string;
       channelId: string;
       data: Record<string, string>;
-    }> = tokens.map((token) => ({
+    }> = deliveryTokens.map((token) => ({
       to: token.expoPushToken,
       title: args.title,
       body: args.body,
@@ -356,7 +360,7 @@ export const deliverPushForOrderEvent = internalAction({
     }
 
     console.info(
-      `[notifications] push event=${args.event} orderId=${args.orderId} devices=${tokens.length} sent=${result.sentCount}`
+      `[notifications] push event=${args.event} orderId=${args.orderId} devices=${deliveryTokens.length} sent=${result.sentCount}`
     );
 
     if (result.sentCount > 0) {

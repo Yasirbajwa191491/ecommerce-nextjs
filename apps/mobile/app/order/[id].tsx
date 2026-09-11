@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
+import { OrderActions } from "@/components/orders/OrderActions";
 import { OrderItemsSection } from "@/components/orders/OrderItemsSection";
 import { OrderProgressTimeline } from "@/components/orders/OrderProgressTimeline";
 import { OrderPromotionsSummary } from "@/components/orders/OrderPromotionsSummary";
@@ -26,7 +27,7 @@ import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { loadLastOrderInfo } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { formatOrderDateTime, getPaymentMethodLabel, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@/lib/order-display";
-import { resolveRouteOrderNumber } from "@/lib/order-route";
+import { resolveRouteCustomerEmail, resolveRouteOrderNumber } from "@/lib/order-route";
 
 type LoadedPublicOrder = {
   orderNumber: string;
@@ -83,6 +84,7 @@ export default function OrderDetailScreen() {
     source?: string;
     review?: string;
     email?: string;
+    customerEmail?: string;
     phone?: string;
     accessToken?: string;
   }>();
@@ -111,9 +113,11 @@ export default function OrderDetailScreen() {
     }) ?? storedOrder.orderNumber;
 
   const customerEmail =
-    (typeof params.email === "string" && params.email
-      ? params.email
-      : null) ?? storedOrder.email ?? undefined;
+    resolveRouteCustomerEmail({
+      customerEmail:
+        typeof params.customerEmail === "string" ? params.customerEmail : undefined,
+      email: typeof params.email === "string" ? params.email : undefined,
+    }) ?? storedOrder.email ?? undefined;
 
   const customerPhone =
     typeof params.phone === "string" && params.phone ? params.phone : undefined;
@@ -205,6 +209,7 @@ export default function OrderDetailScreen() {
     : !isLoading && !order;
 
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
+  const hasVerifiedAccess = Boolean(accessToken || customerEmail);
 
   return (
     <ScreenContainer>
@@ -259,6 +264,19 @@ export default function OrderDetailScreen() {
                 paidAt={order.paidAt}
               />
             </View>
+
+            <OrderActions
+              orderNumber={order.orderNumber}
+              customerEmail={customerEmail}
+              accessToken={
+                accessToken ??
+                ("accessToken" in order ? order.accessToken : undefined)
+              }
+              status={order.status as OrderStatus}
+              paymentMethod={order.paymentMethod}
+              paymentStatus={order.paymentStatus}
+              hasVerifiedAccess={hasVerifiedAccess}
+            />
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Customer information</Text>

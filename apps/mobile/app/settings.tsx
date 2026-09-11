@@ -172,11 +172,6 @@ export default function SettingsScreen() {
           title={strings.settings.notifications}
           footer={strings.settings.notificationsNote}
         >
-          <SettingsRow
-            label={strings.settings.notificationCenter}
-            showChevron
-            onPress={() => router.push("/notifications" as Href)}
-          />
           <SettingsToggleRow
             label={strings.settings.orderUpdates}
             value={preferences.notifications.orderUpdates}
@@ -189,13 +184,6 @@ export default function SettingsScreen() {
             value={preferences.notifications.paymentUpdates}
             onValueChange={(paymentUpdates) =>
               void handleNotificationToggle({ paymentUpdates }, true)
-            }
-          />
-          <SettingsToggleRow
-            label={strings.settings.promotions}
-            value={preferences.notifications.promotions}
-            onValueChange={(promotions) =>
-              void handleNotificationToggle({ promotions }, true)
             }
           />
           <SettingsToggleRow

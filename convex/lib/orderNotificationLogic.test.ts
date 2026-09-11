@@ -11,6 +11,7 @@ import {
   resolvePaymentTransitionEvent,
   shouldSkipConfirmedAfterPaymentSucceeded,
 } from "./orderNotificationLogic";
+import { isRetryablePaymentIntentStatus } from "./stripePaymentIntent";
 
 describe("order notification logic", () => {
   it("creates deterministic event keys", () => {
@@ -138,6 +139,12 @@ describe("order notification logic", () => {
         status: "confirmed",
       })
     ).toBe("already_paid");
+  });
+
+  it("treats declined PaymentIntents as retryable", () => {
+    expect(isRetryablePaymentIntentStatus("requires_payment_method")).toBe(true);
+    expect(isRetryablePaymentIntentStatus("canceled")).toBe(false);
+    expect(isRetryablePaymentIntentStatus("succeeded")).toBe(false);
   });
 
   it("does not emit payment transition when unchanged", () => {

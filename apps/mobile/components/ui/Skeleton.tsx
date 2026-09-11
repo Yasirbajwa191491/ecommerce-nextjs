@@ -127,6 +127,27 @@ export function HomeFeedSkeleton() {
   );
 }
 
+export function NotificationListSkeleton({ count = 5 }: { count?: number }) {
+  const { colors } = useTheme();
+  const styles = skeletonStyles(colors);
+
+  return (
+    <View style={styles.notificationList} accessibilityLabel="Loading notifications">
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={styles.notificationCard}>
+          <Skeleton width={36} height={36} borderRadius={18} />
+          <View style={styles.notificationCopy}>
+            <Skeleton height={14} width="72%" />
+            <Skeleton height={12} width="100%" />
+            <Skeleton height={12} width="88%" />
+            <Skeleton height={10} width="36%" />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function skeletonStyles(colors: ColorPalette) {
   return StyleSheet.create({
     card: {
@@ -154,5 +175,23 @@ function skeletonStyles(colors: ColorPalette) {
     },
     homeCarousel: { flexDirection: "row", gap: spacing.md },
     homeCats: { flexDirection: "row", gap: spacing.md },
+    notificationList: {
+      padding: spacing.lg,
+      gap: spacing.sm,
+    },
+    notificationCard: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.borderLight,
+    },
+    notificationCopy: {
+      flex: 1,
+      gap: spacing.sm,
+    },
   });
 }

@@ -21,6 +21,14 @@ export function getChannelsForEvent(
   return EVENT_CHANNELS[event];
 }
 
+const TRANSACTIONAL_PUSH_EVENTS = new Set<OrderNotificationEvent>([
+  "payment.succeeded",
+  "payment.failed",
+  "payment.received",
+  "order.recovery.reminder",
+  "order.expired",
+]);
+
 export function shouldSendPushForEvent(
   event: OrderNotificationEvent,
   preferences: {
@@ -33,6 +41,10 @@ export function shouldSendPushForEvent(
     return false;
   }
 
+  if (TRANSACTIONAL_PUSH_EVENTS.has(event)) {
+    return true;
+  }
+
   switch (event) {
     case "order.created":
     case "order.confirmed":
@@ -41,13 +53,7 @@ export function shouldSendPushForEvent(
     case "order.delivered":
     case "order.cancelled":
     case "order.refunded":
-    case "order.expired":
       return preferences.orderUpdates;
-    case "payment.succeeded":
-    case "payment.failed":
-    case "payment.received":
-    case "order.recovery.reminder":
-      return preferences.paymentUpdates;
     default:
       return preferences.orderUpdates;
   }

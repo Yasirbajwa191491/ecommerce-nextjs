@@ -12,14 +12,13 @@ type NotificationBellProps = {
 
 export function NotificationBell({ color }: NotificationBellProps) {
   const { colors } = useTheme();
-  const { count, capped, hasAccess } = useUnreadNotificationCount();
+  const { ready, count, capped, hasAccess } = useUnreadNotificationCount();
   const iconColor = color ?? colors.foreground;
 
-  if (!hasAccess) {
-    return null;
-  }
-
-  const label = count > 0 ? `${count}${capped ? "+" : ""} unread notifications` : "Notifications";
+  const label =
+    hasAccess && count > 0
+      ? `${count}${capped ? "+" : ""} unread notifications`
+      : "Open notification center";
 
   return (
     <Pressable
@@ -30,7 +29,7 @@ export function NotificationBell({ color }: NotificationBellProps) {
       style={styles.button}
     >
       <Ionicons name="notifications-outline" size={sizes.iconMd} color={iconColor} />
-      {count > 0 ? (
+      {ready && hasAccess && count > 0 ? (
         <View style={[styles.badge, { backgroundColor: colors.cta }]}>
           <Text style={[styles.badgeText, { color: colors.ctaForeground }]}>
             {capped ? "99+" : count}
@@ -47,6 +46,7 @@ const styles = StyleSheet.create({
     height: sizes.qtyControl,
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: -8,
   },
   badge: {
     position: "absolute",
