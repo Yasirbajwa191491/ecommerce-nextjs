@@ -84,8 +84,8 @@ function CheckoutSuccessContent() {
 
   const isLoading = orderNumber && orderData === undefined;
   const order = orderData?.order;
-  const items = orderData?.items ?? [];
-  const promotions = orderData?.promotions ?? [];
+  const items: Doc<"orderItems">[] = orderData?.items ?? [];
+  const promotions: Doc<"orderPromotions">[] = orderData?.promotions ?? [];
 
   const statusMessage = useMemo(() => {
     if (!order) return null;
@@ -221,12 +221,7 @@ function CheckoutSuccessContent() {
               </div>
 
               <OrderPromotionsSummary
-                promotions={promotions.map((promo) => ({
-                  promotionName: promo.promotionName,
-                  promotionDescription: promo.promotionDescription,
-                  freeQuantity: promo.freeQuantity,
-                  savingsAmount: promo.savingsAmount,
-                }))}
+                promotions={promotions}
                 currency={order.currency}
               />
 
