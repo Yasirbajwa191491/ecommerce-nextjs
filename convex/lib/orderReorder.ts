@@ -4,8 +4,7 @@ import { isProductActive } from "./productActive";
 export type ReorderUnavailableReason =
   | "product_not_found"
   | "product_inactive"
-  | "out_of_stock"
-  | "promotion_gift";
+  | "out_of_stock";
 
 export type ReorderAvailableItem = {
   productId: Id<"products">;
@@ -18,6 +17,8 @@ export type ReorderAvailableItem = {
   stock: number;
   imageUrl: string;
   colors: string[];
+  /** True when this line was a free promotion gift on the original order. */
+  wasPromotionGift: boolean;
 };
 
 export type ReorderUnavailableItem = {
@@ -33,7 +34,6 @@ const UNAVAILABLE_LABELS: Record<ReorderUnavailableReason, string> = {
   product_not_found: "Product no longer available",
   product_inactive: "Product is no longer sold",
   out_of_stock: "Out of stock",
-  promotion_gift: "Promotional gift item cannot be reordered",
 };
 
 export function evaluateReorderLine(args: {
@@ -41,17 +41,6 @@ export function evaluateReorderLine(args: {
   product: Doc<"products"> | null;
 }): ReorderAvailableItem | ReorderUnavailableItem {
   const { item, product } = args;
-
-  if (item.isPromotionGift) {
-    return {
-      productId: item.productId as string,
-      productName: item.productName,
-      color: item.color,
-      requestedQuantity: item.quantity,
-      reason: "promotion_gift",
-      reasonLabel: UNAVAILABLE_LABELS.promotion_gift,
-    };
-  }
 
   if (!product) {
     return {
@@ -103,6 +92,7 @@ export function evaluateReorderLine(args: {
     stock,
     imageUrl,
     colors: product.colors ?? [],
+    wasPromotionGift: item.isPromotionGift ?? false,
   };
 }
 

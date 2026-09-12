@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import * as Linking from "expo-linking";
 import { router, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
@@ -279,9 +280,15 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {pushNotifications?.permission === "denied" ? (
-          <Text style={[styles.footerNote, { color: colors.muted }]}>
-            Notifications are blocked in system settings. The app will continue working normally.
-          </Text>
+          <SettingsSection title={strings.settings.notifications}>
+            <SettingsRow
+              label={strings.notifications.openSettings}
+              subtitle={strings.notifications.pushBlockedBody}
+              showChevron
+              onPress={() => void Linking.openSettings()}
+              isLast
+            />
+          </SettingsSection>
         ) : null}
       </ScrollView>
 

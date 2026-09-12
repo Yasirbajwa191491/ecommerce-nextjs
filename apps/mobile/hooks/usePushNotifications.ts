@@ -1,12 +1,14 @@
 import { useMutation } from "convex/react";
 import Constants from "expo-constants";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 
-import { loadCheckoutCustomer, loadPushEnrollmentProof } from "@/lib/checkout-customer-storage";
+import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
 import { api } from "@/lib/convex-api";
 import { logAppError } from "@/lib/errors";
 import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
 import { getPushExecutionEnvironment } from "@/lib/push-environment";
+import { clearPushPermissionPromptDeferral } from "@/lib/push-prompt-storage";
 import {
   ensureAndroidNotificationChannel,
   getExpoPushToken,
@@ -43,11 +45,6 @@ export function usePushNotifications() {
 
   const tokenRef = useRef<string | null>(null);
 
-  const resolveCustomerEmail = useCallback(async () => {
-    const customer = await loadCheckoutCustomer();
-    return customer?.email?.trim().toLowerCase() ?? null;
-  }, []);
-
   const syncTokenWithBackend = useCallback(
     async (options?: {
       requestPermission?: boolean;
@@ -78,18 +75,21 @@ export function usePushNotifications() {
           return { success: false as const, reason: "permission_denied" as const };
         }
 
+        await clearPushPermissionPromptDeferral();
+
         const token = await getExpoPushToken();
         if (token) {
           addMonitoringBreadcrumb("Expo push token obtained", "notification");
         }
         tokenRef.current = token;
-        const customerEmail = options?.customerEmail ?? (await resolveCustomerEmail());
-        const enrollmentProof = await loadPushEnrollmentProof();
+
+        const enrollment = await resolvePushEnrollmentCredentials();
+        const customerEmail =
+          options?.customerEmail?.trim().toLowerCase() ??
+          enrollment?.customerEmail ??
+          null;
         const accessToken =
-          options?.accessToken?.trim() ||
-          (enrollmentProof && customerEmail && enrollmentProof.email === customerEmail
-            ? enrollmentProof.accessToken
-            : null);
+          options?.accessToken?.trim() ?? enrollment?.accessToken ?? undefined;
 
         if (!token || !visitorId || !customerEmail) {
           setState((current) => ({
@@ -140,7 +140,7 @@ export function usePushNotifications() {
         return { success: false as const, reason: "error" as const, message };
       }
     },
-    [registerPushToken, resolveCustomerEmail, visitorId]
+    [registerPushToken, visitorId]
   );
 
   const syncPreferences = useCallback(
@@ -149,7 +149,8 @@ export function usePushNotifications() {
       paymentUpdates: boolean;
       promotionalNotifications: boolean;
     }) => {
-      const customerEmail = await resolveCustomerEmail();
+      const enrollment = await resolvePushEnrollmentCredentials();
+      const customerEmail = enrollment?.customerEmail;
       if (!customerEmail) {
         return;
       }
@@ -161,7 +162,7 @@ export function usePushNotifications() {
         promotionalNotifications: preferences.promotionalNotifications,
       });
     },
-    [resolveCustomerEmail, syncNotificationPreferences]
+    [syncNotificationPreferences]
   );
 
   const deactivateCurrentDevice = useCallback(async () => {
@@ -173,24 +174,37 @@ export function usePushNotifications() {
     setState((current) => ({ ...current, expoPushToken: null }));
   }, [deactivatePushTokensForVisitor, visitorId]);
 
-  useEffect(() => {
+  const refreshPermissionAndSync = useCallback(async () => {
     if (!visitorId) {
       return;
     }
 
-    void (async () => {
-      const permission = await getNotificationPermissionStatus();
-      if (permission !== "granted") {
-        setState((current) => ({
-          ...current,
-          permission: permission === "denied" ? "denied" : "undetermined",
-        }));
-        return;
-      }
+    const permission = await getNotificationPermissionStatus();
+    if (permission !== "granted") {
+      setState((current) => ({
+        ...current,
+        permission: permission === "denied" ? "denied" : "undetermined",
+      }));
+      return;
+    }
 
-      await syncTokenWithBackend();
-    })();
+    await syncTokenWithBackend();
   }, [syncTokenWithBackend, visitorId]);
+
+  useEffect(() => {
+    void refreshPermissionAndSync();
+  }, [refreshPermissionAndSync]);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        void refreshPermissionAndSync();
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => subscription.remove();
+  }, [refreshPermissionAndSync]);
 
   useEffect(() => {
     if (!tokenRef.current || !visitorId) {
@@ -212,6 +226,6 @@ export function usePushNotifications() {
     syncTokenWithBackend,
     syncPreferences,
     deactivateCurrentDevice,
-    resolveCustomerEmail,
+    refreshPermissionAndSync,
   };
 }
