@@ -19,6 +19,7 @@ export type ReorderAvailableLine = {
   stock: number;
   imageUrl: string;
   colors: string[];
+  wasPromotionGift?: boolean;
 };
 
 export type ReorderUnavailableLine = {
@@ -119,8 +120,8 @@ export function ReorderPreviewSheet({
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.message}>
               {available.length === 0
-                ? "Every item from this order is unavailable right now. Promotional gifts and out-of-stock products cannot be reordered."
-                : "Prices reflect current catalog pricing. You'll review everything again at checkout."}
+                ? "Every item from this order is unavailable right now. Products may be out of stock or no longer sold."
+                : "Prices reflect current catalog pricing. Promotion gifts from your original order are added at today's price unless a new promotion applies at checkout."}
             </Text>
 
             {available.length > 0 ? (
@@ -147,6 +148,7 @@ export function ReorderPreviewSheet({
                         <View style={styles.itemDetails}>
                           <Text style={styles.itemName} numberOfLines={2}>
                             {item.productName}
+                            {item.wasPromotionGift ? " (was gift)" : ""}
                           </Text>
                           <Text style={styles.itemMeta}>
                             {item.color ? `${item.color} · ` : ""}
@@ -187,12 +189,12 @@ export function ReorderPreviewSheet({
               </>
             ) : null}
 
-            {available.length > 0 ? (
+            {available.some((item) => item.wasPromotionGift) ? (
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle-outline" size={18} color={styles.infoIcon.color} />
                 <Text style={styles.infoText}>
-                  Promotional gifts are not included in reorders. Any paid items that are still in
-                  stock will be added at today's prices.
+                  Items that were free promotion gifts on this order will be added at the current
+                  product price. You may qualify for promotions again at checkout.
                 </Text>
               </View>
             ) : null}
