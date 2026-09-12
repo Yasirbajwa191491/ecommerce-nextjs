@@ -79,6 +79,23 @@ export const strings = {
     searchesCleared: "Recent searches cleared",
     preferencesReset: "Preferences reset",
   },
+  notifications: {
+    promptTitle: "Stay updated on your orders",
+    promptMessage:
+      "Get instant alerts for order confirmations, shipping updates, and payment reminders — even when the app is closed.",
+    promptEnable: "Enable notifications",
+    promptLater: "Not now",
+    pushOffTitle: "Device alerts are off",
+    pushOffBody:
+      "Turn on push notifications to receive order and payment updates on this phone.",
+    pushBlockedTitle: "Notifications blocked",
+    pushBlockedBody:
+      "Push alerts are disabled in your phone settings. Open settings to allow notifications for this app.",
+    openSettings: "Open settings",
+    pushEnabled: "Push notifications enabled on this device.",
+    pushBlocked: "Notifications are blocked in system settings.",
+    pushEnableFailed: "Could not enable push notifications on this device.",
+  },
   accessibility: {
     openSettings: "Open settings",
     openWishlist: "Open wishlist",

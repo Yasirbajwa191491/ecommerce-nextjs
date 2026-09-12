@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { EmptyState } from "@/components/feedback/EmptyState";
+import { PushStatusBanner } from "@/components/notifications/PushStatusBanner";
 import { Header } from "@/components/layout/Header";
 import { ThemedScreen } from "@/components/layout/ThemedScreen";
 import { Button } from "@/components/ui/Button";
@@ -196,6 +197,10 @@ export default function NotificationsScreen() {
   return (
     <ThemedScreen>
       <Header title="Notifications" showSearch={false} showBack showCart={false} />
+      <PushStatusBanner
+        customerEmail={proof.customerEmail}
+        accessToken={proof.accessToken}
+      />
       <View style={styles.summaryRow}>
         <Text style={[textStyles.bodySmall, styles.summaryText]}>
           {unread.count ? `${unread.count}${unread.capped ? "+" : ""} unread` : "All caught up"}

@@ -1,4 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import type { ExpoConfig } from "expo/config";
+
+const googleServicesPath = path.join(__dirname, "google-services.json");
+const hasGoogleServices = fs.existsSync(googleServicesPath);
 
 const plugins: NonNullable<ExpoConfig["plugins"]> = [
   "expo-router",
@@ -82,6 +88,7 @@ const config: ExpoConfig = {
   android: {
     package: "com.yasir.ecommerce",
     softwareKeyboardLayoutMode: "pan",
+    ...(hasGoogleServices ? { googleServicesFile: "./google-services.json" } : {}),
     adaptiveIcon: {
       foregroundImage: "./assets/icon.png",
       backgroundColor: "#6254f3",

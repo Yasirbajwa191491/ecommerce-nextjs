@@ -1,7 +1,7 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import {
   CANCELLATION_REASONS,
@@ -10,7 +10,12 @@ import {
 import { CancelOrderAction } from "@/components/orders/CancelOrderAction";
 import { OrderReceiptImage } from "@/components/orders/OrderReceiptImage";
 import { ReceiptActionsRow } from "@/components/orders/ReceiptActionsRow";
-import { Button } from "@/components/ui/Button";
+import { ReorderAction } from "@/components/orders/ReorderAction";
+import {
+  ReorderPreviewSheet,
+  type ReorderAvailableLine,
+  type ReorderUnavailableLine,
+} from "@/components/orders/ReorderPreviewSheet";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
@@ -35,24 +40,10 @@ import { useToast } from "@/providers/toast-context";
 import type { Id } from "@convex/_generated/dataModel";
 import type { Product } from "@/types/product";
 
-type ReorderAvailableLine = {
-  productId: Id<"products">;
-  productName: string;
+type ReorderCartEntry = {
+  product: Product;
   color: string;
   quantity: number;
-  requestedQuantity: number;
-  currentPrice: number;
-  currency: string;
-  stock: number;
-  imageUrl: string;
-  colors: string[];
-};
-
-type ReorderUnavailableLine = {
-  productId: string;
-  productName: string;
-  color: string;
-  reasonLabel: string;
 };
 
 function toCartProduct(item: ReorderAvailableLine): Product {
@@ -72,6 +63,24 @@ function toCartProduct(item: ReorderAvailableLine): Product {
     categoryId: "" as Id<"productCategories">,
     externalId: item.productId,
   } as unknown as Product;
+}
+
+function buildReorderCartEntries(available: ReorderAvailableLine[]): ReorderCartEntry[] {
+  return available.map((item) => ({
+    product: toCartProduct(item),
+    color: item.color,
+    quantity: item.quantity,
+  }));
+}
+
+function shouldShowReorderPreview(args: {
+  unavailable: ReorderUnavailableLine[];
+  available: ReorderAvailableLine[];
+}): boolean {
+  return (
+    args.unavailable.length > 0 ||
+    args.available.some((item) => item.quantity < item.requestedQuantity)
+  );
 }
 
 type OrderActionsProps = {
@@ -116,6 +125,7 @@ export function OrderActions({
   );
 
   const receiptCaptureRef = useRef<View>(null);
+  const pendingReorderRef = useRef<ReorderCartEntry[]>([]);
   const [receiptLoading, setReceiptLoading] = useState<"download" | "share" | null>(null);
   const [receiptForCapture, setReceiptForCapture] = useState<OrderReceiptData | null>(null);
   const [pendingReceiptAction, setPendingReceiptAction] = useState<"download" | "share" | null>(
@@ -124,12 +134,9 @@ export function OrderActions({
   const [cancelVisible, setCancelVisible] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>(CANCELLATION_REASONS[0].value);
   const [cancelling, setCancelling] = useState(false);
-  const [reorderNoticeVisible, setReorderNoticeVisible] = useState(false);
+  const [reorderPreviewVisible, setReorderPreviewVisible] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [cartMergeVisible, setCartMergeVisible] = useState(false);
-  const [pendingReorderProducts, setPendingReorderProducts] = useState<
-    Array<{ product: Product; color: string; quantity: number }>
-  >([]);
 
   const actionContext = useMemo(
     () => ({
@@ -150,6 +157,10 @@ export function OrderActions({
     hasVerifiedAccess,
     canReorder: reorderPreview?.canReorder,
   });
+
+  const availableLines = (reorderPreview?.available ?? []) as ReorderAvailableLine[];
+  const unavailableLines = (reorderPreview?.unavailable ?? []) as ReorderUnavailableLine[];
+  const reorderItemCount = availableLines.reduce((sum, item) => sum + item.quantity, 0);
 
   const receiptLabels = useMemo(() => {
     const isPendingStripe =
@@ -289,27 +300,48 @@ export function OrderActions({
   ]);
 
   const applyReorderToCart = useCallback(
-    (mode: "merge" | "replace") => {
+    (mode: "merge" | "replace", products: ReorderCartEntry[]) => {
+      if (products.length === 0) {
+        showError("None of the items from this order are available right now.");
+        return;
+      }
+
       if (mode === "replace") {
         clearCart();
       }
-      for (const entry of pendingReorderProducts) {
+
+      for (const entry of products) {
         addToCart(entry.product, entry.color, entry.quantity);
       }
+
+      pendingReorderRef.current = [];
       setCartMergeVisible(false);
-      setReorderNoticeVisible(false);
-      showSuccess("Items added to cart.");
+      setReorderPreviewVisible(false);
+      showSuccess(
+        products.length === 1
+          ? "1 item added to your cart."
+          : `${products.reduce((sum, entry) => sum + entry.quantity, 0)} items added to your cart.`
+      );
       router.push("/(tabs)/cart");
     },
-    [addToCart, clearCart, pendingReorderProducts, showSuccess]
+    [addToCart, clearCart, showError, showSuccess]
   );
+
+  const stageReorderProducts = useCallback((products: ReorderCartEntry[]) => {
+    pendingReorderRef.current = products;
+    if (cart.length > 0) {
+      setCartMergeVisible(true);
+      return;
+    }
+    applyReorderToCart("merge", products);
+  }, [applyReorderToCart, cart.length]);
 
   const continueReorder = useCallback(async () => {
     if (!reorderPreview?.found || !reorderPreview.canReorder) {
       showError(reorderPreview?.message ?? "This order cannot be reordered.");
       return;
     }
-    if (!reorderPreview.available?.length) {
+    if (!availableLines.length) {
       showError("None of the items from this order are available right now.");
       return;
     }
@@ -320,53 +352,36 @@ export function OrderActions({
       return;
     }
 
-    const available = reorderPreview.available as ReorderAvailableLine[];
-    const products = available.map((item) => ({
-      product: toCartProduct(item),
-      color: item.color,
-      quantity: item.quantity,
-    }));
-
-    setPendingReorderProducts(products);
-    if (cart.length > 0) {
-      setCartMergeVisible(true);
-    } else {
-      applyReorderToCart("merge");
-    }
-  }, [applyReorderToCart, cart.length, reorderPreview, showError]);
+    const products = buildReorderCartEntries(availableLines);
+    stageReorderProducts(products);
+  }, [availableLines, reorderPreview, showError, stageReorderProducts]);
 
   const handleReorderPress = useCallback(() => {
     if (!reorderPreview?.found || !reorderPreview.canReorder) {
       showError(reorderPreview?.message ?? "This order cannot be reordered.");
       return;
     }
-    if (!reorderPreview.available?.length) {
+    if (!availableLines.length) {
+      if (unavailableLines.length > 0) {
+        setReorderPreviewVisible(true);
+        return;
+      }
       showError("None of the items from this order are available right now.");
       return;
     }
-    const availableLines = (reorderPreview.available ?? []) as ReorderAvailableLine[];
-    const hasPartialQuantities = availableLines.some(
-      (item) => item.quantity < item.requestedQuantity
-    );
-    if ((reorderPreview.unavailable?.length ?? 0) > 0 || hasPartialQuantities) {
-      setReorderNoticeVisible(true);
+
+    if (shouldShowReorderPreview({ unavailable: unavailableLines, available: availableLines })) {
+      setReorderPreviewVisible(true);
       return;
     }
+
     setReordering(true);
     void continueReorder().finally(() => setReordering(false));
-  }, [continueReorder, reorderPreview, showError]);
+  }, [availableLines, continueReorder, reorderPreview, showError, unavailableLines]);
 
   if (!showReceipt && !showCancel && !showReorder) {
     return null;
   }
-
-  const unavailableItems = (reorderPreview?.unavailable ?? []) as ReorderUnavailableLine[];
-  const quantityAdjustedItems = (
-    (reorderPreview?.available ?? []) as ReorderAvailableLine[]
-  ).filter((item) => item.quantity < item.requestedQuantity);
-  const reorderNoticeTitle = unavailableItems.length
-    ? "Some items are unavailable"
-    : "Some quantities were updated";
 
   return (
     <View style={styles.container}>
@@ -384,14 +399,15 @@ export function OrderActions({
       ) : null}
 
       {showReorder ? (
-        <Button
-          label={reordering ? "Adding items…" : "Reorder"}
-          variant="secondary"
-          loading={reordering}
-          disabled={!isOnline || reordering}
-          onPress={handleReorderPress}
-          accessibilityLabel="Reorder previous items"
-        />
+        <>
+          {showReceipt ? <View style={styles.actionDivider} /> : null}
+          <ReorderAction
+            disabled={!isOnline}
+            loading={reordering}
+            itemCount={reorderItemCount}
+            onPress={handleReorderPress}
+          />
+        </>
       ) : null}
 
       {showCancel ? (
@@ -416,14 +432,28 @@ export function OrderActions({
         onConfirmCancel={() => void handleCancelOrder()}
       />
 
+      <ReorderPreviewSheet
+        visible={reorderPreviewVisible}
+        loading={reordering}
+        available={availableLines}
+        unavailable={unavailableLines}
+        onClose={() => {
+          if (!reordering) setReorderPreviewVisible(false);
+        }}
+        onContinue={() => {
+          setReordering(true);
+          void continueReorder().finally(() => setReordering(false));
+        }}
+      />
+
       <ConfirmDialog
         visible={cartMergeVisible}
         title="Your cart has items"
         message="Add these products to your existing cart or replace the cart with this order?"
         confirmLabel="Replace cart"
         cancelLabel="Add to cart"
-        onCancel={() => applyReorderToCart("merge")}
-        onConfirm={() => applyReorderToCart("replace")}
+        onCancel={() => applyReorderToCart("merge", pendingReorderRef.current)}
+        onConfirm={() => applyReorderToCart("replace", pendingReorderRef.current)}
       />
 
       {receiptForCapture ? (
@@ -431,45 +461,6 @@ export function OrderActions({
           <OrderReceiptImage ref={receiptCaptureRef} receipt={receiptForCapture} />
         </View>
       ) : null}
-
-      <Modal
-        visible={reorderNoticeVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setReorderNoticeVisible(false)}
-      >
-        <Pressable style={styles.overlay} onPress={() => setReorderNoticeVisible(false)}>
-          <Pressable style={styles.dialog} onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.dialogTitle}>{reorderNoticeTitle}</Text>
-            <View style={styles.unavailableBlock}>
-              {quantityAdjustedItems.map((item) => (
-                <Text key={`${item.productId}-${item.color}-qty`} style={styles.unavailableItem}>
-                  {item.productName} ({item.color}) — requested {item.requestedQuantity}, only{" "}
-                  {item.quantity} in stock
-                </Text>
-              ))}
-              {unavailableItems.map((item) => (
-                <Text key={`${item.productId}-${item.color}`} style={styles.unavailableItem}>
-                  {item.productName} ({item.color}) — {item.reasonLabel}
-                </Text>
-              ))}
-            </View>
-            <Text style={styles.dialogMessage}>
-              You can continue with the items that are still available. Prices will reflect
-              current catalog pricing at checkout.
-            </Text>
-            <Button
-              label={reordering ? "Adding items…" : "Continue with available items"}
-              loading={reordering}
-              onPress={() => {
-                setReordering(true);
-                void continueReorder().finally(() => setReordering(false));
-              }}
-              fullWidth
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -498,46 +489,6 @@ function createOrderActionsStyles({ colors, textStyles }: ThemeStyleTokens) {
       height: StyleSheet.hairlineWidth,
       backgroundColor: colors.borderLight,
       marginVertical: spacing.xs,
-    },
-    flexButton: {
-      flex: 1,
-    },
-    overlay: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      alignItems: "center",
-      justifyContent: "center",
-      padding: spacing.xl,
-    },
-    dialog: {
-      width: "100%",
-      maxWidth: 380,
-      backgroundColor: colors.surface,
-      borderRadius: radius.lg,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      padding: spacing.xl,
-      gap: spacing.md,
-    },
-    dialogTitle: {
-      fontSize: typography.lg,
-      fontWeight: "700",
-      color: colors.foreground,
-    },
-    dialogMessage: {
-      fontSize: typography.sm,
-      color: colors.textSecondary,
-      lineHeight: 20,
-    },
-    unavailableBlock: {
-      gap: spacing.xs,
-      backgroundColor: colors.destructiveMuted,
-      borderRadius: radius.md,
-      padding: spacing.md,
-    },
-    unavailableItem: {
-      fontSize: typography.sm,
-      color: colors.foreground,
     },
   });
 }

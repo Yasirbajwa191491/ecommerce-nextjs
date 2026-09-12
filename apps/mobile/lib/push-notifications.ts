@@ -10,7 +10,7 @@ export function configureForegroundNotificationBehavior() {
     handleNotification: async () => ({
       shouldShowBanner: true,
       shouldShowList: true,
-      shouldPlaySound: false,
+      shouldPlaySound: true,
       shouldSetBadge: true,
     }),
   });

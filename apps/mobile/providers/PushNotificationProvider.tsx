@@ -10,10 +10,12 @@ import {
   useRef,
 } from "react";
 
+import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 import {
   configureForegroundNotificationBehavior,
   parsePushNotificationData,
 } from "@/lib/push-notifications";
+import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import {
   loadCheckoutCustomer,
@@ -85,10 +87,15 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
   const enablePushNotifications = useCallback(
     async (customerEmail?: string, accessToken?: string) => {
+      const enrollment =
+        customerEmail != null
+          ? { customerEmail, accessToken }
+          : await resolvePushEnrollmentCredentials();
+
       const result = await push.syncTokenWithBackend({
         requestPermission: true,
-        customerEmail,
-        accessToken,
+        customerEmail: customerEmail ?? enrollment?.customerEmail,
+        accessToken: accessToken ?? enrollment?.accessToken,
       });
       return result.success;
     },
@@ -243,6 +250,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   return (
     <PushNotificationContext.Provider value={value}>
       {children}
+      <PushPermissionPrompt />
     </PushNotificationContext.Provider>
   );
 }
