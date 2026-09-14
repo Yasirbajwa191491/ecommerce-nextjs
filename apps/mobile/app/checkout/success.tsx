@@ -19,11 +19,12 @@ import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
 import { OrderActions } from "@/components/orders/OrderActions";
 import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
+import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { usePaymentSheetCheckout } from "@/hooks/usePaymentSheetCheckout";
+import { useScreenRootStyle } from "@/hooks/useScreenStyles";
+import { usePublicSettingsMap } from "@/hooks/useSiteSettings";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
-import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
-import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import {
   clearLastOrderInfo,
   clearPendingStripeOrder,
@@ -40,6 +41,8 @@ import {
   type OrderStatus,
 } from "@/lib/order-display";
 import { getStripePublishableKey } from "@/lib/stripe-config";
+import { isSmsOrderConfirmationEnabled } from "@/lib/site-settings";
+import { willSendOrderConfirmationSms } from "@convex/lib/orderSms";
 import { useCart } from "@/providers/cart-context";
 import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useToast } from "@/providers/toast-context";
@@ -101,6 +104,9 @@ export default function CheckoutSuccessScreen() {
     Boolean(orderNumber) && !hasLookupCredentials && !storageReady;
   const canQueryOrder = Boolean(orderNumber && hasLookupCredentials);
 
+  const { map: publicSettings } = usePublicSettingsMap();
+  const smsSettingEnabled = isSmsOrderConfirmationEnabled(publicSettings);
+
   const orderData = useQuery(
     api.orders.getOrderByNumber,
     canQueryOrder ? { orderNumber: orderNumber!, customerEmail, accessToken } : "skip"
@@ -117,6 +123,11 @@ export default function CheckoutSuccessScreen() {
   const isFailedStripe =
     order?.paymentMethod === "stripe" && order.paymentStatus === "failed";
   const canRetryPayment = order ? canRetryStripePayment(order) : false;
+  const willSendConfirmationSms = willSendOrderConfirmationSms({
+    smsEnabled: smsSettingEnabled,
+    paymentMethod: order?.paymentMethod,
+    paymentStatus: order?.paymentStatus,
+  });
 
   useEffect(() => {
     if (!order || clearedRef.current) return;
@@ -366,7 +377,9 @@ export default function CheckoutSuccessScreen() {
               </View>
 
               <Text style={styles.confirmationNote}>
-                A confirmation email will be sent to {order.customerEmail}.
+                {willSendConfirmationSms
+                  ? `A confirmation email will be sent to ${order.customerEmail}. A text message will be sent to ${order.customerPhone}.`
+                  : `A confirmation email will be sent to ${order.customerEmail}.`}
               </Text>
 
               <View style={styles.fullWidthCard}>

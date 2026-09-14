@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
@@ -57,6 +57,23 @@ const emptyForm = {
   name: "",
   value: "",
 };
+
+function settingMatchesSearch(setting: SettingRow, term: string) {
+  const valueText = isRichTextSettingKey(setting.key)
+    ? settingValuePreview(setting.value)
+    : setting.value;
+  const haystack = [
+    setting.name,
+    setting.key,
+    setting.key.replaceAll("_", " "),
+    valueText,
+    setting.isSystem ? "system" : "custom",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(term);
+}
 
 function normalizeRichTextValue(key: string, value: string) {
   if (!isRichTextSettingKey(key)) return value;
@@ -117,6 +134,7 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [defaultsReady, setDefaultsReady] = useState(false);
   const [envSyncAttempted, setEnvSyncAttempted] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
 
   const takenNames = useQuery(
     api.settings.listTakenNames,
@@ -227,7 +245,12 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const rows = settings ?? [];
+  const searchTerm = searchInput.trim().toLowerCase();
+  const rows = useMemo(() => {
+    const all = settings ?? [];
+    if (!searchTerm) return all;
+    return all.filter((setting) => settingMatchesSearch(setting, searchTerm));
+  }, [settings, searchTerm]);
   const isLoading = settings === undefined;
   const editingRichText = isRichTextSettingKey(editing?.key);
 
@@ -240,9 +263,9 @@ export default function AdminSettingsPage() {
 
       <AdminListToolbar
         hideTabs
-        showSearch={false}
-        search=""
-        onSearchChange={() => {}}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="Search settings"
         actionLabel="Add setting"
         onAction={openCreate}
       />
@@ -273,7 +296,9 @@ export default function AdminSettingsPage() {
                     colSpan={4}
                     className="py-10 text-center text-muted-foreground"
                   >
-                    No settings yet
+                    {searchTerm
+                      ? "No settings match your search"
+                      : "No settings yet"}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -367,7 +392,7 @@ export default function AdminSettingsPage() {
             <AdminFormField
               label={
                 editing?.key === "sms_order_confirmation_enabled"
-                  ? "Send order confirmation SMS via Twilio"
+                  ? "Send order SMS via Twilio"
                   : editing?.key === "review_call_auto_enabled"
                     ? "Automatic review collection calls"
                     : editing?.key === "review_call_auto_delay_days"
@@ -389,7 +414,7 @@ export default function AdminSettingsPage() {
                       : editing?.key === "privacy_policy"
                         ? "Displayed on the Privacy Policy page. Use headings, lists, and links as needed."
                         : editing?.key === "sms_order_confirmation_enabled"
-                      ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. Off by default."
+                      ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. When enabled, the same Convex SMS path sends confirmation, processing, shipped, delivered, and cancelled texts on web and mobile. Off by default."
                       : editing?.key === "review_call_auto_enabled"
                         ? "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup."
                           : editing?.key === "review_call_auto_delay_days"
@@ -419,7 +444,7 @@ export default function AdminSettingsPage() {
                   <span className="text-sm text-muted-foreground">
                     {editing?.key === "sms_order_confirmation_enabled"
                       ? form.value.trim().toLowerCase() === "true"
-                        ? "Enabled — customers receive SMS on order confirmation"
+                        ? "Enabled — customers receive SMS for confirmation and order status updates"
                         : "Disabled — email only"
                       : form.value.trim().toLowerCase() === "true"
                         ? "Enabled — review calls scheduled after delivery"

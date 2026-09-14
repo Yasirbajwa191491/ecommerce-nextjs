@@ -16,6 +16,10 @@ export function phoneToHref(phone: string) {
   return `tel:+${digits}`;
 }
 
+export function isSmsOrderConfirmationEnabled(map?: SiteSettingsMap | null) {
+  return map?.sms_order_confirmation_enabled?.trim().toLowerCase() === "true";
+}
+
 export function resolveSiteSettings(map?: SiteSettingsMap | null) {
   return {
     storeName: map?.store_name?.trim() || DEFAULT_SETTINGS.store_name,
@@ -24,6 +28,7 @@ export function resolveSiteSettings(map?: SiteSettingsMap | null) {
     phoneHref: phoneToHref(map?.phone ?? DEFAULT_SETTINGS.phone),
     email: map?.email ?? DEFAULT_SETTINGS.email,
     businessHours: map?.business_hours ?? DEFAULT_SETTINGS.business_hours,
+    smsOrderConfirmationEnabled: isSmsOrderConfirmationEnabled(map),
     all: { ...DEFAULT_SETTINGS, ...DEFAULT_STORE_CONTACT, ...map },
   };
 }
