@@ -200,10 +200,13 @@ export const deliverOrderNotificationEvent = internalAction({
     if (channels.includes("sms")) {
       channelsAttempted.push("sms");
       try {
-        await ctx.runAction(internal.sms.sendOrderConfirmationSms, {
+        const smsResult = await ctx.runAction(internal.sms.sendOrderEventSms, {
           orderId: args.orderId,
+          event: args.event,
+          cancellationReason: args.cancellationReason,
+          trackingInfo: args.trackingInfo,
         });
-        smsDelivered = true;
+        smsDelivered = smsResult.sent;
       } catch (error) {
         console.error(
           `[notifications] sms failed event=${args.event} orderId=${args.orderId}`,

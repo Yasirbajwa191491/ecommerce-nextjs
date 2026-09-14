@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/card";
 import { useCartContext } from "@/context/cart_context";
 import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
+import { isSmsOrderConfirmationEnabled } from "@/lib/site-settings";
+import { willSendOrderConfirmationSms } from "@convex/lib/orderSms";
 import { SHOP_BODY, SHOP_BODY_SM, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -71,8 +73,7 @@ function CheckoutSuccessContent() {
   const orderData = orderByNumber ?? orderBySession;
   const publicSettings = useQuery(api.settings.listPublic);
 
-  const smsNotificationsEnabled =
-    publicSettings?.sms_order_confirmation_enabled === "true";
+  const smsSettingEnabled = isSmsOrderConfirmationEnabled(publicSettings);
 
   useEffect(() => {
     if (!orderData?.order || clearedCartRef.current) return;
@@ -93,6 +94,11 @@ function CheckoutSuccessContent() {
   const order = orderData?.order;
   const items: Doc<"orderItems">[] = orderData?.items ?? [];
   const promotions: Doc<"orderPromotions">[] = orderData?.promotions ?? [];
+  const willSendConfirmationSms = willSendOrderConfirmationSms({
+    smsEnabled: smsSettingEnabled,
+    paymentMethod: order?.paymentMethod,
+    paymentStatus: order?.paymentStatus,
+  });
 
   const statusMessage = useMemo(() => {
     if (!order) return null;
@@ -280,7 +286,7 @@ function CheckoutSuccessContent() {
                     "animate-pulse"
                 )}
               >
-                {smsNotificationsEnabled ? (
+                {willSendConfirmationSms ? (
                   <>
                     A confirmation email will be sent to {order.customerEmail}.
                     A text message will be sent to {order.customerPhone}.

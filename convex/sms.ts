@@ -7,17 +7,13 @@ import { internalAction } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { getSiteUrl } from "./lib/siteUrl";
-
-function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-}
+import { orderNotificationEventValidator } from "./lib/notificationTypes";
+import {
+  buildOrderSmsBody,
+  buildTrackOrderUrl,
+  resolveMaxSmsBodyLength,
+  shouldSendSmsForEvent,
+} from "./lib/orderSms";
 
 function toE164(phone: string): string | null {
   const parsed = parsePhoneNumberFromString(phone.trim());
@@ -106,116 +102,22 @@ function twilioAuthErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown Twilio error";
 }
 
-type SmsOrderItem = {
-  productName: string;
-  color: string;
-  quantity: number;
-  lineTotal: number;
-};
-
-/** Twilio prepends this on trial accounts — reserve space so the full SMS stays in 1 segment. */
-const TWILIO_TRIAL_PREFIX_RESERVE = 40;
-const GSM_SINGLE_SEGMENT_LIMIT = 160;
-
-function getMaxSmsBodyLength() {
-  const configured = process.env.TWILIO_SMS_MAX_CHARS?.trim();
-  if (configured) {
-    const parsed = Number.parseInt(configured, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
-  return GSM_SINGLE_SEGMENT_LIMIT - TWILIO_TRIAL_PREFIX_RESERVE;
-}
-
-function truncateText(text: string, maxLength: number) {
-  const trimmed = text.trim();
-  if (trimmed.length <= maxLength) return trimmed;
-  if (maxLength <= 3) return trimmed.slice(0, maxLength);
-  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-function shortenTrackUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    return `${parsed.host}${parsed.pathname}`;
-  } catch {
-    return url;
-  }
-}
-
-function formatItemsCompact(items: SmsOrderItem[], currency: string) {
-  if (items.length === 0) {
-    return "see email for items";
-  }
-
-  if (items.length === 1) {
-    const item = items[0]!;
-    const name = truncateText(item.productName, 20);
-    const price = formatMoney(item.lineTotal, currency);
-    return `${item.quantity}x ${name} (${price})`;
-  }
-
-  const first = items[0]!;
-  const name = truncateText(first.productName, 16);
-  const extra = items.length - 1;
-  return `${items.length} items incl. ${first.quantity}x ${name}${extra > 0 ? ` +${extra}` : ""}`;
-}
-
-function paymentShort(
-  paymentMethod: "cod" | "stripe",
-  paymentStatus: "pending" | "paid" | "failed" | "refunded"
-) {
-  if (paymentMethod === "cod") return "COD";
-  if (paymentStatus === "paid") return "Paid";
-  return "Processing";
-}
-
-function buildSmsBody(args: {
-  customerName: string;
-  orderNumber: string;
-  total: number;
-  currency: string;
-  paymentMethod: "cod" | "stripe";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
-  trackOrderUrl: string;
-  items: SmsOrderItem[];
-}) {
-  const maxLength = getMaxSmsBodyLength();
-  const firstName = truncateText(
-    args.customerName.trim().split(/\s+/)[0] ?? args.customerName,
-    12
-  );
-  const total = formatMoney(args.total, args.currency);
-  const payment = paymentShort(args.paymentMethod, args.paymentStatus);
-  const itemsSummary = formatItemsCompact(args.items, args.currency);
-  const shortTrackUrl = shortenTrackUrl(args.trackOrderUrl);
-
-  const candidates = [
-    `Hi ${firstName}, your ${args.orderNumber} order is confirmed. ${itemsSummary}. Total ${total} (${payment}). Track: ${shortTrackUrl}`,
-    `Hi ${firstName}, order ${args.orderNumber} confirmed. ${itemsSummary}. Total ${total} (${payment}).`,
-    `Order ${args.orderNumber} confirmed. ${itemsSummary}. Total ${total}. ${payment}.`,
-    `${args.orderNumber}: ${itemsSummary}. Total ${total}.`,
-  ];
-
-  const body =
-    candidates.find((candidate) => candidate.length <= maxLength) ??
-    truncateText(candidates[candidates.length - 1]!, maxLength);
-
-  if (body.length > maxLength) {
-    return truncateText(body, maxLength);
-  }
-
-  return body;
-}
-
-export const sendOrderConfirmationSms = internalAction({
+export const sendOrderEventSms = internalAction({
   args: {
     orderId: v.id("orders"),
+    event: orderNotificationEventValidator,
+    cancellationReason: v.optional(v.string()),
+    trackingInfo: v.optional(v.string()),
   },
-  returns: v.null(),
+  returns: v.object({
+    sent: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     try {
+      if (!shouldSendSmsForEvent(args.event)) {
+        return { sent: false };
+      }
+
       const smsEnabled = await ctx.runQuery(
         internal.settings.getSmsOrderConfirmationEnabled,
         {}
@@ -223,15 +125,17 @@ export const sendOrderConfirmationSms = internalAction({
 
       if (!smsEnabled) {
         console.log(
-          `[orders] SMS order confirmation disabled — skipping for order ${args.orderId}`
+          `[orders] SMS disabled — skipping ${args.event} for order ${args.orderId}`
         );
-        return null;
+        return { sent: false };
       }
 
       const credentials = getTwilioCredentials();
       if (!credentials.ok) {
-        console.warn(`[orders] ${credentials.reason} — skipping SMS for order ${args.orderId}`);
-        return null;
+        console.warn(
+          `[orders] ${credentials.reason} — skipping SMS for order ${args.orderId}`
+        );
+        return { sent: false };
       }
 
       const { accountSid, authToken, fromNumber } = credentials;
@@ -242,7 +146,7 @@ export const sendOrderConfirmationSms = internalAction({
 
       if (!orderData) {
         console.warn(`[orders] Order ${args.orderId} not found for SMS`);
-        return null;
+        return { sent: false };
       }
 
       const { order, items } = orderData;
@@ -251,7 +155,7 @@ export const sendOrderConfirmationSms = internalAction({
         console.warn(
           `[orders] No customer phone on order ${order.orderNumber} — skipping SMS`
         );
-        return null;
+        return { sent: false };
       }
 
       const to = toE164(order.customerPhone);
@@ -259,26 +163,32 @@ export const sendOrderConfirmationSms = internalAction({
         console.warn(
           `[orders] Invalid phone for order ${order.orderNumber} (${order.customerPhone}) — skipping SMS`
         );
-        return null;
+        return { sent: false };
       }
 
-      const appUrl = getSiteUrl();
-      const trackOrderUrl = `${appUrl}/track-order/${encodeURIComponent(order.orderNumber)}`;
-      const body = buildSmsBody({
+      const body = buildOrderSmsBody({
+        event: args.event,
         customerName: order.customerName,
         orderNumber: order.orderNumber,
         total: order.total,
         currency: order.currency,
         paymentMethod: order.paymentMethod,
         paymentStatus: order.paymentStatus,
-        trackOrderUrl,
+        trackOrderUrl: buildTrackOrderUrl(getSiteUrl(), order.orderNumber),
         items: items.map((item: Doc<"orderItems">) => ({
           productName: item.productName,
           color: item.color,
           quantity: item.quantity,
           lineTotal: item.lineTotal,
         })),
+        cancellationReason: args.cancellationReason,
+        trackingInfo: args.trackingInfo,
+        maxLength: resolveMaxSmsBodyLength(process.env.TWILIO_SMS_MAX_CHARS),
       });
+
+      if (!body) {
+        return { sent: false };
+      }
 
       const client = Twilio(accountSid, authToken);
       const message = await client.messages.create({
@@ -288,15 +198,15 @@ export const sendOrderConfirmationSms = internalAction({
       });
 
       console.log(
-        `[orders] Confirmation SMS sent (sid: ${message.sid ?? "unknown"}) → ${to}`
+        `[orders] ${args.event} SMS sent (sid: ${message.sid ?? "unknown"}) → ${to}`
       );
-      return null;
+      return { sent: true };
     } catch (error) {
       console.error(
-        "[orders] Order confirmation SMS failed:",
+        `[orders] ${args.event} SMS failed:`,
         twilioAuthErrorMessage(error)
       );
-      return null;
+      return { sent: false };
     }
   },
 });

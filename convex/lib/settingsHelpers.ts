@@ -40,6 +40,7 @@ export async function getEmailFromValue(ctx: QueryCtx) {
   return "Ecommerce Store <yasir.sohail@savari.io>";
 }
 
+/** Master toggle for customer order SMS (confirmation and status updates). */
 export async function getSmsOrderConfirmationEnabledValue(
   ctx: QueryCtx
 ): Promise<boolean> {
