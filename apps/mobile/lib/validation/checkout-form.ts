@@ -1,3 +1,5 @@
+import { isValidPhoneNumber } from "libphonenumber-js";
+
 export type PaymentMethod = "cod" | "stripe";
 
 export type CheckoutFormValues = {
@@ -52,9 +54,8 @@ function validateEmail(email: string): string | undefined {
 function validatePhone(phone: string): string | undefined {
   const required = validateRequired(phone, "Phone number");
   if (required) return required;
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 8 || digits.length > 15) {
-    return "Enter a valid phone number";
+  if (!isValidPhoneNumber(phone.trim())) {
+    return "Enter a valid phone number with country code";
   }
   return undefined;
 }

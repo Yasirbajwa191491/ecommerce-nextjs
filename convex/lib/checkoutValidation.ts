@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
 export const cartLineValidator = v.object({
   productId: v.id("products"),
@@ -40,8 +41,8 @@ export function validateCustomerFields(customer: {
   }
 
   const phone = customer.phone.trim();
-  if (phone.length < 8) {
-    throw new Error("Enter a valid phone number");
+  if (!isValidPhoneNumber(phone)) {
+    throw new Error("Enter a valid phone number with country code");
   }
 
   const address = customer.address.trim();

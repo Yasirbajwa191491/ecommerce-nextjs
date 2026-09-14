@@ -9,6 +9,7 @@ import PhoneInputPrimitive, {
   type Value,
 } from "react-phone-number-input";
 import flags from "react-phone-number-input/flags";
+import { FALLBACK_PHONE_COUNTRY } from "@ecommerce/shared";
 import {
   Command,
   CommandEmpty,
@@ -22,9 +23,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useDefaultPhoneCountry } from "@/hooks/use-default-phone-country";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_COUNTRY: Country = "PK";
 
 type PhoneInputProps = {
   value: Value;
@@ -75,8 +75,8 @@ function CountrySelect({
 }: CountrySelectProps) {
   const [open, setOpen] = React.useState(false);
   const isDisabled = disabled || readOnly;
-  const selectedCountry = value ?? DEFAULT_COUNTRY;
-  const selectedOption = options.find((option) => option.value === value);
+  const selectedCountry = value ?? FALLBACK_PHONE_COUNTRY;
+  const selectedOption = options.find((option) => option.value === selectedCountry);
 
   const handleSelect = React.useCallback(
     (country: Country) => {
@@ -171,6 +171,8 @@ export function PhoneInput({
   "aria-invalid": ariaInvalid,
   className,
 }: PhoneInputProps) {
+  const defaultCountry = useDefaultPhoneCountry();
+
   return (
     <div
       className={cn(
@@ -182,9 +184,10 @@ export function PhoneInput({
       )}
     >
       <PhoneInputPrimitive
+        key={value ? "filled" : defaultCountry}
         id={id}
         international
-        defaultCountry={DEFAULT_COUNTRY}
+        defaultCountry={defaultCountry}
         countrySelectComponent={CountrySelect}
         inputComponent={InputComponent}
         flagComponent={FlagComponent}

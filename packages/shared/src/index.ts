@@ -11,3 +11,16 @@ export {
   type ProductWithImages,
 } from "./products/images";
 export { CART_STORAGE_KEY, type CheckoutCartLine } from "./cart/types";
+export {
+  FALLBACK_PHONE_COUNTRY,
+  countryFlagEmoji,
+  countryFromLocale,
+  countryFromTimeZone,
+  detectRuntimePhoneCountry,
+  getDefaultPhoneCountry,
+  isValidE164Phone,
+  listPhoneCountries,
+  normalizePhoneToE164,
+  type PhoneCountryCode,
+  type PhoneCountryOption,
+} from "./phone/country";
