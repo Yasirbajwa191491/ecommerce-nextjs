@@ -8,7 +8,7 @@ export const POLICY_SETTING_KEYS = [
 export type PolicySettingKey = (typeof POLICY_SETTING_KEYS)[number];
 
 export const DEFAULT_TERMS_TEXT =
-  "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.\n\nWe reserve the right to cancel orders in cases of pricing errors, suspected fraud, or inventory issues. For questions about these terms, please contact our support team.";
+  "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return and cancellation policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.\n\nIf you cancel a paid order, or we refund it, a cancellation/refund fee is deducted from the order total. The current percentage is shown on this page and in your order emails. Card refunds go back to the original payment method minus that fee. Cash on delivery refunds are handled manually using the same fee.\n\nWe reserve the right to cancel orders in cases of pricing errors, suspected fraud, or inventory issues. For questions about these terms, please contact our support team.";
 
 export const DEFAULT_PRIVACY_TEXT =
   "We collect the information you provide at checkout — including your name, email, phone number, and shipping address — to process and deliver your order. Payment details for card transactions are handled securely by Stripe and are not stored on our servers.\n\nYour information may be saved to speed up future purchases. We do not sell your personal data. You may contact us to request updates or deletion of your saved details.";
@@ -17,7 +17,7 @@ export const DEFAULT_SHIPPING_POLICY =
   "Select products include free shipping — look for the free shipping badge on product pages. Products with shipping fees display the cost clearly on the product detail page. Shipping costs are calculated and shown in your cart and checkout summary before you pay. Once your order ships, you receive status updates through our order tracking system.";
 
 export const DEFAULT_RETURN_POLICY =
-  "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. Refunds are processed to your original payment method after we receive and inspect the returned item.";
+  "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. If a paid order is cancelled or refunded, a cancellation/refund fee is deducted from the order total (the current percentage is published on this page and in order emails). Card refunds are processed to your original payment method after any applicable fee. Cash on delivery refunds are handled manually.";
 
 const DEFAULTS: Record<PolicySettingKey, string> = {
   terms_conditions: DEFAULT_TERMS_TEXT,

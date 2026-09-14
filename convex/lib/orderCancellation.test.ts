@@ -21,6 +21,52 @@ describe("order cancellation", () => {
     ).toBe(true);
   });
 
+  it("blocks customer cancellation after processing", () => {
+    expect(
+      resolveCancellationEligibility(
+        {
+          status: "processing",
+          paymentMethod: "cod",
+          paymentStatus: "pending",
+        },
+        { audience: "customer" }
+      ).canCancel
+    ).toBe(false);
+    expect(
+      resolveCancellationEligibility(
+        {
+          status: "processing",
+          paymentMethod: "stripe",
+          paymentStatus: "paid",
+        },
+        { audience: "customer" }
+      ).canCancel
+    ).toBe(false);
+  });
+
+  it("lets customers cancel unpaid Stripe while pending", () => {
+    expect(
+      resolveCancellationEligibility(
+        {
+          status: "pending",
+          paymentMethod: "stripe",
+          paymentStatus: "pending",
+        },
+        { audience: "customer" }
+      ).canCancel
+    ).toBe(true);
+  });
+
+  it("lets admin cancel processing orders the customer cannot", () => {
+    expect(
+      resolveCancellationEligibility({
+        status: "processing",
+        paymentMethod: "stripe",
+        paymentStatus: "paid",
+      }).canCancel
+    ).toBe(true);
+  });
+
   it("blocks shipped and delivered orders", () => {
     expect(
       resolveCancellationEligibility({
@@ -84,6 +130,25 @@ describe("order cancellation", () => {
   it("validates cancellation reasons", () => {
     expect(parseCancellationReason("changed_mind")).toBe("changed_mind");
     expect(parseCancellationReason("invalid")).toBeUndefined();
+  });
+
+  it("does not restore stock for uncommitted checkout orders", () => {
+    expect(
+      planOrderCancellation({
+        status: "pending",
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+        stockReleasedAt: 1_710_000_000_000,
+      }).releaseStock
+    ).toBe(false);
+    expect(
+      planOrderCancellation({
+        status: "pending",
+        paymentMethod: "stripe",
+        paymentStatus: "pending",
+        stockReleasedAt: 1_710_000_000_000,
+      }).releaseStock
+    ).toBe(false);
   });
 
   it("keeps COD payment pending when the order is cancelled", () => {

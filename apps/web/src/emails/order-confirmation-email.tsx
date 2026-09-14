@@ -48,6 +48,8 @@ export type OrderConfirmationEmailProps = {
   supportEmail: string;
   supportPhone: string;
   supportAddress: string;
+  cancellationFeePercent?: number;
+  cancellationFeePolicy?: string;
 };
 
 function formatMoney(amount: number, currency: string) {
@@ -97,6 +99,8 @@ export function OrderConfirmationEmail({
   supportEmail,
   supportPhone,
   supportAddress,
+  cancellationFeePercent = 10,
+  cancellationFeePolicy,
 }: OrderConfirmationEmailProps) {
   const firstName = customerName.trim().split(/\s+/)[0] ?? customerName;
   const paymentLabel =
@@ -105,6 +109,11 @@ export function OrderConfirmationEmail({
       : paymentStatus === "paid"
         ? "Credit/Debit Card (Paid)"
         : "Credit/Debit Card";
+  const policyText =
+    cancellationFeePolicy ??
+    (cancellationFeePercent <= 0
+      ? "No cancellation or refund fee is currently charged. Eligible card refunds are returned in full to the original payment method. Cash on delivery refunds are handled manually."
+      : `If you cancel or we refund a paid order, a ${cancellationFeePercent}% cancellation/refund fee is deducted from the order total. Card payments are refunded to the original payment method minus this fee. Cash on delivery refunds are handled manually using the same fee.`);
 
   return (
     <Html>
@@ -129,6 +138,11 @@ export function OrderConfirmationEmail({
               {" "}
               {paymentStatusMessage(paymentMethod, paymentStatus)}
             </Text>
+
+            <Section style={policyBox}>
+              <Text style={policyTitle}>Cancellation &amp; refund fee</Text>
+              <Text style={policyTextStyle}>{policyText}</Text>
+            </Section>
 
             <Section style={summaryBox}>
               <Row>
@@ -415,6 +429,30 @@ const summaryValue = {
 const summaryHr = {
   borderColor: "#e5e7eb",
   margin: "4px 0 12px",
+};
+
+const policyBox = {
+  backgroundColor: "#f5f3ff",
+  border: "1px solid #ddd6fe",
+  borderRadius: "10px",
+  margin: "0 0 24px",
+  padding: "16px",
+};
+
+const policyTitle = {
+  color: "#4c1d95",
+  fontSize: "12px",
+  fontWeight: "700" as const,
+  letterSpacing: "0.06em",
+  margin: "0 0 8px",
+  textTransform: "uppercase" as const,
+};
+
+const policyTextStyle = {
+  color: "#374151",
+  fontSize: "13px",
+  lineHeight: "20px",
+  margin: "0",
 };
 
 const productsSection = {

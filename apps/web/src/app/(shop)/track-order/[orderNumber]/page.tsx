@@ -33,6 +33,7 @@ import { CONTENT_SECTION_PADDING_Y, PAGE_GUTTER } from "@/lib/layout-constants";
 import { SHOP_BADGE, SHOP_BODY, SHOP_BODY_SM, SHOP_META_LABEL, SHOP_PAGE_TITLE, SHOP_SUBSECTION_TITLE } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { ShopCancelOrder } from "@/components/orders/shop-cancel-order";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 const PRIMARY_BUTTON_CLASS =
@@ -52,6 +53,7 @@ function TrackOrderDetailContent() {
     Awaited<ReturnType<typeof getPublicOrderDetail>> | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +70,7 @@ function TrackOrderDetailContent() {
     return () => {
       cancelled = true;
     };
-  }, [getPublicOrderDetail, orderNumber, customerEmail, accessToken]);
+  }, [getPublicOrderDetail, orderNumber, customerEmail, accessToken, refreshToken]);
 
   if (isLoading) {
     return (
@@ -129,6 +131,15 @@ function TrackOrderDetailContent() {
           <OrderProgressTimeline status={order.status} />
         </CardContent>
       </Card>
+
+      {order.verified ? (
+        <ShopCancelOrder
+          orderNumber={order.orderNumber}
+          customerEmail={order.customerEmail}
+          accessToken={order.accessToken ?? accessToken}
+          onCancelled={() => setRefreshToken((current) => current + 1)}
+        />
+      ) : null}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="rounded-2xl border-border/60 shadow-lg ring-1 ring-black/[0.03]">

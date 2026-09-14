@@ -62,7 +62,7 @@ describe("admin order status machine", () => {
 });
 
 describe("admin refund confirmation", () => {
-  it("requires a real Stripe refund for paid card orders", () => {
+  it("lets admin refund paid Stripe with or without returning funds", () => {
     const plan = resolveAdminRefundPlan({
       status: "confirmed",
       paymentMethod: "stripe",
@@ -70,10 +70,11 @@ describe("admin refund confirmation", () => {
       stripePaymentIntentId: "pi_123",
     });
     expect(plan.kind).toBe("stripe_paid");
-    expect(
-      assertAdminRefundModeAllowed(plan, "cod_manual").ok
-    ).toBe(false);
+    expect(assertAdminRefundModeAllowed(plan, "cod_manual").ok).toBe(false);
     expect(assertAdminRefundModeAllowed(plan, "stripe_original")).toEqual({
+      ok: true,
+    });
+    expect(assertAdminRefundModeAllowed(plan, "without_payment")).toEqual({
       ok: true,
     });
   });

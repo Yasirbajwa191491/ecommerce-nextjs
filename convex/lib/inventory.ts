@@ -1,14 +1,43 @@
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import type { OrderStatus, PaymentMethod, PaymentStatus } from "./orderValidators";
 
 export type StockLine = {
   productId: Id<"products">;
   quantity: number;
 };
 
-/** Authoritative hold/release flag — never infer this from order.status. */
+/**
+ * Authoritative commit/release flag — never infer this from order.status.
+ * `undefined` means inventory is currently deducted.
+ * A timestamp means inventory is not deducted (never committed, or returned after a hold).
+ */
 export function isHeldStockReleased(stockReleasedAt?: number): boolean {
   return stockReleasedAt != null;
+}
+
+/** Checkout creates uncommitted orders so unpaid Stripe / pending COD do not reduce stock. */
+export function uncommittedStockTimestamp(now = Date.now()): number {
+  return now;
+}
+
+/**
+ * Stripe: commit only after the card payment is collected (order is confirmed in the same step).
+ * COD: commit when admin confirms, ships, or delivers — not while pending or processing.
+ */
+export function shouldCommitInventory(order: {
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+}): boolean {
+  if (order.paymentMethod === "stripe") {
+    return order.paymentStatus === "paid";
+  }
+  return (
+    order.status === "confirmed" ||
+    order.status === "shipped" ||
+    order.status === "delivered"
+  );
 }
 
 export function shouldReleaseHeldStock(stockReleasedAt?: number): boolean {
@@ -105,8 +134,8 @@ export async function getOrderStockLines(
 }
 
 /**
- * Restore this order's held quantities exactly once.
- * `stockReleasedAt` is the only release marker — status is ignored.
+ * Restore this order's deducted quantities exactly once.
+ * No-op when `stockReleasedAt` is set (never committed, or already returned).
  */
 export async function releaseHeldStockIfNeeded(
   ctx: MutationCtx,
@@ -126,8 +155,8 @@ export async function releaseHeldStockIfNeeded(
 }
 
 /**
- * Re-hold inventory only if this order previously released it.
- * Clears `stockReleasedAt` so a later release can run again.
+ * Deduct inventory only if this order is currently uncommitted (`stockReleasedAt` set).
+ * Clears `stockReleasedAt` so a later cancel/refund can restore stock once.
  */
 export async function holdStockIfNeeded(
   ctx: MutationCtx,
@@ -147,4 +176,29 @@ export async function holdStockIfNeeded(
     updatedAt: Date.now(),
   });
   return { held: true, alreadyHeld: false };
+}
+
+/** Deduct stock when the projected payment/status means the order is actually accepted. */
+export async function commitStockIfRequired(
+  ctx: MutationCtx,
+  order: Doc<"orders">,
+  nextState?: {
+    status?: OrderStatus;
+    paymentStatus?: PaymentStatus;
+  }
+): Promise<{ committed: boolean; alreadyCommitted: boolean; skipped: boolean }> {
+  const projected = {
+    paymentMethod: order.paymentMethod,
+    paymentStatus: nextState?.paymentStatus ?? order.paymentStatus,
+    status: nextState?.status ?? order.status,
+  };
+  if (!shouldCommitInventory(projected)) {
+    return { committed: false, alreadyCommitted: false, skipped: true };
+  }
+  const result = await holdStockIfNeeded(ctx, order);
+  return {
+    committed: result.held,
+    alreadyCommitted: result.alreadyHeld,
+    skipped: false,
+  };
 }

@@ -275,13 +275,13 @@ export function OrderActions({
         return;
       }
       setCancelVisible(false);
-      if (result.refundPending) {
-        showSuccess("Order cancelled. Your refund is being processed.");
-      } else if (result.alreadyCancelled) {
-        showSuccess("This order was already cancelled.");
-      } else {
-        showSuccess("Your order has been cancelled.");
-      }
+      showSuccess(
+        "refundPending" in result && result.refundPending
+          ? "Order cancelled. Your refund minus the cancellation fee is being processed."
+          : "alreadyCancelled" in result && result.alreadyCancelled
+            ? "This order was already cancelled."
+            : "Your order has been cancelled."
+      );
     } catch (error) {
       logAppError(error, { segment: "order-cancel" });
       showError(getFriendlyErrorMessage(error, "Unable to cancel this order."));
@@ -416,6 +416,15 @@ export function OrderActions({
           <CancelOrderAction
             disabled={!isOnline}
             loading={cancelling}
+            subtitle={
+              cancellationEligibility?.found
+                ? cancellationEligibility.willRefundStripe
+                  ? `${cancellationEligibility.feePercent}% fee deducted from your card refund`
+                  : cancellationEligibility.paymentCollected
+                    ? `${cancellationEligibility.feePercent}% fee applies; COD refunds are manual`
+                    : `${cancellationEligibility.feePercent}% fee applies to paid cancellations`
+                : "Available before your order ships"
+            }
             onPress={() => setCancelVisible(true)}
           />
         </>
@@ -430,6 +439,27 @@ export function OrderActions({
           if (!cancelling) setCancelVisible(false);
         }}
         onConfirmCancel={() => void handleCancelOrder()}
+        feePercent={cancellationEligibility?.found ? cancellationEligibility.feePercent : undefined}
+        feeAmount={cancellationEligibility?.found ? cancellationEligibility.feeAmount : undefined}
+        refundAmount={
+          cancellationEligibility?.found ? cancellationEligibility.refundAmount : undefined
+        }
+        currency={cancellationEligibility?.found ? cancellationEligibility.currency : undefined}
+        paymentMethod={
+          cancellationEligibility?.found
+            ? cancellationEligibility.paymentMethod
+            : paymentMethod
+        }
+        paymentCollected={
+          cancellationEligibility?.found
+            ? cancellationEligibility.paymentCollected
+            : paymentStatus === "paid"
+        }
+        willRefundStripe={
+          cancellationEligibility?.found
+            ? cancellationEligibility.willRefundStripe
+            : false
+        }
       />
 
       <ReorderPreviewSheet

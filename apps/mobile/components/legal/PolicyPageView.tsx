@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
+import { CancellationFeeNotice } from "@/components/legal/CancellationFeeNotice";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useLegalPageContent } from "@/hooks/useLegalPageContent";
@@ -92,6 +93,10 @@ export function PolicyPageView({ variant }: PolicyPageViewProps) {
             <Text style={styles.heroTitle}>{config.title}</Text>
             <Text style={styles.heroSub}>{config.description}</Text>
           </View>
+
+          {variant === "terms" || variant === "return" ? (
+            <CancellationFeeNotice />
+          ) : null}
 
           <View style={styles.card}>
             {isLoading ? (

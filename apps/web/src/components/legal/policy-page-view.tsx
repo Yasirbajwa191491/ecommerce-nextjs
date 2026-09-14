@@ -17,6 +17,7 @@ import {
 } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { ShippingPolicyHighlights } from "@/components/legal/shipping-policy-highlights";
+import { CancellationFeeNotice } from "@/components/legal/cancellation-fee-notice";
 
 type PolicyVariant = "terms" | "privacy" | "shipping" | "return";
 
@@ -94,6 +95,9 @@ function PolicyPageContent({ variant }: { variant: PolicyVariant }) {
       >
         <div className="w-full">
           {variant === "shipping" ? <ShippingPolicyHighlights /> : null}
+          {variant === "terms" || variant === "return" ? (
+            <CancellationFeeNotice />
+          ) : null}
 
           <Card className="w-full overflow-hidden border-border/60 bg-card shadow-sm">
             <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12">

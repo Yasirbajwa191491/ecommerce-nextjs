@@ -37,7 +37,8 @@ function paragraphsToTiptapDoc(paragraphs: string[]): string {
 }
 
 export const DEFAULT_TERMS_TIPTAP = paragraphsToTiptapDoc([
-  "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.",
+  "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return and cancellation policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.",
+  "If you cancel a paid order, or we refund it, a cancellation/refund fee is deducted from the order total. The current percentage is shown on this page and in your order emails. Card refunds go back to the original payment method minus that fee. Cash on delivery refunds are handled manually using the same fee.",
   "We reserve the right to cancel orders in cases of pricing errors, suspected fraud, or inventory issues. For questions about these terms, please contact our support team.",
 ]);
 
@@ -50,7 +51,7 @@ export const DEFAULT_SHIPPING_POLICY =
   "Select products include free shipping — look for the free shipping badge on product pages. Products with shipping fees display the cost clearly on the product detail page. Shipping costs are calculated and shown in your cart and checkout summary before you pay. Once your order ships, you receive status updates through our order tracking system.";
 
 export const DEFAULT_RETURN_POLICY =
-  "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. Refunds are processed to your original payment method after we receive and inspect the returned item.";
+  "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. If a paid order is cancelled or refunded, a cancellation/refund fee is deducted from the order total (the current percentage is published on this page and in order emails). Card refunds are processed to your original payment method after any applicable fee. Cash on delivery refunds are handled manually.";
 
 function escapeHtml(text: string) {
   return text

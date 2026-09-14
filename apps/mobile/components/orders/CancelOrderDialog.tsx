@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import { formatCurrencyAmount } from "@ecommerce/shared";
 
 export const CANCELLATION_REASONS = [
   { value: "changed_mind", label: "Changed my mind", hint: "I no longer want these items" },
@@ -20,6 +21,13 @@ type CancelOrderDialogProps = {
   onSelectReason: (value: string) => void;
   onKeepOrder: () => void;
   onConfirmCancel: () => void;
+  feePercent?: number;
+  feeAmount?: number;
+  refundAmount?: number;
+  currency?: string;
+  paymentMethod?: string;
+  paymentCollected?: boolean;
+  willRefundStripe?: boolean;
 };
 
 export function CancelOrderDialog({
@@ -29,6 +37,13 @@ export function CancelOrderDialog({
   onSelectReason,
   onKeepOrder,
   onConfirmCancel,
+  feePercent = 10,
+  feeAmount = 0,
+  refundAmount = 0,
+  currency = "USD",
+  paymentMethod,
+  paymentCollected = false,
+  willRefundStripe = false,
 }: CancelOrderDialogProps) {
   const styles = useThemedStyles(createCancelOrderDialogStyles);
 
@@ -61,14 +76,21 @@ export function CancelOrderDialog({
 
             <Text style={styles.title}>Cancel this order?</Text>
             <Text style={styles.message}>
-              If you cancel, reserved items will be released. Eligible card payments will be
-              refunded to your original payment method.
+              {willRefundStripe
+                ? `A ${feePercent}% fee (${formatCurrencyAmount(feeAmount, currency)}) is deducted. ${formatCurrencyAmount(refundAmount, currency)} will be refunded to your original card.`
+                : paymentCollected
+                  ? `Cash refunds are handled manually. A ${feePercent}% fee (${formatCurrencyAmount(feeAmount, currency)}) still applies. Expected return: ${formatCurrencyAmount(refundAmount, currency)}.`
+                  : paymentMethod === "stripe"
+                    ? `This unpaid card payment will be cancelled. A ${feePercent}% fee applies only to paid orders.`
+                    : `Reserved items will be released. A ${feePercent}% fee applies if payment was already collected; COD refunds are handled manually.`}
             </Text>
 
             <View style={styles.infoBox}>
               <Ionicons name="information-circle-outline" size={18} color={styles.infoIcon.color} />
               <Text style={styles.infoText}>
-                This action cannot be undone once processing has started.
+                {willRefundStripe
+                  ? "The remainder is refunded to the same card you paid with."
+                  : "This action cannot be undone once confirmed."}
               </Text>
             </View>
 

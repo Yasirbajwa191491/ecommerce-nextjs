@@ -15,6 +15,7 @@ import { calculateFinalPrice } from "./lib/pricing";
 import { getPrimaryImageUrl } from "./lib/productImages";
 import { BATCH_SIZE } from "./lib/campaignQueue";
 import { generateUnsubscribeToken } from "./lib/subscriberTokens";
+import { cancellationFeePolicyText } from "./lib/cancellationFee";
 
 function resendFailureMessage(message: string, to: string, from: string) {
   const lower = message.toLowerCase();
@@ -116,6 +117,10 @@ export const sendOrderConfirmation = internalAction({
 
       const appUrl = getSiteUrl();
       const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
+      const cancellationFeePercent = await ctx.runQuery(
+        internal.settings.getCancellationRefundFeePercentQuery,
+        {}
+      );
       const { OrderConfirmationEmail } = await import(
         "../apps/web/src/emails/order-confirmation-email"
       );
@@ -159,6 +164,8 @@ export const sendOrderConfirmation = internalAction({
           supportEmail: branding.email,
           supportPhone: branding.phone,
           supportAddress: branding.address,
+          cancellationFeePercent,
+          cancellationFeePolicy: cancellationFeePolicyText(cancellationFeePercent),
         })
       );
 

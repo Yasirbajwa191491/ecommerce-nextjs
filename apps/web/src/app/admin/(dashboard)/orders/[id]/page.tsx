@@ -51,10 +51,18 @@ import type { OrderStatus, PaymentStatus } from "@/types/order";
 import {
   getSelectableAdminOrderStatuses,
   resolveAdminRefundPlan,
+  type AdminPaymentHandling,
   type AdminRefundMode,
 } from "@convex/lib/adminOrderTransitions";
+import {
+  calculateCancellationRefundBreakdown,
+  cancellationFeePolicyText,
+  cancellationFeeShortLabel,
+  parseCancellationRefundFeePercent,
+} from "@convex/lib/cancellationFee";
 import { ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewCollectionPanel } from "@/components/admin/review-collection-panel";
 import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 
@@ -98,6 +106,8 @@ export default function AdminOrderDetailPage() {
     PaymentStatus | ""
   >("");
   const [refundMode, setRefundMode] = useState<AdminRefundMode>("stripe_original");
+  const [cancelPaymentHandling, setCancelPaymentHandling] =
+    useState<AdminPaymentHandling>("with_payment");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -141,6 +151,22 @@ export default function AdminOrderDetailPage() {
         : [],
     [order]
   );
+  const publicSettings = useQuery(api.settings.listPublic);
+  const feePercent = parseCancellationRefundFeePercent(
+    publicSettings?.cancellation_refund_fee_percent
+  );
+  const feeBreakdown = useMemo(
+    () =>
+      order
+        ? calculateCancellationRefundBreakdown({
+            orderTotal: order.total,
+            feePercent,
+          })
+        : null,
+    [feePercent, order]
+  );
+  const showStripePaymentChoice =
+    order?.paymentMethod === "stripe" && order.paymentStatus === "paid";
   const refundPlan = useMemo(
     () =>
       order
@@ -179,7 +205,7 @@ export default function AdminOrderDetailPage() {
   const paymentDialogDescription = useMemo(() => {
     if (!order || !pendingPaymentStatus) return "";
     if (pendingPaymentStatus === "paid") {
-      return `Mark cash as collected for order ${order.orderNumber}? This does not change inventory because stock was already held at checkout.`;
+      return `Mark cash as collected for order ${order.orderNumber}? This records payment only. Inventory is deducted when the order is confirmed, shipped, or delivered — not when cash is marked paid.`;
     }
     return `Change payment status from "${order.paymentStatus}" to "${pendingPaymentStatus}"? This will be recorded in the transaction log.`;
   }, [order, pendingPaymentStatus]);
@@ -189,6 +215,7 @@ export default function AdminOrderDetailPage() {
     const nextStatus = value as OrderStatus;
     setPendingOrderStatus(nextStatus);
     if (nextStatus === "cancelled") {
+      setCancelPaymentHandling("with_payment");
       setCancelDialogOpen(true);
       return;
     }
@@ -223,6 +250,9 @@ export default function AdminOrderDetailPage() {
         orderId,
         status: pendingOrderStatus,
         ...(pendingOrderStatus === "refunded" ? { refundMode } : {}),
+        ...(pendingOrderStatus === "cancelled"
+          ? { paymentHandling: cancelPaymentHandling }
+          : {}),
       });
       toastSuccess(result.message ?? "Order status updated");
       setStatusDialogOpen(false);
@@ -699,6 +729,21 @@ export default function AdminOrderDetailPage() {
               Cancel and refund run the same backend inventory and payment
               rules as the shop. Stripe payment status is webhook-authoritative.
             </p>
+            {feeBreakdown &&
+            order.status !== "cancelled" &&
+            order.status !== "refunded" ? (
+              <Alert>
+                <AlertTitle>{cancellationFeeShortLabel(feePercent)}</AlertTitle>
+                <AlertDescription>
+                  {order.paymentMethod === "stripe" &&
+                  order.paymentStatus === "paid"
+                    ? `With payment: deduct ${formatCurrencyAmount(feeBreakdown.feeAmount, order.currency)} (${feePercent}%) and refund ${formatCurrencyAmount(feeBreakdown.refundAmount, order.currency)} to the original card. Without payment: mark the order only.`
+                    : order.paymentMethod === "cod"
+                      ? `COD refunds are manual. Apply the same ${feePercent}% fee (${formatCurrencyAmount(feeBreakdown.feeAmount, order.currency)} of this order). Expected customer return: ${formatCurrencyAmount(feeBreakdown.refundAmount, order.currency)}.`
+                      : cancellationFeePolicyText(feePercent)}
+                </AlertDescription>
+              </Alert>
+            ) : null}
             {order.status === "delivered" ? (
               <Button
                 type="button"
@@ -786,6 +831,13 @@ export default function AdminOrderDetailPage() {
         description={cancelDialogDescription}
         loading={isUpdatingStatus}
         onConfirm={confirmOrderStatusUpdate}
+        feeBreakdown={feeBreakdown}
+        currency={order?.currency}
+        paymentMethod={order?.paymentMethod ?? "cod"}
+        paymentCollected={order?.paymentStatus === "paid"}
+        showPaymentChoice={showStripePaymentChoice}
+        paymentHandling={cancelPaymentHandling}
+        onPaymentHandlingChange={setCancelPaymentHandling}
       />
 
       <OrderRefundConfirmDialog
@@ -802,6 +854,8 @@ export default function AdminOrderDetailPage() {
         onModeChange={setRefundMode}
         loading={isUpdatingStatus}
         onConfirm={confirmOrderStatusUpdate}
+        feeBreakdown={feeBreakdown}
+        currency={order?.currency}
       />
 
       <DeleteConfirmDialog

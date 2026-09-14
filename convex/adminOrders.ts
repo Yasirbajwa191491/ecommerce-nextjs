@@ -27,12 +27,25 @@ import {
 import {
   applyOrderRefunded,
   executeOrderCancellation,
+  scheduleStripeRefundWithCancellationFee,
 } from "./lib/orderLifecycle";
+import { commitStockIfRequired } from "./lib/inventory";
 import {
   assertAdminRefundModeAllowed,
   resolveAdminRefundPlan,
   resolveAdminStatusAction,
 } from "./lib/adminOrderTransitions";
+
+const adminRefundModeValidator = v.union(
+  v.literal("stripe_original"),
+  v.literal("without_payment"),
+  v.literal("cod_manual")
+);
+
+const adminPaymentHandlingValidator = v.union(
+  v.literal("with_payment"),
+  v.literal("without_payment")
+);
 
 const TRACKING_NOT_FOUND = "We couldn't find any orders matching your details.";
 
@@ -220,9 +233,8 @@ export const updateOrderStatus = mutation({
   args: {
     orderId: v.id("orders"),
     status: orderStatusValidator,
-    refundMode: v.optional(
-      v.union(v.literal("stripe_original"), v.literal("cod_manual"))
-    ),
+    refundMode: v.optional(adminRefundModeValidator),
+    paymentHandling: v.optional(adminPaymentHandlingValidator),
   },
   returns: v.object({
     success: v.boolean(),
@@ -243,6 +255,7 @@ export const updateOrderStatus = mutation({
       throw new ConvexError(action.message);
     }
     if (action.type === "cancel") {
+      const withoutPayment = args.paymentHandling === "without_payment";
       const result = await executeOrderCancellation(ctx, {
         order,
         actor: {
@@ -250,15 +263,20 @@ export const updateOrderStatus = mutation({
           actorUserId: admin._id,
           actorName: admin.name || admin.email,
         },
-        description: `Order cancelled by admin`,
+        description: withoutPayment
+          ? "Order cancelled by admin without returning payment"
+          : "Order cancelled by admin",
+        initiateRefund: withoutPayment ? false : undefined,
       });
       return {
         success: true,
         alreadyCancelled: result.alreadyCancelled,
         refundPending: result.refundPending,
         message: result.refundPending
-          ? "Order cancelled. A Stripe refund to the original payment method is being processed."
-          : "Order cancelled and held inventory was released.",
+          ? "Order cancelled. A Stripe refund minus the cancellation fee is being processed."
+          : withoutPayment
+            ? "Order cancelled without returning payment. Held inventory was released."
+            : "Order cancelled and held inventory was released.",
       };
     }
     if (action.type === "refund") {
@@ -271,6 +289,16 @@ export const updateOrderStatus = mutation({
 
     const now = Date.now();
     const previousStatus = order.status;
+
+    try {
+      await commitStockIfRequired(ctx, order, { status: action.nextStatus });
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error
+          ? error.message
+          : "Insufficient stock to move this order forward."
+      );
+    }
 
     await ctx.db.patch(args.orderId, {
       status: action.nextStatus,
@@ -327,7 +355,10 @@ export const updateOrderStatus = mutation({
 });
 
 export const cancelOrder = mutation({
-  args: { orderId: v.id("orders") },
+  args: {
+    orderId: v.id("orders"),
+    paymentHandling: v.optional(adminPaymentHandlingValidator),
+  },
   returns: v.object({
     success: v.boolean(),
     alreadyCancelled: v.optional(v.boolean()),
@@ -338,6 +369,7 @@ export const cancelOrder = mutation({
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new ConvexError("Order not found");
+    const withoutPayment = args.paymentHandling === "without_payment";
     const result = await executeOrderCancellation(ctx, {
       order,
       actor: {
@@ -345,7 +377,10 @@ export const cancelOrder = mutation({
         actorUserId: admin._id,
         actorName: admin.name || admin.email,
       },
-      description: "Order cancelled by admin",
+      description: withoutPayment
+        ? "Order cancelled by admin without returning payment"
+        : "Order cancelled by admin",
+      initiateRefund: withoutPayment ? false : undefined,
     });
     return result;
   },
@@ -354,7 +389,7 @@ export const cancelOrder = mutation({
 export const initiateRefund = mutation({
   args: {
     orderId: v.id("orders"),
-    mode: v.union(v.literal("stripe_original"), v.literal("cod_manual")),
+    mode: adminRefundModeValidator,
   },
   returns: v.object({
     success: v.boolean(),
@@ -374,7 +409,7 @@ async function initiateAdminRefund(
   args: {
     order: Doc<"orders">;
     admin: { _id: string; name: string; email: string };
-    mode?: "stripe_original" | "cod_manual";
+    mode?: "stripe_original" | "without_payment" | "cod_manual";
   }
 ): Promise<{
   success: true;
@@ -394,16 +429,16 @@ async function initiateAdminRefund(
         "Cannot create a Stripe refund because this order has no payment intent."
       );
     }
-    await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
-      orderId: args.order._id,
-      paymentIntentId: args.order.stripePaymentIntentId,
+    const refund = await scheduleStripeRefundWithCancellationFee(ctx, {
+      order: args.order,
       reason: "admin_refund",
     });
     return {
       success: true,
-      refundPending: true,
-      message:
-        "Stripe refund started. Money returns to the customer's original card from web Checkout or mobile PaymentSheet.",
+      refundPending: refund.refundPending,
+      message: refund.refundPending
+        ? "Stripe refund started minus the cancellation fee. Money returns to the original card from web Checkout or mobile PaymentSheet."
+        : "Order marked refunded. The cancellation fee covered the full amount, so no Stripe payout was created.",
     };
   }
 
@@ -412,11 +447,17 @@ async function initiateAdminRefund(
     actorType: "admin",
     actorUserId: args.admin._id,
     actorName: args.admin.name || args.admin.email,
-    description: "Cash on delivery payment recorded as refunded by admin",
+    description:
+      mode === "without_payment"
+        ? "Order marked refunded without returning Stripe funds"
+        : "Cash on delivery payment recorded as refunded by admin",
   });
   return {
     success: true,
-    message: "COD refund recorded. Held inventory was released.",
+    message:
+      mode === "without_payment"
+        ? "Order marked refunded without returning payment. Held inventory was released."
+        : "COD refund recorded. Held inventory was released. Return cash to the customer manually minus the cancellation fee.",
   };
 }
 

@@ -14,7 +14,7 @@ import type { Id } from "./_generated/dataModel";
 import type { PricedLineItem } from "./lib/orderPricing";
 import { getSiteUrl } from "./lib/siteUrl";
 import { isRetryablePaymentIntentStatus } from "./lib/stripePaymentIntent";
-import { isAlreadyRefundedStripeError } from "./lib/stripeRefund";
+import { shouldRetryAutomaticStripeRefund } from "./lib/stripeRefund";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -711,16 +711,33 @@ export const refundUnfulfillablePayment = internalAction({
     orderId: v.id("orders"),
     paymentIntentId: v.string(),
     reason: v.string(),
+    amountCents: v.optional(v.number()),
+    feePercent: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const stripe = getStripe();
+    const refundAmountCents =
+      args.amountCents != null && Number.isFinite(args.amountCents)
+        ? Math.max(0, Math.round(args.amountCents))
+        : undefined;
+
+    if (refundAmountCents === 0) {
+      await ctx.runMutation(internal.orders.markOrderRefunded, {
+        orderId: args.orderId,
+        stripePaymentIntentId: args.paymentIntentId,
+      });
+      return null;
+    }
+
     try {
       await stripe.refunds.create({
         payment_intent: args.paymentIntentId,
+        ...(refundAmountCents != null ? { amount: refundAmountCents } : {}),
         metadata: {
           orderId: args.orderId,
           reason: args.reason,
+          ...(args.feePercent != null ? { feePercent: String(args.feePercent) } : {}),
         },
       });
       await ctx.runMutation(internal.orders.markOrderRefunded, {
@@ -728,17 +745,31 @@ export const refundUnfulfillablePayment = internalAction({
         stripePaymentIntentId: args.paymentIntentId,
       });
     } catch (error) {
-      if (isAlreadyRefundedStripeError(error)) {
+      if (!shouldRetryAutomaticStripeRefund(error)) {
         await ctx.runMutation(internal.orders.markOrderRefunded, {
           orderId: args.orderId,
           stripePaymentIntentId: args.paymentIntentId,
         });
         return null;
       }
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        await ctx.runMutation(internal.orders.recordStripeRefundFailure, {
+          orderId: args.orderId,
+          paymentIntentId: args.paymentIntentId,
+          message,
+        });
+      } catch (logError) {
+        console.error(
+          `[stripe] could not record refund failure orderId=${args.orderId}`,
+          logError
+        );
+      }
       console.error(
         `[stripe] automatic refund failed orderId=${args.orderId} pi=${args.paymentIntentId}`,
         error
       );
+      throw error;
     }
     return null;
   },
