@@ -62,6 +62,14 @@ function resolvePermissionState(
     canAskAgain?: boolean;
   };
 
+  if (settings.status === Notifications.PermissionStatus.GRANTED) {
+    return "granted";
+  }
+
+  if (settings.status === Notifications.PermissionStatus.DENIED) {
+    return "denied";
+  }
+
   if (
     response.granted === true ||
     response.ios?.status === Notifications.IosAuthorizationStatus.AUTHORIZED ||

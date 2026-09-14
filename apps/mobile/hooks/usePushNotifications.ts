@@ -8,7 +8,6 @@ import { api } from "@/lib/convex-api";
 import { logAppError } from "@/lib/errors";
 import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
 import { getPushExecutionEnvironment } from "@/lib/push-environment";
-import { clearPushPermissionPromptDeferral } from "@/lib/push-prompt-storage";
 import {
   ensureAndroidNotificationChannel,
   getExpoPushToken,
@@ -75,8 +74,6 @@ export function usePushNotifications() {
           return { success: false as const, reason: "permission_denied" as const };
         }
 
-        await clearPushPermissionPromptDeferral();
-
         const token = await getExpoPushToken();
         if (token) {
           addMonitoringBreadcrumb("Expo push token obtained", "notification");
@@ -130,10 +127,12 @@ export function usePushNotifications() {
         return { success: true as const };
       } catch (error) {
         const message = error instanceof Error ? error.message : "Push sync failed";
+        const permission = await getNotificationPermissionStatus();
         addMonitoringBreadcrumb("Push token sync failed", "notification");
         logAppError(error, { segment: "push-token-sync" });
         setState((current) => ({
           ...current,
+          permission: permission === "granted" ? "granted" : current.permission,
           syncing: false,
           lastError: message,
         }));
@@ -180,15 +179,20 @@ export function usePushNotifications() {
     }
 
     const permission = await getNotificationPermissionStatus();
-    if (permission !== "granted") {
-      setState((current) => ({
-        ...current,
-        permission: permission === "denied" ? "denied" : "undetermined",
-      }));
+    if (permission === "granted") {
+      await syncTokenWithBackend();
       return;
     }
 
-    await syncTokenWithBackend();
+    setState((current) => {
+      if (current.permission === "granted" && current.expoPushToken) {
+        return current;
+      }
+      return {
+        ...current,
+        permission: permission === "denied" ? "denied" : "undetermined",
+      };
+    });
   }, [syncTokenWithBackend, visitorId]);
 
   useEffect(() => {
