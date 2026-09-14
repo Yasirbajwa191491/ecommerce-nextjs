@@ -392,8 +392,10 @@ export default function AdminSettingsPage() {
                       ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. Off by default."
                       : editing?.key === "review_call_auto_enabled"
                         ? "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup."
-                        : editing?.key === "review_call_auto_delay_days"
+                          : editing?.key === "review_call_auto_delay_days"
                           ? "Must be 3, 5, or 7 days. Used when automatic review calls are enabled."
+                          : editing?.key === "cancellation_refund_fee_percent"
+                            ? "Percent deducted from the order total when a paid order is cancelled or refunded (0–100). Shown on admin and shop cancel/refund screens, terms, return policy, and order emails. Card refunds return the remainder to the original Stripe payment. COD refunds stay manual."
                           : undefined
               }
               required={

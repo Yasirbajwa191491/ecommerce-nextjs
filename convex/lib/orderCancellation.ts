@@ -43,11 +43,14 @@ export function shouldReleaseStockOnCancel(order: {
   return !wasOrderStockReleased(order.stockReleasedAt);
 }
 
-export function resolveCancellationEligibility(order: {
-  status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
-}): { canCancel: boolean; message?: string } {
+export function resolveCancellationEligibility(
+  order: {
+    status: OrderStatus;
+    paymentMethod: PaymentMethod;
+    paymentStatus: PaymentStatus;
+  },
+  options?: { audience?: "customer" | "admin" }
+): { canCancel: boolean; message?: string } {
   if (order.status === "cancelled") {
     return { canCancel: false, message: "This order has already been cancelled." };
   }
@@ -71,6 +74,32 @@ export function resolveCancellationEligibility(order: {
   }
   if (order.status === "failed") {
     return { canCancel: false, message: "This order has failed and can no longer be cancelled." };
+  }
+
+  const audience = options?.audience ?? "admin";
+  if (audience === "customer") {
+    if (order.paymentMethod === "cod") {
+      if (order.status === "pending" || order.status === "confirmed") {
+        return { canCancel: true };
+      }
+      return {
+        canCancel: false,
+        message:
+          "Cash on delivery orders can only be cancelled while they are pending or confirmed.",
+      };
+    }
+
+    if (order.status === "pending" && order.paymentStatus !== "paid") {
+      return { canCancel: true };
+    }
+    if (order.status === "confirmed") {
+      return { canCancel: true };
+    }
+    return {
+      canCancel: false,
+      message:
+        "Card orders can only be cancelled while confirmed, or while payment is still pending.",
+    };
   }
 
   return { canCancel: true };
@@ -101,15 +130,22 @@ export type OrderCancellationPlan = {
   initiateRefund: boolean;
 };
 
-export function planOrderCancellation(order: {
-  status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
-  stockReleasedAt?: number;
-  stripePaymentIntentId?: string;
-  stripeSessionId?: string;
-}): OrderCancellationPlan {
-  const initiateRefund = shouldInitiateStripeRefund(order);
+export function planOrderCancellation(
+  order: {
+    status: OrderStatus;
+    paymentMethod: PaymentMethod;
+    paymentStatus: PaymentStatus;
+    stockReleasedAt?: number;
+    stripePaymentIntentId?: string;
+    stripeSessionId?: string;
+  },
+  options?: {
+    audience?: "customer" | "admin";
+    initiateRefund?: boolean;
+  }
+): OrderCancellationPlan {
+  const initiateRefund =
+    options?.initiateRefund ?? shouldInitiateStripeRefund(order);
   const cancelOpenPayment = shouldCancelOpenStripePayment(order);
   const releaseStock = shouldReleaseStockOnCancel(order);
   const nextPaymentStatus: PaymentStatus = cancelOpenPayment
@@ -128,7 +164,9 @@ export function planOrderCancellation(order: {
     };
   }
 
-  const eligibility = resolveCancellationEligibility(order);
+  const eligibility = resolveCancellationEligibility(order, {
+    audience: options?.audience ?? "admin",
+  });
   if (!eligibility.canCancel) {
     return {
       allowed: false,

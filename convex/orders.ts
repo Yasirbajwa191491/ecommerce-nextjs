@@ -18,14 +18,15 @@ import type { PricedLineItem } from "./lib/orderPricing";
 import { formatWarrantySummary } from "./lib/productValidators";
 import type { DeliveryMethodType } from "./lib/productValidators";
 import {
-  decrementStock,
+  assertStockAvailable,
+  commitStockIfRequired,
   getOrderStockLines,
-  holdStockIfNeeded,
   releaseHeldStockIfNeeded,
+  uncommittedStockTimestamp,
 } from "./lib/inventory";
 import { insertOrderStatusLog, insertPaymentLog, getOrderStatusLogsForPublic } from "./lib/orderLogs";
 import { mergeVisitorIntoCustomer } from "./lib/recommendations/profileBuilder";
-import { orderStatusValidator } from "./lib/orderValidators";
+import { orderStatusValidator, paymentMethodValidator, paymentStatusValidator } from "./lib/orderValidators";
 import {
   canRetryStripePayment,
   isPendingStripeOrder,
@@ -43,6 +44,8 @@ import {
   parseCancellationReason,
   resolveCancellationEligibility,
 } from "./lib/orderCancellation";
+import { calculateCancellationRefundBreakdown } from "./lib/cancellationFee";
+import { getCancellationRefundFeePercent } from "./lib/settingsHelpers";
 import {
   applyOrderRefunded,
   executeOrderCancellation,
@@ -458,7 +461,7 @@ async function createCashOrderHandler(
       now,
       args.deliveryMethod
     );
-    await decrementStock(
+    await assertStockAvailable(
       ctx,
       priced.items.map((item) => ({
         productId: item.productId,
@@ -491,6 +494,7 @@ async function createCashOrderHandler(
       currency: priced.currency,
       idempotencyKey: args.idempotencyKey,
       accessToken,
+      stockReleasedAt: uncommittedStockTimestamp(now),
       createdAt: now,
       updatedAt: now,
     });
@@ -695,7 +699,7 @@ export const createPendingStripeOrder = internalMutation({
       now,
       args.deliveryMethod
     );
-    await decrementStock(
+    await assertStockAvailable(
       ctx,
       priced.items.map((item) => ({
         productId: item.productId,
@@ -728,6 +732,7 @@ export const createPendingStripeOrder = internalMutation({
       currency: priced.currency,
       idempotencyKey: args.idempotencyKey,
       accessToken,
+      stockReleasedAt: uncommittedStockTimestamp(now),
       createdAt: now,
       updatedAt: now,
     });
@@ -936,14 +941,8 @@ export const reviveStripeOrderForRetry = internalMutation({
       throw new ConvexError("This order is no longer awaiting payment.");
     }
 
-    const latest = await ctx.db.get(args.orderId);
-    if (!latest) throw new ConvexError("Order not found");
-    if (latest.stockReleasedAt != null) {
-      await holdStockIfNeeded(ctx, latest);
-    } else {
-      const stockLines = await getOrderStockLines(ctx, args.orderId);
-      await decrementStock(ctx, stockLines);
-    }
+    const stockLines = await getOrderStockLines(ctx, args.orderId);
+    await assertStockAvailable(ctx, stockLines);
 
     const now = Date.now();
     const previousStatus = order.status;
@@ -1039,36 +1038,30 @@ export const markOrderPaid = internalMutation({
       };
     }
 
-    if (paymentAction === "rereserve_and_fulfill") {
-      try {
-        const latest = await ctx.db.get(args.orderId);
-        if (!latest) throw new ConvexError("Order not found");
-        if (latest.stockReleasedAt != null) {
-          await holdStockIfNeeded(ctx, latest);
-        } else {
-          const stockLines = await getOrderStockLines(ctx, args.orderId);
-          await decrementStock(ctx, stockLines);
-        }
-      } catch {
-        await insertPaymentLog(ctx, {
-          orderId: args.orderId,
-          event: "payment_failed",
-          description:
-            "Stripe payment succeeded after expiry or failure, but inventory could not be reserved; automatic refund required",
-          previousPaymentStatus: order.paymentStatus,
-          newPaymentStatus: order.paymentStatus,
-          actorType: "webhook",
-          stripePaymentIntentId,
-          stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,
-          createdAt: Date.now(),
-        });
-        return {
-          alreadyPaid: false as const,
-          needsRefund: true as const,
-          refundReason: "insufficient_stock",
-          stripePaymentIntentId,
-        };
-      }
+    try {
+      await commitStockIfRequired(ctx, order, {
+        paymentStatus: "paid",
+        status: "confirmed",
+      });
+    } catch {
+      await insertPaymentLog(ctx, {
+        orderId: args.orderId,
+        event: "payment_failed",
+        description:
+          "Stripe payment succeeded, but inventory could not be reserved; automatic refund required",
+        previousPaymentStatus: order.paymentStatus,
+        newPaymentStatus: order.paymentStatus,
+        actorType: "webhook",
+        stripePaymentIntentId,
+        stripeSessionId: args.stripeSessionId ?? order.stripeSessionId,
+        createdAt: Date.now(),
+      });
+      return {
+        alreadyPaid: false as const,
+        needsRefund: true as const,
+        refundReason: "insufficient_stock",
+        stripePaymentIntentId,
+      };
     }
 
     const now = Date.now();
@@ -1220,6 +1213,36 @@ export const markOrderRefunded = internalMutation({
     });
 
     return { success: true as const, alreadyRefunded: result.alreadyRefunded };
+  },
+});
+
+export const recordStripeRefundFailure = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    paymentIntentId: v.string(),
+    message: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order || order.paymentStatus === "refunded") {
+      return null;
+    }
+
+    const detail = args.message.trim().slice(0, 400);
+    await insertPaymentLog(ctx, {
+      orderId: args.orderId,
+      event: "payment_refund_failed",
+      description: detail
+        ? `Stripe refund failed and will be retried. ${detail}`
+        : "Stripe refund failed and will be retried.",
+      previousPaymentStatus: order.paymentStatus,
+      newPaymentStatus: order.paymentStatus,
+      actorType: "system",
+      stripePaymentIntentId: args.paymentIntentId,
+      createdAt: Date.now(),
+    });
+    return null;
   },
 });
 
@@ -1398,6 +1421,24 @@ export const getOrderCancellationEligibility = query({
     customerEmail: v.optional(v.string()),
     accessToken: v.optional(v.string()),
   },
+  returns: v.union(
+    v.object({ found: v.literal(false) }),
+    v.object({
+      found: v.literal(true),
+      canCancel: v.boolean(),
+      message: v.optional(v.string()),
+      orderStatus: orderStatusValidator,
+      paymentStatus: paymentStatusValidator,
+      paymentMethod: paymentMethodValidator,
+      feePercent: v.number(),
+      feeAmount: v.number(),
+      refundAmount: v.number(),
+      orderTotal: v.number(),
+      currency: v.string(),
+      willRefundStripe: v.boolean(),
+      paymentCollected: v.boolean(),
+    })
+  ),
   handler: async (ctx, args) => {
     const email = args.customerEmail?.trim();
     const accessToken = args.accessToken?.trim();
@@ -1413,13 +1454,27 @@ export const getOrderCancellationEligibility = query({
       return { found: false as const };
     }
 
-    const eligibility = resolveCancellationEligibility(order);
+    const eligibility = resolveCancellationEligibility(order, { audience: "customer" });
+    const feePercent = await getCancellationRefundFeePercent(ctx);
+    const breakdown = calculateCancellationRefundBreakdown({
+      orderTotal: order.total,
+      feePercent,
+    });
+    const paymentCollected = order.paymentStatus === "paid";
     return {
       found: true as const,
       canCancel: eligibility.canCancel,
       message: eligibility.message,
       orderStatus: order.status,
       paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      feePercent: breakdown.feePercent,
+      feeAmount: breakdown.feeAmount,
+      refundAmount: breakdown.refundAmount,
+      orderTotal: order.total,
+      currency: order.currency,
+      willRefundStripe: paymentCollected && order.paymentMethod === "stripe",
+      paymentCollected,
     };
   },
 });
@@ -1498,7 +1553,12 @@ export const cancelOrder = mutation({
     refundPending: v.optional(v.boolean()),
     message: v.optional(v.string()),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    alreadyCancelled?: boolean;
+    refundPending?: boolean;
+    message?: string;
+  }> => {
     const orderNumber = args.orderNumber.trim();
     if (!orderNumber) {
       return { success: false, message: "Order number is required." };

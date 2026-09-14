@@ -4,7 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { validateEmailFromValue } from "./lib/emailFrom";
-import { getEmailFromValue, getLowStockThresholdValue, getReviewReplyStoreContext, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
+import { getCancellationRefundFeePercent, getEmailFromValue, getLowStockThresholdValue, getReviewReplyStoreContext, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
 import { slugify } from "./lib/products";
 import { RECOMMENDATION_SYSTEM_DEFAULTS } from "./lib/recommendations/constants";
 
@@ -25,6 +25,7 @@ export const SYSTEM_SETTING_KEYS = [
   "review_call_auto_delay_days",
   "stripe_pending_order_reminder_minutes",
   "stripe_pending_order_expiry_minutes",
+  "cancellation_refund_fee_percent",
   ...RECOMMENDATION_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
@@ -39,6 +40,7 @@ export const PUBLIC_SETTING_KEYS = [
   "terms_conditions",
   "privacy_policy",
   "sms_order_confirmation_enabled",
+  "cancellation_refund_fee_percent",
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
@@ -93,7 +95,7 @@ export const SYSTEM_DEFAULTS: {
     key: "return_policy",
     name: "Return Policy",
     value:
-      "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. Refunds are processed to your original payment method after we receive and inspect the returned item.",
+      "We offer easy returns within 30 days of delivery for unused items in original packaging. Contact our support team with your order number to initiate a return. If a paid order is cancelled or refunded, a cancellation/refund fee may be deducted from the order total (the current percentage is published on this page and in order emails). Card refunds are processed to your original payment method after any applicable fee. Cash on delivery refunds are handled manually.",
   },
   {
     key: "terms_conditions",
@@ -106,7 +108,7 @@ export const SYSTEM_DEFAULTS: {
           content: [
             {
               type: "text",
-              text: "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.",
+              text: "By placing an order on our store, you agree to purchase items subject to availability, accurate delivery details, and our standard return and cancellation policy. Cash on delivery orders must be paid in full upon receipt. Card payments are processed securely through Stripe.",
             },
           ],
         },
@@ -115,7 +117,7 @@ export const SYSTEM_DEFAULTS: {
           content: [
             {
               type: "text",
-              text: "We reserve the right to cancel orders in cases of pricing errors, suspected fraud, or inventory issues. For questions about these terms, please contact our support team.",
+              text: "If you cancel a paid order, or we refund it, a cancellation/refund fee may be deducted from the order total. The current fee percentage is shown on this page, at checkout, and in your order emails. Card refunds go back to the original payment method minus that fee. Cash on delivery refunds are handled manually using the same fee.",
             },
           ],
         },
@@ -174,6 +176,11 @@ export const SYSTEM_DEFAULTS: {
     name: "Stripe Pending Order Expiry (Minutes)",
     value: "1440",
   },
+  {
+    key: "cancellation_refund_fee_percent",
+    name: "Cancellation / Refund Fee (%)",
+    value: "10",
+  },
   ...RECOMMENDATION_SYSTEM_DEFAULTS,
 ];
 
@@ -208,6 +215,14 @@ function assertValidSettingValue(key: string, value: string) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || ![3, 5, 7].includes(parsed)) {
       throw new ConvexError("Review call delay must be 3, 5, or 7 days");
+    }
+  }
+  if (key === "cancellation_refund_fee_percent") {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      throw new ConvexError(
+        "Cancellation/refund fee must be a number between 0 and 100"
+      );
     }
   }
   if (
@@ -408,6 +423,12 @@ export const getReviewReplyStoreContextQuery = internalQuery({
   handler: async (ctx) => {
     return await getReviewReplyStoreContext(ctx);
   },
+});
+
+export const getCancellationRefundFeePercentQuery = internalQuery({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => getCancellationRefundFeePercent(ctx),
 });
 
 export const getPublicBranding = internalQuery({

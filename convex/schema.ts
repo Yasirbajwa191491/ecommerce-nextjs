@@ -377,7 +377,11 @@ export default defineSchema({
     accessToken: v.optional(v.string()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
-    /** Set only by inventory helpers when this order's held stock was returned. Never infer from status. */
+    /**
+     * Inventory gate. Unset = stock is deducted for this order.
+     * Set at checkout (uncommitted) or after cancel/refund/expire (returned).
+     * Never infer from status.
+     */
     stockReleasedAt: v.optional(v.number()),
     reviewInvitationSentAt: v.optional(v.number()),
     deliveryMethod: v.optional(deliveryMethodTypeValidator),

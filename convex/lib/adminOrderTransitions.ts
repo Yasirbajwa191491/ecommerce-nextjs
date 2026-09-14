@@ -109,7 +109,9 @@ export function resolveAdminStatusAction(
   };
 }
 
-export type AdminRefundMode = "stripe_original" | "cod_manual";
+export type AdminRefundMode = "stripe_original" | "without_payment" | "cod_manual";
+
+export type AdminPaymentHandling = "with_payment" | "without_payment";
 
 export type AdminRefundPlan =
   | {
@@ -168,7 +170,7 @@ export function resolveAdminRefundPlan(order: {
     }
     return {
       kind: "stripe_paid",
-      allowedModes: ["stripe_original"],
+      allowedModes: ["stripe_original", "without_payment"],
       defaultMode: "stripe_original",
       requiresStripePaymentIntent: true,
     };
@@ -192,7 +194,7 @@ export function assertAdminRefundModeAllowed(
         ok: false,
         message:
           mode === "cod_manual"
-            ? "Paid Stripe orders cannot be marked refunded without a real Stripe refund."
+            ? "Cash on delivery refunds are recorded without Stripe. For paid card orders choose refund with payment or without payment."
             : "Cash on delivery refunds are recorded without Stripe. Do not create a Stripe refund for COD.",
       };
     }

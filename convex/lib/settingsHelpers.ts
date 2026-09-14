@@ -3,6 +3,7 @@ import {
   REVIEW_REPLY_STORE_NAME,
   type ReviewReplyStoreContext,
 } from "./ai/reviewReplyPrompt";
+import { parseCancellationRefundFeePercent } from "./cancellationFee";
 
 const DEFAULT_STORE_NAME = REVIEW_REPLY_STORE_NAME;
 const DEFAULT_STORE_EMAIL = "yasir.sohail@savari.io";
@@ -66,6 +67,13 @@ export async function getStripePendingOrderExpiryMinutes(
 ): Promise<number> {
   const row = await findSettingByKey(ctx, "stripe_pending_order_expiry_minutes");
   return parsePositiveInteger(row?.value, DEFAULT_STRIPE_PENDING_EXPIRY_MINUTES);
+}
+
+export async function getCancellationRefundFeePercent(
+  ctx: QueryCtx | MutationCtx
+): Promise<number> {
+  const row = await findSettingByKey(ctx, "cancellation_refund_fee_percent");
+  return parseCancellationRefundFeePercent(row?.value);
 }
 
 export async function getReviewReplyStoreContext(

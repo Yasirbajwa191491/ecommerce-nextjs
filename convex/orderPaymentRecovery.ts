@@ -111,7 +111,7 @@ export const expirePendingStripeOrder = internalMutation({
     await insertPaymentLog(ctx, {
       orderId: args.orderId,
       event: "payment_failed",
-      description: "Pending Stripe order expired and inventory was released",
+      description: "Pending Stripe order expired without collecting payment",
       previousPaymentStatus,
       newPaymentStatus: "failed",
       actorType: "system",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isAlreadyRefundedStripeError, isFullChargeRefund } from "./stripeRefund";
+import { isAlreadyRefundedStripeError, isFullChargeRefund, shouldRetryAutomaticStripeRefund } from "./stripeRefund";
 
 describe("stripe refund detection", () => {
   it("accepts a fully refunded charge", () => {
@@ -27,5 +27,12 @@ describe("stripe refund detection", () => {
       true
     );
     expect(isAlreadyRefundedStripeError(new Error("card_declined"))).toBe(false);
+  });
+
+  it("retries automatic refunds unless Stripe says the charge is already refunded", () => {
+    expect(shouldRetryAutomaticStripeRefund(new Error("rate_limit"))).toBe(true);
+    expect(
+      shouldRetryAutomaticStripeRefund(new Error("Charge has already been refunded"))
+    ).toBe(false);
   });
 });

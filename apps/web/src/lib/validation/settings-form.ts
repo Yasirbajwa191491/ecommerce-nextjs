@@ -66,6 +66,15 @@ export function validateSettingForm(
   if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;
+  } else if (options?.settingKey === "cancellation_refund_fee_percent") {
+    const required = validateRequired(values.value, "Fee percent");
+    if (required) errors.value = required;
+    else {
+      const parsed = Number.parseFloat(values.value.trim());
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+        errors.value = "Enter a number between 0 and 100";
+      }
+    }
   } else if (isRichTextSettingKey(options?.settingKey)) {
     const valueRequired = validateRequired(values.value, "Content");
     if (valueRequired) {

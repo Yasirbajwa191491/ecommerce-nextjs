@@ -96,6 +96,41 @@ describe("order cancellation plan", () => {
     ).toBe("rereserve_and_fulfill");
   });
 
+  it("can skip a Stripe refund when admin cancels without payment", () => {
+    const plan = planOrderCancellation(
+      {
+        status: "confirmed",
+        paymentMethod: "stripe",
+        paymentStatus: "paid",
+        stripePaymentIntentId: "pi_123",
+      },
+      { initiateRefund: false }
+    );
+    expect(plan.allowed).toBe(true);
+    expect(plan.initiateRefund).toBe(false);
+  });
+
+  it("blocks customer cancellation of processing Stripe orders", () => {
+    const customer = planOrderCancellation(
+      {
+        status: "processing",
+        paymentMethod: "stripe",
+        paymentStatus: "paid",
+        stripePaymentIntentId: "pi_123",
+      },
+      { audience: "customer" }
+    );
+    const admin = planOrderCancellation({
+      status: "processing",
+      paymentMethod: "stripe",
+      paymentStatus: "paid",
+      stripePaymentIntentId: "pi_123",
+    });
+    expect(customer.allowed).toBe(false);
+    expect(admin.allowed).toBe(true);
+    expect(admin.initiateRefund).toBe(true);
+  });
+
   it("does not treat PaymentSheet success as paid", () => {
     const pending = planOrderCancellation({
       status: "pending",

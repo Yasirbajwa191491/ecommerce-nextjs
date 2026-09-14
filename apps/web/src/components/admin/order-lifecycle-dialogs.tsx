@@ -12,7 +12,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { AdminRefundMode, AdminRefundPlan } from "@convex/lib/adminOrderTransitions";
+import { CancellationFeeBreakdown } from "@/components/orders/cancellation-fee-breakdown";
+import type {
+  AdminPaymentHandling,
+  AdminRefundMode,
+  AdminRefundPlan,
+} from "@convex/lib/adminOrderTransitions";
+import type { CancellationRefundBreakdown } from "@convex/lib/cancellationFee";
 
 export type OrderRefundConfirmDialogProps = {
   open: boolean;
@@ -22,6 +28,8 @@ export type OrderRefundConfirmDialogProps = {
   onModeChange: (mode: AdminRefundMode) => void;
   loading?: boolean;
   onConfirm: () => void;
+  feeBreakdown?: CancellationRefundBreakdown | null;
+  currency?: string;
 };
 
 export function OrderRefundConfirmDialog({
@@ -32,9 +40,12 @@ export function OrderRefundConfirmDialog({
   onModeChange,
   loading,
   onConfirm,
+  feeBreakdown,
+  currency = "USD",
 }: OrderRefundConfirmDialogProps) {
   const canConfirm =
     plan?.kind === "stripe_paid" || plan?.kind === "cod_paid";
+  const withPayment = mode !== "without_payment";
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -42,8 +53,8 @@ export function OrderRefundConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Refund this order?</AlertDialogTitle>
           <AlertDialogDescription>
-            Choose how money is returned. This cannot fake a Stripe refund by
-            only changing the order status.
+            Choose whether money is returned. Inventory is released once either
+            way.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -56,60 +67,86 @@ export function OrderRefundConfirmDialog({
           </Alert>
         ) : (
           <div className="space-y-3">
+            {feeBreakdown ? (
+              <CancellationFeeBreakdown
+                breakdown={feeBreakdown}
+                currency={currency}
+                paymentMethod={plan?.kind === "cod_paid" ? "cod" : "stripe"}
+                paymentCollected
+                withPayment={plan?.kind === "cod_paid" ? true : withPayment}
+              />
+            ) : null}
             <RadioGroup
               value={mode}
               onValueChange={(value) => {
-                if (value === "stripe_original" || value === "cod_manual") {
+                if (
+                  value === "stripe_original" ||
+                  value === "without_payment" ||
+                  value === "cod_manual"
+                ) {
                   onModeChange(value);
                 }
               }}
               className="grid gap-2"
             >
-              <label
-                htmlFor="refund-stripe-original"
-                className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
-              >
-                <RadioGroupItem
-                  value="stripe_original"
-                  id="refund-stripe-original"
-                  disabled={plan?.kind !== "stripe_paid"}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-medium">Refund original Stripe payment</span>
-                  <span className="mt-1 block text-muted-foreground">
-                    Returns funds to the same card the customer used on web
-                    Stripe Checkout or mobile PaymentSheet. Card details stay in
-                    Stripe; this app only uses the PaymentIntent ID. A new
-                    Checkout Session or Payment Link is not created, because
-                    those collect money rather than refund it.
+              {plan?.kind === "stripe_paid" ? (
+                <>
+                  <label
+                    htmlFor="refund-stripe-original"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+                  >
+                    <RadioGroupItem
+                      value="stripe_original"
+                      id="refund-stripe-original"
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium">Refund with payment</span>
+                      <span className="mt-1 block text-muted-foreground">
+                        Returns funds to the same card minus the cancellation
+                        fee. Uses the original PaymentIntent from web Checkout
+                        or mobile PaymentSheet.
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    htmlFor="refund-without-payment"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+                  >
+                    <RadioGroupItem
+                      value="without_payment"
+                      id="refund-without-payment"
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium">Refund without payment</span>
+                      <span className="mt-1 block text-muted-foreground">
+                        Marks the order refunded and releases inventory. Does
+                        not create a Stripe refund.
+                      </span>
+                    </span>
+                  </label>
+                </>
+              ) : (
+                <label
+                  htmlFor="refund-cod-manual"
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+                >
+                  <RadioGroupItem
+                    value="cod_manual"
+                    id="refund-cod-manual"
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium">Record refund without Stripe</span>
+                    <span className="mt-1 block text-muted-foreground">
+                      For cash on delivery after cash was collected. Return cash
+                      to the customer yourself minus the fee shown above.
+                    </span>
                   </span>
-                </span>
-              </label>
-              <label
-                htmlFor="refund-cod-manual"
-                className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
-              >
-                <RadioGroupItem
-                  value="cod_manual"
-                  id="refund-cod-manual"
-                  disabled={plan?.kind !== "cod_paid"}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-medium">Record refund without Stripe</span>
-                  <span className="mt-1 block text-muted-foreground">
-                    For cash on delivery after cash was collected. Confirms the
-                    cash was returned to the customer. Does not create a Stripe
-                    refund.
-                  </span>
-                </span>
-              </label>
+                </label>
+              )}
             </RadioGroup>
-            <p className="text-xs text-muted-foreground">
-              Inventory held for this order is released once when the refund is
-              recorded. Duplicate Stripe webhooks will not restore stock again.
-            </p>
           </div>
         )}
 
@@ -137,13 +174,29 @@ export function OrderCancelConfirmDialog({
   description,
   loading,
   onConfirm,
+  feeBreakdown,
+  currency = "USD",
+  paymentMethod,
+  paymentCollected,
+  showPaymentChoice,
+  paymentHandling,
+  onPaymentHandlingChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   description: string;
   loading?: boolean;
   onConfirm: () => void;
+  feeBreakdown?: CancellationRefundBreakdown | null;
+  currency?: string;
+  paymentMethod: "cod" | "stripe";
+  paymentCollected: boolean;
+  showPaymentChoice?: boolean;
+  paymentHandling?: AdminPaymentHandling;
+  onPaymentHandlingChange?: (value: AdminPaymentHandling) => void;
 }) {
+  const withPayment = paymentHandling !== "without_payment";
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-lg">
@@ -151,14 +204,68 @@ export function OrderCancelConfirmDialog({
           <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        <Alert className="text-left">
-          <AlertTitle>Inventory and payment</AlertTitle>
-          <AlertDescription>
-            Held stock is released exactly once. Unpaid Stripe payments are
-            cancelled. Paid Stripe orders start a real refund to the original
-            card. Unpaid COD stays unpaid/pending.
-          </AlertDescription>
-        </Alert>
+        {feeBreakdown ? (
+          <CancellationFeeBreakdown
+            breakdown={feeBreakdown}
+            currency={currency}
+            paymentMethod={paymentMethod}
+            paymentCollected={paymentCollected}
+            withPayment={showPaymentChoice ? withPayment : true}
+          />
+        ) : (
+          <Alert className="text-left">
+            <AlertTitle>Inventory and payment</AlertTitle>
+            <AlertDescription>
+              Held stock is released exactly once. Unpaid Stripe payments are
+              cancelled. Unpaid COD stays unpaid/pending.
+            </AlertDescription>
+          </Alert>
+        )}
+        {showPaymentChoice ? (
+          <RadioGroup
+            value={paymentHandling}
+            onValueChange={(value) => {
+              if (value === "with_payment" || value === "without_payment") {
+                onPaymentHandlingChange?.(value);
+              }
+            }}
+            className="grid gap-2"
+          >
+            <label
+              htmlFor="cancel-with-payment"
+              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+            >
+              <RadioGroupItem
+                value="with_payment"
+                id="cancel-with-payment"
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">Cancel with payment refund</span>
+                <span className="mt-1 block text-muted-foreground">
+                  Refund the original card minus the cancellation fee.
+                </span>
+              </span>
+            </label>
+            <label
+              htmlFor="cancel-without-payment"
+              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+            >
+              <RadioGroupItem
+                value="without_payment"
+                id="cancel-without-payment"
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">Cancel without payment refund</span>
+                <span className="mt-1 block text-muted-foreground">
+                  Marks the order cancelled and releases inventory. Does not
+                  refund Stripe.
+                </span>
+              </span>
+            </label>
+          </RadioGroup>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Back</AlertDialogCancel>
           <AlertDialogAction

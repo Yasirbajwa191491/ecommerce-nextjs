@@ -7,6 +7,8 @@ import { insertOrderStatusLog, insertPaymentLog } from "./orderLogs";
 import { buildNotificationEventKey } from "./orderNotificationLogic";
 import { planOrderCancellation } from "./orderCancellation";
 import type { PaymentStatus } from "./orderValidators";
+import { calculateCancellationRefundBreakdown } from "./cancellationFee";
+import { getCancellationRefundFeePercent } from "./settingsHelpers";
 
 export type CancellationActor = {
   actorType: "customer" | "admin" | "system";
@@ -20,6 +22,31 @@ export type ExecuteOrderCancellationResult = {
   refundPending?: boolean;
 };
 
+export async function scheduleStripeRefundWithCancellationFee(
+  ctx: MutationCtx,
+  args: {
+    order: Doc<"orders">;
+    reason: string;
+  }
+): Promise<{ refundPending: boolean }> {
+  if (!args.order.stripePaymentIntentId) {
+    return { refundPending: false };
+  }
+  const feePercent = await getCancellationRefundFeePercent(ctx);
+  const breakdown = calculateCancellationRefundBreakdown({
+    orderTotal: args.order.total,
+    feePercent,
+  });
+  await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
+    orderId: args.order._id,
+    paymentIntentId: args.order.stripePaymentIntentId,
+    reason: args.reason,
+    amountCents: breakdown.refundAmountCents,
+    feePercent: breakdown.feePercent,
+  });
+  return { refundPending: breakdown.refundAmountCents > 0 };
+}
+
 export async function executeOrderCancellation(
   ctx: MutationCtx,
   args: {
@@ -27,9 +54,14 @@ export async function executeOrderCancellation(
     actor: CancellationActor;
     reasonLabel?: string;
     description?: string;
+    audience?: "customer" | "admin";
+    initiateRefund?: boolean;
   }
 ): Promise<ExecuteOrderCancellationResult> {
-  const plan = planOrderCancellation(args.order);
+  const plan = planOrderCancellation(args.order, {
+    audience: args.audience ?? (args.actor.actorType === "customer" ? "customer" : "admin"),
+    initiateRefund: args.initiateRefund,
+  });
   if (!plan.allowed) {
     throw new ConvexError(plan.message ?? "This order cannot be cancelled.");
   }
@@ -112,16 +144,15 @@ export async function executeOrderCancellation(
   }
 
   if (plan.initiateRefund && args.order.stripePaymentIntentId) {
-    await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
-      orderId: args.order._id,
-      paymentIntentId: args.order.stripePaymentIntentId,
+    const refund = await scheduleStripeRefundWithCancellationFee(ctx, {
+      order: args.order,
       reason:
         args.actor.actorType === "admin" ? "admin_cancelled" : "customer_cancelled",
     });
     return {
       success: true,
       alreadyCancelled: alreadyCancelled || undefined,
-      refundPending: true,
+      refundPending: refund.refundPending,
     };
   }
 
