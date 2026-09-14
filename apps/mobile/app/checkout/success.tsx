@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PushStatusBanner } from "@/components/notifications/PushStatusBanner";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { OrderDeliverySummary } from "@/components/checkout/OrderDeliverySummary";
@@ -52,7 +53,6 @@ export default function CheckoutSuccessScreen() {
   const { clearCart } = useCart();
   const { showError } = useToast();
   const clearedRef = useRef(false);
-  const pushPromptRef = useRef(false);
   const pushNotifications = usePushNotificationContextOptional();
   const resumeMobilePaymentIntent = useAction(api.stripe.resumeMobilePaymentIntent);
   const { presentPayment } = usePaymentSheetCheckout();
@@ -143,33 +143,17 @@ export default function CheckoutSuccessScreen() {
   }, [isPendingStripe, order]);
 
   useEffect(() => {
-    if (!order || pushPromptRef.current || !pushNotifications) {
+    if (!order || !pushNotifications) {
       return;
     }
 
-    const email = order.customerEmail || customerEmail;
+    const email = (order.customerEmail || customerEmail)?.trim().toLowerCase();
     if (!email) {
       return;
     }
 
-    pushPromptRef.current = true;
-
-    if (
-      pushNotifications.permission === "granted" &&
-      pushNotifications.expoPushToken
-    ) {
-      return;
-    }
-
-    void pushNotifications.enablePushNotifications(email, accessToken);
-  }, [
-    accessToken,
-    customerEmail,
-    order,
-    pushNotifications,
-    pushNotifications?.expoPushToken,
-    pushNotifications?.permission,
-  ]);
+    void pushNotifications.syncPushTokenIfPermitted(email, accessToken);
+  }, [accessToken, customerEmail, order, pushNotifications]);
 
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
   const statusTitle = order ? getCheckoutSuccessTitle(order) : "Order confirmed!";
@@ -289,6 +273,11 @@ export default function CheckoutSuccessScreen() {
 
               <Text style={styles.title}>{statusTitle}</Text>
               <Text style={styles.subtitle}>{statusMessage}</Text>
+
+              <PushStatusBanner
+                customerEmail={(order.customerEmail || customerEmail)?.trim().toLowerCase()}
+                accessToken={accessToken}
+              />
 
               {isPendingStripe ? (
                 <Text style={styles.processingNote}>

@@ -76,11 +76,18 @@ function CheckoutSuccessContent() {
 
   useEffect(() => {
     if (!orderData?.order || clearedCartRef.current) return;
+    const order = orderData.order;
+    if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") {
+      return;
+    }
+    if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") {
+      return;
+    }
     clearedCartRef.current = true;
     clearCart();
     sessionStorage.removeItem("lastOrderNumber");
     sessionStorage.removeItem("lastOrderEmail");
-  }, [orderData?.order, clearCart]);
+  }, [orderData?.order, orderData?.order?.paymentMethod, orderData?.order?.paymentStatus, clearCart]);
 
   const isLoading = orderNumber && orderData === undefined;
   const order = orderData?.order;

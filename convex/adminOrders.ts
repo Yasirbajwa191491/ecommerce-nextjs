@@ -24,6 +24,15 @@ import {
   buildPaymentStatusEventKey,
   resolveOrderStatusTransitionEvent,
 } from "./lib/orderNotificationLogic";
+import {
+  applyOrderRefunded,
+  executeOrderCancellation,
+} from "./lib/orderLifecycle";
+import {
+  assertAdminRefundModeAllowed,
+  resolveAdminRefundPlan,
+  resolveAdminStatusAction,
+} from "./lib/adminOrderTransitions";
 
 const TRACKING_NOT_FOUND = "We couldn't find any orders matching your details.";
 
@@ -211,46 +220,88 @@ export const updateOrderStatus = mutation({
   args: {
     orderId: v.id("orders"),
     status: orderStatusValidator,
+    refundMode: v.optional(
+      v.union(v.literal("stripe_original"), v.literal("cod_manual"))
+    ),
   },
+  returns: v.object({
+    success: v.boolean(),
+    refundPending: v.optional(v.boolean()),
+    alreadyCancelled: v.optional(v.boolean()),
+    message: v.optional(v.string()),
+  }),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new ConvexError("Order not found");
 
-    if (order.status === args.status) {
-      return { success: true as const };
+    const action = resolveAdminStatusAction(order.status, args.status);
+    if (action.type === "noop") {
+      return { success: true };
+    }
+    if (action.type === "reject") {
+      throw new ConvexError(action.message);
+    }
+    if (action.type === "cancel") {
+      const result = await executeOrderCancellation(ctx, {
+        order,
+        actor: {
+          actorType: "admin",
+          actorUserId: admin._id,
+          actorName: admin.name || admin.email,
+        },
+        description: `Order cancelled by admin`,
+      });
+      return {
+        success: true,
+        alreadyCancelled: result.alreadyCancelled,
+        refundPending: result.refundPending,
+        message: result.refundPending
+          ? "Order cancelled. A Stripe refund to the original payment method is being processed."
+          : "Order cancelled and held inventory was released.",
+      };
+    }
+    if (action.type === "refund") {
+      return await initiateAdminRefund(ctx, {
+        order,
+        admin,
+        mode: args.refundMode,
+      });
     }
 
     const now = Date.now();
     const previousStatus = order.status;
 
     await ctx.db.patch(args.orderId, {
-      status: args.status,
+      status: action.nextStatus,
       updatedAt: now,
     });
 
     await insertOrderStatusLog(ctx, {
       orderId: args.orderId,
       event: "order_status_updated",
-      description: `Order status updated from ${previousStatus} to ${args.status}`,
+      description: `Order status updated from ${previousStatus} to ${action.nextStatus}`,
       previousStatus,
-      newStatus: args.status,
+      newStatus: action.nextStatus,
       actorType: "admin",
       actorUserId: admin._id,
       actorName: admin.name || admin.email,
       createdAt: now,
     });
 
-    const statusEvent = resolveOrderStatusTransitionEvent(previousStatus, args.status);
+    const statusEvent = resolveOrderStatusTransitionEvent(
+      previousStatus,
+      action.nextStatus
+    );
     if (statusEvent) {
       await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
         orderId: args.orderId,
         event: statusEvent,
-        eventKey: buildOrderStatusEventKey(args.orderId, args.status),
+        eventKey: buildOrderStatusEventKey(args.orderId, action.nextStatus),
       });
     }
 
-    if (args.status === "delivered" && previousStatus !== "delivered") {
+    if (action.nextStatus === "delivered" && previousStatus !== "delivered") {
       const delayDays = await ctx.runQuery(
         internal.settings.getReviewCallAutoDelayDays,
         {}
@@ -271,9 +322,103 @@ export const updateOrderStatus = mutation({
       }
     }
 
-    return { success: true as const };
+    return { success: true };
   },
 });
+
+export const cancelOrder = mutation({
+  args: { orderId: v.id("orders") },
+  returns: v.object({
+    success: v.boolean(),
+    alreadyCancelled: v.optional(v.boolean()),
+    refundPending: v.optional(v.boolean()),
+    message: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new ConvexError("Order not found");
+    const result = await executeOrderCancellation(ctx, {
+      order,
+      actor: {
+        actorType: "admin",
+        actorUserId: admin._id,
+        actorName: admin.name || admin.email,
+      },
+      description: "Order cancelled by admin",
+    });
+    return result;
+  },
+});
+
+export const initiateRefund = mutation({
+  args: {
+    orderId: v.id("orders"),
+    mode: v.union(v.literal("stripe_original"), v.literal("cod_manual")),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    refundPending: v.optional(v.boolean()),
+    message: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new ConvexError("Order not found");
+    return await initiateAdminRefund(ctx, { order, admin, mode: args.mode });
+  },
+});
+
+async function initiateAdminRefund(
+  ctx: import("./_generated/server").MutationCtx,
+  args: {
+    order: Doc<"orders">;
+    admin: { _id: string; name: string; email: string };
+    mode?: "stripe_original" | "cod_manual";
+  }
+): Promise<{
+  success: true;
+  refundPending?: boolean;
+  message?: string;
+}> {
+  const plan = resolveAdminRefundPlan(args.order);
+  const mode = args.mode ?? (plan.kind === "cod_paid" ? "cod_manual" : "stripe_original");
+  const allowed = assertAdminRefundModeAllowed(plan, mode);
+  if (!allowed.ok) {
+    throw new ConvexError(allowed.message);
+  }
+
+  if (mode === "stripe_original") {
+    if (!args.order.stripePaymentIntentId) {
+      throw new ConvexError(
+        "Cannot create a Stripe refund because this order has no payment intent."
+      );
+    }
+    await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
+      orderId: args.order._id,
+      paymentIntentId: args.order.stripePaymentIntentId,
+      reason: "admin_refund",
+    });
+    return {
+      success: true,
+      refundPending: true,
+      message:
+        "Stripe refund started. Money returns to the customer's original card from web Checkout or mobile PaymentSheet.",
+    };
+  }
+
+  await applyOrderRefunded(ctx, {
+    order: args.order,
+    actorType: "admin",
+    actorUserId: args.admin._id,
+    actorName: args.admin.name || args.admin.email,
+    description: "Cash on delivery payment recorded as refunded by admin",
+  });
+  return {
+    success: true,
+    message: "COD refund recorded. Held inventory was released.",
+  };
+}
 
 export const updateCodPaymentStatus = mutation({
   args: {
@@ -293,6 +438,20 @@ export const updateCodPaymentStatus = mutation({
 
     if (order.paymentStatus === args.paymentStatus) {
       return { success: true as const };
+    }
+
+    if (args.paymentStatus === "failed") {
+      throw new ConvexError(
+        "Do not mark unpaid COD as failed. Cancel the order to stop fulfillment and release inventory."
+      );
+    }
+
+    if (args.paymentStatus === "refunded") {
+      return await initiateAdminRefund(ctx, {
+        order,
+        admin,
+        mode: "cod_manual",
+      });
     }
 
     const now = Date.now();

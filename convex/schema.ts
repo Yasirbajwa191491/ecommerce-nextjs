@@ -377,7 +377,7 @@ export default defineSchema({
     accessToken: v.optional(v.string()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
-    /** Set when reserved stock has been returned for this order. */
+    /** Set only by inventory helpers when this order's held stock was returned. Never infer from status. */
     stockReleasedAt: v.optional(v.number()),
     reviewInvitationSentAt: v.optional(v.number()),
     deliveryMethod: v.optional(deliveryMethodTypeValidator),

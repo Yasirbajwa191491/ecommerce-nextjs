@@ -57,7 +57,6 @@ import {
 } from "@/lib/validation/checkout-form";
 import { getVisitorId } from "@/lib/visitor-id";
 import { useCart } from "@/providers/cart-context";
-import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useToast } from "@/providers/toast-context";
 
 type DeliveryMethodType = "standard" | "express" | "same_day" | "next_day" | "pickup";
@@ -80,7 +79,6 @@ export default function CheckoutScreen() {
   const rootStyle = useScreenRootStyle();
   const { cart, itemCount, hydrated, clearCart } = useCart();
   const { showError, showSuccess } = useToast();
-  const pushNotifications = usePushNotificationContextOptional();
   const { isOnline, isOffline, isConnected } = useNetworkStatus();
 
   useEffect(() => {
@@ -269,10 +267,6 @@ export default function CheckoutScreen() {
         await persistCustomer();
         await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
         await savePushEnrollmentProof(customerPayload.email, result.accessToken);
-        void pushNotifications?.enablePushNotifications(
-          customerPayload.email.trim().toLowerCase(),
-          result.accessToken
-        );
         clearCart();
         showSuccess("Order placed successfully!");
         router.replace({
@@ -339,11 +333,6 @@ export default function CheckoutScreen() {
         accessToken: result.accessToken,
         cartFingerprint,
       });
-      void pushNotifications?.enablePushNotifications(
-        customerPayload.email.trim().toLowerCase(),
-        result.accessToken
-      );
-
       if (result.alreadyPaid) {
         router.replace({
           pathname: "/checkout/success",
