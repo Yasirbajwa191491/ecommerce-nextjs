@@ -23,6 +23,7 @@ import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import {
   createTextStyles,
@@ -360,12 +361,10 @@ export function TrackOrderView() {
                   accessibilityLabel="Email address"
                 />
               ) : (
-                <Input
+                <PhoneInput
                   label="Phone number"
                   value={customerPhone}
-                  onChangeText={setCustomerPhone}
-                  placeholder="+1 800 555 0199"
-                  keyboardType="phone-pad"
+                  onChange={setCustomerPhone}
                   error={customerErrors.phone}
                   accessibilityLabel="Phone number"
                 />

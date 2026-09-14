@@ -50,10 +50,12 @@ describe("order SMS event mapping", () => {
     expect(SMS_ORDER_EVENTS).toEqual([
       "order.created",
       "payment.succeeded",
+      "order.confirmed",
       "order.processing",
       "order.shipped",
       "order.delivered",
       "order.cancelled",
+      "order.refunded",
     ]);
 
     for (const event of ALL_EVENTS) {
@@ -90,7 +92,10 @@ describe("order SMS bodies", () => {
     expect(body).toContain("Paid");
   });
 
-  it("builds processing, shipped, delivered, and cancelled updates", () => {
+  it("builds confirmed, processing, shipped, delivered, and cancelled updates", () => {
+    expect(
+      buildOrderSmsBody({ ...baseArgs, event: "order.confirmed" })
+    ).toMatch(/has been confirmed/);
     expect(
       buildOrderSmsBody({ ...baseArgs, event: "order.processing" })
     ).toMatch(/being prepared/);
@@ -107,12 +112,14 @@ describe("order SMS bodies", () => {
         cancellationReason: "Changed my mind",
       })
     ).toMatch(/cancelled/);
+    expect(
+      buildOrderSmsBody({ ...baseArgs, event: "order.refunded" })
+    ).toMatch(/refund/);
   });
 
   it("does not build SMS for events that are not in the shared channel list", () => {
-    expect(buildOrderSmsBody({ ...baseArgs, event: "order.confirmed" })).toBeNull();
-    expect(buildOrderSmsBody({ ...baseArgs, event: "order.refunded" })).toBeNull();
     expect(buildOrderSmsBody({ ...baseArgs, event: "payment.failed" })).toBeNull();
+    expect(buildOrderSmsBody({ ...baseArgs, event: "payment.received" })).toBeNull();
   });
 
   it("stays within the default single-segment length", () => {

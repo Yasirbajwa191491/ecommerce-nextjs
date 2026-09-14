@@ -14,10 +14,12 @@ export type SmsPaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export const SMS_ORDER_EVENTS = [
   "order.created",
   "payment.succeeded",
+  "order.confirmed",
   "order.processing",
   "order.shipped",
   "order.delivered",
   "order.cancelled",
+  "order.refunded",
 ] as const satisfies ReadonlyArray<OrderNotificationEvent>;
 
 export type SmsOrderEvent = (typeof SMS_ORDER_EVENTS)[number];
@@ -176,6 +178,15 @@ export function buildOrderStatusSmsBody(args: {
   const shortTrackUrl = shortenTrackUrl(args.trackOrderUrl);
 
   switch (args.event) {
+    case "order.confirmed":
+      return pickSmsBody(
+        [
+          `Hi ${firstName}, your ${args.orderNumber} has been confirmed. Track: ${shortTrackUrl}`,
+          `Hi ${firstName}, ${args.orderNumber} has been confirmed.`,
+          `${args.orderNumber} has been confirmed.`,
+        ],
+        maxLength
+      );
     case "order.processing":
       return pickSmsBody(
         [
@@ -226,6 +237,14 @@ export function buildOrderStatusSmsBody(args: {
         maxLength
       );
     }
+    case "order.refunded":
+      return pickSmsBody(
+        [
+          `Hi ${firstName}, your refund for ${args.orderNumber} has been processed.`,
+          `${args.orderNumber} refund has been processed.`,
+        ],
+        maxLength
+      );
     default: {
       const _exhaustive: never = args.event;
       return _exhaustive;

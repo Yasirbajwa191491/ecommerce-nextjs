@@ -414,7 +414,7 @@ export default function AdminSettingsPage() {
                       : editing?.key === "privacy_policy"
                         ? "Displayed on the Privacy Policy page. Use headings, lists, and links as needed."
                         : editing?.key === "sms_order_confirmation_enabled"
-                      ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. When enabled, the same Convex SMS path sends confirmation, processing, shipped, delivered, and cancelled texts on web and mobile. Off by default."
+                      ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. When enabled, customers get SMS for confirmation, confirmed, processing, shipped, delivered, cancelled, and refunded updates on web and mobile (COD and Stripe). Off by default."
                       : editing?.key === "review_call_auto_enabled"
                         ? "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup."
                           : editing?.key === "review_call_auto_delay_days"

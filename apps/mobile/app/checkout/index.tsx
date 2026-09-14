@@ -1,4 +1,4 @@
-import { formatCurrencyAmount } from "@ecommerce/shared";
+import { formatCurrencyAmount, normalizePhoneToE164 } from "@ecommerce/shared";
 import { useAction, useMutation } from "convex/react";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +18,9 @@ import { ScreenContainer } from "@/components/layout/ScreenContainer";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useDefaultPhoneCountry } from "@/hooks/useDefaultPhoneCountry";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useCartPricing } from "@/hooks/useCartPricing";
@@ -74,6 +76,7 @@ const emptyForm = (): CheckoutFormValues => ({
 
 export default function CheckoutScreen() {
   const styles = useThemedStyles(createIndexStyles);
+  const defaultPhoneCountry = useDefaultPhoneCountry();
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
@@ -121,7 +124,7 @@ export default function CheckoutScreen() {
           ...current,
           fullName: saved.fullName,
           email: saved.email,
-          phone: saved.phone,
+          phone: normalizePhoneToE164(saved.phone, defaultPhoneCountry),
           address: saved.address,
           notes: saved.notes ?? "",
         }));
@@ -131,7 +134,7 @@ export default function CheckoutScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [defaultPhoneCountry]);
 
   const errors = useMemo(() => validateCheckoutForm(form), [form]);
   const visibleErrors = useMemo(() => {
@@ -174,7 +177,7 @@ export default function CheckoutScreen() {
     const customerRecord = {
       fullName: form.fullName.trim(),
       email: form.email.trim(),
-      phone: form.phone.trim(),
+      phone: normalizePhoneToE164(form.phone, defaultPhoneCountry),
       address: form.address.trim(),
       notes: form.notes.trim() || undefined,
     };
@@ -192,7 +195,7 @@ export default function CheckoutScreen() {
     } catch {
       // Non-blocking
     }
-  }, [form, saveCustomerProfile]);
+  }, [defaultPhoneCountry, form, saveCustomerProfile]);
 
   const handleSubmit = useCallback(async () => {
     if (submittingRef.current) return;
@@ -241,7 +244,7 @@ export default function CheckoutScreen() {
     const customerPayload = {
       fullName: form.fullName.trim(),
       email: form.email.trim(),
-      phone: form.phone.trim(),
+      phone: normalizePhoneToE164(form.phone, defaultPhoneCountry),
       address: form.address.trim(),
       notes: form.notes.trim() || undefined,
       termsAccepted: form.termsAccepted,
@@ -401,6 +404,7 @@ export default function CheckoutScreen() {
     isFormValid,
     persistCustomer,
     selectedDeliveryMethod,
+    defaultPhoneCountry,
     pricingError,
     pricingLoading,
     priced,
@@ -538,15 +542,12 @@ export default function CheckoutScreen() {
               autoComplete="email"
               textContentType="emailAddress"
             />
-            <Input
+            <PhoneInput
               label="Phone number *"
               value={form.phone}
-              onChangeText={(value) => updateField("phone", value)}
+              onChange={(value) => updateField("phone", value)}
               onBlur={() => touchField("phone")}
               error={visibleErrors.phone}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
             />
           </View>
 

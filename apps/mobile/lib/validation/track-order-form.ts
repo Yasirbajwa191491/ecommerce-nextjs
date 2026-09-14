@@ -1,3 +1,5 @@
+import { isValidPhoneNumber } from "libphonenumber-js";
+
 export type TrackByOrderForm = {
   orderNumber: string;
   email?: string;
@@ -50,8 +52,8 @@ export function validateTrackByCustomerForm(
     errors.email = "Enter a valid email address";
   }
 
-  if (phone && phone.replace(/\D/g, "").length < 8) {
-    errors.phone = "Enter a valid phone number";
+  if (phone && !isValidPhoneNumber(phone)) {
+    errors.phone = "Enter a valid phone number with country code";
   }
 
   return errors;
