@@ -80,11 +80,7 @@ export const strings = {
     preferencesReset: "Preferences reset",
   },
   notifications: {
-    promptTitle: "Stay updated on your orders",
-    promptMessage:
-      "Get instant alerts for order confirmations, shipping updates, and payment reminders — even when the app is closed.",
     promptEnable: "Enable notifications",
-    promptLater: "Not now",
     pushOffTitle: "Device alerts are off",
     pushOffBody:
       "Turn on push notifications to receive order and payment updates on this phone.",

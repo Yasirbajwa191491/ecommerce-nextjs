@@ -10,7 +10,6 @@ import {
   useRef,
 } from "react";
 
-import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 import {
   configureForegroundNotificationBehavior,
   parsePushNotificationData,
@@ -250,7 +249,6 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   return (
     <PushNotificationContext.Provider value={value}>
       {children}
-      <PushPermissionPrompt />
     </PushNotificationContext.Provider>
   );
 }
