@@ -15,6 +15,10 @@ import {
   PaymentStatusBadge,
 } from "@/components/admin/order-status-badge";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import {
+  OrderCancelConfirmDialog,
+  OrderRefundConfirmDialog,
+} from "@/components/admin/order-lifecycle-dialogs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,25 +48,19 @@ import { formatCurrencyAmount } from "@/lib/currencies";
 import { normalizeOrderDiscountTotal, normalizeOrderItemLike } from "@/lib/order-item-display";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 import type { OrderStatus, PaymentStatus } from "@/types/order";
+import {
+  getSelectableAdminOrderStatuses,
+  resolveAdminRefundPlan,
+  type AdminRefundMode,
+} from "@convex/lib/adminOrderTransitions";
 import { ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReviewCollectionPanel } from "@/components/admin/review-collection-panel";
 import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 
-const ORDER_STATUSES: OrderStatus[] = [
-  "pending",
-  "processing",
-  "confirmed",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "refunded",
-];
-
 const COD_PAYMENT_STATUSES: PaymentStatus[] = [
   "pending",
   "paid",
-  "failed",
   "refunded",
 ];
 
@@ -99,7 +97,10 @@ export default function AdminOrderDetailPage() {
   const [pendingPaymentStatus, setPendingPaymentStatus] = useState<
     PaymentStatus | ""
   >("");
+  const [refundMode, setRefundMode] = useState<AdminRefundMode>("stripe_original");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
@@ -129,26 +130,88 @@ export default function AdminOrderDetailPage() {
   const selectedOrderStatus = pendingOrderStatus || order?.status || "pending";
   const selectedPaymentStatus =
     pendingPaymentStatus || order?.paymentStatus || "pending";
+  const selectableStatuses = useMemo(
+    () =>
+      order
+        ? getSelectableAdminOrderStatuses({
+            status: order.status,
+            paymentMethod: order.paymentMethod,
+            paymentStatus: order.paymentStatus,
+          })
+        : [],
+    [order]
+  );
+  const refundPlan = useMemo(
+    () =>
+      order
+        ? resolveAdminRefundPlan({
+            status: order.status,
+            paymentMethod: order.paymentMethod,
+            paymentStatus: order.paymentStatus,
+            stripePaymentIntentId: order.stripePaymentIntentId,
+          })
+        : null,
+    [order]
+  );
 
   const statusDialogDescription = useMemo(() => {
     if (!order || !pendingOrderStatus) return "";
     return `Change order status from "${order.status}" to "${pendingOrderStatus}"? This will be recorded in the transaction log.`;
   }, [order, pendingOrderStatus]);
 
+  const cancelDialogDescription = useMemo(() => {
+    if (!order) return "";
+    return `Cancel order ${order.orderNumber}? Held inventory will be released once.`;
+  }, [order]);
+
+  const selectableCodPaymentStatuses = useMemo(() => {
+    if (!order || order.paymentMethod !== "cod") return COD_PAYMENT_STATUSES;
+    const statuses: PaymentStatus[] = ["pending", "paid"];
+    if (order.paymentStatus === "paid" || order.paymentStatus === "refunded") {
+      statuses.push("refunded");
+    }
+    if (order.paymentStatus === "failed") {
+      statuses.push("failed");
+    }
+    return statuses;
+  }, [order]);
+
   const paymentDialogDescription = useMemo(() => {
     if (!order || !pendingPaymentStatus) return "";
+    if (pendingPaymentStatus === "paid") {
+      return `Mark cash as collected for order ${order.orderNumber}? This does not change inventory because stock was already held at checkout.`;
+    }
     return `Change payment status from "${order.paymentStatus}" to "${pendingPaymentStatus}"? This will be recorded in the transaction log.`;
   }, [order, pendingPaymentStatus]);
 
   const handleOrderStatusChange = (value: string) => {
     if (!order || value === order.status) return;
-    setPendingOrderStatus(value as OrderStatus);
+    const nextStatus = value as OrderStatus;
+    setPendingOrderStatus(nextStatus);
+    if (nextStatus === "cancelled") {
+      setCancelDialogOpen(true);
+      return;
+    }
+    if (nextStatus === "refunded") {
+      setRefundMode(
+        order.paymentMethod === "cod" ? "cod_manual" : "stripe_original"
+      );
+      setRefundDialogOpen(true);
+      return;
+    }
     setStatusDialogOpen(true);
   };
 
   const handlePaymentStatusChange = (value: string) => {
     if (!order || value === order.paymentStatus) return;
-    setPendingPaymentStatus(value as PaymentStatus);
+    const nextStatus = value as PaymentStatus;
+    setPendingPaymentStatus(nextStatus);
+    if (nextStatus === "refunded") {
+      setPendingOrderStatus("refunded");
+      setRefundMode("cod_manual");
+      setRefundDialogOpen(true);
+      return;
+    }
     setPaymentDialogOpen(true);
   };
 
@@ -156,9 +219,15 @@ export default function AdminOrderDetailPage() {
     if (!pendingOrderStatus) return;
     setIsUpdatingStatus(true);
     try {
-      await updateOrderStatus({ orderId, status: pendingOrderStatus });
-      toastSuccess("Order status updated");
+      const result = await updateOrderStatus({
+        orderId,
+        status: pendingOrderStatus,
+        ...(pendingOrderStatus === "refunded" ? { refundMode } : {}),
+      });
+      toastSuccess(result.message ?? "Order status updated");
       setStatusDialogOpen(false);
+      setCancelDialogOpen(false);
+      setRefundDialogOpen(false);
       setPendingOrderStatus("");
     } catch (error) {
       toastError(
@@ -545,7 +614,7 @@ export default function AdminOrderDetailPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COD_PAYMENT_STATUSES.map((status) => (
+                    {selectableCodPaymentStatuses.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </SelectItem>
@@ -615,7 +684,7 @@ export default function AdminOrderDetailPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ORDER_STATUSES.map((status) => (
+                  {selectableStatuses.map((status) => (
                     <SelectItem key={status} value={status}>
                       {status.charAt(0).toUpperCase() + status.slice(1)}
                     </SelectItem>
@@ -625,6 +694,10 @@ export default function AdminOrderDetailPage() {
             </div>
             <p className="text-sm text-muted-foreground">
               Current status: <OrderStatusBadge status={order.status} />
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Cancel and refund run the same backend inventory and payment
+              rules as the shop. Stripe payment status is webhook-authoritative.
             </p>
             {order.status === "delivered" ? (
               <Button
@@ -691,13 +764,43 @@ export default function AdminOrderDetailPage() {
 
       <DeleteConfirmDialog
         open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
+        onOpenChange={(open) => {
+          setStatusDialogOpen(open);
+          if (!open) setPendingOrderStatus("");
+        }}
         title="Update order status?"
         description={statusDialogDescription}
         confirmLabel="Confirm update"
         loading={isUpdatingStatus}
         loadingLabel="Updating..."
         confirmVariant="default"
+        onConfirm={confirmOrderStatusUpdate}
+      />
+
+      <OrderCancelConfirmDialog
+        open={cancelDialogOpen}
+        onOpenChange={(open) => {
+          setCancelDialogOpen(open);
+          if (!open) setPendingOrderStatus("");
+        }}
+        description={cancelDialogDescription}
+        loading={isUpdatingStatus}
+        onConfirm={confirmOrderStatusUpdate}
+      />
+
+      <OrderRefundConfirmDialog
+        open={refundDialogOpen}
+        onOpenChange={(open) => {
+          setRefundDialogOpen(open);
+          if (!open) {
+            setPendingOrderStatus("");
+            setPendingPaymentStatus("");
+          }
+        }}
+        plan={refundPlan}
+        mode={refundMode}
+        onModeChange={setRefundMode}
+        loading={isUpdatingStatus}
         onConfirm={confirmOrderStatusUpdate}
       />
 

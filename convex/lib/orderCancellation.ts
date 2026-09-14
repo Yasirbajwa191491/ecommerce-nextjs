@@ -1,4 +1,5 @@
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "./orderValidators";
+import { isHeldStockReleased } from "./inventory";
 
 export const CANCELLATION_REASONS = [
   "changed_mind",
@@ -32,28 +33,14 @@ export function parseCancellationReason(
     : undefined;
 }
 
-const STOCK_ALREADY_RELEASED_STATUSES: OrderStatus[] = [
-  "cancelled",
-  "expired",
-  "failed",
-  "refunded",
-];
-
-export function wasOrderStockReleased(
-  status: OrderStatus,
-  stockReleasedAt?: number
-): boolean {
-  if (stockReleasedAt != null) {
-    return true;
-  }
-  return STOCK_ALREADY_RELEASED_STATUSES.includes(status);
+export function wasOrderStockReleased(stockReleasedAt?: number): boolean {
+  return isHeldStockReleased(stockReleasedAt);
 }
 
 export function shouldReleaseStockOnCancel(order: {
-  status: OrderStatus;
   stockReleasedAt?: number;
 }): boolean {
-  return !wasOrderStockReleased(order.status, order.stockReleasedAt);
+  return !wasOrderStockReleased(order.stockReleasedAt);
 }
 
 export function resolveCancellationEligibility(order: {
@@ -99,11 +86,69 @@ export function shouldInitiateStripeRefund(order: {
 export function shouldCancelOpenStripePayment(order: {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
-  status: OrderStatus;
 }): boolean {
-  return (
-    order.paymentMethod === "stripe" &&
-    order.paymentStatus === "pending" &&
-    order.status === "pending"
-  );
+  return order.paymentMethod === "stripe" && order.paymentStatus === "pending";
+}
+
+export type OrderCancellationPlan = {
+  allowed: boolean;
+  isRepair: boolean;
+  message?: string;
+  nextStatus: "cancelled";
+  nextPaymentStatus: PaymentStatus;
+  releaseStock: boolean;
+  cancelOpenPayment: boolean;
+  initiateRefund: boolean;
+};
+
+export function planOrderCancellation(order: {
+  status: OrderStatus;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  stockReleasedAt?: number;
+  stripePaymentIntentId?: string;
+  stripeSessionId?: string;
+}): OrderCancellationPlan {
+  const initiateRefund = shouldInitiateStripeRefund(order);
+  const cancelOpenPayment = shouldCancelOpenStripePayment(order);
+  const releaseStock = shouldReleaseStockOnCancel(order);
+  const nextPaymentStatus: PaymentStatus = cancelOpenPayment
+    ? "failed"
+    : order.paymentStatus;
+
+  if (order.status === "cancelled") {
+    return {
+      allowed: true,
+      isRepair: true,
+      nextStatus: "cancelled",
+      nextPaymentStatus,
+      releaseStock,
+      cancelOpenPayment,
+      initiateRefund,
+    };
+  }
+
+  const eligibility = resolveCancellationEligibility(order);
+  if (!eligibility.canCancel) {
+    return {
+      allowed: false,
+      isRepair: false,
+      message: eligibility.message,
+      nextStatus: "cancelled",
+      nextPaymentStatus: order.paymentStatus,
+      releaseStock: false,
+      cancelOpenPayment: false,
+      initiateRefund: false,
+    };
+  }
+
+  return {
+    allowed: true,
+    isRepair: false,
+    nextStatus: "cancelled",
+    nextPaymentStatus,
+    releaseStock,
+    cancelOpenPayment,
+    initiateRefund,
+  };
 }

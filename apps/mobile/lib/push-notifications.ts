@@ -92,8 +92,12 @@ export async function getNotificationPermissionStatus(): Promise<NotificationPer
 
 export async function requestNotificationPermission(): Promise<NotificationPermissionState> {
   const current = await Notifications.getPermissionsAsync();
-  if (resolvePermissionState(current) === "granted") {
+  const currentState = resolvePermissionState(current);
+  if (currentState === "granted") {
     return "granted";
+  }
+  if (currentState === "denied") {
+    return "denied";
   }
 
   const requested = await Notifications.requestPermissionsAsync({

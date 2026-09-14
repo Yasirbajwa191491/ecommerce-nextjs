@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseCancellationReason,
+  planOrderCancellation,
   resolveCancellationEligibility,
   shouldCancelOpenStripePayment,
   shouldInitiateStripeRefund,
@@ -37,29 +38,23 @@ describe("order cancellation", () => {
     ).toBe(false);
   });
 
-  it("detects stock already released statuses", () => {
-    expect(wasOrderStockReleased("cancelled")).toBe(true);
-    expect(wasOrderStockReleased("confirmed")).toBe(false);
-    expect(wasOrderStockReleased("confirmed", 1710000000000)).toBe(true);
+  it("uses stockReleasedAt as the only release marker", () => {
+    expect(wasOrderStockReleased(undefined)).toBe(false);
+    expect(wasOrderStockReleased(1_710_000_000_000)).toBe(true);
   });
 
   it("releases stock only once per cancellation", () => {
+    expect(shouldReleaseStockOnCancel({})).toBe(true);
     expect(
       shouldReleaseStockOnCancel({
-        status: "pending",
+        stockReleasedAt: 1_710_000_000_000,
+      })
+    ).toBe(false);
+    expect(
+      shouldReleaseStockOnCancel({
+        stockReleasedAt: undefined,
       })
     ).toBe(true);
-    expect(
-      shouldReleaseStockOnCancel({
-        status: "confirmed",
-        stockReleasedAt: 1710000000000,
-      })
-    ).toBe(false);
-    expect(
-      shouldReleaseStockOnCancel({
-        status: "cancelled",
-      })
-    ).toBe(false);
   });
 
   it("requires stripe refund for paid card orders", () => {
@@ -82,7 +77,6 @@ describe("order cancellation", () => {
       shouldCancelOpenStripePayment({
         paymentMethod: "stripe",
         paymentStatus: "pending",
-        status: "pending",
       })
     ).toBe(true);
   });
@@ -90,5 +84,15 @@ describe("order cancellation", () => {
   it("validates cancellation reasons", () => {
     expect(parseCancellationReason("changed_mind")).toBe("changed_mind");
     expect(parseCancellationReason("invalid")).toBeUndefined();
+  });
+
+  it("keeps COD payment pending when the order is cancelled", () => {
+    expect(
+      planOrderCancellation({
+        status: "pending",
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+      }).nextPaymentStatus
+    ).toBe("pending");
   });
 });

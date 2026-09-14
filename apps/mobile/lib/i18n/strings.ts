@@ -83,7 +83,7 @@ export const strings = {
     promptEnable: "Enable notifications",
     pushOffTitle: "Device alerts are off",
     pushOffBody:
-      "Turn on push notifications to receive order and payment updates on this phone.",
+      "Turn on push notifications to receive order and payment updates on this phone. Your in-app notification history works either way.",
     pushBlockedTitle: "Notifications blocked",
     pushBlockedBody:
       "Push alerts are disabled in your phone settings. Open settings to allow notifications for this app.",

@@ -14,6 +14,7 @@ import type { Id } from "./_generated/dataModel";
 import type { PricedLineItem } from "./lib/orderPricing";
 import { getSiteUrl } from "./lib/siteUrl";
 import { isRetryablePaymentIntentStatus } from "./lib/stripePaymentIntent";
+import { isAlreadyRefundedStripeError } from "./lib/stripeRefund";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -727,6 +728,13 @@ export const refundUnfulfillablePayment = internalAction({
         stripePaymentIntentId: args.paymentIntentId,
       });
     } catch (error) {
+      if (isAlreadyRefundedStripeError(error)) {
+        await ctx.runMutation(internal.orders.markOrderRefunded, {
+          orderId: args.orderId,
+          stripePaymentIntentId: args.paymentIntentId,
+        });
+        return null;
+      }
       console.error(
         `[stripe] automatic refund failed orderId=${args.orderId} pi=${args.paymentIntentId}`,
         error

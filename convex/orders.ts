@@ -20,7 +20,8 @@ import type { DeliveryMethodType } from "./lib/productValidators";
 import {
   decrementStock,
   getOrderStockLines,
-  restoreStock,
+  holdStockIfNeeded,
+  releaseHeldStockIfNeeded,
 } from "./lib/inventory";
 import { insertOrderStatusLog, insertPaymentLog, getOrderStatusLogsForPublic } from "./lib/orderLogs";
 import { mergeVisitorIntoCustomer } from "./lib/recommendations/profileBuilder";
@@ -41,10 +42,11 @@ import {
   formatCancellationReason,
   parseCancellationReason,
   resolveCancellationEligibility,
-  shouldCancelOpenStripePayment,
-  shouldInitiateStripeRefund,
-  shouldReleaseStockOnCancel,
 } from "./lib/orderCancellation";
+import {
+  applyOrderRefunded,
+  executeOrderCancellation,
+} from "./lib/orderLifecycle";
 import {
   canReorderOrder,
   evaluateReorderLine,
@@ -277,42 +279,10 @@ export const acknowledgeStripeCheckoutCancelled = mutation({
       return null;
     }
 
-    const stockLines = await getOrderStockLines(ctx, order._id);
-    await restoreStock(ctx, stockLines);
-
-    const now = Date.now();
-    const previousStatus = order.status;
-    const previousPaymentStatus = order.paymentStatus;
-
-    await ctx.db.patch(order._id, {
-      status: "cancelled",
-      paymentStatus: "failed",
-      updatedAt: now,
-    });
-
-    await insertPaymentLog(ctx, {
-      orderId: order._id,
-      event: "payment_failed",
-      description: "Stripe checkout cancelled by customer",
-      previousPaymentStatus,
-      newPaymentStatus: "failed",
-      actorType: "system",
-      createdAt: now,
-    });
-
-    await insertOrderStatusLog(ctx, {
-      orderId: order._id,
-      event: "order_status_updated",
+    await executeOrderCancellation(ctx, {
+      order,
+      actor: { actorType: "customer" },
       description: "Order cancelled after payment was abandoned",
-      previousStatus,
-      newStatus: "cancelled",
-      actorType: "customer",
-      createdAt: now,
-    });
-
-    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
-      orderId: order._id,
-      event: "order.cancelled",
     });
 
     return null;
@@ -869,38 +839,15 @@ export const rollbackPendingStripeOrder = internalMutation({
       return { rolledBack: false as const };
     }
 
-    const stockLines = await getOrderStockLines(ctx, args.orderId);
-    await restoreStock(ctx, stockLines);
-
-    const now = Date.now();
-    const previousStatus = order.status;
-    const previousPaymentStatus = order.paymentStatus;
+    await executeOrderCancellation(ctx, {
+      order,
+      actor: { actorType: "system" },
+      description: "Order cancelled after Stripe session creation failed",
+    });
 
     await ctx.db.patch(args.orderId, {
-      status: "cancelled",
-      paymentStatus: "failed",
       idempotencyKey: `${order.idempotencyKey}:rolled_back:${order._id}`,
-      updatedAt: now,
-    });
-
-    await insertPaymentLog(ctx, {
-      orderId: args.orderId,
-      event: "payment_failed",
-      description: "Stripe checkout session creation failed; pending order rolled back",
-      previousPaymentStatus,
-      newPaymentStatus: "failed",
-      actorType: "system",
-      createdAt: now,
-    });
-
-    await insertOrderStatusLog(ctx, {
-      orderId: args.orderId,
-      event: "order_status_updated",
-      description: "Order cancelled after Stripe session creation failed",
-      previousStatus,
-      newStatus: "cancelled",
-      actorType: "system",
-      createdAt: now,
+      updatedAt: Date.now(),
     });
 
     return { rolledBack: true as const };
@@ -989,8 +936,14 @@ export const reviveStripeOrderForRetry = internalMutation({
       throw new ConvexError("This order is no longer awaiting payment.");
     }
 
-    const stockLines = await getOrderStockLines(ctx, args.orderId);
-    await decrementStock(ctx, stockLines);
+    const latest = await ctx.db.get(args.orderId);
+    if (!latest) throw new ConvexError("Order not found");
+    if (latest.stockReleasedAt != null) {
+      await holdStockIfNeeded(ctx, latest);
+    } else {
+      const stockLines = await getOrderStockLines(ctx, args.orderId);
+      await decrementStock(ctx, stockLines);
+    }
 
     const now = Date.now();
     const previousStatus = order.status;
@@ -1088,8 +1041,14 @@ export const markOrderPaid = internalMutation({
 
     if (paymentAction === "rereserve_and_fulfill") {
       try {
-        const stockLines = await getOrderStockLines(ctx, args.orderId);
-        await decrementStock(ctx, stockLines);
+        const latest = await ctx.db.get(args.orderId);
+        if (!latest) throw new ConvexError("Order not found");
+        if (latest.stockReleasedAt != null) {
+          await holdStockIfNeeded(ctx, latest);
+        } else {
+          const stockLines = await getOrderStockLines(ctx, args.orderId);
+          await decrementStock(ctx, stockLines);
+        }
       } catch {
         await insertPaymentLog(ctx, {
           orderId: args.orderId,
@@ -1195,9 +1154,8 @@ export const markOrderFailed = internalMutation({
       return { skipped: true as const };
     }
 
-    if (args.restoreInventory && order.status === "pending") {
-      const stockLines = await getOrderStockLines(ctx, args.orderId);
-      await restoreStock(ctx, stockLines);
+    if (args.restoreInventory) {
+      await releaseHeldStockIfNeeded(ctx, order);
     }
 
     const now = Date.now();
@@ -1253,56 +1211,15 @@ export const markOrderRefunded = internalMutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new ConvexError("Order not found");
 
-    if (order.paymentStatus === "refunded") {
-      return { success: true as const, alreadyRefunded: true as const };
-    }
-
-    const now = Date.now();
-    const previousStatus = order.status;
-    const previousPaymentStatus = order.paymentStatus;
-
-    await ctx.db.patch(args.orderId, {
-      status: "refunded",
-      paymentStatus: "refunded",
-      stripeTransactionId:
-        args.stripeTransactionId ?? order.stripeTransactionId,
-      stripePaymentIntentId:
-        args.stripePaymentIntentId ?? order.stripePaymentIntentId,
-      updatedAt: now,
-    });
-
-    await insertPaymentLog(ctx, {
-      orderId: args.orderId,
-      event: "payment_refunded",
-      description: "Payment refunded via Stripe",
-      previousPaymentStatus,
-      newPaymentStatus: "refunded",
-      actorType: "webhook",
+    const result = await applyOrderRefunded(ctx, {
+      order,
       stripeTransactionId: args.stripeTransactionId,
       stripePaymentIntentId: args.stripePaymentIntentId,
-      amount: order.total,
-      currency: order.currency,
-      createdAt: now,
+      actorType: "webhook",
+      description: "Payment refunded via Stripe",
     });
 
-    if (previousStatus !== "refunded") {
-      await insertOrderStatusLog(ctx, {
-        orderId: args.orderId,
-        event: "order_status_updated",
-        description: "Order status updated to refunded",
-        previousStatus,
-        newStatus: "refunded",
-        actorType: "system",
-        createdAt: now,
-      });
-    }
-
-    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
-      orderId: args.orderId,
-      event: "order.refunded",
-    });
-
-    return { success: true as const };
+    return { success: true as const, alreadyRefunded: result.alreadyRefunded };
   },
 });
 
@@ -1605,87 +1522,24 @@ export const cancelOrder = mutation({
       return { success: false, message: "You are not authorized to cancel this order." };
     }
 
-    if (order.status === "cancelled") {
-      return { success: true, alreadyCancelled: true };
-    }
-
-    const eligibility = resolveCancellationEligibility(order);
-    if (!eligibility.canCancel) {
-      return { success: false, message: eligibility.message ?? "This order cannot be cancelled." };
-    }
-
     const parsedReason = parseCancellationReason(args.cancellationReason);
     const reasonLabel = parsedReason ? formatCancellationReason(parsedReason) : undefined;
 
-    const now = Date.now();
-    const previousStatus = order.status;
-    const previousPaymentStatus = order.paymentStatus;
-    const initiateRefund = shouldInitiateStripeRefund(order);
-    const cancelOpenPayment = shouldCancelOpenStripePayment(order);
-    const releaseStock = shouldReleaseStockOnCancel(order);
-
-    const nextPaymentStatus = cancelOpenPayment
-      ? ("failed" as const)
-      : order.paymentStatus;
-
-    await ctx.db.patch(order._id, {
-      status: "cancelled",
-      paymentStatus: nextPaymentStatus,
-      updatedAt: now,
-      ...(releaseStock ? { stockReleasedAt: now } : {}),
-    });
-
-    if (releaseStock) {
-      const stockLines = await getOrderStockLines(ctx, order._id);
-      await restoreStock(ctx, stockLines);
-    }
-
-    if (cancelOpenPayment && previousPaymentStatus !== "failed") {
-      await insertPaymentLog(ctx, {
-        orderId: order._id,
-        event: "payment_failed",
-        description: "Payment cancelled by customer",
-        previousPaymentStatus,
-        newPaymentStatus: "failed",
-        actorType: "system",
-        createdAt: now,
+    try {
+      const result = await executeOrderCancellation(ctx, {
+        order,
+        actor: { actorType: "customer" },
+        reasonLabel,
       });
+      return result;
+    } catch (error) {
+      const message =
+        error instanceof ConvexError
+          ? String(error.data)
+          : error instanceof Error
+            ? error.message
+            : "This order cannot be cancelled.";
+      return { success: false, message };
     }
-
-    await insertOrderStatusLog(ctx, {
-      orderId: order._id,
-      event: "order_status_updated",
-      description: reasonLabel
-        ? `Order cancelled by customer (${reasonLabel})`
-        : "Order cancelled by customer",
-      previousStatus,
-      newStatus: "cancelled",
-      actorType: "customer",
-      createdAt: now,
-    });
-
-    await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
-      orderId: order._id,
-      event: "order.cancelled",
-      cancellationReason: reasonLabel,
-    });
-
-    if (cancelOpenPayment && (order.stripePaymentIntentId || order.stripeSessionId)) {
-      await ctx.scheduler.runAfter(0, internal.stripe.cancelOpenStripePayment, {
-        paymentIntentId: order.stripePaymentIntentId,
-        checkoutSessionId: order.stripeSessionId,
-      });
-    }
-
-    if (initiateRefund && order.stripePaymentIntentId) {
-      await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
-        orderId: order._id,
-        paymentIntentId: order.stripePaymentIntentId,
-        reason: "customer_cancelled",
-      });
-      return { success: true, refundPending: true };
-    }
-
-    return { success: true };
   },
 });

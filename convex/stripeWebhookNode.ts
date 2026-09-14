@@ -7,6 +7,7 @@ import { v } from "convex/values";
 import type { DataModel, Id } from "./_generated/dataModel";
 import type { GenericActionCtx } from "convex/server";
 import { isRetryablePaymentIntentStatus } from "./lib/stripePaymentIntent";
+import { isFullChargeRefund } from "./lib/stripeRefund";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -244,6 +245,12 @@ export const processWebhook = internalAction({
             : charge.payment_intent?.id;
         const resolvedOrderId = orderId;
         if (resolvedOrderId) {
+          if (!isFullChargeRefund(charge)) {
+            console.log(
+              `[stripe] Ignoring partial refund for orderId=${resolvedOrderId} amount=${charge.amount} refunded=${charge.amount_refunded}`
+            );
+            break;
+          }
           await ctx.runMutation(internal.orders.markOrderRefunded, {
             orderId: resolvedOrderId,
             stripeTransactionId: charge.id,

@@ -56,7 +56,7 @@ export function usePushNotifications() {
         await ensureAndroidNotificationChannel();
 
         let permission = await getNotificationPermissionStatus();
-        if (options?.requestPermission && permission !== "granted") {
+        if (options?.requestPermission && permission === "undetermined") {
           addMonitoringBreadcrumb("Push permission requested", "notification");
           permission = await requestNotificationPermission();
         }

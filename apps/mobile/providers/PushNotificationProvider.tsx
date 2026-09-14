@@ -12,6 +12,7 @@ import {
 
 import {
   configureForegroundNotificationBehavior,
+  getNotificationPermissionStatus,
   parsePushNotificationData,
 } from "@/lib/push-notifications";
 import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
@@ -37,7 +38,10 @@ type PushNotificationContextValue = {
   expoPushToken: string | null;
   syncing: boolean;
   lastError: string | null;
+  /** User-initiated: may show the OS prompt once when still undetermined. Never prompts if denied. */
   enablePushNotifications: (customerEmail?: string, accessToken?: string) => Promise<boolean>;
+  /** Silent registration when OS permission is already granted — never shows the OS prompt. */
+  syncPushTokenIfPermitted: (customerEmail?: string, accessToken?: string) => Promise<boolean>;
   syncPreferences: (preferences: {
     orderUpdates: boolean;
     paymentUpdates: boolean;
@@ -84,21 +88,45 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   const markReadByEventKey = useMutation(api.inAppNotifications.markReadByEventKey);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
-  const enablePushNotifications = useCallback(
+  const resolveEnrollment = useCallback(
     async (customerEmail?: string, accessToken?: string) => {
-      const enrollment =
-        customerEmail != null
-          ? { customerEmail, accessToken }
-          : await resolvePushEnrollmentCredentials();
+      if (customerEmail != null) {
+        return { customerEmail, accessToken };
+      }
+      return resolvePushEnrollmentCredentials();
+    },
+    []
+  );
 
+  const syncPushTokenIfPermitted = useCallback(
+    async (customerEmail?: string, accessToken?: string) => {
+      const enrollment = await resolveEnrollment(customerEmail, accessToken);
       const result = await push.syncTokenWithBackend({
-        requestPermission: true,
-        customerEmail: customerEmail ?? enrollment?.customerEmail,
-        accessToken: accessToken ?? enrollment?.accessToken,
+        requestPermission: false,
+        customerEmail: enrollment?.customerEmail,
+        accessToken: enrollment?.accessToken,
       });
       return result.success;
     },
-    [push]
+    [push, resolveEnrollment]
+  );
+
+  const enablePushNotifications = useCallback(
+    async (customerEmail?: string, accessToken?: string) => {
+      const osPermission = await getNotificationPermissionStatus();
+      if (osPermission === "denied") {
+        return false;
+      }
+
+      const enrollment = await resolveEnrollment(customerEmail, accessToken);
+      const result = await push.syncTokenWithBackend({
+        requestPermission: true,
+        customerEmail: enrollment?.customerEmail,
+        accessToken: enrollment?.accessToken,
+      });
+      return result.success;
+    },
+    [push, resolveEnrollment]
   );
 
   const navigateFromNotification = useCallback(
@@ -242,6 +270,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     syncing: push.syncing,
     lastError: push.lastError,
     enablePushNotifications,
+    syncPushTokenIfPermitted,
     syncPreferences: push.syncPreferences,
     deactivateCurrentDevice: push.deactivateCurrentDevice,
   };

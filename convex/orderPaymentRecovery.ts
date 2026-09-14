@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getOrderStockLines, restoreStock } from "./lib/inventory";
+import { releaseHeldStockIfNeeded } from "./lib/inventory";
 import { insertOrderStatusLog, insertPaymentLog } from "./lib/orderLogs";
 import {
   buildNotificationEventKey,
@@ -96,8 +96,7 @@ export const expirePendingStripeOrder = internalMutation({
       return null;
     }
 
-    const stockLines = await getOrderStockLines(ctx, args.orderId);
-    await restoreStock(ctx, stockLines);
+    await releaseHeldStockIfNeeded(ctx, order);
 
     const now = Date.now();
     const previousStatus = order.status;
