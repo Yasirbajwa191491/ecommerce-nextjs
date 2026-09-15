@@ -164,7 +164,14 @@ export default function CheckoutSuccessScreen() {
     }
 
     void pushNotifications.syncPushTokenIfPermitted(email, accessToken);
-  }, [accessToken, customerEmail, order, pushNotifications]);
+  }, [
+    accessToken,
+    customerEmail,
+    order,
+    pushNotifications,
+    pushNotifications?.expoPushToken,
+    pushNotifications?.permission,
+  ]);
 
   const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
   const statusTitle = order ? getCheckoutSuccessTitle(order) : "Order confirmed!";

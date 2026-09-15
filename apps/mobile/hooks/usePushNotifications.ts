@@ -174,25 +174,26 @@ export function usePushNotifications() {
   }, [deactivatePushTokensForVisitor, visitorId]);
 
   const refreshPermissionAndSync = useCallback(async () => {
-    if (!visitorId) {
-      return;
-    }
-
     const permission = await getNotificationPermissionStatus();
+
     if (permission === "granted") {
+      if (!visitorId) {
+        setState((current) => ({
+          ...current,
+          permission: "granted",
+          syncing: false,
+        }));
+        return;
+      }
       await syncTokenWithBackend();
       return;
     }
 
-    setState((current) => {
-      if (current.permission === "granted" && current.expoPushToken) {
-        return current;
-      }
-      return {
-        ...current,
-        permission: permission === "denied" ? "denied" : "undetermined",
-      };
-    });
+    setState((current) => ({
+      ...current,
+      permission: permission === "denied" ? "denied" : "undetermined",
+      syncing: false,
+    }));
   }, [syncTokenWithBackend, visitorId]);
 
   useEffect(() => {

@@ -81,6 +81,10 @@ export const strings = {
   },
   notifications: {
     promptEnable: "Enable notifications",
+    registerDevice: "Register this device",
+    pushRegisterTitle: "Finish enabling device alerts",
+    pushRegisterBody:
+      "Notification permission is on. Register this device to receive order alerts on your phone.",
     pushOffTitle: "Device alerts are off",
     pushOffBody:
       "Turn on push notifications to receive order and payment updates on this phone. Your in-app notification history works either way.",

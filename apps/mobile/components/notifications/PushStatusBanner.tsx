@@ -1,10 +1,11 @@
 import * as Linking from "expo-linking";
-import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { AppState, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
 import { strings } from "@/lib/i18n/strings";
+import { getNotificationPermissionStatus } from "@/lib/push-notifications";
 import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
@@ -19,6 +20,51 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
   const { colors } = useTheme();
   const { showError, showSuccess } = useToast();
   const [enabling, setEnabling] = useState(false);
+  const [osPermission, setOsPermission] = useState<
+    "granted" | "denied" | "undetermined" | null
+  >(null);
+
+  const refreshOsPermission = useCallback(async () => {
+    const permission = await getNotificationPermissionStatus();
+    setOsPermission(permission);
+    return permission;
+  }, []);
+
+  const registerDevice = useCallback(async () => {
+    if (!push) {
+      return false;
+    }
+
+    const permission = await refreshOsPermission();
+    if (permission === "granted") {
+      await push.refreshPushRegistration();
+      return push.syncPushTokenIfPermitted(customerEmail, accessToken);
+    }
+
+    return push.enablePushNotifications(customerEmail, accessToken);
+  }, [accessToken, customerEmail, push, refreshOsPermission]);
+
+  useEffect(() => {
+    void refreshOsPermission();
+  }, [push?.expoPushToken, push?.permission, refreshOsPermission]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !push) {
+        return;
+      }
+
+      void (async () => {
+        const permission = await refreshOsPermission();
+        if (permission === "granted") {
+          await push.refreshPushRegistration();
+          await push.syncPushTokenIfPermitted(customerEmail, accessToken);
+        }
+      })();
+    });
+
+    return () => subscription.remove();
+  }, [accessToken, customerEmail, push, refreshOsPermission]);
 
   const handleEnable = useCallback(async () => {
     if (!push || enabling) {
@@ -27,13 +73,14 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
 
     setEnabling(true);
     try {
-      const enabled = await push.enablePushNotifications(customerEmail, accessToken);
-      if (enabled) {
+      const registered = await registerDevice();
+      if (registered) {
         showSuccess(strings.notifications.pushEnabled);
         return;
       }
 
-      if (push.permission === "denied") {
+      const permission = await refreshOsPermission();
+      if (permission === "denied") {
         showError(strings.notifications.pushBlocked);
         return;
       }
@@ -42,17 +89,25 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
     } finally {
       setEnabling(false);
     }
-  }, [accessToken, customerEmail, enabling, push, showError, showSuccess]);
+  }, [enabling, push, refreshOsPermission, registerDevice, showError, showSuccess]);
 
   const handleOpenSettings = useCallback(async () => {
     await Linking.openSettings();
   }, []);
 
-  if (!push || push.permission === "granted") {
+  if (!push) {
     return null;
   }
 
-  const isDenied = push.permission === "denied";
+  const permission = osPermission ?? push.permission;
+  const isFullyRegistered = permission === "granted" && Boolean(push.expoPushToken);
+
+  if (isFullyRegistered) {
+    return null;
+  }
+
+  const isDenied = permission === "denied";
+  const isGrantedNeedsSync = permission === "granted" && !push.expoPushToken;
 
   return (
     <View
@@ -65,10 +120,18 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
       ]}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>
-        {isDenied ? strings.notifications.pushBlockedTitle : strings.notifications.pushOffTitle}
+        {isDenied
+          ? strings.notifications.pushBlockedTitle
+          : isGrantedNeedsSync
+            ? strings.notifications.pushRegisterTitle
+            : strings.notifications.pushOffTitle}
       </Text>
       <Text style={[styles.body, { color: colors.mutedForeground }]}>
-        {isDenied ? strings.notifications.pushBlockedBody : strings.notifications.pushOffBody}
+        {isDenied
+          ? strings.notifications.pushBlockedBody
+          : isGrantedNeedsSync
+            ? strings.notifications.pushRegisterBody
+            : strings.notifications.pushOffBody}
       </Text>
       <View style={styles.actions}>
         {isDenied ? (
@@ -80,7 +143,13 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
           />
         ) : (
           <Button
-            label={enabling ? strings.common.loading : strings.notifications.promptEnable}
+            label={
+              enabling
+                ? strings.common.loading
+                : isGrantedNeedsSync
+                  ? strings.notifications.registerDevice
+                  : strings.notifications.promptEnable
+            }
             variant="primary"
             size="sm"
             onPress={() => void handleEnable()}

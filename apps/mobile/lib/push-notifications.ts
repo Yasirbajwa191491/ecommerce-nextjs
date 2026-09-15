@@ -106,6 +106,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
       allowBadge: true,
       allowSound: true,
     },
+    android: {},
   });
 
   return resolvePermissionState(requested);
