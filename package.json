@@ -32,6 +32,7 @@
     "mobile": "node scripts/mobile-start.mjs",
     "mobile:tunnel": "node scripts/mobile-start.mjs --tunnel",
     "mobile:env": "node scripts/sync-mobile-env.mjs",
+    "mobile:validate-push": "node scripts/validate-mobile-push.mjs",
     "typecheck:mobile": "npm run typecheck --workspace @ecommerce/mobile",
     "typecheck:all": "npm run typecheck && npm run typecheck:mobile",
     "lint:mobile": "npm run lint --workspace @ecommerce/mobile",
