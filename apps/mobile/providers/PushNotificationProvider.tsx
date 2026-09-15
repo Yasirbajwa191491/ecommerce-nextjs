@@ -118,11 +118,15 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         accessToken: enrollment?.accessToken,
       });
       if (result.success) {
-        await push.syncPreferences({
-          orderUpdates: preferences.notifications.orderUpdates,
-          paymentUpdates: preferences.notifications.paymentUpdates,
-          promotionalNotifications: preferences.notifications.promotions,
-        });
+        try {
+          await push.syncPreferences({
+            orderUpdates: preferences.notifications.orderUpdates,
+            paymentUpdates: preferences.notifications.paymentUpdates,
+            promotionalNotifications: preferences.notifications.promotions,
+          });
+        } catch (error) {
+          logAppError(error, { segment: "push-preferences-sync", expected: true });
+        }
       }
       return result.success;
     },
@@ -143,11 +147,15 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         accessToken: enrollment?.accessToken,
       });
       if (result.success) {
-        await push.syncPreferences({
-          orderUpdates: preferences.notifications.orderUpdates,
-          paymentUpdates: preferences.notifications.paymentUpdates,
-          promotionalNotifications: preferences.notifications.promotions,
-        });
+        try {
+          await push.syncPreferences({
+            orderUpdates: preferences.notifications.orderUpdates,
+            paymentUpdates: preferences.notifications.paymentUpdates,
+            promotionalNotifications: preferences.notifications.promotions,
+          });
+        } catch (error) {
+          logAppError(error, { segment: "push-preferences-sync", expected: true });
+        }
       }
       return result.success;
     },

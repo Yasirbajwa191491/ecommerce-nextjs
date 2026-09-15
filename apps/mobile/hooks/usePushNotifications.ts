@@ -10,6 +10,7 @@ import { addMonitoringBreadcrumb } from "@/lib/monitoring/sentry";
 import { getPushExecutionEnvironment } from "@/lib/push-environment";
 import {
   ensureAndroidNotificationChannel,
+  formatPushRegistrationError,
   getExpoPushToken,
   getNotificationPermissionStatus,
   getPushPlatform,
@@ -126,7 +127,8 @@ export function usePushNotifications() {
 
         return { success: true as const };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Push sync failed";
+        const rawMessage = error instanceof Error ? error.message : "Push sync failed";
+        const message = formatPushRegistrationError(rawMessage);
         const permission = await getNotificationPermissionStatus();
         addMonitoringBreadcrumb("Push token sync failed", "notification");
         logAppError(error, { segment: "push-token-sync" });

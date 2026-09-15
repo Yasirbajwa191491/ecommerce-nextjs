@@ -85,7 +85,7 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
         return;
       }
 
-      showError(strings.notifications.pushEnableFailed);
+      showError(push.lastError ?? strings.notifications.pushEnableFailed);
     } finally {
       setEnabling(false);
     }
