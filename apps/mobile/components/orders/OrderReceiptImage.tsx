@@ -132,10 +132,13 @@ export const OrderReceiptImage = forwardRef<View, OrderReceiptImageProps>(
           </View>
 
           <View style={styles.footer}>
-            <View style={styles.qrBlock}>
-              <ReceiptQrCode orderNumber={receipt.orderNumber} size={96} />
-              <Text style={styles.qrCaption}>Scan to track order</Text>
-            </View>
+            {receipt.qrUrl ? (
+              <View style={styles.qrBlock}>
+                <ReceiptQrCode value={receipt.qrUrl} size={200} />
+                <Text style={styles.qrCaption}>Scan to track your order</Text>
+                <Text style={styles.qrHint}>Open in app or browser</Text>
+              </View>
+            ) : null}
             <View style={styles.footerInfo}>
               <Text style={styles.footerStore}>{receipt.storeName}</Text>
               <Text style={styles.footerLine}>{receipt.storeAddress}</Text>
@@ -369,8 +372,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: "row",
-    gap: 16,
-    alignItems: "center",
+    gap: 12,
+    alignItems: "flex-start",
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
@@ -378,11 +381,17 @@ const styles = StyleSheet.create({
   qrBlock: {
     alignItems: "center",
     gap: 6,
+    flexShrink: 0,
   },
   qrCaption: {
     fontSize: 10,
     fontWeight: "600",
     color: "#6b7280",
+    textAlign: "center",
+  },
+  qrHint: {
+    fontSize: 9,
+    color: "#9ca3af",
     textAlign: "center",
   },
   footerInfo: {

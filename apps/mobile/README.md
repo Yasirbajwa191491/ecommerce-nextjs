@@ -12,7 +12,10 @@ The mobile app uses the **same production Convex** as the live website.
 
 ```
 EXPO_PUBLIC_CONVEX_URL=https://hip-salamander-864.convex.cloud
+EXPO_PUBLIC_SITE_URL=https://your-production-domain.com
 ```
+
+`EXPO_PUBLIC_SITE_URL` must match the public HTTPS storefront (same host as Convex `SITE_URL`). It enables App Link intent filters in `app.config.ts`. Without it, QR codes still work as **HTTPS web links**; they will not auto-open the app until App Links / Universal Links are configured and a native build is installed.
 
 Do **not** run `npm run mobile:env` for production — that copies the local/dev Convex URL from `.env.local`.
 
@@ -63,4 +66,6 @@ If `expo start` fails with `TypeError: fetch failed`, dev scripts use `--offline
 
 ## Deep links
 
-Scheme: `ecommerce://` — e.g. `ecommerce://product/[id]`
+- Custom scheme: `ecommerce://qr/<type>/<token>` (and existing product/order paths)
+- Canonical QR: `https://<EXPO_PUBLIC_SITE_URL>/qr/<type>/<token>` — **HTTPS web-compatible**
+- App Links / Universal Links: configured in `app.config.ts` when `EXPO_PUBLIC_SITE_URL` is set; requires hosted `.well-known` files + native rebuild + device verification before claiming they work

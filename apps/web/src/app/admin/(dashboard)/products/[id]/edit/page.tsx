@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import type { Id } from "@convex/_generated/dataModel";
 import { ProductFormFields, ProductFormSidebarFlags } from "@/components/admin/product-form/product-form";
 import { ProductFormLayout } from "@/components/admin/product-form/product-form-layout";
+import { ProductQrPanel } from "@/components/admin/product-qr-panel";
 import { useProductForm } from "@/hooks/use-product-form";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -51,7 +52,12 @@ export default function EditProductPage() {
       discardOpen={formState.discardOpen}
       onDiscardConfirm={formState.confirmDiscard}
       onDiscardCancel={formState.cancelDiscard}
-      sidebar={<ProductFormSidebarFlags {...fieldProps} />}
+      sidebar={
+        <div className="space-y-4">
+          <ProductFormSidebarFlags {...fieldProps} />
+          <ProductQrPanel productId={productId} />
+        </div>
+      }
     >
       <ProductFormFields {...fieldProps} />
     </ProductFormLayout>

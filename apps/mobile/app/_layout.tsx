@@ -42,6 +42,8 @@ function RootStack() {
         <Stack.Screen name="visual-search" options={{ headerShown: false }} />
         <Stack.Screen name="checkout" options={{ headerShown: false }} />
         <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="qr/[type]/[token]" options={{ headerShown: false }} />
+        <Stack.Screen name="scan" options={{ headerShown: false }} />
         <Stack.Screen name="orders" options={{ headerShown: false }} />
         <Stack.Screen name="about" options={{ headerShown: false }} />
         <Stack.Screen name="contact" options={{ headerShown: false }} />

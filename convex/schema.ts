@@ -53,6 +53,12 @@ import {
   recommendationSectionTypeValidator,
   recommendationSourceValidator,
 } from "./lib/recommendations/validators";
+import {
+  qrScanEventValidator,
+  qrScanSourceValidator,
+  qrStatusValidator,
+  qrTypeValidator,
+} from "./lib/qrValidators";
 
 export const productImageValidator = v.object({
   url: v.string(),
@@ -477,6 +483,49 @@ export default defineSchema({
   })
     .index("by_order_id", ["orderId"])
     .index("by_promotion_id", ["promotionId"]),
+
+  qrCodes: defineTable({
+    token: v.string(),
+    tokenHash: v.string(),
+    type: qrTypeValidator,
+    targetId: v.string(),
+    orderId: v.optional(v.id("orders")),
+    productId: v.optional(v.id("products")),
+    status: qrStatusValidator,
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastScannedAt: v.optional(v.number()),
+    lastScanSource: v.optional(qrScanSourceValidator),
+    createdBy: v.optional(v.string()),
+    metadata: v.optional(
+      v.object({
+        amount: v.optional(v.number()),
+        currency: v.optional(v.string()),
+      })
+    ),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_type_target_status", ["type", "targetId", "status"])
+    .index("by_order_type", ["orderId", "type"])
+    .index("by_product_type", ["productId", "type"])
+    .index("by_created_at", ["createdAt"]),
+
+  qrScans: defineTable({
+    qrCodeId: v.optional(v.id("qrCodes")),
+    type: v.optional(qrTypeValidator),
+    targetId: v.optional(v.string()),
+    scannedAt: v.number(),
+    source: qrScanSourceValidator,
+    platform: v.optional(v.string()),
+    authenticatedUserId: v.optional(v.string()),
+    success: v.boolean(),
+    /** resolved | payment_initiated | payment_succeeded — not implied by success alone */
+    event: v.optional(qrScanEventValidator),
+    failureReason: v.optional(v.string()),
+  })
+    .index("by_qr_code", ["qrCodeId"])
+    .index("by_scanned_at", ["scannedAt"]),
 
   productReviews: defineTable({
     productId: v.id("products"),

@@ -1,21 +1,23 @@
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { buildReceiptQrMatrix } from "@/lib/order-receipt-qr";
+import { buildQrMatrix } from "@/lib/order-receipt-qr";
 
 type ReceiptQrCodeProps = {
-  orderNumber: string;
+  value: string;
   size?: number;
 };
 
-export function ReceiptQrCode({ orderNumber, size = 96 }: ReceiptQrCodeProps) {
-  const matrix = useMemo(() => buildReceiptQrMatrix(orderNumber), [orderNumber]);
-  const cellSize = size / matrix.size;
+export function ReceiptQrCode({ value, size = 200 }: ReceiptQrCodeProps) {
+  const matrix = useMemo(() => buildQrMatrix(value), [value]);
+  const quietZone = Math.max(10, Math.round(size * 0.1));
+  const inner = size - quietZone * 2;
+  const cellSize = inner / matrix.size;
 
   return (
     <View
-      style={[styles.container, { width: size, height: size }]}
-      accessibilityLabel="Order tracking QR code"
+      style={[styles.container, { width: size, height: size, padding: quietZone }]}
+      accessibilityLabel="Secure order tracking QR code"
     >
       {Array.from({ length: matrix.size }, (_, row) => (
         <View key={`qr-row-${row}`} style={styles.row}>
