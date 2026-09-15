@@ -15,6 +15,7 @@ function readConvexUrl(sourcePath) {
 }
 
 const convexUrl = readConvexUrl(envLocalPath);
+const siteUrl = readEnvValue(envLocalPath, "NEXT_PUBLIC_SITE_URL") || readEnvValue(envLocalPath, "SITE_URL");
 
 if (!convexUrl) {
   console.error(
@@ -23,10 +24,23 @@ if (!convexUrl) {
   process.exit(1);
 }
 
+function readEnvValue(sourcePath, key) {
+  if (!existsSync(sourcePath)) return null;
+  const content = readFileSync(sourcePath, "utf8");
+  const match = content.match(new RegExp(`^${key}=(.+)$`, "m"));
+  return match?.[1]?.trim() ?? null;
+}
+
 writeFileSync(
   mobileEnvPath,
-  `# Auto-synced from root .env.local — do not commit\nEXPO_PUBLIC_CONVEX_URL=${convexUrl}\n`,
+  `# Auto-synced from root .env.local — do not commit\nEXPO_PUBLIC_CONVEX_URL=${convexUrl}\n${
+    siteUrl ? `EXPO_PUBLIC_SITE_URL=${siteUrl.replace(/\/$/, "")}\n` : ""
+  }`,
   "utf8"
 );
 
-console.log(`[sync-mobile-env] Wrote apps/mobile/.env with EXPO_PUBLIC_CONVEX_URL=${convexUrl}`);
+console.log(
+  `[sync-mobile-env] Wrote apps/mobile/.env with EXPO_PUBLIC_CONVEX_URL=${convexUrl}${
+    siteUrl ? ` EXPO_PUBLIC_SITE_URL=${siteUrl.replace(/\/$/, "")}` : ""
+  }`
+);

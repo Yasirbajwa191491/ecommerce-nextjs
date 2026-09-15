@@ -67,12 +67,21 @@ export function usePushNotifications() {
             permission === "denied" ? "Push permission denied" : "Push permission undetermined",
             "notification"
           );
+          const failureMessage =
+            permission === "denied"
+              ? "Notifications are blocked in system settings."
+              : "Notification permission was not granted.";
           setState((current) => ({
             ...current,
             permission: permission === "denied" ? "denied" : "undetermined",
             syncing: false,
+            lastError: failureMessage,
           }));
-          return { success: false as const, reason: "permission_denied" as const };
+          return {
+            success: false as const,
+            reason: "permission_denied" as const,
+            message: failureMessage,
+          };
         }
 
         const token = await getExpoPushToken();
@@ -90,16 +99,28 @@ export function usePushNotifications() {
           options?.accessToken?.trim() ?? enrollment?.accessToken ?? undefined;
 
         if (!token || !visitorId || !customerEmail) {
+          const failureMessage = !visitorId
+            ? "This device is still initializing. Close and reopen the app, then try again."
+            : !customerEmail
+              ? "Complete checkout once so we can link order alerts to your account."
+              : formatPushRegistrationError(
+                  "Could not obtain an Expo push token. Rebuild the APK with Firebase (FCM) configured in EAS."
+                );
           setState((current) => ({
             ...current,
             permission: "granted",
             expoPushToken: token,
             syncing: false,
-            lastError: customerEmail ? null : "missing_customer_email",
+            lastError: failureMessage,
           }));
           return {
             success: false as const,
-            reason: customerEmail ? "missing_token" : ("missing_customer_email" as const),
+            reason: !token
+              ? ("missing_token" as const)
+              : !customerEmail
+                ? ("missing_customer_email" as const)
+                : ("missing_visitor_id" as const),
+            message: failureMessage,
           };
         }
 

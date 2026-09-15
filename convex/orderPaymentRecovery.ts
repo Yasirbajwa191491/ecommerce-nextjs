@@ -11,6 +11,7 @@ import {
   getStripePendingOrderExpiryMinutes,
   getStripePendingOrderReminderMinutes,
 } from "./lib/settingsHelpers";
+import { revokeQrsForOrderType } from "./lib/qrCodes";
 
 export const schedulePendingStripeOrderRecovery = internalMutation({
   args: {
@@ -144,6 +145,8 @@ export const expirePendingStripeOrder = internalMutation({
     }
 
     console.info(`[notifications] expired pending stripe orderId=${args.orderId}`);
+
+    await revokeQrsForOrderType(ctx, args.orderId, "payment");
 
     return null;
   },

@@ -41,10 +41,11 @@ export type OrderReceiptDto = {
   tax: number;
   total: number;
   currency: string;
-  paidAt?: number;
+    paidAt?: number;
   receiptKind: ReceiptKind;
   receiptTitle: string;
   receiptNote?: string;
+  qrUrl?: string;
   promotions: Array<{
     promotionName: string;
     promotionDescription?: string;
@@ -121,8 +122,9 @@ export function buildOrderReceiptDto(args: {
     phone: string;
     address: string;
   };
+  qrUrl?: string;
 }): OrderReceiptDto {
-  const { order, items, promotions, branding } = args;
+  const { order, items, promotions, branding, qrUrl } = args;
   const eligibility = resolveReceiptEligibility(order);
 
   return {
@@ -163,6 +165,7 @@ export function buildOrderReceiptDto(args: {
     receiptKind: eligibility.kind,
     receiptTitle: eligibility.title,
     receiptNote: eligibility.note,
+    qrUrl,
     promotions,
   };
 }

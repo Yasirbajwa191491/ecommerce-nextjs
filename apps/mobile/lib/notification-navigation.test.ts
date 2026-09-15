@@ -23,6 +23,17 @@ describe("notification navigation", () => {
     });
   });
 
+  it("maps QR links to the QR resolver screen", () => {
+    const href = resolveNotificationHref("/qr/order/tokentokentokentokentokentoken12");
+    expect(href).toEqual({
+      pathname: "/qr/[type]/[token]",
+      params: {
+        type: "order",
+        token: "tokentokentokentokentokentoken12",
+      },
+    });
+  });
+
   it("maps order links to the order detail screen", () => {
     const href = resolveNotificationHref("/order/ORD-456?orderNumber=ORD-456", {
       customerEmail: "user@example.com",

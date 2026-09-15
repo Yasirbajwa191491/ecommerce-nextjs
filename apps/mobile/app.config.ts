@@ -18,6 +18,13 @@ const plugins: NonNullable<ExpoConfig["plugins"]> = [
     },
   ],
   [
+    "expo-camera",
+    {
+      cameraPermission: "Allow camera access to scan order, product, and payment QR codes.",
+      recordAudioAndroid: false,
+    },
+  ],
+  [
     "@stripe/stripe-react-native",
     {
       merchantIdentifier: process.env.EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER ?? "",
@@ -69,7 +76,7 @@ const config: ExpoConfig = {
     bundleIdentifier: "com.yasir.ecommerce",
     infoPlist: {
       NSCameraUsageDescription:
-        "Allow camera access to take a photo and find similar products.",
+        "Allow camera access to scan QR codes and take a photo to find similar products.",
       NSPhotoLibraryUsageDescription:
         "Allow access to your photo library to save receipts and find similar products.",
       NSPhotoLibraryAddUsageDescription:
@@ -105,6 +112,11 @@ const config: ExpoConfig = {
               action: "VIEW" as const,
               autoVerify: true,
               data: [
+                {
+                  scheme: "https" as const,
+                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
+                  pathPrefix: "/qr",
+                },
                 {
                   scheme: "https" as const,
                   host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,

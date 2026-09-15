@@ -64,6 +64,7 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewCollectionPanel } from "@/components/admin/review-collection-panel";
+import { OrderQrPanel } from "@/components/admin/order-qr-panel";
 import { OrderDeliverySummary } from "@/components/orders/order-delivery-summary";
 
 const COD_PAYMENT_STATUSES: PaymentStatus[] = [
@@ -761,6 +762,14 @@ export default function AdminOrderDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <OrderQrPanel
+        orderId={orderId}
+        paymentMethod={order.paymentMethod}
+        paymentStatus={order.paymentStatus}
+        total={order.total}
+        currency={order.currency}
+      />
 
       {order ? (
         <ReviewCollectionPanel

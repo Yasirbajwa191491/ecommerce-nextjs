@@ -58,6 +58,9 @@ export const getOrderReceipt = action({
     }
 
     const branding = await ctx.runQuery(internal.settings.getPublicBranding, {});
+    const qr = await ctx.runMutation(internal.qr.getReceiptOrderQrUrl, {
+      orderId: order._id,
+    });
 
     const receipt = buildOrderReceiptDto({
       order,
@@ -69,6 +72,7 @@ export const getOrderReceipt = action({
         savingsAmount: promo.savingsAmount,
       })),
       branding,
+      qrUrl: qr.url,
     });
 
     return { found: true as const, receipt };

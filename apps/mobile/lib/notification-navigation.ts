@@ -53,6 +53,18 @@ export function resolveNotificationHref(
     } as Href;
   }
 
+  const qrMatch = pathname.match(/^\/qr\/(product|order|package|payment|delivery)\/([^/?#]+)/);
+  if (qrMatch) {
+    return {
+      pathname: "/qr/[type]/[token]",
+      params: {
+        type: qrMatch[1] ?? "",
+        token: decodeURIComponent(qrMatch[2] ?? ""),
+        ...queryParams,
+      },
+    } as unknown as Href;
+  }
+
   return trimmed as Href;
 }
 

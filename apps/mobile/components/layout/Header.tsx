@@ -25,6 +25,7 @@ type HeaderProps = {
   showCompare?: boolean;
   showSettings?: boolean;
   showNotifications?: boolean;
+  showScan?: boolean;
   onBack?: () => void;
 };
 
@@ -39,6 +40,7 @@ export function Header({
   showCompare = false,
   showSettings = false,
   showNotifications = false,
+  showScan = false,
   onBack,
 }: HeaderProps) {
   const insets = useSafeAreaInsets();
@@ -142,6 +144,17 @@ export function Header({
         )}
 
         <View style={styles.actions}>
+          {showScan ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Scan QR code"
+              hitSlop={8}
+              onPress={() => router.push("/scan" as Href)}
+              style={styles.iconButton}
+            >
+              <Ionicons name="qr-code-outline" size={sizes.iconMd} color={colors.foreground} />
+            </Pressable>
+          ) : null}
           {showNotifications ? <NotificationBell color={colors.foreground} /> : null}
           {showSettings ? (
             <Pressable

@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.yasir.ecommerce",
+        "paths": ["/qr/*", "/track-order/*", "/product/*", "/order/*"]
+      }
+    ]
+  }
+}

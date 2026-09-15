@@ -15,13 +15,17 @@ const qrCore = require("qrcode/lib/core/qrcode") as {
 };
 
 /** Pure-JS QR matrix for React Native (no canvas). */
-export function buildReceiptQrMatrix(orderNumber: string): QrMatrix {
-  const trackUrl = buildReceiptTrackUrl(orderNumber);
-  const encoded = qrCore.create(trackUrl, { errorCorrectionLevel: "M" });
+export function buildQrMatrix(value: string): QrMatrix {
+  const encoded = qrCore.create(value, { errorCorrectionLevel: "M" });
   const { modules } = encoded;
 
   return {
     size: modules.size,
     get: (row, col) => Boolean(modules.get(row, col)),
   };
+}
+
+/** @deprecated Prefer encoding the secure qrUrl from the backend. */
+export function buildReceiptQrMatrix(orderNumber: string): QrMatrix {
+  return buildQrMatrix(buildReceiptTrackUrl(orderNumber));
 }

@@ -56,6 +56,10 @@ import {
   type ReorderAvailableItem,
   type ReorderUnavailableItem,
 } from "./lib/orderReorder";
+import {
+  ensureOrderQr,
+  revokePaymentQrsAfterPaid,
+} from "./lib/qrCodes";
 
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -522,6 +526,8 @@ async function createCashOrderHandler(
       event: "order.created",
     });
 
+    await ensureOrderQr(ctx, orderId);
+
     const created = await ctx.db.get(orderId);
     return {
       orderId,
@@ -660,6 +666,7 @@ export const createPendingStripeOrder = internalMutation({
             "This checkout was already submitted. Please refresh and try again."
           );
         }
+        await ensureOrderQr(ctx, existing._id);
         return {
           orderId: existing._id,
           orderNumber: existing.orderNumber,
@@ -681,6 +688,7 @@ export const createPendingStripeOrder = internalMutation({
       }
 
       const priced = await loadPricedSnapshot(ctx, existing._id);
+      await ensureOrderQr(ctx, existing._id);
       return {
         orderId: existing._id,
         orderNumber: existing.orderNumber,
@@ -760,6 +768,8 @@ export const createPendingStripeOrder = internalMutation({
       internal.orderPaymentRecovery.schedulePendingStripeOrderRecovery,
       { orderId }
     );
+
+    await ensureOrderQr(ctx, orderId);
 
     const order = await ctx.db.get(orderId);
     return {
@@ -1118,6 +1128,8 @@ export const markOrderPaid = internalMutation({
       orderId: args.orderId,
       event: "payment.succeeded",
     });
+
+    await revokePaymentQrsAfterPaid(ctx, args.orderId);
 
     await ctx.scheduler.runAfter(0, internal.subscriberInterests.recomputeForEmail, {
       email: order.customerEmail,

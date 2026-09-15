@@ -15,6 +15,8 @@ import type { PricedLineItem } from "./lib/orderPricing";
 import { getSiteUrl } from "./lib/siteUrl";
 import { isRetryablePaymentIntentStatus } from "./lib/stripePaymentIntent";
 import { shouldRetryAutomaticStripeRefund } from "./lib/stripeRefund";
+import { isQrTokenShape, parseQrPayload } from "./lib/qrTokens";
+import { isPendingStripeOrder } from "./lib/orderNotificationLogic";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -321,6 +323,189 @@ export const resumeCheckoutSession = action({
       cancelUrl: args.cancelUrl,
       rollbackOnFailure: false,
     });
+  },
+});
+
+export const startPaymentFromQr = action({
+  args: {
+    tokenOrUrl: v.string(),
+    platform: v.union(v.literal("mobile"), v.literal("web")),
+  },
+  returns: v.object({
+    orderNumber: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    alreadyPaid: v.optional(v.boolean()),
+    clientSecret: v.optional(v.string()),
+    checkoutUrl: v.optional(v.string()),
+    customerName: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    customerAddress: v.optional(v.string()),
+  }),
+  handler: async (ctx, args): Promise<{
+    orderNumber: string;
+    amount: number;
+    currency: string;
+    alreadyPaid?: boolean;
+    clientSecret?: string;
+    checkoutUrl?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string;
+    customerAddress?: string;
+  }> => {
+    const parsed = parseQrPayload(args.tokenOrUrl);
+    const token = parsed?.token ?? args.tokenOrUrl.trim();
+    if (!isQrTokenShape(token)) {
+      throw new ConvexError("This QR code is not valid.");
+    }
+
+    const lookup = (await ctx.runQuery(internal.qr.lookupPaymentOrderFromQr, {
+      token,
+    })) as {
+      code: string;
+      order?: {
+        _id: Id<"orders">;
+        orderNumber: string;
+        total: number;
+        currency: string;
+        customerName: string;
+        customerEmail: string;
+        customerPhone: string;
+        customerAddress: string;
+        paymentMethod: "cod" | "stripe";
+        paymentStatus: "pending" | "paid" | "failed" | "refunded";
+        status: string;
+        idempotencyKey: string;
+        stripePaymentIntentId?: string;
+        stripeSessionId?: string;
+      };
+    };
+    if (lookup.code === "already_paid" && "order" in lookup && lookup.order) {
+      return {
+        orderNumber: lookup.order.orderNumber,
+        amount: lookup.order.total,
+        currency: lookup.order.currency,
+        alreadyPaid: true,
+      };
+    }
+    if (lookup.code !== "ok" || !("order" in lookup) || !lookup.order) {
+      const message =
+        lookup.code === "expired"
+          ? "This payment QR code has expired."
+          : lookup.code === "cancelled"
+            ? "This order is no longer available for payment."
+            : "This payment link is no longer available.";
+      throw new ConvexError(message);
+    }
+
+    const order = lookup.order;
+    let priced: {
+      currency: string;
+      total: number;
+      shipping: number;
+      deliveryCharge?: number;
+      deliveryMethod?: string;
+      deliveryMethodLabel?: string;
+      tax?: number;
+      items: PricedLineItem[];
+    } = await ctx.runQuery(internal.orders.getPricedSnapshotForOrder, {
+      orderId: order._id,
+    });
+    let existingPaymentIntentId: string | undefined = order.stripePaymentIntentId;
+    let existingSessionId: string | undefined = order.stripeSessionId;
+
+    const pending = isPendingStripeOrder({
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      status: order.status as
+        | "pending"
+        | "processing"
+        | "confirmed"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
+        | "refunded"
+        | "failed"
+        | "expired",
+    });
+
+    if (!pending) {
+      const revived = await ctx.runMutation(internal.orders.reviveStripeOrderForRetry, {
+        orderId: order._id,
+      });
+      if (revived.alreadyPaid) {
+        return {
+          orderNumber: order.orderNumber,
+          amount: order.total,
+          currency: order.currency,
+          alreadyPaid: true,
+        };
+      }
+      if (!revived.priced) {
+        throw new ConvexError("This payment link is no longer available.");
+      }
+      priced = revived.priced;
+      existingPaymentIntentId = revived.stripePaymentIntentId;
+      existingSessionId = undefined;
+    }
+
+    // Payment is not confirmed here — Stripe webhook records payment_succeeded.
+    await ctx.runMutation(internal.qr.recordScanInternal, {
+      token,
+      source: args.platform === "mobile" ? "mobile" : "web",
+      platform: args.platform,
+      success: true,
+      event: "payment_initiated",
+    });
+
+    const customer = {
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      customerAddress: order.customerAddress,
+    };
+
+    if (args.platform === "mobile") {
+      const result = await createPaymentIntentForOrder(ctx, {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        customerEmail: order.customerEmail,
+        idempotencyKey: order.idempotencyKey,
+        priced,
+        existingPaymentIntentId,
+        rollbackOnFailure: false,
+      });
+      return {
+        orderNumber: result.orderNumber,
+        amount: priced.total,
+        currency: priced.currency,
+        alreadyPaid: result.alreadyPaid,
+        clientSecret: result.clientSecret || undefined,
+        ...customer,
+      };
+    }
+
+    const appUrl = getSiteUrl().replace(/\/$/, "");
+    const session = await createStripeSessionForOrder(ctx, {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      customerEmail: order.customerEmail,
+      idempotencyKey: order.idempotencyKey,
+      priced,
+      existingSessionId,
+      successUrl: `${appUrl}/checkout/success`,
+      cancelUrl: `${appUrl}/qr/payment/${encodeURIComponent(token)}`,
+      rollbackOnFailure: false,
+    });
+    return {
+      orderNumber: session.orderNumber,
+      amount: priced.total,
+      currency: priced.currency,
+      checkoutUrl: session.url,
+      ...customer,
+    };
   },
 });
 

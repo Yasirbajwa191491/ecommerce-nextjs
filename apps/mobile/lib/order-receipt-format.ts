@@ -35,6 +35,7 @@ export type OrderReceiptData = {
   receiptKind: "final" | "provisional" | "record";
   receiptTitle: string;
   receiptNote?: string;
+  qrUrl?: string;
   promotions: Array<{
     promotionName: string;
     promotionDescription?: string;
@@ -163,6 +164,11 @@ export function buildReceiptHtml(receipt: OrderReceiptData): string {
     </div>
   </section>
   ${promoRows}
+  ${
+    receipt.qrUrl
+      ? `<section><p class="muted">Scan the receipt QR or open this link to track your order:</p><p>${escapeHtml(receipt.qrUrl)}</p></section>`
+      : ""
+  }
 </body>
 </html>`;
 }

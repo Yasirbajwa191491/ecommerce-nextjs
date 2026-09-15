@@ -9,6 +9,7 @@ import { planOrderCancellation } from "./orderCancellation";
 import type { PaymentStatus } from "./orderValidators";
 import { calculateCancellationRefundBreakdown } from "./cancellationFee";
 import { getCancellationRefundFeePercent } from "./settingsHelpers";
+import { revokeQrsForOrderType } from "./qrCodes";
 
 export type CancellationActor = {
   actorType: "customer" | "admin" | "system";
@@ -132,6 +133,8 @@ export async function executeOrderCancellation(
       cancellationReason: args.reasonLabel,
     });
   }
+
+  await revokeQrsForOrderType(ctx, args.order._id, "payment");
 
   if (
     plan.cancelOpenPayment &&

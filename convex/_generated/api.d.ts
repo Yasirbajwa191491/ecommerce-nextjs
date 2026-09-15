@@ -144,6 +144,9 @@ import type * as lib_promotions_storefrontEnrich from "../lib/promotions/storefr
 import type * as lib_promotions_types from "../lib/promotions/types.js";
 import type * as lib_publicOrderDto from "../lib/publicOrderDto.js";
 import type * as lib_pushTokenSelection from "../lib/pushTokenSelection.js";
+import type * as lib_qrCodes from "../lib/qrCodes.js";
+import type * as lib_qrTokens from "../lib/qrTokens.js";
+import type * as lib_qrValidators from "../lib/qrValidators.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_recommendations_constants from "../lib/recommendations/constants.js";
 import type * as lib_recommendations_identity from "../lib/recommendations/identity.js";
@@ -204,6 +207,7 @@ import type * as providerHealthMutations from "../providerHealthMutations.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as pushNotificationsInternal from "../pushNotificationsInternal.js";
 import type * as pushTokens from "../pushTokens.js";
+import type * as qr from "../qr.js";
 import type * as recommendationActions from "../recommendationActions.js";
 import type * as recommendationAiActions from "../recommendationAiActions.js";
 import type * as recommendationMutations from "../recommendationMutations.js";
@@ -393,6 +397,9 @@ declare const fullApi: ApiFromModules<{
   "lib/promotions/types": typeof lib_promotions_types;
   "lib/publicOrderDto": typeof lib_publicOrderDto;
   "lib/pushTokenSelection": typeof lib_pushTokenSelection;
+  "lib/qrCodes": typeof lib_qrCodes;
+  "lib/qrTokens": typeof lib_qrTokens;
+  "lib/qrValidators": typeof lib_qrValidators;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/recommendations/constants": typeof lib_recommendations_constants;
   "lib/recommendations/identity": typeof lib_recommendations_identity;
@@ -453,6 +460,7 @@ declare const fullApi: ApiFromModules<{
   pushNotifications: typeof pushNotifications;
   pushNotificationsInternal: typeof pushNotificationsInternal;
   pushTokens: typeof pushTokens;
+  qr: typeof qr;
   recommendationActions: typeof recommendationActions;
   recommendationAiActions: typeof recommendationAiActions;
   recommendationMutations: typeof recommendationMutations;

@@ -367,6 +367,8 @@ Home → Shop → AI → Cart → Track
 | `/category/[slug]` | Category catalog |
 | `/search` | Hybrid search, trending/suggestions, recent searches, visual-search entry |
 | `/visual-search` | Camera or library; HEIC→JPEG on iOS |
+| `/scan` | Live QR scanner (order, product, payment) |
+| `/qr/[type]/[token]` | Secure QR resolver |
 | `/wishlist` | Convex + offline queue |
 | `/promotions` | Active promotions |
 | `/checkout`, `/checkout/success`, `/checkout/cancel` | COD / Stripe |
@@ -647,6 +649,8 @@ Legend: **Yes** = implemented on that surface · **Partial** = limited or differ
 | Stripe | Yes | Yes | Yes |
 | COD | Yes | Yes | Yes |
 | Order tracking | Yes | Yes | Yes |
+| QR order / product / payment | Yes | Yes | Yes |
+| QR package / delivery (staff) | Yes (admin) | Scan opens; staff actions on web | Yes |
 | Post-delivery reviews | Yes | Yes | Yes |
 | PDP review read / AI summary | Yes | Yes | Yes |
 | Contact form | Yes | Yes | Yes |
@@ -701,6 +705,7 @@ Optional ops (already coded, need env): Vapi keys, Twilio, Resend, n8n, `AI_WORK
 | [AGENTS.md](../AGENTS.md) | Agent/dev conventions |
 | [apps/mobile/README.md](../apps/mobile/README.md) | Expo runbook |
 | [apps/mobile/docs/mobile-ux.md](../apps/mobile/docs/mobile-ux.md) | Mobile UX, theme, offline rules |
+| [docs/qr-architecture.md](qr-architecture.md) | QR tokens, scanners, Stripe payment QR |
 | [docs/visual-search-architecture.md](visual-search-architecture.md) | SigLIP/CLIP / n8n |
 | [docs/recommendation-platform.md](recommendation-platform.md) | Recommendation engine |
 | [docs/review-ai-architecture.md](review-ai-architecture.md) | Review AI pipeline |
