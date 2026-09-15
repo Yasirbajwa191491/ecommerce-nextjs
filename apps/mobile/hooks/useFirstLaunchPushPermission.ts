@@ -42,15 +42,21 @@ export function useFirstLaunchPushPermission({
           getNotificationPermissionStatus(),
         ]);
 
-        if (cancelled || alreadyPrompted || permission !== "undetermined") {
-          if (permission === "granted") {
-            await onPermissionResolved();
-          }
+        if (cancelled || alreadyPrompted) {
           return;
         }
 
-        await markFirstLaunchOsPromptShown();
+        if (permission === "granted") {
+          await onPermissionResolved();
+          return;
+        }
+
+        if (permission === "denied") {
+          return;
+        }
+
         await requestNotificationPermission();
+        await markFirstLaunchOsPromptShown();
         if (!cancelled) {
           await onPermissionResolved();
         }

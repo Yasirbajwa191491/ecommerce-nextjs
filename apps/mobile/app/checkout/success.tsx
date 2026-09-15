@@ -29,6 +29,7 @@ import {
   clearLastOrderInfo,
   clearPendingStripeOrder,
   loadLastOrderInfo,
+  savePushEnrollmentProof,
 } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { getFriendlyErrorMessage, logAppError } from "@/lib/errors";
@@ -153,6 +154,16 @@ export default function CheckoutSuccessScreen() {
     });
   }, [isPendingStripe, order]);
 
+  const orderAccessToken = accessToken ?? order?.accessToken ?? undefined;
+
+  useEffect(() => {
+    if (!order?.customerEmail || !orderAccessToken) {
+      return;
+    }
+
+    void savePushEnrollmentProof(order.customerEmail, orderAccessToken);
+  }, [order?.customerEmail, orderAccessToken]);
+
   useEffect(() => {
     if (!order || !pushNotifications) {
       return;
@@ -163,11 +174,11 @@ export default function CheckoutSuccessScreen() {
       return;
     }
 
-    void pushNotifications.syncPushTokenIfPermitted(email, accessToken);
+    void pushNotifications.syncPushTokenIfPermitted(email, orderAccessToken);
   }, [
-    accessToken,
     customerEmail,
     order,
+    orderAccessToken,
     pushNotifications,
     pushNotifications?.expoPushToken,
     pushNotifications?.permission,
@@ -294,7 +305,7 @@ export default function CheckoutSuccessScreen() {
 
               <PushStatusBanner
                 customerEmail={(order.customerEmail || customerEmail)?.trim().toLowerCase()}
-                accessToken={accessToken}
+                accessToken={orderAccessToken}
               />
 
               {isPendingStripe ? (

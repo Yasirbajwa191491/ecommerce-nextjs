@@ -3,7 +3,16 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import {
+  canRequestNotificationPermission,
+  formatPushRegistrationError,
+  resolveNotificationPermissionState,
+  type NotificationPermissionState,
+} from "@/lib/push-permission-logic";
 import type { PushPlatform } from "@/types/notifications";
+
+export type { NotificationPermissionState };
+export { canRequestNotificationPermission, formatPushRegistrationError };
 
 export function configureForegroundNotificationBehavior() {
   Notifications.setNotificationHandler({
@@ -52,51 +61,18 @@ export async function getExpoPushToken(): Promise<string | null> {
   return token.data;
 }
 
-export type NotificationPermissionState = "granted" | "denied" | "undetermined";
-
-function resolvePermissionState(
-  settings: Notifications.NotificationPermissionsStatus
-): NotificationPermissionState {
-  const response = settings as Notifications.NotificationPermissionsStatus & {
-    granted?: boolean;
-    canAskAgain?: boolean;
-  };
-
-  if (settings.status === Notifications.PermissionStatus.GRANTED) {
-    return "granted";
-  }
-
-  if (settings.status === Notifications.PermissionStatus.DENIED) {
-    return "denied";
-  }
-
-  if (
-    response.granted === true ||
-    response.ios?.status === Notifications.IosAuthorizationStatus.AUTHORIZED ||
-    response.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
-  ) {
-    return "granted";
-  }
-
-  if (response.canAskAgain === false) {
-    return "denied";
-  }
-
-  return "undetermined";
-}
-
 export async function getNotificationPermissionStatus(): Promise<NotificationPermissionState> {
   const settings = await Notifications.getPermissionsAsync();
-  return resolvePermissionState(settings);
+  return resolveNotificationPermissionState(settings);
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermissionState> {
   const current = await Notifications.getPermissionsAsync();
-  const currentState = resolvePermissionState(current);
+  const currentState = resolveNotificationPermissionState(current);
   if (currentState === "granted") {
     return "granted";
   }
-  if (currentState === "denied") {
+  if (!canRequestNotificationPermission(current)) {
     return "denied";
   }
 
@@ -109,7 +85,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
     android: {},
   });
 
-  return resolvePermissionState(requested);
+  return resolveNotificationPermissionState(requested);
 }
 
 export type PushNotificationData = {
