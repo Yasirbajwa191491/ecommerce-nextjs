@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
-import { router, type Href } from "expo-router";
+import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
 
@@ -95,6 +95,12 @@ export default function SettingsScreen() {
       });
     },
     [preferences.notifications, pushNotifications, setNotificationPreferences]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void pushNotifications?.refreshPushRegistration();
+    }, [pushNotifications])
   );
 
   const handleNotificationToggle = useCallback(

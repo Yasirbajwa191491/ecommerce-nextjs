@@ -15,8 +15,11 @@ import {
   getNotificationPermissionStatus,
   parsePushNotificationData,
 } from "@/lib/push-notifications";
-import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
+import { useFirstLaunchPushPermission } from "@/hooks/useFirstLaunchPushPermission";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
+import { getVisitorId, useVisitorId } from "@/lib/visitor-id";
+import { useTheme } from "@/providers/theme-context";
 import {
   loadCheckoutCustomer,
   loadPushEnrollmentProof,
@@ -31,7 +34,6 @@ import {
   resolveNotificationTargetHref,
   type NotificationNavigationCredentials,
 } from "@/lib/notification-navigation";
-import { getVisitorId } from "@/lib/visitor-id";
 
 type PushNotificationContextValue = {
   permission: "undetermined" | "granted" | "denied" | "unavailable";
@@ -42,6 +44,8 @@ type PushNotificationContextValue = {
   enablePushNotifications: (customerEmail?: string, accessToken?: string) => Promise<boolean>;
   /** Silent registration when OS permission is already granted — never shows the OS prompt. */
   syncPushTokenIfPermitted: (customerEmail?: string, accessToken?: string) => Promise<boolean>;
+  /** Re-read OS permission and register the Expo token when already allowed. */
+  refreshPushRegistration: () => Promise<void>;
   syncPreferences: (preferences: {
     orderUpdates: boolean;
     paymentUpdates: boolean;
@@ -85,8 +89,15 @@ async function resolveNotificationAccess(): Promise<NotificationAccess | null> {
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
   const convex = useConvex();
   const push = usePushNotifications();
+  const visitorId = useVisitorId();
+  const { preferences } = useTheme();
   const markReadByEventKey = useMutation(api.inAppNotifications.markReadByEventKey);
   const handledNotificationIds = useRef<Set<string>>(new Set());
+
+  useFirstLaunchPushPermission({
+    visitorReady: Boolean(visitorId),
+    onPermissionResolved: push.refreshPermissionAndSync,
+  });
 
   const resolveEnrollment = useCallback(
     async (customerEmail?: string, accessToken?: string) => {
@@ -106,9 +117,16 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         customerEmail: enrollment?.customerEmail,
         accessToken: enrollment?.accessToken,
       });
+      if (result.success) {
+        await push.syncPreferences({
+          orderUpdates: preferences.notifications.orderUpdates,
+          paymentUpdates: preferences.notifications.paymentUpdates,
+          promotionalNotifications: preferences.notifications.promotions,
+        });
+      }
       return result.success;
     },
-    [push, resolveEnrollment]
+    [preferences.notifications, push, resolveEnrollment]
   );
 
   const enablePushNotifications = useCallback(
@@ -124,9 +142,16 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         customerEmail: enrollment?.customerEmail,
         accessToken: enrollment?.accessToken,
       });
+      if (result.success) {
+        await push.syncPreferences({
+          orderUpdates: preferences.notifications.orderUpdates,
+          paymentUpdates: preferences.notifications.paymentUpdates,
+          promotionalNotifications: preferences.notifications.promotions,
+        });
+      }
       return result.success;
     },
-    [push, resolveEnrollment]
+    [preferences.notifications, push, resolveEnrollment]
   );
 
   const navigateFromNotification = useCallback(
@@ -271,6 +296,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     lastError: push.lastError,
     enablePushNotifications,
     syncPushTokenIfPermitted,
+    refreshPushRegistration: push.refreshPermissionAndSync,
     syncPreferences: push.syncPreferences,
     deactivateCurrentDevice: push.deactivateCurrentDevice,
   };
