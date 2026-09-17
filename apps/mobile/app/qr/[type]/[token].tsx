@@ -1,27 +1,37 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useAction, useQuery } from "convex/react";
 import { router, useLocalSearchParams, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   ScrollView,
+  Share,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { OrderDeliverySummary } from "@/components/checkout/OrderDeliverySummary";
+import { PriceBreakdown } from "@/components/checkout/PriceBreakdown";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { Header } from "@/components/layout/Header";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
+import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
+import { OrderItemsSection } from "@/components/orders/OrderItemsSection";
 import { OrderProgressTimeline } from "@/components/orders/OrderProgressTimeline";
+import { OrderPromotionsSummary } from "@/components/orders/OrderPromotionsSummary";
 import {
   OrderStatusBadge,
   PaymentMethodBadge,
   PaymentStatusBadge,
 } from "@/components/orders/OrderStatusBadges";
+import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
 import { Button } from "@/components/ui/Button";
-import { spacing, typography } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
+import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { usePaymentSheetCheckout } from "@/hooks/usePaymentSheetCheckout";
 import { useNetworkStatus } from "@/providers/NetworkProvider";
@@ -31,7 +41,12 @@ import { api } from "@/lib/convex-api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { triggerHaptic } from "@/lib/haptics";
 import { ensureOnlineNow } from "@/lib/network";
-import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/order-display";
+import {
+  formatOrderDateTime,
+  type OrderStatus,
+  type PaymentMethod,
+  type PaymentStatus,
+} from "@/lib/order-display";
 import { formatCurrencyAmount } from "@ecommerce/shared";
 
 type ResolveResult = {
@@ -40,70 +55,231 @@ type ResolveResult = {
   message: string;
   type?: string;
   productId?: string;
-  productName?: string;
   orderNumber?: string;
   amount?: number;
   currency?: string;
-  order?: {
-    orderNumber: string;
-    status: string;
-    paymentStatus: string;
-    paymentMethod: string;
-    total: number;
-    currency: string;
-    items: Array<{ productName: string; quantity: number; color: string }>;
-  };
+  order?: LiveOrder;
 };
 
-type LiveOrder = NonNullable<ResolveResult["order"]>;
+type LiveOrder = {
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  total: number;
+  subtotal: number;
+  tax: number;
+  discountTotal?: number;
+  shipping: number;
+  deliveryCharge?: number;
+  deliveryMethod?: string;
+  deliveryMethodLabel?: string;
+  deliveryEstimate?: string;
+  currency: string;
+  createdAt: number;
+  paidAt?: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerAddress: string;
+  items: Array<{
+    productId: string;
+    productName: string;
+    color: string;
+    quantity: number;
+    lineTotal: number;
+    isPromotionGift?: boolean;
+    warrantySummary?: string;
+  }>;
+  promotions: Array<{
+    promotionName: string;
+    promotionDescription?: string;
+    freeQuantity: number;
+    savingsAmount: number;
+  }>;
+  statusHistory?: Array<{
+    event: string;
+    description: string;
+    createdAt: number;
+  }>;
+};
 
 function OrderTrackingLive({ token, initial }: { token: string; initial: LiveOrder }) {
+  const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
+  const { horizontalPadding } = useLayoutMetrics();
+  const { showToast, showError } = useToast();
   const live = useQuery(api.qr.watchOrderFromQr, { token });
   const order: LiveOrder =
     live?.ok && live.order ? (live.order as LiveOrder) : initial;
-  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const shareUrl = useMemo(() => {
+    const site = process.env.EXPO_PUBLIC_SITE_URL?.replace(/\/$/, "");
+    if (site) return `${site}/qr/order/${encodeURIComponent(token)}`;
+    return `ecommerce://qr/order/${encodeURIComponent(token)}`;
+  }, [token]);
+
+  const items = order.items.map((item, index) => ({
+    _id: `${item.productId}-${index}`,
+    productName: item.productName,
+    color: item.color,
+    quantity: item.quantity,
+    lineTotal: item.lineTotal,
+    warrantySummary: item.warrantySummary,
+    isPromotionGift: item.isPromotionGift,
+  }));
+
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({
+        title: `Order ${order.orderNumber}`,
+        message: `Track order ${order.orderNumber}\n${shareUrl}`,
+        url: shareUrl,
+      });
+      await triggerHaptic("success");
+    } catch (error) {
+      showError(getFriendlyErrorMessage(error, "Could not share this order."));
+    }
+  }, [order.orderNumber, shareUrl, showError]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      const { copyToClipboard } = await import("@/lib/clipboard");
+      const copied = await copyToClipboard(shareUrl);
+      if (copied) {
+        await triggerHaptic("success");
+        showToast("Tracking link copied", { type: "success" });
+        return;
+      }
+      showError("Could not copy the link.");
+    } catch (error) {
+      showError(getFriendlyErrorMessage(error, "Could not copy the link."));
+    }
+  }, [shareUrl, showError, showToast]);
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing["2xl"] }]}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingHorizontal: horizontalPadding,
+          paddingBottom: insets.bottom + spacing["2xl"],
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.kicker}>Order Tracking</Text>
-      <Text style={styles.title}>{order.orderNumber}</Text>
-      <View style={styles.badgeRow}>
-        <OrderStatusBadge status={order.status as OrderStatus} />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Progress</Text>
-        <OrderProgressTimeline status={order.status as OrderStatus} />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Payment</Text>
-        <View style={styles.badgeRow}>
-          <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />
-          <PaymentMethodBadge method={order.paymentMethod as PaymentMethod} />
+      <View style={styles.headerCard}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerText}>
+            <Text style={styles.metaLabel}>Order tracking</Text>
+            <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+            <CopyOrderNumber orderNumber={order.orderNumber} />
+            <Text style={styles.placedAt}>
+              Placed on {formatOrderDateTime(order.createdAt)}
+            </Text>
+          </View>
+          <OrderStatusBadge status={order.status as OrderStatus} />
+        </View>
+        <View style={styles.shareRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Share tracking link"
+            onPress={() => void handleShare()}
+            style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="share-outline" size={18} color={colors.primary} />
+            <Text style={styles.shareLabel}>Share</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Copy tracking link"
+            onPress={() => void handleCopyLink()}
+            style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="link-outline" size={18} color={colors.primary} />
+            <Text style={styles.shareLabel}>Copy link</Text>
+          </Pressable>
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          {itemCount} {itemCount === 1 ? "Item" : "Items"}
-        </Text>
-        {order.items.map((item) => (
-          <View key={`${item.productName}-${item.color}`} style={styles.itemRow}>
-            <Text style={styles.itemName}>
-              {item.productName}
-              {item.color ? ` · ${item.color}` : ""}
-            </Text>
-            <Text style={styles.body}>Qty {item.quantity}</Text>
-          </View>
-        ))}
-        <Text style={styles.amount}>
-          Total: {formatCurrencyAmount(order.total, order.currency)}
-        </Text>
+        <Text style={styles.cardTitle}>Order progress</Text>
+        <OrderProgressTimeline status={order.status as OrderStatus} />
+        <OrderSummaryCards
+          paymentMethod={order.paymentMethod as PaymentMethod}
+          paymentStatus={order.paymentStatus as PaymentStatus}
+          total={order.total}
+          currency={order.currency}
+          createdAt={order.createdAt}
+          paidAt={order.paidAt}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Customer information</Text>
+        <Text style={styles.infoValue}>{order.customerName}</Text>
+        <Text style={styles.contact}>{order.customerEmail}</Text>
+        <Text style={styles.contact}>{order.customerPhone}</Text>
+      </View>
+
+      <OrderItemsSection items={items} currency={order.currency} />
+
+      <OrderPromotionsSummary
+        promotions={(order.promotions ?? []).map((promo) => ({
+          promotionName: promo.promotionName,
+          promotionDescription: promo.promotionDescription,
+          freeQuantity: promo.freeQuantity,
+          savingsAmount: promo.savingsAmount,
+        }))}
+        currency={order.currency}
+      />
+
+      <View style={styles.card}>
+        <View style={styles.badgeRow}>
+          <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />
+          <PaymentMethodBadge method={order.paymentMethod as PaymentMethod} />
+        </View>
+        <View style={styles.divider} />
+        <OrderDeliverySummary
+          deliveryMethod={order.deliveryMethod}
+          deliveryMethodLabel={order.deliveryMethodLabel}
+          deliveryEstimate={order.deliveryEstimate}
+          deliveryCharge={order.deliveryCharge}
+          shipping={order.shipping}
+          currency={order.currency}
+        />
+        <PriceBreakdown
+          subtotal={order.subtotal}
+          discountTotal={order.discountTotal ?? 0}
+          shipping={order.shipping}
+          deliveryCharge={order.deliveryCharge ?? 0}
+          deliveryMethod={order.deliveryMethod}
+          deliveryMethodLabel={order.deliveryMethodLabel}
+          tax={order.tax}
+          total={order.total}
+          currency={order.currency}
+        />
+        <View style={styles.divider} />
+        <View style={styles.infoHeader}>
+          <Ionicons name="location-outline" size={16} color={colors.primary} />
+          <Text style={styles.infoLabel}>Delivery to</Text>
+        </View>
+        <Text style={styles.address}>{order.customerAddress}</Text>
+        {order.statusHistory?.length ? (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.cardTitle}>Status history</Text>
+            {order.statusHistory.map((entry) => (
+              <View key={`${entry.createdAt}-${entry.event}`} style={styles.historyRow}>
+                <Text style={styles.historyEvent}>{entry.description}</Text>
+                <Text style={styles.historyDate}>
+                  {formatOrderDateTime(entry.createdAt)}
+                </Text>
+              </View>
+            ))}
+          </>
+        ) : null}
       </View>
 
       <Text style={styles.hint}>Updates automatically when the order status changes.</Text>
@@ -268,14 +444,14 @@ export default function QrResolveScreen() {
               { paddingBottom: insets.bottom + spacing["2xl"] },
             ]}
           >
-            <Text style={styles.kicker}>Secure payment</Text>
-            <Text style={styles.title}>Pay order {result.orderNumber}</Text>
+            <Text style={styles.metaLabel}>Secure payment</Text>
+            <Text style={styles.orderNumber}>Pay order {result.orderNumber}</Text>
             {result.amount != null && result.currency ? (
-              <Text style={styles.amount}>
+              <Text style={styles.payAmount}>
                 {formatCurrencyAmount(result.amount, result.currency)}
               </Text>
             ) : null}
-            <Text style={styles.body}>
+            <Text style={styles.contact}>
               The QR code only opens this payment page. Payment is confirmed by Stripe after
               checkout.
             </Text>
@@ -315,30 +491,79 @@ function createStyles({ colors, textStyles }: ThemeStyleTokens) {
     },
     loading: { color: colors.textSecondary, fontSize: typography.sm },
     content: {
-      padding: spacing.xl,
+      paddingTop: spacing.lg,
+      gap: spacing.lg,
+    },
+    headerCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       gap: spacing.md,
     },
-    kicker: { ...textStyles.metaLabel },
-    title: { ...textStyles.screenTitle },
-    amount: { ...textStyles.sectionTitle, color: colors.primary, marginTop: spacing.sm },
-    body: { color: colors.textSecondary, fontSize: typography.sm, lineHeight: 22 },
-    badgeRow: { flexDirection: "row" as const, gap: spacing.sm },
-    card: {
+    headerTop: {
+      flexDirection: "row" as const,
+      justifyContent: "space-between" as const,
+      alignItems: "flex-start" as const,
+      gap: spacing.md,
+    },
+    headerText: { flex: 1, gap: spacing.xs },
+    metaLabel: {
+      fontSize: typography.xs,
+      fontWeight: "700" as const,
+      letterSpacing: 0.6,
+      textTransform: "uppercase" as const,
+      color: colors.textSecondary,
+    },
+    orderNumber: { ...textStyles.sectionTitle, color: colors.foreground },
+    placedAt: { fontSize: typography.sm, color: colors.textSecondary },
+    shareRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: spacing.sm },
+    shareButton: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: spacing.xs,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
       backgroundColor: colors.card,
-      borderRadius: 12,
+    },
+    shareLabel: {
+      fontSize: typography.sm,
+      fontWeight: "600" as const,
+      color: colors.primary,
+    },
+    pressed: { opacity: 0.75 },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
       padding: spacing.lg,
-      gap: spacing.sm,
+      gap: spacing.md,
       borderWidth: 1,
       borderColor: colors.border,
     },
     cardTitle: { ...textStyles.sectionTitle, fontSize: typography.base },
-    itemRow: {
+    badgeRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: spacing.sm },
+    infoValue: { fontSize: typography.base, fontWeight: "600" as const, color: colors.foreground },
+    contact: { fontSize: typography.sm, color: colors.textSecondary, lineHeight: 20 },
+    infoLabel: { fontSize: typography.sm, fontWeight: "600" as const, color: colors.textSecondary },
+    infoHeader: {
       flexDirection: "row" as const,
-      justifyContent: "space-between" as const,
-      gap: spacing.md,
-      paddingVertical: spacing.xs,
+      alignItems: "center" as const,
+      gap: spacing.sm,
     },
-    itemName: { flex: 1, color: colors.text, fontSize: typography.sm },
-    hint: { color: colors.textSecondary, fontSize: typography.xs, marginTop: spacing.sm },
+    address: { fontSize: typography.sm, color: colors.foreground, lineHeight: 20 },
+    divider: { height: 1, backgroundColor: colors.border },
+    historyRow: { gap: 2, marginTop: spacing.sm },
+    historyEvent: { fontSize: typography.sm, color: colors.foreground },
+    historyDate: { fontSize: typography.xs, color: colors.textSecondary },
+    hint: {
+      color: colors.textSecondary,
+      fontSize: typography.xs,
+      textAlign: "center" as const,
+    },
+    payAmount: { ...textStyles.sectionTitle, color: colors.primary },
   };
 }
