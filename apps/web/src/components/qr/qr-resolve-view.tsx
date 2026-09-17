@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import {
-  PaymentMethodBadge,
-  PaymentStatusBadge,
-} from "@/components/admin/order-status-badge";
-import { OrderProgressTimeline } from "@/components/orders/order-progress-timeline";
+  PublicOrderTrackingPanel,
+  type PublicOrderTrackingOrder,
+} from "@/components/orders/public-order-tracking-panel";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,23 +19,13 @@ import {
 } from "@/components/ui/card";
 import { formatCurrencyAmount } from "@/lib/currencies";
 import { toastError, toastSuccess } from "@/lib/app-toast";
-import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/types/order";
+import type { OrderStatus } from "@/types/order";
 import { Loader2 } from "lucide-react";
 
 type QrResolveViewProps = {
   type: string;
   token: string;
   source?: "web" | "admin";
-};
-
-type PublicOrderSnapshot = {
-  orderNumber: string;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
-  paymentMethod: PaymentMethod;
-  total: number;
-  currency: string;
-  items: Array<{ productName: string; quantity: number; color: string }>;
 };
 
 type ResolveResult = {
@@ -56,104 +45,36 @@ type ResolveResult = {
   customerAddress?: string;
   items?: Array<{ productName: string; quantity: number; color: string }>;
   actions?: Array<{ id: string; label: string; nextStatus: OrderStatus }>;
-  order?: PublicOrderSnapshot;
+  order?: PublicOrderTrackingOrder;
 };
 
-function OrderTrackingFromQr({ token, initial }: { token: string; initial: PublicOrderSnapshot }) {
+function OrderTrackingFromQr({
+  token,
+  initial,
+}: {
+  token: string;
+  initial: PublicOrderTrackingOrder;
+}) {
   const live = useQuery(api.qr.watchOrderFromQr, { token });
   const order =
     live?.ok && live.order
-      ? (live.order as PublicOrderSnapshot)
+      ? (live.order as PublicOrderTrackingOrder)
       : initial;
-  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const appLink = `ecommerce://qr/order/${encodeURIComponent(token)}`;
+
+  const shareUrl = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+    return `${window.location.origin}/qr/order/${encodeURIComponent(token)}`;
+  }, [token]);
+
+  const appDeepLink = `ecommerce://qr/order/${encodeURIComponent(token)}`;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Order Tracking
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">{order.orderNumber}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Status updates live while this page stays open.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Order progress</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <OrderProgressTimeline status={order.status} />
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Payment</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-2">
-            <PaymentStatusBadge status={order.paymentStatus} />
-            <PaymentMethodBadge method={order.paymentMethod} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Order summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <p className="text-sm text-muted-foreground">
-              {itemCount} {itemCount === 1 ? "item" : "items"}
-            </p>
-            <p className="text-xl font-semibold">
-              {formatCurrencyAmount(order.total, order.currency)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Items</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm">
-            {order.items.map((item) => (
-              <li
-                key={`${item.productName}-${item.color}`}
-                className="flex justify-between gap-4 border-b border-border/60 py-2 last:border-0"
-              >
-                <span>
-                  {item.productName}
-                  {item.color ? (
-                    <span className="text-muted-foreground"> · {item.color}</span>
-                  ) : null}
-                </span>
-                <span className="text-muted-foreground">Qty {item.quantity}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Open in the mobile app</CardTitle>
-          <CardDescription>
-            Phone camera opens this web page (HTTPS). Use the in-app scanner, or open the app
-            link below when the store app / Expo Go is installed.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button render={<a href={appLink} />}>Open in app</Button>
-          <Button variant="outline" render={<Link href="/track-order" />}>
-            Track another order
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <PublicOrderTrackingPanel
+      order={order}
+      shareUrl={shareUrl}
+      showOpenInApp
+      appDeepLink={appDeepLink}
+    />
   );
 }
 
@@ -243,7 +164,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
         ? `/admin/login?redirect=${encodeURIComponent(`/qr/${type}/${token}`)}`
         : null;
     return (
-      <Card className="mx-auto max-w-lg">
+      <Card className="mx-auto max-w-lg rounded-2xl border-border/60 shadow-lg">
         <CardHeader>
           <CardTitle>QR unavailable</CardTitle>
           <CardDescription>{result?.message ?? "This QR code is not valid."}</CardDescription>
@@ -261,7 +182,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
 
   if (result.type === "payment") {
     return (
-      <Card className="mx-auto max-w-lg">
+      <Card className="mx-auto max-w-lg rounded-2xl border-border/60 shadow-lg">
         <CardHeader>
           <CardTitle>Pay order {result.orderNumber}</CardTitle>
           <CardDescription>
@@ -274,7 +195,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
               {formatCurrencyAmount(result.amount, result.currency)}
             </p>
           ) : null}
-          <Button onClick={() => void pay()} disabled={busy}>
+          <Button onClick={() => void pay()} disabled={busy} className="rounded-full">
             {busy ? "Opening checkout…" : "Continue to payment"}
           </Button>
         </CardContent>
@@ -288,7 +209,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
 
   if ((result.type === "package" || result.type === "delivery") && result.orderNumber) {
     return (
-      <Card className="mx-auto max-w-2xl">
+      <Card className="mx-auto max-w-2xl rounded-2xl border-border/60 shadow-lg">
         <CardHeader>
           <CardTitle>{result.orderNumber}</CardTitle>
           <CardDescription>
@@ -316,6 +237,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
               <Button
                 key={action.id}
                 variant="outline"
+                className="rounded-full"
                 disabled={busy}
                 onClick={() => void applyStaffAction(action.nextStatus)}
               >
@@ -323,7 +245,11 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
               </Button>
             ))}
             {result.orderId ? (
-              <Button variant="outline" render={<Link href={`/admin/orders/${result.orderId}`} />}>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                render={<Link href={`/admin/orders/${result.orderId}`} />}
+              >
                 Open order
               </Button>
             ) : null}
@@ -334,7 +260,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
   }
 
   return (
-    <Card className="mx-auto max-w-lg">
+    <Card className="mx-auto max-w-lg rounded-2xl border-border/60 shadow-lg">
       <CardHeader>
         <CardTitle>QR resolved</CardTitle>
         <CardDescription>{result.message}</CardDescription>
