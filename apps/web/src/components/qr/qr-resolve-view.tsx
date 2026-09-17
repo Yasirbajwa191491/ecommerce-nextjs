@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import {
+  PaymentMethodBadge,
+  PaymentStatusBadge,
+} from "@/components/admin/order-status-badge";
 import { OrderProgressTimeline } from "@/components/orders/order-progress-timeline";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,13 +20,23 @@ import {
 } from "@/components/ui/card";
 import { formatCurrencyAmount } from "@/lib/currencies";
 import { toastError, toastSuccess } from "@/lib/app-toast";
-import type { OrderStatus } from "@/types/order";
+import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/types/order";
 import { Loader2 } from "lucide-react";
 
 type QrResolveViewProps = {
   type: string;
   token: string;
   source?: "web" | "admin";
+};
+
+type PublicOrderSnapshot = {
+  orderNumber: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod;
+  total: number;
+  currency: string;
+  items: Array<{ productName: string; quantity: number; color: string }>;
 };
 
 type ResolveResult = {
@@ -42,8 +56,106 @@ type ResolveResult = {
   customerAddress?: string;
   items?: Array<{ productName: string; quantity: number; color: string }>;
   actions?: Array<{ id: string; label: string; nextStatus: OrderStatus }>;
-  order?: { orderNumber: string; status: OrderStatus };
+  order?: PublicOrderSnapshot;
 };
+
+function OrderTrackingFromQr({ token, initial }: { token: string; initial: PublicOrderSnapshot }) {
+  const live = useQuery(api.qr.watchOrderFromQr, { token });
+  const order =
+    live?.ok && live.order
+      ? (live.order as PublicOrderSnapshot)
+      : initial;
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const appLink = `ecommerce://qr/order/${encodeURIComponent(token)}`;
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div>
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Order Tracking
+        </p>
+        <h1 className="mt-1 text-3xl font-semibold">{order.orderNumber}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Status updates live while this page stays open.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Order progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OrderProgressTimeline status={order.status} />
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Payment</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2">
+            <PaymentStatusBadge status={order.paymentStatus} />
+            <PaymentMethodBadge method={order.paymentMethod} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Order summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              {itemCount} {itemCount === 1 ? "item" : "items"}
+            </p>
+            <p className="text-xl font-semibold">
+              {formatCurrencyAmount(order.total, order.currency)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm">
+            {order.items.map((item) => (
+              <li
+                key={`${item.productName}-${item.color}`}
+                className="flex justify-between gap-4 border-b border-border/60 py-2 last:border-0"
+              >
+                <span>
+                  {item.productName}
+                  {item.color ? (
+                    <span className="text-muted-foreground"> · {item.color}</span>
+                  ) : null}
+                </span>
+                <span className="text-muted-foreground">Qty {item.quantity}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Open in the mobile app</CardTitle>
+          <CardDescription>
+            Phone camera opens this web page (HTTPS). Use the in-app scanner, or open the app
+            link below when the store app / Expo Go is installed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button render={<a href={appLink} />}>Open in app</Button>
+          <Button variant="outline" render={<Link href="/track-order" />}>
+            Track another order
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function QrResolveView({ type, token, source = "web" }: QrResolveViewProps) {
   const resolveQr = useAction(api.qr.resolve);
@@ -171,24 +283,7 @@ export function QrResolveView({ type, token, source = "web" }: QrResolveViewProp
   }
 
   if (result.type === "order" && result.order) {
-    return (
-      <div className="mx-auto max-w-2xl space-y-6">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            Track Order
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold">{result.order.orderNumber}</h1>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Order progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <OrderProgressTimeline status={result.order.status} />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <OrderTrackingFromQr token={token} initial={result.order} />;
   }
 
   if ((result.type === "package" || result.type === "delivery") && result.orderNumber) {
