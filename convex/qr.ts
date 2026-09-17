@@ -264,6 +264,26 @@ export const loadResolvePayload = internalQuery({
   },
 });
 
+/**
+ * Live order tracking for a valid order QR token.
+ * Clients subscribe after resolve so status/payment/items update in realtime.
+ */
+export const watchOrderFromQr = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    if (!isQrTokenShape(args.token)) {
+      return { ok: false as const, code: INVALID, message: publicResolveMessage(INVALID) };
+    }
+    const qr = await findQrByToken(ctx, args.token);
+    const statusCode = resolveQrStatusCode(qr);
+    if (statusCode !== "ok" || !qr || qr.type !== "order") {
+      const code = statusCode === "ok" ? INVALID : statusCode;
+      return { ok: false as const, code, message: publicResolveMessage(code) };
+    }
+    return await resolveOrderPayload(ctx, qr);
+  },
+});
+
 type QueryCtxLike = Parameters<typeof findQrByToken>[0];
 
 async function loadOrderBundle(

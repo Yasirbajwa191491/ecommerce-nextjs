@@ -48,7 +48,15 @@ Admin product edit → Generate QR. Scanning opens the existing product page (ad
 
 ## Order QR
 
-Created automatically when an order is placed. Receipt images encode this URL. Scanning reuses the existing tracking UI.
+Created automatically when an order is placed. Receipt images encode this URL. Scanning opens order tracking with payment status, items, and total.
+
+After the one-time `qr.resolve` gate, clients subscribe to `qr.watchOrderFromQr` so fulfillment status updates live without refreshing.
+
+**HTTPS vs app:** Receipt QRs intentionally use `https://…/qr/order/<token>` so they work in any browser. The system camera will open the website. To open Expo Go / the native app:
+
+1. Use **Scan QR** inside the app (paste or camera), or
+2. On the web tracking page, tap **Open in app** (`ecommerce://qr/order/<token>`), or
+3. Complete App Links / Universal Links (not Expo Go) so HTTPS opens the installed app automatically
 
 ## Package / delivery QR
 
