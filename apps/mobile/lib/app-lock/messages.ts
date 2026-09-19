@@ -20,7 +20,11 @@ export const appLockMessages = {
   unavailable:
     "Biometric authentication is temporarily unavailable. Please try again in a moment.",
   lockout:
-    "Biometric authentication is temporarily locked. Wait a moment, then try again, or check your device settings.",
+    "Too many failed attempts. Biometric unlock is temporarily locked.",
+  lockoutCountdown: (timeLabel: string) =>
+    `Too many failed attempts. Try again in ${timeLabel}.`,
+  lockoutReady: "You can try unlocking again.",
+  lockoutTryAgainLabel: (timeLabel: string) => `Try again in ${timeLabel}`,
   cancelled: "Authentication was cancelled. App Lock was not changed.",
   failed: "Authentication failed. Please try again.",
   enableCancelled: "Authentication was cancelled. App Lock was not enabled.",

@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import * as LocalAuthentication from "expo-local-authentication";
 
+import { BIOMETRIC_TEMP_LOCKOUT_MS } from "@/lib/app-lock/constants";
 import {
   appLockMessages,
   messageForAuthFailure,
@@ -136,6 +137,15 @@ export async function authenticateWithBiometrics(args?: {
     }
 
     const reason = mapAuthError(result.error);
+    if (reason === "lockout") {
+      return {
+        ok: false,
+        reason,
+        message: appLockMessages.lockout,
+        retryAfterMs: BIOMETRIC_TEMP_LOCKOUT_MS,
+      };
+    }
+
     return {
       ok: false,
       reason,

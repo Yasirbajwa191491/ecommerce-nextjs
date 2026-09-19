@@ -66,6 +66,21 @@ export function shouldShowLockScreen(args: {
   return !shouldExposeProtectedUi(args);
 }
 
+/**
+ * Branded "App Locked" UI — only after we know App Lock is on (or storage
+ * failed closed). Pre-hydrate uses a neutral bootstrap cover instead so
+ * users who never enabled App Lock never see this screen.
+ */
+export function shouldShowBrandedLockScreen(args: {
+  hydrated: boolean;
+  enabled: boolean;
+  unlocked: boolean;
+  storageUnreliable: boolean;
+}): boolean {
+  if (!args.hydrated) return false;
+  return shouldShowLockScreen(args);
+}
+
 export function parseAppLockConfig(raw: unknown): AppLockConfig | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;

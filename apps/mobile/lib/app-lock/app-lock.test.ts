@@ -19,6 +19,7 @@ import {
   parseAppLockConfig,
   shouldExposeProtectedUi,
   shouldRequireAuthOnResume,
+  shouldShowBrandedLockScreen,
   shouldShowLockScreen,
 } from "@/lib/app-lock/policy";
 
@@ -89,6 +90,33 @@ describe("app-lock policy", () => {
         storageUnreliable: true,
       })
     ).toBe(false);
+  });
+
+  it("does not show branded App Lock UI before hydration or when disabled", () => {
+    expect(
+      shouldShowBrandedLockScreen({
+        hydrated: false,
+        enabled: false,
+        unlocked: false,
+        storageUnreliable: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldShowBrandedLockScreen({
+        hydrated: true,
+        enabled: false,
+        unlocked: false,
+        storageUnreliable: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldShowBrandedLockScreen({
+        hydrated: true,
+        enabled: true,
+        unlocked: false,
+        storageUnreliable: false,
+      })
+    ).toBe(true);
   });
 
   it("does not re-lock on resume when there is no background timestamp (post-unlock)", () => {
@@ -198,6 +226,16 @@ describe("app-lock policy", () => {
     expect(isTimeoutRelaxation("15m", "1m")).toBe(false);
     expect(isTimeoutRelaxation("5m", "5m")).toBe(false);
     expect(isTimeoutRelaxation("15m", "immediate")).toBe(false);
+  });
+
+  it("formats lockout countdown clearly", async () => {
+    const { formatLockoutCountdown, lockoutSecondsRemaining } = await import(
+      "@/lib/app-lock/lockout"
+    );
+    expect(formatLockoutCountdown(30)).toBe("0:30");
+    expect(formatLockoutCountdown(75)).toBe("1:15");
+    expect(formatLockoutCountdown(0)).toBe("0:00");
+    expect(lockoutSecondsRemaining(10_000, 7_400)).toBe(3);
   });
 
   it("parses valid SecureStore config and rejects invalid payloads", () => {

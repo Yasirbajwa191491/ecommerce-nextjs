@@ -15,6 +15,13 @@ export const APP_LOCK_TIMEOUT_OPTIONS: readonly {
 
 export const DEFAULT_APP_LOCK_TIMEOUT_ID: AppLockTimeoutId = "1m";
 
+/**
+ * Android BiometricPrompt temporary lockout after repeated failures is
+ * typically 30 seconds. The OS does not expose remaining time via Expo, so
+ * we show this countdown when `authenticateAsync` returns `lockout`.
+ */
+export const BIOMETRIC_TEMP_LOCKOUT_MS = 30_000;
+
 export const DEFAULT_APP_LOCK_CONFIG: AppLockConfig = {
   enabled: false,
   timeoutId: DEFAULT_APP_LOCK_TIMEOUT_ID,

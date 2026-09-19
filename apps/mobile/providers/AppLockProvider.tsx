@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 
+import { AppLockBootstrapCover } from "@/components/app-lock/AppLockBootstrapCover";
 import { AppLockPrivacyOverlay } from "@/components/app-lock/AppLockPrivacyOverlay";
 import { AppLockScreen } from "@/components/app-lock/AppLockScreen";
 import {
@@ -30,13 +31,17 @@ import {
   readAppLockConfig,
   setAppLockGateState,
   shouldRequireAuthOnResume,
+  shouldShowBrandedLockScreen,
   shouldShowLockScreen,
+  formatLockoutCountdown,
+  lockoutSecondsRemaining,
   writeAppLockConfig,
   type AppLockConfig,
   type AppLockTimeoutId,
   type BiometricCapability,
 } from "@/lib/app-lock";
 import { appLockMessages, messageForCapability } from "@/lib/app-lock/messages";
+import type { AuthFailureReason } from "@/lib/app-lock/types";
 
 type AppLockContextValue = {
   hydrated: boolean;
@@ -66,6 +71,8 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   const [lastError, setLastError] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [privacyCoverVisible, setPrivacyCoverVisible] = useState(false);
+  const [lockoutEndsAt, setLockoutEndsAt] = useState<number | null>(null);
+  const [lockoutNow, setLockoutNow] = useState(() => Date.now());
 
   const configRef = useRef(config);
   const unlockedRef = useRef(unlocked);
@@ -95,6 +102,40 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     storageUnreliable,
   });
 
+  const showBrandedLock = shouldShowBrandedLockScreen({
+    hydrated,
+    enabled: config.enabled,
+    unlocked,
+    storageUnreliable,
+  });
+
+  const showBootstrapCover = !hydrated;
+  const lockoutSecondsLeft =
+    lockoutEndsAt == null
+      ? 0
+      : lockoutSecondsRemaining(lockoutEndsAt, lockoutNow);
+  const lockoutMessage =
+    lockoutSecondsLeft > 0
+      ? appLockMessages.lockoutCountdown(
+          formatLockoutCountdown(lockoutSecondsLeft)
+        )
+      : lastError;
+
+  useEffect(() => {
+    if (lockoutEndsAt == null) return;
+
+    const id = setInterval(() => {
+      const now = Date.now();
+      setLockoutNow(now);
+      if (now >= lockoutEndsAt) {
+        setLockoutEndsAt(null);
+        setLastError(appLockMessages.lockoutReady);
+      }
+    }, 250);
+
+    return () => clearInterval(id);
+  }, [lockoutEndsAt]);
+
   useEffect(() => {
     setAppLockGateState({
       locked: showLock,
@@ -112,13 +153,9 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     enabled: boolean;
     storageUnreliable: boolean;
   }> => {
-    const [stored, nextCapability, enrolledLevel] = await Promise.all([
-      readAppLockConfig(),
-      getBiometricCapability(),
-      getCurrentEnrolledLevel(),
-    ]);
-
-    setCapability(nextCapability);
+    // Read SecureStore first — do not wait on biometric APIs when App Lock is off
+    // (those calls can hang/slow on some devices and were showing a false lock screen).
+    const stored = await readAppLockConfig();
 
     if (!stored.ok) {
       if (stored.error === "unavailable") {
@@ -127,6 +164,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         setUnlocked(true);
         setHydrated(true);
         setLastError(null);
+        void refreshCapability();
         return { enabled: false, storageUnreliable: false };
       }
 
@@ -135,14 +173,29 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
       setUnlocked(false);
       setHydrated(true);
       setLastError(appLockMessages.storageReadFailed);
+      void refreshCapability();
       return { enabled: false, storageUnreliable: true };
     }
 
+    const nextConfig = stored.value;
     setStorageUnreliable(false);
 
-    const nextConfig = stored.value;
+    if (!nextConfig.enabled) {
+      setConfig(nextConfig);
+      setUnlocked(true);
+      setHydrated(true);
+      setLastError(null);
+      void refreshCapability();
+      return { enabled: false, storageUnreliable: false };
+    }
+
+    const [nextCapability, enrolledLevel] = await Promise.all([
+      getBiometricCapability(),
+      getCurrentEnrolledLevel(),
+    ]);
+    setCapability(nextCapability);
+
     if (
-      nextConfig.enabled &&
       !isBiometricEnrollmentValid({
         enabled: true,
         biometricEnrolled: nextCapability.status === "ready",
@@ -157,11 +210,11 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     }
 
     setConfig(nextConfig);
-    setUnlocked(!nextConfig.enabled);
+    setUnlocked(false);
     setHydrated(true);
     setLastError(null);
-    return { enabled: nextConfig.enabled, storageUnreliable: false };
-  }, []);
+    return { enabled: true, storageUnreliable: false };
+  }, [refreshCapability]);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,10 +236,35 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     // immediately re-locking and flashing protected UI.
     suppressResumeLockRef.current = true;
     lastBackgroundAtRef.current = null;
+    setLockoutEndsAt(null);
     setUnlocked(true);
     setPrivacyCoverVisible(false);
     setLastError(null);
   }, []);
+
+  const applyAuthFailure = useCallback(
+    (result: {
+      reason: AuthFailureReason;
+      message: string;
+      retryAfterMs?: number;
+    }) => {
+      setUnlocked(false);
+      if (result.reason === "lockout") {
+        const retryMs = result.retryAfterMs ?? 30_000;
+        const endsAt = Date.now() + retryMs;
+        setLockoutEndsAt(endsAt);
+        setLockoutNow(Date.now());
+        setLastError(
+          appLockMessages.lockoutCountdown(
+            formatLockoutCountdown(Math.ceil(retryMs / 1000))
+          )
+        );
+        return;
+      }
+      setLastError(result.message);
+    },
+    []
+  );
 
   const repairCorruptStorageAfterAuth = useCallback(async () => {
     const repaired = createDisabledConfig(null);
@@ -203,6 +281,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
 
   const unlock = useCallback(async () => {
     if (authInFlightRef.current) return;
+    if (lockoutEndsAt != null && Date.now() < lockoutEndsAt) return;
     if (!configRef.current.enabled && !storageUnreliableRef.current) return;
 
     authInFlightRef.current = true;
@@ -237,8 +316,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
             promptMessage: `Unlock with ${nextCapability.label}`,
           });
           if (!repairAuth.ok) {
-            setUnlocked(false);
-            setLastError(repairAuth.message);
+            applyAuthFailure(repairAuth);
             return;
           }
 
@@ -281,34 +359,34 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setUnlocked(false);
-      setLastError(result.message);
+      applyAuthFailure(result);
     } finally {
       authInFlightRef.current = false;
       setAuthBusy(false);
     }
   }, [
+    applyAuthFailure,
     hydrate,
+    lockoutEndsAt,
     markSessionUnlocked,
     refreshCapability,
     repairCorruptStorageAfterAuth,
   ]);
 
   useEffect(() => {
-    if (!showLock || !hydrated) return;
-    if (!config.enabled && !storageUnreliable) return;
+    if (!showBrandedLock) return;
     if (autoPromptedRef.current) return;
     if (Platform.OS === "web") return;
 
     autoPromptedRef.current = true;
     void unlock();
-  }, [showLock, hydrated, storageUnreliable, config.enabled, unlock]);
+  }, [showBrandedLock, unlock]);
 
   useEffect(() => {
-    if (!showLock) {
+    if (!showBrandedLock) {
       autoPromptedRef.current = false;
     }
-  }, [showLock]);
+  }, [showBrandedLock]);
 
   useEffect(() => {
     const onChange = (nextState: AppStateStatus) => {
@@ -563,24 +641,30 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         {privacyCoverVisible && !showLock ? <AppLockPrivacyOverlay /> : null}
 
         <Modal
-          visible={showLock}
+          visible={showBootstrapCover || showBrandedLock}
           animationType="fade"
           presentationStyle="fullScreen"
           transparent={false}
           onRequestClose={() => {
-            void unlock();
-          }}
-          accessibilityViewIsModal
-        >
-          <AppLockScreen
-            biometricLabel={capability.label}
-            busy={authBusy}
-            errorMessage={lastError}
-            loading={!hydrated}
-            onUnlock={() => {
+            if (showBrandedLock) {
               void unlock();
-            }}
-          />
+            }
+          }}
+          accessibilityViewIsModal={showBrandedLock}
+        >
+          {showBrandedLock ? (
+            <AppLockScreen
+              biometricLabel={capability.label}
+              busy={authBusy}
+              errorMessage={lockoutMessage}
+              lockoutSecondsLeft={lockoutSecondsLeft}
+              onUnlock={() => {
+                void unlock();
+              }}
+            />
+          ) : (
+            <AppLockBootstrapCover />
+          )}
         </Modal>
       </View>
     </AppLockContext.Provider>
