@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/Button";
 import { spacing, typography } from "@/constants/theme";
+import { formatLockoutCountdown } from "@/lib/app-lock/lockout";
 import { appLockMessages } from "@/lib/app-lock/messages";
 import { useTheme } from "@/providers/theme-context";
 
@@ -11,7 +12,7 @@ type AppLockScreenProps = {
   biometricLabel: string;
   busy: boolean;
   errorMessage: string | null;
-  loading?: boolean;
+  lockoutSecondsLeft?: number;
   onUnlock: () => void;
 };
 
@@ -19,11 +20,16 @@ export function AppLockScreen({
   biometricLabel,
   busy,
   errorMessage,
-  loading = false,
+  lockoutSecondsLeft = 0,
   onUnlock,
 }: AppLockScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const lockedOut = lockoutSecondsLeft > 0;
+  const timeLabel = formatLockoutCountdown(lockoutSecondsLeft);
+  const buttonLabel = lockedOut
+    ? appLockMessages.lockoutTryAgainLabel(timeLabel)
+    : appLockMessages.unlockButton(biometricLabel);
 
   return (
     <View
@@ -55,23 +61,30 @@ export function AppLockScreen({
           {appLockMessages.subtitle}
         </Text>
 
-        {loading ? (
-          <ActivityIndicator
-            color={colors.primary}
-            style={styles.spinner}
-            accessibilityLabel={appLockMessages.unlockHint}
-          />
-        ) : (
-          <Button
-            label={appLockMessages.unlockButton(biometricLabel)}
-            onPress={onUnlock}
-            loading={busy}
-            disabled={busy}
-            fullWidth
-            accessibilityHint={appLockMessages.unlockHint}
-            style={styles.unlockButton}
-          />
-        )}
+        {lockedOut ? (
+          <Text
+            style={[styles.countdown, { color: colors.foreground }]}
+            accessibilityRole="timer"
+            accessibilityLiveRegion="polite"
+            accessibilityLabel={`Try again in ${timeLabel}`}
+          >
+            {timeLabel}
+          </Text>
+        ) : null}
+
+        <Button
+          label={buttonLabel}
+          onPress={onUnlock}
+          loading={busy}
+          disabled={busy || lockedOut}
+          fullWidth
+          accessibilityHint={
+            lockedOut
+              ? `Biometric unlock locked. Try again in ${timeLabel}`
+              : appLockMessages.unlockHint
+          }
+          style={styles.unlockButton}
+        />
 
         {errorMessage ? (
           <Text
@@ -119,12 +132,16 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
+  countdown: {
+    fontSize: typography["2xl"],
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 1,
+    marginTop: spacing.sm,
+  },
   unlockButton: {
     marginTop: spacing.lg,
     maxWidth: 320,
-  },
-  spinner: {
-    marginTop: spacing["2xl"],
   },
   error: {
     fontSize: typography.sm,

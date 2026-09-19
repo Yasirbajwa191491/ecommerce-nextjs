@@ -31,7 +31,13 @@ export type AuthFailureReason =
 
 export type AuthAttemptResult =
   | { ok: true }
-  | { ok: false; reason: AuthFailureReason; message: string };
+  | {
+      ok: false;
+      reason: AuthFailureReason;
+      message: string;
+      /** Present for temporary biometric lockout — client countdown. */
+      retryAfterMs?: number;
+    };
 
 export type EnableAppLockResult =
   | { ok: true; config: AppLockConfig }
