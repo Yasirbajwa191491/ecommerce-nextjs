@@ -5,12 +5,60 @@ export type NotificationCopy = {
   body: string;
 };
 
+export type NotificationOrderItem = {
+  productName: string;
+  quantity: number;
+  color?: string;
+  isPromotionGift?: boolean;
+};
+
+/** Compact item summary for push/in-app copy (no order number required). */
+export function formatNotificationItemSummary(
+  items: NotificationOrderItem[],
+  options?: { maxNames?: number; maxNameLength?: number }
+): string {
+  const maxNames = options?.maxNames ?? 2;
+  const maxNameLength = options?.maxNameLength ?? 28;
+
+  const paidItems = items.filter((item) => !item.isPromotionGift);
+  const source = paidItems.length > 0 ? paidItems : items;
+
+  if (source.length === 0) {
+    return "your reserved items";
+  }
+
+  const formatName = (item: NotificationOrderItem) => {
+    const raw = item.productName.trim() || "Item";
+    const truncated =
+      raw.length > maxNameLength ? `${raw.slice(0, maxNameLength - 1).trimEnd()}…` : raw;
+    const qty = item.quantity > 1 ? `${item.quantity}× ` : "";
+    const color = item.color?.trim() ? ` (${item.color.trim()})` : "";
+    return `${qty}${truncated}${color}`;
+  };
+
+  if (source.length === 1) {
+    return formatName(source[0]!);
+  }
+
+  const shown = source.slice(0, maxNames).map(formatName);
+  const remaining = source.length - shown.length;
+  if (remaining <= 0) {
+    if (shown.length === 2) {
+      return `${shown[0]} and ${shown[1]}`;
+    }
+    return shown.join(", ");
+  }
+
+  return `${shown.join(", ")} +${remaining} more`;
+}
+
 export function buildOrderNotificationCopy(
   event: OrderNotificationEvent,
   orderNumber: string,
   options?: {
     cancellationReason?: string;
     trackingInfo?: string;
+    items?: NotificationOrderItem[];
   }
 ): NotificationCopy {
   switch (event) {
@@ -72,16 +120,20 @@ export function buildOrderNotificationCopy(
         title: "Payment received",
         body: `Payment for order #${orderNumber} has been recorded.`,
       };
-    case "order.recovery.reminder":
+    case "order.recovery.reminder": {
+      const itemSummary = formatNotificationItemSummary(options?.items ?? []);
       return {
         title: "Complete your order",
-        body: `Your order #${orderNumber} is waiting for payment. Complete your payment before your reserved items are released.`,
+        body: `Still waiting: ${itemSummary}. Complete payment before reserved items are released.`,
       };
-    case "order.expired":
+    }
+    case "order.expired": {
+      const itemSummary = formatNotificationItemSummary(options?.items ?? []);
       return {
         title: "Order expired",
-        body: `Your order #${orderNumber} expired because payment was not completed. Reserved items have been released.`,
+        body: `Payment was not completed for ${itemSummary}, so reserved stock was released.`,
       };
+    }
     default: {
       const _exhaustive: never = event;
       return _exhaustive;

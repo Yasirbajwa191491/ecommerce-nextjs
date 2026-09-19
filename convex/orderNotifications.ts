@@ -75,9 +75,20 @@ export const emitOrderNotificationEvent = internalMutation({
       createdAt: Date.now(),
     });
 
+    const orderItems = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
+      .collect();
+
     const copy = buildOrderNotificationCopy(args.event, order.orderNumber, {
       cancellationReason: args.cancellationReason,
       trackingInfo: args.trackingInfo,
+      items: orderItems.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        color: item.color,
+        isPromotionGift: item.isPromotionGift,
+      })),
     });
     const deepLinkPath = buildOrderDeepLinkPath(order.orderNumber, args.event);
 
@@ -132,6 +143,7 @@ export const deliverOrderNotificationEvent = internalAction({
     const copy = buildOrderNotificationCopy(args.event, order.orderNumber, {
       cancellationReason: args.cancellationReason,
       trackingInfo: args.trackingInfo,
+      items: order.items,
     });
     const deepLinkPath = buildOrderDeepLinkPath(order.orderNumber, args.event);
     const channels = getChannelsForEvent(args.event);
@@ -239,12 +251,24 @@ export const getOrderForDelivery = internalQuery({
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) return null;
+
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
+      .collect();
+
     return {
       orderNumber: order.orderNumber,
       customerEmail: order.customerEmail,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
       status: order.status,
+      items: items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        color: item.color,
+        isPromotionGift: item.isPromotionGift,
+      })),
     };
   },
 });
