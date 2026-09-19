@@ -2,6 +2,12 @@
 
 Optional **local device privacy** for the Expo mobile app. It is **not** customer login, order authorization, or payment authorization.
 
+For the full guide (App Lock **plus** QR codes, receipt download/share, and order tracking via receipt QR), see:
+
+**[mobile-security-qr-receipts.md](./mobile-security-qr-receipts.md)**
+
+---
+
 ## What it is
 
 - Settings → Privacy & Security → App Lock
@@ -33,7 +39,7 @@ Stripe            →  backend / Stripe authorization
 - After 5 minutes
 - After 15 minutes
 
-Timeout is measured from when the app leaves the `active` AppState. Returning before the timeout does not re-prompt.
+Timeout is measured from when the app goes to **background**. Returning before the timeout does not re-prompt.
 
 ## Packages
 
@@ -69,6 +75,10 @@ When App Lock is enabled and the app leaves the foreground, a solid privacy over
 - Disable: biometric success → SecureStore write
 - Cancel / failure leaves the previous state unchanged
 - Relaxing the lock timeout (making it longer) requires biometric success; tightening does not
+
+## Lockout countdown
+
+After too many failed biometric attempts, the lock screen shows a live timer (typical temporary window: 30 seconds) and disables unlock until it ends.
 
 ## Recovery
 
