@@ -63,6 +63,7 @@ If `expo start` fails with `TypeError: fetch failed`, dev scripts use `--offline
 - **Backend:** Same Convex deployment as web (`EXPO_PUBLIC_CONVEX_URL`)
 - **Shared code:** `@ecommerce/shared` for currency, images, cart types
 - **Cart:** Client-side with AsyncStorage (matches web localStorage pattern)
+- **App Lock:** Optional biometric privacy gate (`docs/app-lock.md`) — local only; not customer auth
 
 ## Deep links
 

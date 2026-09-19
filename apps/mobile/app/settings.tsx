@@ -12,6 +12,7 @@ import {
   SettingsToggleRow,
   ThemeSelector,
 } from "@/components/settings/SettingsSection";
+import { AppLockSettingsSection } from "@/components/settings/AppLockSettingsSection";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { spacing, typography } from "@/constants/theme";
 import {
@@ -238,6 +239,8 @@ export default function SettingsScreen() {
             isLast
           />
         </SettingsSection>
+
+        <AppLockSettingsSection />
 
         <SettingsSection title={strings.settings.dataPrivacy}>
           <SettingsRow

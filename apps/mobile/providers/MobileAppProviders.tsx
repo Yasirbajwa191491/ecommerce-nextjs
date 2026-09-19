@@ -6,8 +6,10 @@ import { MonitoringUserContext } from "@/components/monitoring/MonitoringUserCon
 import { OfflineBanner } from "@/components/feedback/OfflineBanner";
 import { installGlobalErrorHandlers } from "@/components/feedback/installGlobalErrorHandlers";
 import { ToastBanner } from "@/components/feedback/ToastBanner";
+import { AppLockCompareDismiss } from "@/components/app-lock/AppLockCompareDismiss";
 import { ProductCompareSheet } from "@/components/products/ProductCompareSheet";
 import { hydrateVisitorId } from "@/lib/visitor-id";
+import { AppLockProvider } from "@/providers/AppLockProvider";
 import { CartProvider } from "@/providers/cart-context";
 import { CompareProvider } from "@/providers/compare-context";
 import { MobileConvexProvider } from "@/providers/MobileConvexProvider";
@@ -38,32 +40,35 @@ export function MobileAppProviders({ children }: { children: ReactNode }) {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppErrorBoundary segment="root">
-          <GlobalErrorHandlers>
-            <NetworkProvider>
-              <MobileConvexProvider>
-                <PushNotificationProvider>
-                  <StripeProvider>
-                    <ToastProvider>
-                      <CartProvider>
-                        <CompareProvider>
-                          <VisitorIdHydrator>
-                            <MonitoringUserContext />
-                            <OfflineSyncBridge />
-                            {children}
-                            <ProductCompareSheet />
-                            <OfflineBanner />
-                            <ToastBanner />
-                          </VisitorIdHydrator>
-                        </CompareProvider>
-                      </CartProvider>
-                    </ToastProvider>
-                  </StripeProvider>
-                </PushNotificationProvider>
-              </MobileConvexProvider>
-            </NetworkProvider>
-          </GlobalErrorHandlers>
-        </AppErrorBoundary>
+        <AppLockProvider>
+          <AppErrorBoundary segment="root">
+            <GlobalErrorHandlers>
+              <NetworkProvider>
+                <MobileConvexProvider>
+                  <PushNotificationProvider>
+                    <StripeProvider>
+                      <ToastProvider>
+                        <CartProvider>
+                          <CompareProvider>
+                            <VisitorIdHydrator>
+                              <MonitoringUserContext />
+                              <OfflineSyncBridge />
+                              <AppLockCompareDismiss />
+                              {children}
+                              <ProductCompareSheet />
+                              <OfflineBanner />
+                              <ToastBanner />
+                            </VisitorIdHydrator>
+                          </CompareProvider>
+                        </CartProvider>
+                      </ToastProvider>
+                    </StripeProvider>
+                  </PushNotificationProvider>
+                </MobileConvexProvider>
+              </NetworkProvider>
+            </GlobalErrorHandlers>
+          </AppErrorBoundary>
+        </AppLockProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

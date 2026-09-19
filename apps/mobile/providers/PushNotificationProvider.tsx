@@ -34,6 +34,7 @@ import {
   resolveNotificationTargetHref,
   type NotificationNavigationCredentials,
 } from "@/lib/notification-navigation";
+import { whenAppUnlocked } from "@/lib/app-lock";
 
 type PushNotificationContextValue = {
   permission: "undetermined" | "granted" | "denied" | "unavailable";
@@ -221,6 +222,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         });
 
         if (href) {
+          await whenAppUnlocked();
           router.push(href);
           addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
           return;
@@ -233,6 +235,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       });
 
       if (fallbackHref) {
+        await whenAppUnlocked();
         router.push(fallbackHref);
         addMonitoringBreadcrumb("Deep-link navigation succeeded", "notification");
       }

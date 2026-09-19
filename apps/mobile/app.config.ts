@@ -33,6 +33,13 @@ const plugins: NonNullable<ExpoConfig["plugins"]> = [
   ],
   "expo-secure-store",
   [
+    "expo-local-authentication",
+    {
+      faceIDPermission:
+        "Allow Face ID to unlock the app when App Lock is enabled. Biometric data stays on your device and is never sent to our servers.",
+    },
+  ],
+  [
     "expo-notifications",
     {
       icon: "./assets/icon.png",
@@ -83,6 +90,8 @@ const config: ExpoConfig = {
         "Allow access to save order receipts to your photo library.",
       NSUserNotificationsUsageDescription:
         "Allow notifications so we can send order and payment updates.",
+      NSFaceIDUsageDescription:
+        "Allow Face ID to unlock the app when App Lock is enabled. Biometric data stays on your device and is never sent to our servers.",
     },
     ...(process.env.EXPO_PUBLIC_SITE_URL
       ? {
