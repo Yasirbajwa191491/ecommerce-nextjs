@@ -25,14 +25,15 @@ This document is the **current source of truth** for the Ecommerce monorepo. It 
 9. [Mobile offline architecture](#9-mobile-offline-architecture)
 10. [Cross-platform / iOS / Android](#10-cross-platform--ios--android)
 11. [Checkout and payments](#11-checkout-and-payments)
-12. [Backend / Convex](#12-backend--convex)
-13. [Security and reliability](#13-security-and-reliability)
-14. [Performance and UX](#14-performance-and-ux)
-15. [Accessibility](#15-accessibility)
-16. [Feature matrix](#16-feature-matrix)
-17. [Roadmap / remaining work](#17-roadmap--remaining-work)
+12. [Notifications, QR, receipts, cancel/reorder & App Lock](#12-notifications-qr-receipts-cancelreorder--app-lock)
+13. [Backend / Convex](#13-backend--convex)
+14. [Security and reliability](#14-security-and-reliability)
+15. [Performance and UX](#15-performance-and-ux)
+16. [Accessibility](#16-accessibility)
+17. [Feature matrix](#17-feature-matrix)
+18. [Roadmap / remaining work](#18-roadmap--remaining-work)
 
-Setup and environment variables: [README.md](../README.md). Mobile UX conventions: [apps/mobile/docs/mobile-ux.md](../apps/mobile/docs/mobile-ux.md).
+Setup and environment variables: [README.md](../README.md). Mobile UX: [apps/mobile/docs/mobile-ux.md](../apps/mobile/docs/mobile-ux.md). App Lock + QR + receipts: [apps/mobile/docs/mobile-security-qr-receipts.md](../apps/mobile/docs/mobile-security-qr-receipts.md). QR architecture: [docs/qr-architecture.md](qr-architecture.md). Stripe mobile: [apps/mobile/docs/stripe-payments.md](../apps/mobile/docs/stripe-payments.md).
 
 ---
 
@@ -117,6 +118,7 @@ Expo mobile ─────────┘         │
                                ├── Stripe (web Checkout Sessions + mobile PaymentIntents + webhooks)
                                ├── Resend (OTP, order email, campaigns)
                                ├── Twilio (optional order SMS)
+                               ├── Expo Push (mobile order/payment alerts + in-app history)
                                ├── Vapi (web voice/chat + outbound review calls)
                                ├── LLM providers (Gemini / Groq / OpenRouter / OpenAI / Anthropic)
                                ├── Next.js /api/ai/embed-image (SigLIP / CLIP)
@@ -196,10 +198,16 @@ Versions are from current workspace `package.json` files.
 | Expo Router | 6.x | File-based navigation |
 | Convex | 1.40 | Same backend |
 | NetInfo | 11.4 | Authoritative network state |
-| AsyncStorage | 2.2 | Cart, cache, prefs |
+| AsyncStorage | 2.2 | Cart, offline cache, prefs |
+| expo-secure-store | ~15 | App Lock config, checkout customer draft, contact draft, pending Stripe resume keys |
+| expo-local-authentication | ~17 | Biometric App Lock (Face ID / fingerprint) |
+| expo-notifications | — | Expo push registration + response handling |
+| expo-camera | — | Live QR scanner |
+| expo-media-library | — | Save receipt PNG to photos |
+| expo-sharing / view-shot | — | Share receipt image |
 | expo-image / image-picker / manipulator | — | Images and visual search |
 | @stripe/stripe-react-native | 0.50.x | Native PaymentSheet (requires dev/EAS build) |
-| expo-secure-store | — | Contact draft |
+| @sentry/react-native | — | Optional crash/monitoring when DSN set |
 | expo-clipboard / haptics | — | Copy order number, feedback |
 
 ### Backend and services
@@ -237,7 +245,8 @@ Hosting: **Vercel** for `apps/web` (see `apps/web/vercel.json`). Mobile: **EAS**
 | `/wishlist` | Guest list in **localStorage**. Not linked from header/footer nav |
 | `/promotions` | Active deals |
 | `/ai-shopping` | Explains AI search / visual / voice; opens Vapi when configured |
-| `/track-order` · `/track-order/[orderNumber]` | Track by **order number** (optional email for full PII) or **email/phone**. Delivered orders: write reviews with images |
+| `/track-order` · `/track-order/[orderNumber]` | Track by **order number** (optional email for full PII) or **email/phone**. **Cancel order** when eligible (fee/refund breakdown). Delivered orders: write reviews with images |
+| `/qr/[type]/[token]` | Secure QR resolver (product → PDP; order → tracking; payment → Stripe Checkout URL; package/delivery resolve) |
 | `/contact` | Store info + inquiry form |
 | `/about` | Story, FAQ accordion |
 | `/privacy` · `/terms` · `/shipping` · `/return` | Policy pages from settings/legal content |
@@ -259,6 +268,10 @@ Header search: debounced hybrid typeahead, recent searches, suggestions, camera 
 | Recently viewed on web home | Not mounted | Component exists; PDP still writes localStorage |
 | Customer accounts | Not implemented | Guest checkout only |
 | PayPal / Apple Pay | Not implemented | Footer badges are decorative. Pay methods: COD + Stripe Checkout |
+| Cancel order | Implemented | On verified track-order detail when eligibility allows |
+| Reorder to cart | Not implemented on web | Available on **mobile** only |
+| Push / in-app notification center | Not implemented on web | Mobile only |
+| Receipt image download/share | Not implemented on web | Mobile only (PNG + QR) |
 
 ---
 
@@ -274,7 +287,8 @@ Nav (`apps/web/src/components/admin/admin-shell.tsx`):
 | Products | `/admin/products`, `/new`, `/[id]/edit` | CRUD, active/inactive, search/filters, reorder, soft-delete/restore, images, stock, SEO, highlights, warranty. **AI content** (description, SEO, highlights, alt text). **AI pricing health**. Review insights on edit. Backfill **text embeddings** |
 | Image embeddings | `/admin/image-embeddings` | SigLIP/CLIP index coverage, visual-search log, job queue, retry, backfill/rebuild |
 | Promotions | `/admin/promotions` | BOGO / buy-X-get-Y / free gift / cross-product; schedule; performance; deactivate/restore |
-| Orders | `/admin/orders`, `/[id]` | Search/filter/sort. Detail: status, COD payment status, Stripe fields (read-only), line items, promotions, transaction log, review invitation email, Vapi **collect review** on delivered orders |
+| Orders | `/admin/orders`, `/[id]` | Search/filter/sort. Detail: status, COD payment status, Stripe fields (read-only), line items, promotions, transaction log, **order/product QR panels**, review invitation email, Vapi **collect review** on delivered orders, **admin cancel** with refund/fee |
+| Scan | `/admin/scan` | Staff QR scanner for package/delivery transitions |
 | Reviews | `/admin/reviews`, `/[id]` | Moderate (approve/reject/delete), AI flags, bulk reprocess, reply draft/publish, generation history |
 | Review AI | `/admin/review-ai` | Queue health, 30-day metrics, recent jobs |
 | Review calls | `/admin/review-calls` | Outbound Vapi call KPIs, transcripts, retry |
@@ -349,7 +363,7 @@ Automatic storefront dynamic pricing, full demand-planning, RFM clustering UI be
 Home → Shop → AI → Cart → Track
 ```
 
-`apps/mobile/app/(tabs)/_layout.tsx` + `PremiumTabBar`. Settings gear is in the **Home and Shop headers**, not in the tab bar. Legacy `/orders` redirects to Track.
+`apps/mobile/app/(tabs)/_layout.tsx` + `PremiumTabBar`. Settings gear is in the **Home and Shop headers**, not in the tab bar. Notification bell opens `/notifications`. Legacy `/orders` redirects to Track.
 
 | Tab | Behavior |
 |-----|----------|
@@ -367,29 +381,38 @@ Home → Shop → AI → Cart → Track
 | `/category/[slug]` | Category catalog |
 | `/search` | Hybrid search, trending/suggestions, recent searches, visual-search entry |
 | `/visual-search` | Camera or library; HEIC→JPEG on iOS |
-| `/scan` | Live QR scanner (order, product, payment) |
-| `/qr/[type]/[token]` | Secure QR resolver |
+| `/scan` | Live QR scanner (order, product, payment, package, delivery) + manual paste |
+| `/qr/[type]/[token]` | Secure QR resolver → product, live order tracking, or PaymentSheet for payment QR |
 | `/wishlist` | Convex + offline queue |
 | `/promotions` | Active promotions |
-| `/checkout`, `/checkout/success`, `/checkout/cancel` | COD / Stripe |
-| `/order/[id]` | Public order detail; delivered reviews |
-| `/settings` | Theme, shopping prefs, data/privacy clears, about |
+| `/checkout`, `/checkout/success`, `/checkout/cancel` | COD / native Stripe PaymentSheet; resume pending PI when cart fingerprint matches |
+| `/order/[id]` | Order detail: cancel, reorder, receipt download/share, delivered reviews |
+| `/notifications` | In-app notification history (read / archive / deep link) |
+| `/settings` | Theme, push preference toggles, shopping prefs, **Privacy & Security → App Lock**, data clears, about |
 | `/about`, `/contact`, `/privacy`, `/terms`, `/shipping`, `/return` | Content / forms |
 | `+not-found` | Fallback |
 
 ### Notable mobile behavior
 
-- **Theme:** light / dark / **system** (default). Persisted `@preferences/v1`
-- **Wishlist:** Convex `toggleWishlistItem` + visitor id; offline queue (see §9)
-- **Compare:** up to 4 products, AsyncStorage, global sheet
-- **Reviews:** PDP read (filters, semantic search, AI summary); write/edit/images on delivered order detail
-- **Newsletter / contact:** implemented; **online-only submit**; drafts saved
-- **Quick view:** `ProductQuickViewSheet` on catalog cards
-- **Vapi:** **not implemented** on mobile
-- **Push notifications:** settings toggles stored locally and **disabled** (no push backend)
-- **i18n:** English strings in `lib/i18n/strings.ts`; no second locale yet
+| Feature | Status | Notes |
+|---------|--------|--------|
+| Theme | Implemented | light / dark / **system** (default). Persisted `@preferences/v1` |
+| Wishlist | Implemented | Convex `toggleWishlistItem` + visitor id; offline queue (§9) |
+| Compare | Implemented | Up to 4 products, AsyncStorage, global sheet (dismissed when App Lock engages) |
+| Reviews | Implemented | PDP read; write/edit/images on delivered order detail |
+| Newsletter / contact | Implemented | Online-only submit; drafts in Secure Store |
+| Quick view | Implemented | `ProductQuickViewSheet` on catalog cards |
+| Push + in-app notifications | Implemented | Expo push + Convex delivery + `/notifications` center; prefs in Settings; gated by App Lock on open |
+| Biometric App Lock | Implemented | Optional Face ID / fingerprint; SecureStore config; timeouts; lockout countdown |
+| Receipt download / share | Implemented | PNG via view-shot; gallery save + share sheet; embeds secure order QR |
+| Cancel order | Implemented | Eligibility + fee notice + reason dialog |
+| Reorder | Implemented | Preview available/unavailable lines → add to cart |
+| Stripe PaymentSheet | Implemented | Requires EAS/dev build (not Expo Go); dismiss ≠ payment failure |
+| QR scan / deep links | Implemented | Camera + App Links / `ecommerce://` |
+| Vapi | Not implemented | No native Vapi SDK |
+| i18n | Partial | English strings in `lib/i18n/strings.ts`; no second locale yet |
 
----
+Detail for App Lock, QR, and receipts: [apps/mobile/docs/mobile-security-qr-receipts.md](../apps/mobile/docs/mobile-security-qr-receipts.md).
 
 ## 9. Mobile offline architecture
 
@@ -431,9 +454,11 @@ Home feeds, categories, shop/category lists, product details in the LRU store, r
 
 ### Online-only (no local order/payment/AI queue)
 
-**Orders, checkout, Stripe, COD, AI requests, visual search, live tracking (email/phone), contact submission, and newsletter subscription require an internet connection.**
+**Orders, checkout, Stripe, COD, AI requests, visual search, live tracking (email/phone), QR resolve, receipt generation, contact submission, and newsletter subscription require an internet connection.**
 
-Also online-only: review mutations and image upload, semantic review search, hybrid search **load more**, live cart pricing, stock sanitization.
+Also online-only: review mutations and image upload, semantic review search, hybrid search **load more**, live cart pricing, stock sanitization, push token sync.
+
+**App Lock unlock works offline** (local biometrics only).
 
 On reconnect: wishlist queue drains; **checkout, payments, forms, and AI are not auto-submitted.**
 
@@ -457,8 +482,11 @@ Checkout needs live stock, server-side promotion pricing, and either Stripe or a
 | Camera / library | `expo-image-picker` plugin; visual search camera + library |
 | HEIC/HEIF | Visual search converts to JPEG (`expo-image-manipulator`). Review uploads accept JPEG/PNG/WebP only |
 | Stripe | Native **PaymentSheet** (`@stripe/stripe-react-native`); `ecommerce://stripe-redirect` for 3DS return; requires **development/EAS build** (not Expo Go) |
-| Deep links | Scheme `ecommerce://`; Android intent filters for product, category, track-order, checkout, promotions when site URL is set |
-| Accessibility | 44px touch targets, labels, roles, reduce-motion |
+| App Lock | `expo-local-authentication` + SecureStore; Face ID usage string; native Modal lock UI |
+| Push | `expo-notifications` plugin; EAS project id; real device / production build for reliable delivery |
+| Receipts | `expo-media-library` save; `expo-sharing` + `react-native-view-shot` capture |
+| Deep links | Scheme `ecommerce://`; Android/iOS App Links for `/qr`, product, category, track-order, checkout, order, promotions when site URL is set |
+| Accessibility | 44px touch targets, labels, roles, reduce-motion; App Lock hides protected tree from a11y while locked |
 | Haptics | Native only; skipped on web |
 | New Architecture | `newArchEnabled: true` |
 | EAS | `apps/mobile/eas.json`: development client, preview APK, production Convex URL env |
@@ -471,7 +499,7 @@ Expo **web** (`react-native-web`) is a development preview of the mobile UI, not
 
 ## 11. Checkout and payments
 
-**Implemented** on web and mobile. Same Convex mutations/actions.
+**Implemented** on web and mobile. Same Convex pricing and order-creation model; different Stripe UX.
 
 ### Cart
 
@@ -490,34 +518,117 @@ Expo **web** (`react-native-web`) is a development preview of the mobile UI, not
 
 ### Stripe
 
-**Web:** `stripe.createCheckoutSession` — pending order (stock held) → Stripe Checkout Session (amount asserted against server total) → customer pays on Stripe hosted page → `POST /stripe/webhook` → paid/failed/refunded. Cancel URL restores stock via `acknowledgeStripeCheckoutCancelled`.
+| Surface | Flow |
+|---------|------|
+| **Web** | `stripe.createCheckoutSession` → pending order (stock held) → Stripe **Checkout Session** (hosted page) → `POST /stripe/webhook` → paid/failed/refunded. Cancel URL restores stock via `acknowledgeStripeCheckoutCancelled`. |
+| **Mobile** | `stripe.createMobilePaymentIntent` → pending order → Stripe **PaymentIntent** → native **PaymentSheet** → webhook. Dismissing PaymentSheet does **not** fail the order. Cart clears only after `paymentStatus: paid`. |
 
-**Mobile:** `stripe.createMobilePaymentIntent` — same pending-order + server-side pricing → Stripe **PaymentIntent** → native **PaymentSheet** in the app → webhook confirms payment. Dismissing PaymentSheet does **not** fail the order; retry via `resumeMobilePaymentIntent`. Cart clears only after server reports `paymentStatus: paid`.
+**Resume / retry**
 
-**Idempotency:** unique `idempotencyKey` on orders; duplicate submits reuse a pending order and existing PaymentIntent when still usable.
+- **Mobile:** Explicit resume via `resumeMobilePaymentIntent` when a pending Stripe order matches the cart fingerprint (SecureStore). Payment QR uses `startPaymentFromQr` → client secret → PaymentSheet.
+- **Web:** Checkout form relies on **idempotent** `createCheckoutSession` (reuses pending session when possible). `resumeCheckoutSession` exists in Convex; payment QR opens a Checkout URL via `startPaymentFromQr`. Web checkout UI does not expose a dedicated “resume” button like mobile.
 
-**Mobile env:** `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (publishable key only). Backend: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+**Idempotency:** unique `idempotencyKey` on orders; duplicate submits reuse a pending order and existing PaymentIntent/session when still usable.
+
+**Mobile env:** `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` only. Backend: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`. Detail: [apps/mobile/docs/stripe-payments.md](../apps/mobile/docs/stripe-payments.md).
 
 ### Offline
 
 Mobile (and any client) must be **online** to create orders. No queued COD/Stripe.
 
-### Notifications
-
-Order confirmation **email** (Resend). **SMS** if Twilio env + Admin Settings toggle. Review invitations from admin after delivery.
-
 ### Security notes
 
-- Card data never hits the app (Stripe hosted)
+- Card data never hits the app (Stripe hosted / PaymentSheet)
 - Webhook signature verification + `stripeWebhookEvents` idempotency
-- Public tracking: order-number lookup returns **masked PII** until email, phone, or access token verifies (`orderTracking.ts`)
+- Public tracking: order-number lookup returns **masked PII** until email, phone, or access token verifies
 - Tracking lookups are **rate-limited**
 
 Voice checkout (Stripe/COD links) exists on **Vapi/web**, not on the Expo app.
 
 ---
 
-## 12. Backend / Convex
+## 12. Notifications, QR, receipts, cancel/reorder & App Lock
+
+Cross-cutting customer modules that sit on top of orders/checkout. Security boundaries stay separate: App Lock ≠ QR auth ≠ Stripe auth.
+
+### Push & in-app notifications
+
+| | Status |
+|--|--------|
+| **Convex** | Implemented — `pushNotifications`, `pushTokens`, `inAppNotifications`, `orderNotifications`, retention cron (~90 days) |
+| **Mobile** | Implemented — Expo registration, Settings toggles (order/payment/promotions), bell + `/notifications` center, deep links (wait for App Lock unlock) |
+| **Web shop** | Not implemented — no push or in-app center |
+
+Capabilities: enroll device with visitor + email/access proof; deliver Expo push for order/payment events; persist in-app rows; mark read / archive; resolve deep-link targets server-side.
+
+Needs a **real device / EAS build** for reliable push (Expo Go is limited). Optional `EXPO_ACCESS_TOKEN` for Expo push API.
+
+### Transactional messaging (email + SMS)
+
+| Channel | Status | Notes |
+|---------|--------|--------|
+| **Email (Resend)** | Implemented | Order confirmation, status updates, review invites, marketing campaigns, admin OTP |
+| **SMS (Twilio)** | Implemented (env + admin toggle) | Order lifecycle texts when `sms_order_confirmation_enabled` and Twilio env are set |
+| SMS OTP / SMS marketing | Not implemented | Admin OTP is email; marketing SMS not shipped |
+
+### QR codes
+
+**Implemented** on web + mobile + Convex. Types: `product`, `order`, `package`, `payment`, `delivery`.
+
+```text
+HTTPS:  https://<SITE_URL>/qr/<type>/<token>
+App:    ecommerce://qr/<type>/<token>
+```
+
+| Capability | Web | Mobile | Admin |
+|------------|-----|--------|-------|
+| Resolve token (`api.qr.resolve`) | Yes | Yes | — |
+| Live camera scan | — | Yes (`/scan`) | Yes (`/admin/scan`) |
+| Order tracking via QR | Yes | Yes (`watchOrderFromQr`) | Order QR panel |
+| Payment QR → pay | Checkout URL | PaymentSheet | — |
+| Package / delivery staff actions | — | Opens resolver | Status transitions when authorized |
+| Receipt embeds order QR | — | Yes (PNG) | — |
+
+Tokens are opaque; backend stores hashes. Detail: [docs/qr-architecture.md](qr-architecture.md).
+
+### Receipt download & share (mobile)
+
+**Implemented** on mobile only.
+
+```text
+Verified order → getOrderReceipt → OrderReceiptImage (+ qrUrl)
+  → capture PNG → Download (Media Library) or Share (system sheet)
+```
+
+Eligibility depends on order/payment state. Caption: scan QR to track. See [mobile-security-qr-receipts.md](../apps/mobile/docs/mobile-security-qr-receipts.md).
+
+### Cancel order
+
+**Implemented** on web track-order detail, mobile order detail, and Convex (`orders.cancelOrder`, eligibility + fee/refund logic). Admin can cancel with Stripe refund path when applicable.
+
+### Reorder
+
+**Partial:** Convex `prepareReorder` + **mobile** preview sheet (available vs unavailable lines → cart). **No** customer reorder UI on web shop (admin “reorder” = product list sort).
+
+### Biometric App Lock (mobile)
+
+**Implemented** — optional local privacy only.
+
+| Topic | Detail |
+|-------|--------|
+| UI | Settings → Privacy & Security → App Lock |
+| Packages | `expo-local-authentication`, `expo-secure-store` |
+| Storage | `app_lock_config_v1` — `{ enabled, timeoutId, enrolledLevelAtEnable }` only |
+| Timeouts | Immediate / 1m / 5m / 15m (from true `background`) |
+| Gate | Native Modal; `whenAppUnlocked()` for notification navigation |
+| Lockout | Live countdown after too many failed attempts (~30s typical) |
+| Not | Customer login, QR authorization, or payment authorization |
+
+Detail: [apps/mobile/docs/app-lock.md](../apps/mobile/docs/app-lock.md) and [mobile-security-qr-receipts.md](../apps/mobile/docs/mobile-security-qr-receipts.md).
+
+---
+
+## 13. Backend / Convex
 
 One deployment serves web admin, web shop, and mobile.
 
@@ -527,9 +638,13 @@ One deployment serves web admin, web shop, and mobile.
 |--------|--------------------------|-----------|
 | Products / categories | `products.ts`, `productCategories.ts` | Web, mobile, admin |
 | Promotions | `productPromotions.ts`, `lib/promotions/` | Web, mobile, admin, checkout |
-| Orders / checkout | `orders.ts`, `lib/checkoutPricing.ts` | Web, mobile, Vapi |
-| Stripe | `stripe.ts`, `stripeWebhooks.ts` | Web, mobile |
+| Orders / checkout | `orders.ts`, `lib/checkoutPricing.ts`, cancel/reorder libs | Web, mobile, Vapi |
+| Stripe | `stripe.ts`, `stripeWebhooks.ts`, PaymentIntent helpers | Web, mobile |
 | Tracking | `orderTracking.ts` | Web, mobile |
+| QR | `qr.ts`, `lib/qrTokens.ts`, `lib/qrCodes.ts` | Web, mobile, admin |
+| Receipts | `orderReceipt.ts`, `lib/orderReceipt.ts` | Mobile (primary) |
+| Push / in-app | `pushNotifications*.ts`, `inAppNotifications.ts`, `orderNotifications.ts` | Mobile |
+| SMS / email | `sms.ts`, `notifications.ts`, `email.ts` | Internal after order |
 | Reviews | `productReviews.ts`, insights, search | Web, mobile, admin |
 | Search | `productSearch.ts` | Web, mobile, Vapi |
 | Visual search | `visualProductSearch.ts`, image embedding jobs | Web, mobile, admin |
@@ -542,7 +657,6 @@ One deployment serves web admin, web shop, and mobile.
 | Copilot | `aiBusinessCopilot.ts` | Admin |
 | Email campaigns | `emailCampaigns.ts`, `emailCampaignAi.ts` | Admin |
 | Vapi | `convex/vapi/` | Web widget + review calls |
-| SMS / email send | `sms.ts`, `notifications.ts` | Internal after order |
 | Storage | Product images, review photos, visual-search uploads, avatars | All |
 
 ### HTTP (`convex/http.ts`)
@@ -558,7 +672,7 @@ Public storefront functions are unauthenticated. Admin mutations use `requireAdm
 
 ---
 
-## 13. Security and reliability
+## 14. Security and reliability
 
 **Implemented protections (from code):**
 
@@ -568,24 +682,27 @@ Public storefront functions are unauthenticated. Admin mutations use `requireAdm
 - Stock decrement on order create; restore on Stripe cancel / applicable failures
 - Admin session + role checks; banned users blocked
 - Public order tracking rate limits; masked PII until verification
+- QR token hashing + resolve rate limits
+- Push enrollment tied to visitor + order access proof (not a shopper account)
+- Biometric App Lock: local only; fail-closed while config unknown; no biometric templates stored
 - Image embed API optional shared secret (`IMAGE_EMBED_API_SECRET`)
 - n8n HTTP secret (`lib/n8nAuth.ts`)
 - Copilot / some AI admin actions rate-limited
 - Storefront error UI; mobile `getFriendlyErrorMessage` (no raw Convex dumps)
 - No automatic offline order submission
-- Contact drafts in Secure Store on mobile (not payment data)
+- Contact / checkout drafts and App Lock config in Secure Store on mobile (not payment card data)
 
 **Auth scope:** Better Auth is **admin**. There is no shopper account system.
 
-**Do not store** (mobile policy): passwords, cards, Convex admin secrets.
+**Do not store** (mobile policy): passwords, cards, Convex admin secrets, biometric templates.
 
 ---
 
-## 14. Performance and UX
+## 15. Performance and UX
 
 | Technique | Where |
 |-----------|--------|
-| Indexed Convex queries + pagination | Catalog, admin lists, reviews |
+| Indexed Convex queries + pagination | Catalog, admin lists, reviews, notifications |
 | Infinite scroll / sentinel | Web `/products`; mobile shop/catalog |
 | Load-more | Visual search, PDP reviews |
 | Debounced search | Web header (~300ms); mobile search hooks |
@@ -599,11 +716,11 @@ Public storefront functions are unauthenticated. Admin mutations use `requireAdm
 | Avoid request storms | Mobile offline cache skip when live slice unchanged; skip live queries when offline |
 | Responsive shop layout | Web Tailwind breakpoints; mobile `useLayoutMetrics` |
 
-Realtime: Convex `useQuery` updates catalog/admin views without polling.
+Realtime: Convex `useQuery` updates catalog/admin/notification views without polling.
 
 ---
 
-## 15. Accessibility
+## 16. Accessibility
 
 ### Web
 
@@ -624,10 +741,11 @@ Documented in `apps/mobile/docs/mobile-ux.md` and applied in UI:
 - Reduce motion from `AccessibilityInfo`
 - Alerts for offline/errors/toasts
 - System font scaling; `maxFontSizeMultiplier` on dense layouts when used
+- App Lock Modal: branded lock only when enabled; countdown announced on biometric lockout
 
 ---
 
-## 16. Feature matrix
+## 17. Feature matrix
 
 Legend: **Yes** = implemented on that surface · **Partial** = limited or different mechanism · **No** = not on that surface · **N/A** = not applicable.
 
@@ -646,11 +764,21 @@ Legend: **Yes** = implemented on that surface · **Partial** = limited or differ
 | Promotions | Yes | Yes | Yes |
 | Cart | Yes | Yes | Validate/price only |
 | Checkout | Yes | Yes | Yes |
-| Stripe | Yes | Yes | Yes |
+| Stripe Checkout Session | Yes | No (uses PaymentSheet) | Yes |
+| Stripe PaymentSheet | No | Yes | Yes (PaymentIntent) |
 | COD | Yes | Yes | Yes |
+| Pending Stripe resume | Partial (idempotent create / QR) | Yes (explicit resume) | Yes |
 | Order tracking | Yes | Yes | Yes |
 | QR order / product / payment | Yes | Yes | Yes |
-| QR package / delivery (staff) | Yes (admin) | Scan opens; staff actions on web | Yes |
+| QR package / delivery (staff) | Yes (admin scan/actions) | Scan opens resolver | Yes |
+| Receipt image download/share + QR | No | Yes | Yes |
+| Cancel order (customer) | Yes | Yes | Yes |
+| Reorder to cart | No | Yes | Yes |
+| Push notifications | No | Yes | Yes |
+| In-app notification center | No | Yes | Yes |
+| Order email | Yes (via backend) | Yes (via backend) | Yes (Resend) |
+| Order SMS | Yes (via backend) | Yes (via backend) | Yes (Twilio, gated) |
+| Biometric App Lock | N/A | Yes | N/A |
 | Post-delivery reviews | Yes | Yes | Yes |
 | PDP review read / AI summary | Yes | Yes | Yes |
 | Contact form | Yes | Yes | Yes |
@@ -670,7 +798,7 @@ Wishlist **lists are not shared** between web localStorage and mobile Convex.
 
 ---
 
-## 17. Roadmap / remaining work
+## 18. Roadmap / remaining work
 
 These are **not implemented** or not finished. Do not treat them as shipped.
 
@@ -683,17 +811,20 @@ These are **not implemented** or not finished. Do not treat them as shipped.
 | Web dark mode | Storefront theme locked to light |
 | Header discoverability | Web wishlist/compare not in primary nav |
 | Recently viewed on web home | Component unused |
-| Push notifications | Mobile toggles are inert |
+| Web receipt download/share | Mobile only today |
+| Web customer reorder UI | Mobile only today |
+| Web push / in-app center | Mobile only today |
+| Web checkout explicit Stripe resume button | Mobile has dedicated resume; web relies on idempotent create + payment QR |
 | Dedicated inventory / CRM admin | Stock on products; customers via orders only |
 | Automatic dynamic pricing | Admin suggestions only |
 | Full forecasting / cohort analytics | Copilot heuristic cards ≠ dedicated BI product |
-| iOS physical-device QA | Not documented |
+| iOS physical-device QA matrix | App Lock / push / PaymentSheet need real-device sign-off |
 | App Store / TestFlight | EAS submit config empty of store metadata |
 | Play Store production | Preview APK profile exists; store listing not documented |
 | Second locale / RTL | i18n file is English-only |
 | SMS marketing / SMS OTP | Transactional order SMS only; admin OTP is email |
 
-Optional ops (already coded, need env): Vapi keys, Twilio, Resend, n8n, `AI_WORKER_URL`, image-embed secret, matching Convex URL on web vs mobile.
+Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push credentials, n8n, `AI_WORKER_URL`, image-embed secret, matching Convex URL on web vs mobile, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`, Face ID native rebuild for App Lock.
 
 ---
 
@@ -705,6 +836,9 @@ Optional ops (already coded, need env): Vapi keys, Twilio, Resend, n8n, `AI_WORK
 | [AGENTS.md](../AGENTS.md) | Agent/dev conventions |
 | [apps/mobile/README.md](../apps/mobile/README.md) | Expo runbook |
 | [apps/mobile/docs/mobile-ux.md](../apps/mobile/docs/mobile-ux.md) | Mobile UX, theme, offline rules |
+| [apps/mobile/docs/mobile-security-qr-receipts.md](../apps/mobile/docs/mobile-security-qr-receipts.md) | App Lock + QR + receipt download/share + tracking |
+| [apps/mobile/docs/app-lock.md](../apps/mobile/docs/app-lock.md) | Biometric App Lock short guide |
+| [apps/mobile/docs/stripe-payments.md](../apps/mobile/docs/stripe-payments.md) | Mobile PaymentSheet |
 | [docs/qr-architecture.md](qr-architecture.md) | QR tokens, scanners, Stripe payment QR |
 | [docs/visual-search-architecture.md](visual-search-architecture.md) | SigLIP/CLIP / n8n |
 | [docs/recommendation-platform.md](recommendation-platform.md) | Recommendation engine |

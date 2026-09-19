@@ -63,10 +63,11 @@ If `expo start` fails with `TypeError: fetch failed`, dev scripts use `--offline
 - **Backend:** Same Convex deployment as web (`EXPO_PUBLIC_CONVEX_URL`)
 - **Shared code:** `@ecommerce/shared` for currency, images, cart types
 - **Cart:** Client-side with AsyncStorage (matches web localStorage pattern)
-- **App Lock:** Optional biometric privacy gate (`docs/app-lock.md`) — local only; not customer auth
+- **App Lock:** Optional biometric privacy gate — local only; not customer auth. See [`docs/mobile-security-qr-receipts.md`](./docs/mobile-security-qr-receipts.md) (App Lock + QR + receipt download/share) and [`docs/app-lock.md`](./docs/app-lock.md).
 
 ## Deep links
 
 - Custom scheme: `ecommerce://qr/<type>/<token>` (and existing product/order paths)
 - Canonical QR: `https://<EXPO_PUBLIC_SITE_URL>/qr/<type>/<token>` — **HTTPS web-compatible**
 - App Links / Universal Links: configured in `app.config.ts` when `EXPO_PUBLIC_SITE_URL` is set; requires hosted `.well-known` files + native rebuild + device verification before claiming they work
+- Receipt download/share embeds a secure tracking QR — details in [`docs/mobile-security-qr-receipts.md`](./docs/mobile-security-qr-receipts.md)
