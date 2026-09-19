@@ -213,7 +213,7 @@ export const sendPaymentRecoveryEmail = internalAction({
         return;
       }
 
-      const { order } = orderData;
+      const { order, items } = orderData;
 
       if (!apiKey) {
         console.warn(
@@ -222,13 +222,24 @@ export const sendPaymentRecoveryEmail = internalAction({
         return;
       }
 
+      const paidItems = items.filter((item) => !item.isPromotionGift);
+      const itemLines = (paidItems.length > 0 ? paidItems : items)
+        .map(
+          (item) =>
+            `<li>${item.quantity}× ${item.productName}${
+              item.color ? ` (${item.color})` : ""
+            }</li>`
+        )
+        .join("");
+
       const appUrl = getSiteUrl();
       const resumeUrl = `${appUrl}/checkout/success?orderNumber=${encodeURIComponent(order.orderNumber)}&pendingPayment=1`;
-      const subject = `Complete your order — ${order.orderNumber}`;
+      const subject = `Complete your order — items still waiting`;
       const html = `
         <p>Hi ${order.customerName},</p>
-        <p>Your order <strong>#${order.orderNumber}</strong> is still waiting for payment.</p>
-        <p>Complete your payment soon to keep your reserved items.</p>
+        <p>You still have items waiting for payment:</p>
+        <ul>${itemLines || "<li>Your reserved cart items</li>"}</ul>
+        <p>Complete your payment soon to keep these reserved items.</p>
         <p><a href="${resumeUrl}">Complete payment</a></p>
         <p>If you no longer wish to complete this order, you can ignore this message and the reserved items will be released automatically.</p>
       `;
