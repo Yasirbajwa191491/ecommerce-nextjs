@@ -26,8 +26,11 @@ export function DashboardFilterBar() {
   const [customTo, setCustomTo] = useState(toParam);
 
   useEffect(() => {
-    setCustomFrom(fromParam);
-    setCustomTo(toParam);
+    const timer = window.setTimeout(() => {
+      setCustomFrom(fromParam);
+      setCustomTo(toParam);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fromParam, toParam]);
 
   const updateUrl = useCallback(

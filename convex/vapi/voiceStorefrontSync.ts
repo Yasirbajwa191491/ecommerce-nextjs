@@ -2,8 +2,6 @@ import { query, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 
-const ACTIVE_VOICE_SESSION_MS = 15 * 60 * 1000;
-
 const cartLineValidator = v.object({
   productId: v.id("products"),
   color: v.string(),
@@ -113,45 +111,35 @@ function productIdFromPayload(payload: Record<string, unknown>): string | null {
   return typeof id === "string" && id.trim() ? id.trim() : null;
 }
 
-async function findSingleActiveVoiceConversation(
-  ctx: QueryCtx
-): Promise<Doc<"vapiConversations"> | null> {
-  const cutoff = Date.now() - ACTIVE_VOICE_SESSION_MS;
-  const recent = await ctx.db
-    .query("vapiConversations")
-    .withIndex("by_started_at")
-    .order("desc")
-    .take(12);
-
-  const active = recent.filter(
-    (conversation) =>
-      conversation.channel === "voice" &&
-      conversation.startedAt >= cutoff &&
-      !conversation.endedAt
-  );
-
-  return active.length === 1 ? active[0]! : null;
-}
-
-async function resolveVoiceConversation(
+async function conversationForBrowser(
   ctx: QueryCtx,
   vapiCallId: string | undefined,
-  voiceSessionActive: boolean
+  browserSessionToken: string | undefined
 ): Promise<Doc<"vapiConversations"> | null> {
+  const token = browserSessionToken?.trim();
+  if (!token) return null;
+
   const callId = vapiCallId?.trim();
   if (callId) {
-    const exact = await ctx.db
+    const claim = await ctx.db
+      .query("vapiBrowserClaims")
+      .withIndex("by_call_id", (q) => q.eq("vapiCallId", callId))
+      .unique();
+    const conversation = await ctx.db
       .query("vapiConversations")
       .withIndex("by_vapi_call_id", (q) => q.eq("vapiCallId", callId))
       .unique();
-    if (exact) return exact;
+    const bound = claim?.browserSessionToken ?? conversation?.browserSessionToken;
+    if (bound !== token) return null;
+    return conversation;
   }
 
-  if (voiceSessionActive) {
-    return await findSingleActiveVoiceConversation(ctx);
-  }
-
-  return null;
+  const matches = await ctx.db
+    .query("vapiConversations")
+    .withIndex("by_browser_session", (q) => q.eq("browserSessionToken", token))
+    .order("desc")
+    .take(1);
+  return matches[0] ?? null;
 }
 
 async function buildStorefrontSyncFromConversation(
@@ -322,32 +310,35 @@ async function buildStorefrontSyncFromConversation(
 
 /** Reactive storefront state when the Vapi client misses tool-calls-result (server webhook tools). */
 export const getStorefrontSyncByCallId = query({
-  args: { vapiCallId: v.string() },
+  args: {
+    vapiCallId: v.string(),
+    browserSessionToken: v.string(),
+  },
   returns: storefrontSyncValidator,
   handler: async (ctx, args) => {
-    const conversation = await resolveVoiceConversation(ctx, args.vapiCallId, false);
+    const conversation = await conversationForBrowser(
+      ctx,
+      args.vapiCallId,
+      args.browserSessionToken
+    );
     if (!conversation) return emptySync();
     return await buildStorefrontSyncFromConversation(ctx, conversation);
   },
 });
 
-/** Session-aware sync for live voice calls (handles call id lag / mismatch). */
+/** Storefront state for the browser that bound this voice call. */
 export const getStorefrontSyncForSession = query({
   args: {
     vapiCallId: v.optional(v.string()),
-    voiceSessionActive: v.boolean(),
+    browserSessionToken: v.string(),
     sinceMs: v.optional(v.number()),
   },
   returns: storefrontSyncValidator,
   handler: async (ctx, args) => {
-    if (!args.voiceSessionActive && !args.vapiCallId?.trim()) {
-      return emptySync();
-    }
-
-    const conversation = await resolveVoiceConversation(
+    const conversation = await conversationForBrowser(
       ctx,
       args.vapiCallId,
-      args.voiceSessionActive
+      args.browserSessionToken
     );
     if (!conversation) return emptySync();
     return await buildStorefrontSyncFromConversation(

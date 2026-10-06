@@ -908,6 +908,19 @@ export const refundUnfulfillablePayment = internalAction({
         : undefined;
 
     if (refundAmountCents === 0) {
+      const attemptId = await ctx.runMutation(
+        internal.stripeRefundAttempts.enqueueStripeRefundAttempt,
+        {
+          orderId: args.orderId,
+          paymentIntentId: args.paymentIntentId,
+          reason: args.reason,
+          amountCents: 0,
+          feePercent: args.feePercent,
+        }
+      );
+      await ctx.runMutation(internal.stripeRefundAttempts.completeStripeRefundAttempt, {
+        attemptId,
+      });
       await ctx.runMutation(internal.orders.markOrderRefunded, {
         orderId: args.orderId,
         stripePaymentIntentId: args.paymentIntentId,
@@ -915,46 +928,92 @@ export const refundUnfulfillablePayment = internalAction({
       return null;
     }
 
+    const attemptId = await ctx.runMutation(
+      internal.stripeRefundAttempts.enqueueStripeRefundAttempt,
+      {
+        orderId: args.orderId,
+        paymentIntentId: args.paymentIntentId,
+        reason: args.reason,
+        amountCents: refundAmountCents,
+        feePercent: args.feePercent,
+      }
+    );
+    const claimed = await ctx.runMutation(
+      internal.stripeRefundAttempts.claimStripeRefundAttempt,
+      { attemptId }
+    );
+    if (!claimed) return null;
+
     try {
-      await stripe.refunds.create({
-        payment_intent: args.paymentIntentId,
-        ...(refundAmountCents != null ? { amount: refundAmountCents } : {}),
-        metadata: {
-          orderId: args.orderId,
-          reason: args.reason,
-          ...(args.feePercent != null ? { feePercent: String(args.feePercent) } : {}),
+      await stripe.refunds.create(
+        {
+          payment_intent: claimed.paymentIntentId,
+          ...(claimed.amountCents != null ? { amount: claimed.amountCents } : {}),
+          metadata: {
+            orderId: claimed.orderId,
+            reason: claimed.reason,
+            ...(claimed.feePercent != null ? { feePercent: String(claimed.feePercent) } : {}),
+          },
         },
+        { idempotencyKey: claimed.idempotencyKey }
+      );
+      await ctx.runMutation(internal.stripeRefundAttempts.completeStripeRefundAttempt, {
+        attemptId,
       });
       await ctx.runMutation(internal.orders.markOrderRefunded, {
-        orderId: args.orderId,
-        stripePaymentIntentId: args.paymentIntentId,
+        orderId: claimed.orderId,
+        stripePaymentIntentId: claimed.paymentIntentId,
       });
     } catch (error) {
       if (!shouldRetryAutomaticStripeRefund(error)) {
+        await ctx.runMutation(internal.stripeRefundAttempts.completeStripeRefundAttempt, {
+          attemptId,
+        });
         await ctx.runMutation(internal.orders.markOrderRefunded, {
-          orderId: args.orderId,
-          stripePaymentIntentId: args.paymentIntentId,
+          orderId: claimed.orderId,
+          stripePaymentIntentId: claimed.paymentIntentId,
         });
         return null;
       }
       const message = error instanceof Error ? error.message : String(error);
+      await ctx.runMutation(internal.stripeRefundAttempts.deferStripeRefundAttempt, {
+        attemptId,
+        message,
+      });
       try {
         await ctx.runMutation(internal.orders.recordStripeRefundFailure, {
-          orderId: args.orderId,
-          paymentIntentId: args.paymentIntentId,
+          orderId: claimed.orderId,
+          paymentIntentId: claimed.paymentIntentId,
           message,
         });
       } catch (logError) {
         console.error(
-          `[stripe] could not record refund failure orderId=${args.orderId}`,
+          `[stripe] could not record refund failure orderId=${claimed.orderId}`,
           logError
         );
       }
       console.error(
-        `[stripe] automatic refund failed orderId=${args.orderId} pi=${args.paymentIntentId}`,
+        `[stripe] automatic refund failed orderId=${claimed.orderId} pi=${claimed.paymentIntentId}`,
         error
       );
-      throw error;
+    }
+    return null;
+  },
+});
+
+export const retryDueStripeRefunds = internalAction({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const due = await ctx.runQuery(internal.stripeRefundAttempts.listDueStripeRefunds, {
+      now: Date.now(),
+    });
+    for (const attemptId of due) {
+      const attempt = await ctx.runQuery(internal.stripeRefundAttempts.getStripeRefundAttempt, {
+        attemptId,
+      });
+      if (!attempt) continue;
+      await ctx.runAction(internal.stripe.refundUnfulfillablePayment, attempt);
     }
     return null;
   },

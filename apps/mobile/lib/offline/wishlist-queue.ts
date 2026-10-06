@@ -128,28 +128,52 @@ export async function drainWishlistQueue(
 ): Promise<void> {
   if (draining) return;
   await hydrateWishlistStore();
-  if (queued.length === 0) return;
+  const snapshot = queued.map((item) => ({ ...item }));
+  if (snapshot.length === 0) return;
 
   draining = true;
   try {
-    const remaining: WishlistQueueItem[] = [];
-    for (let index = 0; index < queued.length; index += 1) {
-      const item = queued[index];
-      if (item.attempts >= MAX_QUEUE_ATTEMPTS) {
+    for (const item of snapshot) {
+      const current = queued.find(
+        (queuedItem) =>
+          queuedItem.productId === item.productId &&
+          queuedItem.queuedAt === item.queuedAt &&
+          queuedItem.add === item.add
+      );
+      if (!current || current.attempts >= MAX_QUEUE_ATTEMPTS) {
+        if (current && current.attempts >= MAX_QUEUE_ATTEMPTS) {
+          queued = queued.filter(
+            (queuedItem) =>
+              !(
+                queuedItem.productId === current.productId &&
+                queuedItem.queuedAt === current.queuedAt &&
+                queuedItem.add === current.add
+              )
+          );
+        }
         continue;
       }
       try {
-        await syncItem(item);
+        await syncItem(current);
+        queued = queued.filter(
+          (queuedItem) =>
+            !(
+              queuedItem.productId === item.productId &&
+              queuedItem.queuedAt === item.queuedAt &&
+              queuedItem.add === item.add
+            )
+        );
       } catch {
-        remaining.push({ ...item, attempts: item.attempts + 1 });
-        remaining.push(...queued.slice(index + 1));
-        queued = remaining;
-        emit();
-        await persistQueue();
-        return;
+        queued = queued.map((queuedItem) =>
+          queuedItem.productId === item.productId &&
+          queuedItem.queuedAt === item.queuedAt &&
+          queuedItem.add === item.add
+            ? { ...queuedItem, attempts: queuedItem.attempts + 1 }
+            : queuedItem
+        );
+        break;
       }
     }
-    queued = remaining;
     emit();
     await persistQueue();
   } finally {

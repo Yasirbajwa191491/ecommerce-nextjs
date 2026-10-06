@@ -30,6 +30,7 @@ import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-ban
 import { VapiAssistantStatus } from "@/components/vapi/vapi-assistant-status";
 import { VapiGuidedShoppingBanner } from "@/components/vapi/vapi-guided-shopping-banner";
 import { getStripeCheckoutUrlFromSteps } from "@/lib/vapi-activity";
+import { getVapiBrowserSessionToken } from "@/lib/vapi-browser-session";
 import { isCheckoutRelatedMessage, isVapiConfigured } from "@/lib/vapi-config";
 import { VAPI_OPEN_ASSISTANT_EVENT } from "@/lib/site";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
@@ -94,6 +95,14 @@ export function VapiAssistantWidget() {
     onUserMessage: handleUserMessage,
   });
 
+  const [browserSessionToken, setBrowserSessionToken] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBrowserSessionToken(getVapiBrowserSessionToken());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const onServerToolComplete = useCallback(
     (event: VapiToolEvent) => {
       completeServerTools([event.toolName]);
@@ -143,15 +152,15 @@ export function VapiAssistantWidget() {
 
   const serverCheckout = useQuery(
     api.vapi.voiceCheckout.getPendingCheckoutByCallId,
-    vapiCallId && needsCheckoutLookup && !clientCheckoutUrl
-      ? { vapiCallId }
+    vapiCallId && needsCheckoutLookup && !clientCheckoutUrl && browserSessionToken
+      ? { vapiCallId, browserSessionToken }
       : "skip"
   );
 
   const latestCheckout = useQuery(
     api.vapi.voiceCheckout.getLatestPendingCheckout,
-    needsCheckoutLookup && !clientCheckoutUrl && !serverCheckout?.checkoutUrl
-      ? {}
+    needsCheckoutLookup && !clientCheckoutUrl && !serverCheckout?.checkoutUrl && browserSessionToken
+      ? { browserSessionToken }
       : "skip"
   );
 

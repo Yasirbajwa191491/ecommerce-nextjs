@@ -33,7 +33,11 @@ import {
   resolveLateStripePaymentAction,
 } from "./lib/orderNotificationLogic";
 import { checkAndIncrementRateLimit } from "./lib/rateLimit";
-import { normalizeEmail, phonesMatch } from "./lib/publicOrderDto";
+import { normalizeEmail, normalizePhone } from "./lib/publicOrderDto";
+import { webhookEventClaimAction } from "./lib/webhookEventClaim";
+import { canMutateCustomerProfile } from "./lib/customerProfileAccess";
+import { adjustOrderStatusCount } from "./lib/maintainedAggregates";
+import { adjustProductSales } from "./lib/productSales";
 import {
   assertOrderAccess,
   generateOrderAccessToken,
@@ -479,6 +483,7 @@ async function createCashOrderHandler(
       customerEmail: args.customer.email.trim().toLowerCase(),
       customerName: args.customer.fullName.trim(),
       customerPhone: args.customer.phone.trim(),
+      customerPhoneNormalized: normalizePhone(args.customer.phone),
       customerAddress: args.customer.address.trim(),
       customerNotes: args.customer.notes?.trim() || undefined,
       termsAccepted: args.customer.termsAccepted,
@@ -520,6 +525,7 @@ async function createCashOrderHandler(
       );
     }
     await logOrderCreated(ctx, orderId, "cod", now);
+    await adjustOrderStatusCount(ctx, null, "pending");
 
     await ctx.runMutation(internal.orderNotifications.emitOrderNotificationEvent, {
       orderId,
@@ -721,6 +727,7 @@ export const createPendingStripeOrder = internalMutation({
       customerEmail: args.customer.email.trim().toLowerCase(),
       customerName: args.customer.fullName.trim(),
       customerPhone: args.customer.phone.trim(),
+      customerPhoneNormalized: normalizePhone(args.customer.phone),
       customerAddress: args.customer.address.trim(),
       customerNotes: args.customer.notes?.trim() || undefined,
       termsAccepted: args.customer.termsAccepted,
@@ -762,6 +769,7 @@ export const createPendingStripeOrder = internalMutation({
       );
     }
     await logOrderCreated(ctx, orderId, "stripe", now);
+    await adjustOrderStatusCount(ctx, null, "pending");
 
     await ctx.scheduler.runAfter(
       0,
@@ -1093,8 +1101,13 @@ export const markOrderPaid = internalMutation({
       stripeTransactionId:
         args.stripeTransactionId ?? order.stripeTransactionId,
       paidAt: now,
+      salesCountedAt: now,
       updatedAt: now,
     });
+    await adjustProductSales(ctx, args.orderId, 1);
+    if (previousStatus !== "confirmed") {
+      await adjustOrderStatusCount(ctx, previousStatus, "confirmed");
+    }
 
     await insertPaymentLog(ctx, {
       orderId: args.orderId,
@@ -1172,6 +1185,9 @@ export const markOrderFailed = internalMutation({
       paymentStatus: "failed",
       updatedAt: now,
     });
+    if (previousStatus !== args.status) {
+      await adjustOrderStatusCount(ctx, previousStatus, args.status);
+    }
 
     await insertPaymentLog(ctx, {
       orderId: args.orderId,
@@ -1270,16 +1286,59 @@ export const recordWebhookEvent = internalMutation({
       .query("stripeWebhookEvents")
       .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
       .unique();
-    if (existing) return { duplicate: true as const };
+    const claim = webhookEventClaimAction(
+      existing
+        ? { processedAt: existing.processedAt, status: existing.status }
+        : null
+    );
+    if (claim === "duplicate") return { duplicate: true as const };
 
-    await ctx.db.insert("stripeWebhookEvents", {
-      eventId: args.eventId,
-      type: args.type,
-      orderId: args.orderId,
-      payloadSummary: args.payloadSummary,
-      processedAt: Date.now(),
-    });
+    if (!existing) {
+      await ctx.db.insert("stripeWebhookEvents", {
+        eventId: args.eventId,
+        type: args.type,
+        orderId: args.orderId,
+        payloadSummary: args.payloadSummary,
+        receivedAt: Date.now(),
+        status: "pending",
+      });
+    }
     return { duplicate: false as const };
+  },
+});
+
+export const completeWebhookEvent = internalMutation({
+  args: { eventId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("stripeWebhookEvents")
+      .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
+      .unique();
+    if (!existing) return null;
+    await ctx.db.patch(existing._id, {
+      status: "processed",
+      processedAt: Date.now(),
+      lastError: undefined,
+    });
+    return null;
+  },
+});
+
+export const failWebhookEvent = internalMutation({
+  args: { eventId: v.string(), message: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("stripeWebhookEvents")
+      .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
+      .unique();
+    if (!existing || existing.status === "processed") return null;
+    await ctx.db.patch(existing._id, {
+      status: "failed",
+      lastError: args.message.slice(0, 400),
+    });
+    return null;
   },
 });
 
@@ -1290,7 +1349,13 @@ export const saveCustomerProfile = mutation({
     phone: v.string(),
     address: v.string(),
     visitorId: v.optional(v.string()),
+    profileToken: v.optional(v.string()),
+    orderAccessToken: v.optional(v.string()),
   },
+  returns: v.object({
+    profileId: v.id("customerProfiles"),
+    profileToken: v.string(),
+  }),
   handler: async (ctx, args) => {
     const email = args.email.trim().toLowerCase();
     const existing = await ctx.db
@@ -1298,38 +1363,50 @@ export const saveCustomerProfile = mutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
+    let orderAccessMatches = false;
+    if (args.orderAccessToken?.trim()) {
+      const order = await ctx.db
+        .query("orders")
+        .withIndex("by_access_token", (q) => q.eq("accessToken", args.orderAccessToken!.trim()))
+        .unique();
+      orderAccessMatches = Boolean(
+        order && normalizeEmail(order.customerEmail) === email
+      );
+    }
+
+    if (
+      !canMutateCustomerProfile({
+        profileExists: Boolean(existing),
+        storedToken: existing?.accessToken,
+        providedToken: args.profileToken,
+        orderAccessMatches,
+      })
+    ) {
+      throw new ConvexError("Not authorized to update this customer profile");
+    }
+
+    const profileToken = existing?.accessToken ?? generateOrderAccessToken();
     const profile = {
       email,
       fullName: args.fullName.trim(),
       phone: args.phone.trim(),
       address: args.address.trim(),
+      accessToken: profileToken,
       updatedAt: Date.now(),
     };
 
-    let profileId = existing?._id;
+    const profileId = existing
+      ? existing._id
+      : await ctx.db.insert("customerProfiles", profile);
     if (existing) {
       await ctx.db.patch(existing._id, profile);
-    } else {
-      profileId = await ctx.db.insert("customerProfiles", profile);
     }
 
-    if (args.visitorId) {
+    if (args.visitorId && (existing?.accessToken === args.profileToken || orderAccessMatches || !existing)) {
       await mergeVisitorIntoCustomer(ctx, args.visitorId, email, email);
     }
 
-    return profileId!;
-  },
-});
-
-export const getCustomerProfileByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("customerProfiles")
-      .withIndex("by_email", (q) =>
-        q.eq("email", args.email.trim().toLowerCase())
-      )
-      .unique();
+    return { profileId, profileToken };
   },
 });
 
@@ -1383,17 +1460,22 @@ export const lookupOrdersByCustomer = internalQuery({
     let orders;
 
     if (args.email?.trim()) {
+      const email = normalizeEmail(args.email);
       orders = await ctx.db
         .query("orders")
-        .withIndex("by_customer_email", (q) =>
-          q.eq("customerEmail", normalizeEmail(args.email!))
-        )
-        .collect();
+        .withIndex("by_customer_email_created", (q) => q.eq("customerEmail", email))
+        .order("desc")
+        .take(50);
     } else if (args.phone?.trim()) {
-      const allOrders = await ctx.db.query("orders").collect();
-      orders = allOrders.filter((order) =>
-        phonesMatch(order.customerPhone, args.phone!)
-      );
+      const phone = normalizePhone(args.phone);
+      if (phone.length < 8) return [];
+      orders = await ctx.db
+        .query("orders")
+        .withIndex("by_customer_phone_normalized", (q) =>
+          q.eq("customerPhoneNormalized", phone)
+        )
+        .order("desc")
+        .take(50);
     } else {
       return [];
     }

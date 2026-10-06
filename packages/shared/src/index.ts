@@ -11,6 +11,15 @@ export {
   type ProductWithImages,
 } from "./products/images";
 export { CART_STORAGE_KEY, type CheckoutCartLine } from "./cart/types";
+export { mergeSearchPage } from "./search/pageMerge";
+export {
+  APP_LINK_BUNDLE_ID,
+  APP_LINK_PATH_PREFIXES,
+  APP_LINK_PATHS,
+  buildAppleAppSiteAssociation,
+  buildAssetLinks,
+  parseSha256Fingerprints,
+} from "./app-links";
 export {
   FALLBACK_PHONE_COUNTRY,
   countryFlagEmoji,

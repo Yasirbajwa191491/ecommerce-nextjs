@@ -54,7 +54,10 @@ export function AdminAccessGate({ children }: { children: React.ReactNode }) {
       hasSuperAdmin === false
     ) {
       autoBootstrapAttempted.current = true;
-      void runBootstrap();
+      const timer = window.setTimeout(() => {
+        void runBootstrap();
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [session, hasSuperAdmin]);
 

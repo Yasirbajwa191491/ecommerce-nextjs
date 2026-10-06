@@ -66,7 +66,7 @@ ecommerce-nextjs/
 | Concern | Shared | Separate |
 |---------|--------|----------|
 | Catalog, orders, payments, search, reviews, promotions, settings | Convex API | UI implementations |
-| Cart persistence | Same key (`yasirCart`) and line shape | Web: `localStorage` · Mobile: AsyncStorage |
+| Cart persistence | Shared line shape (`productId`, `color`, `quantity`) | Web `localStorage` key `thapaCart` · Mobile AsyncStorage key `yasirCart` (`packages/shared`) |
 | Wishlist | Convex wishlist exists | Web uses **browser localStorage only**; mobile uses **Convex + offline queue** — lists are **not synced** across platforms |
 | Auth | Better Auth on Convex | **Admin only**. Storefront is guest checkout on web and mobile |
 | Voice assistant (Vapi) | Convex tools + webhooks | **Web widget only** (env-gated). Mobile has no Vapi SDK |
@@ -355,7 +355,7 @@ Automatic storefront dynamic pricing, full demand-planning, RFM clustering UI be
 
 ## 8. Mobile app
 
-**Implemented** Expo Router app (`apps/mobile`). Shares Convex with web. Cart: AsyncStorage `yasirCart`.
+**Implemented** Expo Router app (`apps/mobile`). Shares Convex with web. Cart: AsyncStorage `yasirCart` (web uses a separate `thapaCart` key).
 
 ### Tabs (current code)
 
@@ -485,7 +485,7 @@ Checkout needs live stock, server-side promotion pricing, and either Stripe or a
 | App Lock | `expo-local-authentication` + SecureStore; Face ID usage string; native Modal lock UI |
 | Push | `expo-notifications` plugin; EAS project id; real device / production build for reliable delivery |
 | Receipts | `expo-media-library` save; `expo-sharing` + `react-native-view-shot` capture |
-| Deep links | Scheme `ecommerce://`; Android/iOS App Links for `/qr`, product, category, track-order, checkout, order, promotions when site URL is set |
+| Deep links | Scheme `ecommerce://`. HTTPS App Links use the shared path list (`/qr`, `/product`, `/category`, `/track-order`, `/checkout`, `/order`, `/promotions`). Association files are served by Next.js only when `APPLE_TEAM_ID` and `ANDROID_SHA256_CERT_FINGERPRINTS` are set; otherwise those routes return 404. Signed device builds are still required to verify ownership. |
 | Accessibility | 44px touch targets, labels, roles, reduce-motion; App Lock hides protected tree from a11y while locked |
 | Haptics | Native only; skipped on web |
 | New Architecture | `newArchEnabled: true` |
@@ -514,14 +514,16 @@ Expo **web** (`react-native-web`) is a development preview of the mobile UI, not
 
 ### COD
 
-`orders.createCashOrder`: validate → price → decrement stock → order + item/promotion snapshots → logs → email / optional SMS. Payment status starts pending; admin can mark paid.
+`orders.createCashOrder`: validate → price → confirm the cart shares a delivery method → create an **uncommitted** order (`stockReleasedAt` set, stock unchanged) → item/promotion snapshots → logs → email / optional SMS. Payment status starts pending. Stock is deducted when an admin confirms, ships, or delivers. Marking the order paid records product sales totals.
 
 ### Stripe
 
 | Surface | Flow |
 |---------|------|
-| **Web** | `stripe.createCheckoutSession` → pending order (stock held) → Stripe **Checkout Session** (hosted page) → `POST /stripe/webhook` → paid/failed/refunded. Cancel URL restores stock via `acknowledgeStripeCheckoutCancelled`. |
-| **Mobile** | `stripe.createMobilePaymentIntent` → pending order → Stripe **PaymentIntent** → native **PaymentSheet** → webhook. Dismissing PaymentSheet does **not** fail the order. Cart clears only after `paymentStatus: paid`. |
+| **Web** | `stripe.createCheckoutSession` → pending **uncommitted** order → Stripe **Checkout Session** (hosted page) → `POST /stripe/webhook` → paid commits stock, or failed/expired. A webhook is stored as pending and marked processed only after the handler succeeds; a failed handler returns HTTP 500 so Stripe retries the same event. |
+| **Mobile** | `stripe.createMobilePaymentIntent` → pending uncommitted order → Stripe **PaymentIntent** → native **PaymentSheet** → webhook. Dismissing PaymentSheet does **not** fail the order. Cart clears only after `paymentStatus: paid`. |
+
+Two shoppers can still pay for the last unit. The payment that cannot commit stock is refunded. Stock commits validate every line before writing and restore any rows already patched if a later write throws, so a caught failure does not leave a partial deduction while the order still looks uncommitted. Cancellation refunds are stored in `stripeRefundAttempts` with a Stripe idempotency key and retried by a five-minute cron; Convex does not automatically retry the scheduled action.
 
 **Resume / retry**
 
@@ -539,8 +541,8 @@ Mobile (and any client) must be **online** to create orders. No queued COD/Strip
 ### Security notes
 
 - Card data never hits the app (Stripe hosted / PaymentSheet)
-- Webhook signature verification + `stripeWebhookEvents` idempotency
-- Public tracking: order-number lookup returns **masked PII** until email, phone, or access token verifies
+- Webhook signature verification. Receipt is separate from completion: unfinished events stay retryable.
+- Public tracking: order-number lookup returns **masked PII** until email, the full phone number (at least 8 digits), or an access token verifies. A displayed last-four suffix is not enough.
 - Tracking lookups are **rate-limited**
 
 Voice checkout (Stripe/COD links) exists on **Vapi/web**, not on the Expo app.
@@ -702,7 +704,7 @@ Public storefront functions are unauthenticated. Admin mutations use `requireAdm
 
 | Technique | Where |
 |-----------|--------|
-| Indexed Convex queries + pagination | Catalog, admin lists, reviews, notifications |
+| Indexed Convex queries + pagination | Public catalog and admin order lists walk indexed pages (`paginateMatching`) instead of collecting the table. Hybrid search ranks a bounded candidate set (name search index, vector hits, and at most 120 recent products). Order status counts and recommendation totals use maintained aggregates, with a bounded scan only when the order aggregate has not been written yet. Best sellers read `productSalesTotals` (filled when an order is marked paid). Array-offset catalog cursors are replaced by the Convex `continueCursor`. |
 | Infinite scroll / sentinel | Web `/products`; mobile shop/catalog |
 | Load-more | Visual search, PDP reviews |
 | Debounced search | Web header (~300ms); mobile search hooks |

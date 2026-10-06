@@ -62,21 +62,24 @@ export function PhoneInput({
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!parsedCountry) {
-      setCountry(defaultCountry);
-    }
+    if (parsedCountry) return;
+    const timer = setTimeout(() => setCountry(defaultCountry), 0);
+    return () => clearTimeout(timer);
   }, [defaultCountry, parsedCountry]);
 
   useEffect(() => {
     const parsed = parsePhoneNumberFromString(value);
-    if (parsed?.country) {
-      setCountry(parsed.country);
-      setNational(parsed.formatNational());
-      return;
-    }
-    if (!value.trim()) {
-      setNational("");
-    }
+    const timer = setTimeout(() => {
+      if (parsed?.country) {
+        setCountry(parsed.country);
+        setNational(parsed.formatNational());
+        return;
+      }
+      if (!value.trim()) {
+        setNational("");
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [value]);
 
   const selected = countries.find((item) => item.code === country) ?? {

@@ -6,6 +6,7 @@ export type SavedCheckoutCustomer = {
   phone: string;
   address: string;
   notes?: string;
+  profileToken?: string;
 };
 
 const STORAGE_KEY = "checkoutCustomer";
@@ -26,6 +27,7 @@ function migrateLegacyCustomer(raw: LegacySavedCheckoutCustomer): SavedCheckoutC
       phone: raw.phone,
       address: raw.address,
       notes: raw.notes,
+      profileToken: raw.profileToken,
     };
   }
 
@@ -43,6 +45,7 @@ function migrateLegacyCustomer(raw: LegacySavedCheckoutCustomer): SavedCheckoutC
     phone: raw.phone,
     address: parts.join(", "),
     notes: raw.notes,
+    profileToken: raw.profileToken,
   };
 }
 

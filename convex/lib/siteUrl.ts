@@ -13,11 +13,25 @@ function isLocalhostUrl(url: string): boolean {
  * Production Convex deployments use `prod:` deployment names.
  * Set REQUIRE_HTTPS_SITE_URL=1 to enforce the same rules on preview/staging.
  */
-export function requiresHttpsSiteUrl(
-  env: NodeJS.ProcessEnv = process.env
-): boolean {
-  if (env.REQUIRE_HTTPS_SITE_URL === "1") return true;
-  const deployment = env.CONVEX_DEPLOYMENT?.trim() ?? "";
+export type SiteUrlEnv = {
+  SITE_URL?: string;
+  CONVEX_DEPLOYMENT?: string;
+  REQUIRE_HTTPS_SITE_URL?: string;
+};
+
+function resolveSiteUrlEnv(env?: SiteUrlEnv): SiteUrlEnv {
+  if (env) return env;
+  return {
+    SITE_URL: process.env.SITE_URL,
+    CONVEX_DEPLOYMENT: process.env.CONVEX_DEPLOYMENT,
+    REQUIRE_HTTPS_SITE_URL: process.env.REQUIRE_HTTPS_SITE_URL,
+  };
+}
+
+export function requiresHttpsSiteUrl(env?: SiteUrlEnv): boolean {
+  const resolved = resolveSiteUrlEnv(env);
+  if (resolved.REQUIRE_HTTPS_SITE_URL === "1") return true;
+  const deployment = resolved.CONVEX_DEPLOYMENT?.trim() ?? "";
   return deployment.startsWith("prod:");
 }
 
@@ -25,9 +39,10 @@ export function requiresHttpsSiteUrl(
  * Canonical storefront origin for QR URLs, emails, and Stripe redirects.
  * Dev may fall back to localhost; production must set HTTPS SITE_URL.
  */
-export function getSiteUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const raw = env.SITE_URL?.trim();
-  const enforceHttps = requiresHttpsSiteUrl(env);
+export function getSiteUrl(env?: SiteUrlEnv): string {
+  const resolved = resolveSiteUrlEnv(env);
+  const raw = resolved.SITE_URL?.trim();
+  const enforceHttps = requiresHttpsSiteUrl(resolved);
 
   if (enforceHttps) {
     if (!raw) {

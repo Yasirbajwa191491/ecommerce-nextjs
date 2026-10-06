@@ -6,6 +6,12 @@ import { getPrimaryImageUrl } from "./lib/productImages";
 import { calculateFinalPrice } from "./lib/pricing";
 import { productImageValidator } from "./schema";
 import type { Id } from "./_generated/dataModel";
+import {
+  buildPromotionIndex,
+  filterCatalogProducts,
+  promotionFilterSlugValidator,
+} from "./lib/catalogFilters";
+import { computeKeywordScore } from "./lib/search/hybridRank";
 
 const EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -119,20 +125,54 @@ export const getActiveCategories = internalQuery({
 });
 
 export const getSearchCandidates = internalQuery({
-  args: {},
+  args: {
+    searchTerms: v.array(v.string()),
+    includeIds: v.array(v.id("products")),
+  },
   returns: v.object({
     candidates: v.array(searchProductCandidateValidator),
     maxReviews: v.number(),
   }),
-  handler: async (ctx) => {
-    const products = await ctx.db.query("products").collect();
-    const active = products.filter(isProductActive);
+  handler: async (ctx, args) => {
+    const ids = new Set<Id<"products">>(args.includeIds.slice(0, 50));
 
-    let maxReviews = 0;
-    for (const product of active) {
-      maxReviews = Math.max(maxReviews, product.reviews);
+    for (const term of args.searchTerms.slice(0, 6)) {
+      if (term.length < 2 || ids.size >= 120) break;
+      const hits = await ctx.db
+        .query("products")
+        .withSearchIndex("search_name", (q) => q.search("name", term))
+        .take(30);
+      for (const hit of hits) {
+        if (isProductActive(hit)) ids.add(hit._id);
+      }
     }
 
+    if (ids.size < 40) {
+      const scanned = await ctx.db.query("products").order("desc").take(120);
+      for (const product of scanned) {
+        if (!isProductActive(product) || ids.size >= 120) continue;
+        const keywordScore = computeKeywordScore(
+          {
+            _id: product._id,
+            name: product.name,
+            company: product.company,
+            price: product.price,
+            discountPercent: product.discountPercent ?? 0,
+            stars: product.stars,
+            reviews: product.reviews,
+            featured: product.featured,
+            categoryId: product.categoryId,
+            categoryName: "",
+            keywords: [],
+            popularityScore: 0,
+          },
+          args.searchTerms
+        );
+        if (keywordScore > 0) ids.add(product._id);
+      }
+    }
+
+    let maxReviews = 0;
     const candidates: Array<{
       _id: Id<"products">;
       name: string;
@@ -150,17 +190,15 @@ export const getSearchCandidates = internalQuery({
       imageUrl: string;
     }> = [];
 
-    for (const product of active) {
+    for (const productId of ids) {
+      const product = await ctx.db.get(productId);
+      if (!product || !isProductActive(product)) continue;
+      maxReviews = Math.max(maxReviews, product.reviews);
       const category = await ctx.db.get(product.categoryId);
       const intelligence = await ctx.db
         .query("productIntelligence")
         .withIndex("by_product", (q) => q.eq("productId", product._id))
         .unique();
-
-      const popularityScore =
-        (product.featured ? 0.5 : 0) +
-        Math.min(0.5, product.reviews / Math.max(maxReviews, 1));
-
       candidates.push({
         _id: product._id,
         name: product.name,
@@ -174,12 +212,61 @@ export const getSearchCandidates = internalQuery({
         categoryId: product.categoryId,
         categoryName: category?.name ?? "Product",
         keywords: intelligence?.keywords ?? [],
-        popularityScore,
+        popularityScore: 0,
         imageUrl: getPrimaryImageUrl(product),
       });
     }
 
+    for (const candidate of candidates) {
+      candidate.popularityScore =
+        (candidate.featured ? 0.5 : 0) +
+        Math.min(0.5, candidate.reviews / Math.max(maxReviews, 1));
+    }
+
     return { candidates, maxReviews };
+  },
+});
+
+export const filterSearchProductIds = internalQuery({
+  args: {
+    productIds: v.array(v.id("products")),
+    categoryId: v.optional(v.id("productCategories")),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    brands: v.optional(v.array(v.string())),
+    colors: v.optional(v.array(v.string())),
+    minRating: v.optional(v.number()),
+    promotions: v.optional(v.array(promotionFilterSlugValidator)),
+    inStockOnly: v.optional(v.boolean()),
+    now: v.number(),
+  },
+  returns: v.array(v.id("products")),
+  handler: async (ctx, args) => {
+    const products = [];
+    for (const productId of args.productIds.slice(0, 200)) {
+      const product = await ctx.db.get(productId);
+      if (product && isProductActive(product)) products.push(product);
+    }
+    const promotions = await ctx.db
+      .query("productPromotions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(100);
+    const promotionIndex = buildPromotionIndex(products, promotions, args.now);
+    const filtered = filterCatalogProducts(
+      products,
+      {
+        categoryId: args.categoryId,
+        minPrice: args.minPrice,
+        maxPrice: args.maxPrice,
+        brands: args.brands,
+        colors: args.colors,
+        minRating: args.minRating,
+        promotions: args.promotions,
+        inStockOnly: args.inStockOnly,
+      },
+      promotionIndex
+    );
+    return filtered.map((product) => product._id);
   },
 });
 

@@ -22,8 +22,8 @@ export function AnimatedCounter({
 
   useEffect(() => {
     if (reduceMotion) {
-      setDisplayValue(value);
-      return;
+      const timer = window.setTimeout(() => setDisplayValue(value), 0);
+      return () => window.clearTimeout(timer);
     }
 
     if (!inView) return;

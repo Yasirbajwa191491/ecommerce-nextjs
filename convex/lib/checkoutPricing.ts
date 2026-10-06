@@ -9,8 +9,8 @@ import type { AppliedPromotionSummary } from "./promotions/types";
 import { roundMoney } from "./pricing";
 import {
   calculateDeliveryChargeForMethod,
-  getDefaultDeliveryMethod,
   resolveAvailableDeliveryMethods,
+  selectCheckoutDeliveryMethod,
   type DeliveryMethodOption,
 } from "./deliveryPricing";
 import {
@@ -57,11 +57,10 @@ export async function priceCheckoutCart(
   const mergedLines = mergeCartLines(lines);
   const products = await loadCartProducts(ctx, mergedLines);
   const availableDeliveryMethods = resolveAvailableDeliveryMethods(products);
-
-  const selectedMethod =
-    deliveryMethod && availableDeliveryMethods.some((m) => m.type === deliveryMethod)
-      ? deliveryMethod
-      : getDefaultDeliveryMethod(products);
+  const selectedMethod = selectCheckoutDeliveryMethod(
+    availableDeliveryMethods,
+    deliveryMethod
+  );
 
   const useStandardShipping = selectedMethod === "standard";
   const priced = await priceCartLines(ctx, mergedLines, useStandardShipping);

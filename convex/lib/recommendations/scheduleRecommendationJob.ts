@@ -6,6 +6,7 @@ import {
   RECOMMENDATION_JOB_MAX_ATTEMPTS,
 } from "./constants";
 import { getRecommendationSettings } from "./settings";
+import { adjustRecommendationCounts } from "../maintainedAggregates";
 import type { Infer } from "convex/values";
 import { recommendationJobTypeValidator } from "./validators";
 
@@ -71,6 +72,7 @@ export async function scheduleRecommendationRefresh(
     createdAt: now,
     updatedAt: now,
   });
+  await adjustRecommendationCounts(ctx, { pendingJobs: 1 });
 
   if (settings.n8nEnabled) {
     await ctx.scheduler.runAfter(0, internal.n8nWebhooks.emitReviewEvent, {

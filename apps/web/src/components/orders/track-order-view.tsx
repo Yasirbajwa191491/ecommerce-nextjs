@@ -165,19 +165,23 @@ export function TrackOrderView() {
     const urlPhone = searchParams.get("phone")?.trim() ?? "";
     const prefill = storefront?.trackOrderPrefill;
 
-    if (urlOrderNumber) setOrderNumber(urlOrderNumber);
-    else if (prefill?.orderNumber) setOrderNumber(prefill.orderNumber);
+    const timer = window.setTimeout(() => {
+      if (urlOrderNumber) setOrderNumber(urlOrderNumber);
+      else if (prefill?.orderNumber) setOrderNumber(prefill.orderNumber);
 
-    if (urlEmail) setCustomerEmail(urlEmail);
-    else if (prefill?.email) setCustomerEmail(prefill.email);
+      if (urlEmail) setCustomerEmail(urlEmail);
+      else if (prefill?.email) setCustomerEmail(prefill.email);
 
-    if (urlPhone) setCustomerPhone(urlPhone);
-    else if (prefill?.phone) setCustomerPhone(prefill.phone);
+      if (urlPhone) setCustomerPhone(urlPhone);
+      else if (prefill?.phone) setCustomerPhone(prefill.phone);
 
-    if (prefill?.activeTab) setActiveTab(prefill.activeTab);
-    else if (urlEmail || urlPhone || prefill?.email || prefill?.phone) {
-      setActiveTab("customer");
-    }
+      if (prefill?.activeTab) setActiveTab(prefill.activeTab);
+      else if (urlEmail || urlPhone || prefill?.email || prefill?.phone) {
+        setActiveTab("customer");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [searchParams, storefront?.trackOrderPrefill]);
 
   const runOrderSearch = useCallback(
@@ -238,37 +242,48 @@ export function TrackOrderView() {
     const urlOrderNumber = searchParams.get("orderNumber")?.trim();
     if (!urlOrderNumber || prefillApplied) return;
 
-    setPrefillApplied(true);
-    setOrderNumber(urlOrderNumber);
-    setActiveTab("order-number");
-    void runOrderSearch(urlOrderNumber, searchParams.get("email")?.trim());
+    const email = searchParams.get("email")?.trim();
+    const timer = window.setTimeout(() => {
+      setPrefillApplied(true);
+      setOrderNumber(urlOrderNumber);
+      setActiveTab("order-number");
+      void runOrderSearch(urlOrderNumber, email);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [searchParams, prefillApplied, runOrderSearch]);
 
   useEffect(() => {
     const prefill = storefront?.trackOrderPrefill;
     if (!prefill?.autoSubmit || prefill.requestId === undefined) return;
     if (lastAutoSubmitRef.current === prefill.requestId) return;
-    lastAutoSubmitRef.current = prefill.requestId;
+    const requestId = prefill.requestId;
 
-    if (
-      prefill.activeTab === "customer" ||
-      prefill.email ||
-      prefill.phone
-    ) {
-      const email = prefill.email ?? customerEmail;
-      const phone = prefill.phone ?? customerPhone;
-      if (prefill.email) setCustomerEmail(prefill.email);
-      if (prefill.phone) setCustomerPhone(prefill.phone);
-      setActiveTab("customer");
-      void runCustomerSearch(email, phone);
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (lastAutoSubmitRef.current === requestId) return;
+      lastAutoSubmitRef.current = requestId;
 
-    if (prefill.orderNumber) {
-      setOrderNumber(prefill.orderNumber);
-      setActiveTab("order-number");
-      void runOrderSearch(prefill.orderNumber, prefill.email);
-    }
+      if (
+        prefill.activeTab === "customer" ||
+        prefill.email ||
+        prefill.phone
+      ) {
+        const email = prefill.email ?? customerEmail;
+        const phone = prefill.phone ?? customerPhone;
+        if (prefill.email) setCustomerEmail(prefill.email);
+        if (prefill.phone) setCustomerPhone(prefill.phone);
+        setActiveTab("customer");
+        void runCustomerSearch(email, phone);
+        return;
+      }
+
+      if (prefill.orderNumber) {
+        setOrderNumber(prefill.orderNumber);
+        setActiveTab("order-number");
+        void runOrderSearch(prefill.orderNumber, prefill.email);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [
     customerEmail,
     customerPhone,

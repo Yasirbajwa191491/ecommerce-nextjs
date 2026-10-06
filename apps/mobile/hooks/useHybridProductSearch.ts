@@ -9,6 +9,7 @@ import {
 import { getCachedVisitorId, getSearchSessionId } from "@/lib/visitor-id";
 import { api } from "@/lib/convex-api";
 import { getIsOnline } from "@/lib/network";
+import { mergeSearchPage } from "@ecommerce/shared";
 import { cacheProducts } from "@/lib/offline/product-store";
 import { searchCachedProducts } from "@/lib/offline/search-local";
 
@@ -111,6 +112,7 @@ export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
       return;
     }
 
+    const requestId = requestIdRef.current;
     setState((prev) => ({ ...prev, loadingMore: true }));
     try {
       const sessionId = await getSearchSessionId();
@@ -122,12 +124,24 @@ export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
         sessionId,
         visitorId: getCachedVisitorId() || undefined,
       });
-      setState((prev) => ({
-        ...prev,
-        products: [...prev.products, ...result.products],
-        nextCursor: result.nextCursor,
-        loadingMore: false,
-      }));
+      setState((prev) => {
+        const merged = mergeSearchPage({
+          requestId,
+          currentRequestId: requestIdRef.current,
+          mode: "append",
+          previous: prev.products,
+          incoming: result.products,
+        });
+        if (!merged.applied) {
+          return { ...prev, loadingMore: false };
+        }
+        return {
+          ...prev,
+          products: merged.products,
+          nextCursor: result.nextCursor,
+          loadingMore: false,
+        };
+      });
     } catch {
       setState((prev) => ({ ...prev, loadingMore: false }));
     }

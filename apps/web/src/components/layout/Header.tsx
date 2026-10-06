@@ -25,7 +25,8 @@ export default function Header() {
   const isLg = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
-    setSearchReady(true);
+    const timer = window.setTimeout(() => setSearchReady(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const mobileSearch = !searchReady ? (

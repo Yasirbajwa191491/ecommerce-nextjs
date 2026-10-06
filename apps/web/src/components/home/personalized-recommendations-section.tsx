@@ -24,13 +24,18 @@ export function PersonalizedRecommendationsSection() {
     const sourceId = (cartId ?? recentId) as Id<"products"> | null;
 
     if (!sourceId) {
-      setRecommendedIds([]);
-      setLoading(false);
-      return;
+      const timer = window.setTimeout(() => {
+        setRecommendedIds([]);
+        setLoading(false);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
 
     let cancelled = false;
-    setLoading(true);
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled && !settled) setLoading(true);
+    }, 0);
     void getSimilar({ productId: sourceId, limit: 8 })
       .then((results) => {
         if (!cancelled) {
@@ -43,11 +48,13 @@ export function PersonalizedRecommendationsSection() {
         }
       })
       .finally(() => {
+        settled = true;
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [cart, getSimilar]);
 

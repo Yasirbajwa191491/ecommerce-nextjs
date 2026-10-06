@@ -146,7 +146,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    const timer = window.setTimeout(() => setMobileNavOpen(false), 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   const handleSignOut = async () => {

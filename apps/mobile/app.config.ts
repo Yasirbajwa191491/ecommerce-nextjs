@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { ExpoConfig } from "expo/config";
+import { APP_LINK_BUNDLE_ID, APP_LINK_PATH_PREFIXES } from "@ecommerce/shared";
 
 const googleServicesPath = path.join(__dirname, "google-services.json");
 const hasGoogleServices = fs.existsSync(googleServicesPath);
@@ -80,7 +81,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.yasir.ecommerce",
+    bundleIdentifier: APP_LINK_BUNDLE_ID,
     infoPlist: {
       NSCameraUsageDescription:
         "Allow camera access to scan QR codes and take a photo to find similar products.",
@@ -102,7 +103,7 @@ const config: ExpoConfig = {
       : {}),
   },
   android: {
-    package: "com.yasir.ecommerce",
+    package: APP_LINK_BUNDLE_ID,
     softwareKeyboardLayoutMode: "pan",
     ...(hasGoogleServices ? { googleServicesFile: "./google-services.json" } : {}),
     adaptiveIcon: {
@@ -120,43 +121,11 @@ const config: ExpoConfig = {
             {
               action: "VIEW" as const,
               autoVerify: true,
-              data: [
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/qr",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/product",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/category",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/track-order",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/checkout",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/order",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/promotions",
-                },
-              ],
+              data: APP_LINK_PATH_PREFIXES.map((pathPrefix) => ({
+                scheme: "https" as const,
+                host: new URL(process.env.EXPO_PUBLIC_SITE_URL ?? "https://localhost").host,
+                pathPrefix,
+              })),
               category: ["BROWSABLE" as const, "DEFAULT" as const],
             },
           ]

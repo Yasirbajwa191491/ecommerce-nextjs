@@ -57,7 +57,10 @@ export function useNotificationCenterAccess() {
   }, [visitorId]);
 
   useEffect(() => {
-    void refresh();
+    const timer = setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const clearProof = useCallback(() => {

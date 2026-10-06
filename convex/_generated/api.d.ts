@@ -228,6 +228,7 @@ import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as sms from "../sms.js";
 import type * as stripe from "../stripe.js";
+import type * as stripeRefundAttempts from "../stripeRefundAttempts.js";
 import type * as stripeWebhookNode from "../stripeWebhookNode.js";
 import type * as stripeWebhooks from "../stripeWebhooks.js";
 import type * as subscriberInterests from "../subscriberInterests.js";
@@ -481,6 +482,7 @@ declare const fullApi: ApiFromModules<{
   settings: typeof settings;
   sms: typeof sms;
   stripe: typeof stripe;
+  stripeRefundAttempts: typeof stripeRefundAttempts;
   stripeWebhookNode: typeof stripeWebhookNode;
   stripeWebhooks: typeof stripeWebhooks;
   subscriberInterests: typeof subscriberInterests;

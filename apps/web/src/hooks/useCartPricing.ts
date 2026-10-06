@@ -28,7 +28,7 @@ type CartPricingResult = FunctionReturnType<
   typeof api.orders.validateCartForCheckout
 >;
 
-let cartPricingCache: { key: string; result: CartPricingResult } | undefined;
+const cartPricingCache = new Map<string, CartPricingResult>();
 
 export function toCartPricedLine(item: PricedCartItem): CartPricedLine {
   return {
@@ -89,14 +89,12 @@ export function useCartPricing(
   );
 
   if (resultQuery !== undefined && pricingCacheKey) {
-    cartPricingCache = { key: pricingCacheKey, result: resultQuery };
+    cartPricingCache.set(pricingCacheKey, resultQuery);
   }
 
   const result =
     resultQuery ??
-    (pricingCacheKey && cartPricingCache?.key === pricingCacheKey
-      ? cartPricingCache.result
-      : undefined);
+    (pricingCacheKey ? cartPricingCache.get(pricingCacheKey) : undefined);
 
   const priced = result?.status === "ok" ? result : undefined;
   const pricingError = mixedCurrency
@@ -131,7 +129,7 @@ export function useCartPricing(
       cart.length > 0 &&
       !mixedCurrency &&
       result === undefined &&
-      !(pricingCacheKey && cartPricingCache?.key === pricingCacheKey),
+      !(pricingCacheKey && cartPricingCache.has(pricingCacheKey)),
     getPricedItem,
     getItemCurrency,
   };

@@ -52,12 +52,15 @@ export function AdminLoginForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const savedRememberMe =
-      window.localStorage.getItem(REMEMBER_ME_KEY) === "true";
-    setRememberMe(savedRememberMe);
-    if (savedRememberMe) {
-      setEmail(window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? "");
-    }
+    const timer = window.setTimeout(() => {
+      const savedRememberMe =
+        window.localStorage.getItem(REMEMBER_ME_KEY) === "true";
+      setRememberMe(savedRememberMe);
+      if (savedRememberMe) {
+        setEmail(window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? "");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const startOtpStep = () => {

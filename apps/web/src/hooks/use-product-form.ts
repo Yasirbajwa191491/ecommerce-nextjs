@@ -64,7 +64,10 @@ export function useProductForm({
     useState<ProductAiContentProvider>("gemini");
 
   useEffect(() => {
-    setAiContentProviderState(readProductAiProvider());
+    const timer = window.setTimeout(() => {
+      setAiContentProviderState(readProductAiProvider());
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const setAiContentProvider = useCallback(
@@ -80,26 +83,33 @@ export function useProductForm({
   useEffect(() => {
     if (loadedKey === loadKey) return;
 
-    if (productId) {
-      if (product === undefined) return;
-      if (!product) {
-        toastError("Product not found");
-        router.replace("/admin/products");
-        return;
-      }
-      const next = productToForm(product as Product);
-      setForm(next);
-      setInitialSnapshot(serializeProductForm(next));
-      setLoadedKey(loadKey);
+    if (productId && product === undefined) return;
+
+    if (productId && !product) {
+      toastError("Product not found");
+      router.replace("/admin/products");
       return;
     }
 
-    const next = emptyForm();
-    if (defaultCategoryId) next.categoryId = defaultCategoryId;
-    else if (categories[0]) next.categoryId = categories[0]._id;
-    setForm(next);
-    setInitialSnapshot(serializeProductForm(next));
-    setLoadedKey(loadKey);
+    const timer = window.setTimeout(() => {
+      if (productId) {
+        if (!product) return;
+        const next = productToForm(product as Product);
+        setForm(next);
+        setInitialSnapshot(serializeProductForm(next));
+        setLoadedKey(loadKey);
+        return;
+      }
+
+      const next = emptyForm();
+      if (defaultCategoryId) next.categoryId = defaultCategoryId;
+      else if (categories[0]) next.categoryId = categories[0]._id;
+      setForm(next);
+      setInitialSnapshot(serializeProductForm(next));
+      setLoadedKey(loadKey);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [productId, product, categories, defaultCategoryId, loadKey, loadedKey, router]);
 
   const categoryOptions = useMemo(() => {

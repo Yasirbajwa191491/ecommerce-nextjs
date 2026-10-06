@@ -26,6 +26,7 @@ export const upsertConversation = internalMutation({
   args: {
     vapiCallId: v.string(),
     channel: v.union(v.literal("voice"), v.literal("chat")),
+    browserSessionToken: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
     summary: v.optional(v.string()),
@@ -42,13 +43,24 @@ export const upsertConversation = internalMutation({
       .unique();
 
     const now = Date.now();
+    const claim = await ctx.db
+      .query("vapiBrowserClaims")
+      .withIndex("by_call_id", (q) => q.eq("vapiCallId", args.vapiCallId))
+      .unique();
+    const requestedToken = args.browserSessionToken?.trim() || claim?.browserSessionToken;
 
     if (existing) {
+      const token =
+        existing.browserSessionToken ??
+        (requestedToken && (!claim || claim.browserSessionToken === requestedToken)
+          ? requestedToken
+          : undefined);
       await ctx.db.patch(existing._id, {
         customerEmail: args.customerEmail ?? existing.customerEmail,
         customerPhone: args.customerPhone ?? existing.customerPhone,
         summary: args.summary ?? existing.summary,
         endedAt: args.ended ? now : existing.endedAt,
+        ...(token && !existing.browserSessionToken ? { browserSessionToken: token } : {}),
       });
       return { conversationId: existing._id, isNew: false };
     }
@@ -57,6 +69,7 @@ export const upsertConversation = internalMutation({
       vapiCallId: args.vapiCallId,
       channel: args.channel,
       startedAt: now,
+      browserSessionToken: requestedToken,
       customerEmail: args.customerEmail,
       customerPhone: args.customerPhone,
       summary: args.summary,

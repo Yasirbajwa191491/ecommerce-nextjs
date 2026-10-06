@@ -117,11 +117,22 @@ export default defineSchema({
     warrantyType: v.optional(warrantyTypeValidator),
     warrantyDetails: v.optional(v.string()),
     deliveryOptions: v.optional(v.array(deliveryOptionValidator)),
+    /** Discounted price maintained for indexed price sorting. */
+    finalPrice: v.optional(v.number()),
   })
     .index("by_sort_order", ["sortOrder"])
     .index("by_category_id", ["categoryId"])
     .index("by_featured", ["featured"])
     .index("by_active_sort", ["active", "sortOrder"])
+    .index("by_price", ["price"])
+    .index("by_final_price", ["finalPrice"])
+    .index("by_stars", ["stars"])
+    .index("by_reviews", ["reviews"])
+    .index("by_name", ["name"])
+    .searchIndex("search_name", {
+      searchField: "name",
+      filterFields: ["featured"],
+    })
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
       dimensions: 384,
@@ -363,6 +374,7 @@ export default defineSchema({
     customerEmail: v.string(),
     customerName: v.string(),
     customerPhone: v.string(),
+    customerPhoneNormalized: v.optional(v.string()),
     customerAddress: v.string(),
     customerNotes: v.optional(v.string()),
     termsAccepted: v.boolean(),
@@ -389,6 +401,8 @@ export default defineSchema({
      * Never infer from status.
      */
     stockReleasedAt: v.optional(v.number()),
+    /** Set when paid units have been added to productSalesTotals. */
+    salesCountedAt: v.optional(v.number()),
     reviewInvitationSentAt: v.optional(v.number()),
     deliveryMethod: v.optional(deliveryMethodTypeValidator),
     deliveryMethodLabel: v.optional(v.string()),
@@ -403,9 +417,13 @@ export default defineSchema({
     .index("by_access_token", ["accessToken"])
     .index("by_idempotency_key", ["idempotencyKey"])
     .index("by_customer_email", ["customerEmail"])
+    .index("by_customer_email_created", ["customerEmail", "createdAt"])
     .index("by_customer_phone", ["customerPhone"])
+    .index("by_customer_phone_normalized", ["customerPhoneNormalized"])
     .index("by_status", ["status"])
-    .index("by_created_at", ["createdAt"]),
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_total", ["total"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),
@@ -716,6 +734,7 @@ export default defineSchema({
     fullName: v.string(),
     phone: v.string(),
     address: v.string(),
+    accessToken: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_email", ["email"]),
 
@@ -724,7 +743,13 @@ export default defineSchema({
     type: v.string(),
     orderId: v.optional(v.id("orders")),
     payloadSummary: v.optional(v.string()),
-    processedAt: v.number(),
+    receivedAt: v.optional(v.number()),
+    /** Set only after the handler finishes. Absence means a retry should resume. */
+    processedAt: v.optional(v.number()),
+    status: v.optional(
+      v.union(v.literal("pending"), v.literal("processed"), v.literal("failed"))
+    ),
+    lastError: v.optional(v.string()),
   })
     .index("by_event_id", ["eventId"])
     .index("by_order_id", ["orderId"]),
@@ -743,9 +768,11 @@ export default defineSchema({
     pendingCheckoutTotal: v.optional(v.number()),
     pendingCheckoutCurrency: v.optional(v.string()),
     pendingCheckoutAt: v.optional(v.number()),
+    browserSessionToken: v.optional(v.string()),
   })
     .index("by_vapi_call_id", ["vapiCallId"])
-    .index("by_started_at", ["startedAt"]),
+    .index("by_started_at", ["startedAt"])
+    .index("by_browser_session", ["browserSessionToken"]),
 
   vapiConversationLogs: defineTable({
     conversationId: v.id("vapiConversations"),
@@ -1202,4 +1229,49 @@ export default defineSchema({
     .index("by_customer_email_unread", ["customerEmail", "readAt"])
     .index("by_order_id", ["orderId"])
     .index("by_expires_at", ["expiresAt"]),
+
+  stripeRefundAttempts: defineTable({
+    orderId: v.id("orders"),
+    paymentIntentId: v.string(),
+    amountCents: v.optional(v.number()),
+    reason: v.string(),
+    feePercent: v.optional(v.number()),
+    idempotencyKey: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("succeeded")
+    ),
+    attempts: v.number(),
+    nextAttemptAt: v.number(),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_idempotency", ["idempotencyKey"])
+    .index("by_status_next", ["status", "nextAttemptAt"])
+    .index("by_order", ["orderId"]),
+
+  productSalesTotals: defineTable({
+    productId: v.id("products"),
+    unitsSold: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_product", ["productId"])
+    .index("by_units_sold", ["unitsSold"]),
+
+  maintainedAggregates: defineTable({
+    key: v.string(),
+    countsJson: v.string(),
+    ready: v.boolean(),
+    cursor: v.optional(v.union(v.string(), v.null())),
+    buildingJson: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  vapiBrowserClaims: defineTable({
+    vapiCallId: v.string(),
+    browserSessionToken: v.string(),
+    createdAt: v.number(),
+  }).index("by_call_id", ["vapiCallId"]),
 });

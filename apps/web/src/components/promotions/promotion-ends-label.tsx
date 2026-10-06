@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { m, useReducedMotion } from "framer-motion";
 import { Clock } from "lucide-react";
 import {
@@ -23,7 +24,8 @@ export function PromotionEndsLabel({
   className,
 }: PromotionEndsLabelProps) {
   const reduceMotion = useReducedMotion();
-  const referenceNow = now ?? Date.now();
+  const [fallbackNow] = useState(() => Date.now());
+  const referenceNow = now ?? fallbackNow;
   const label =
     variant === "compact"
       ? formatPromotionEndsAtCompact(endAt, referenceNow)

@@ -165,6 +165,7 @@ export const processWebhook = internalAction({
 
     console.log(`[stripe] Processing webhook ${event.type} (${event.id})`);
 
+    try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -262,7 +263,17 @@ export const processWebhook = internalAction({
       default:
         console.log(`[stripe] Unhandled event type: ${event.type}`);
     }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await ctx.runMutation(internal.orders.failWebhookEvent, {
+        eventId: event.id,
+        message,
+      });
+      console.error(`[stripe] Webhook ${event.id} failed:`, error);
+      return { status: 500, body: JSON.stringify({ error: "Webhook processing failed" }) };
+    }
 
+    await ctx.runMutation(internal.orders.completeWebhookEvent, { eventId: event.id });
     return { status: 200, body: JSON.stringify({ received: true }) };
   },
 });

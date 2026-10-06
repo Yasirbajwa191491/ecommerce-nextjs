@@ -18,10 +18,13 @@ export function useWishlist() {
   const [ids, setIds] = useState<string[]>([]);
 
   useEffect(() => {
-    setIds(getWishlistIds());
+    const timer = window.setTimeout(() => setIds(getWishlistIds()), 0);
     const handler = () => setIds(getWishlistIds());
     window.addEventListener(WISHLIST_CHANGE_EVENT, handler);
-    return () => window.removeEventListener(WISHLIST_CHANGE_EVENT, handler);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(WISHLIST_CHANGE_EVENT, handler);
+    };
   }, []);
 
   const toggle = useCallback((productId: string) => {

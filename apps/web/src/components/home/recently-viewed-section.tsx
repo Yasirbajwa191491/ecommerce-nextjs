@@ -12,11 +12,13 @@ export function RecentlyViewedSection() {
   const [ids, setIds] = useState<string[]>([]);
 
   useEffect(() => {
-    setIds(getRecentlyViewedIds());
+    const timer = window.setTimeout(() => setIds(getRecentlyViewedIds()), 0);
     const handler = () => setIds(getRecentlyViewedIds());
     window.addEventListener("storefront:recently-viewed-change", handler);
-    return () =>
+    return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("storefront:recently-viewed-change", handler);
+    };
   }, []);
 
   const products = useQuery(

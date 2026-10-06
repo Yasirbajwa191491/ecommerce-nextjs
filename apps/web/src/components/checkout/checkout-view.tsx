@@ -63,18 +63,25 @@ export function CheckoutView() {
   }, [cart.length, router]);
 
   useEffect(() => {
-    setCustomerPrefill(loadCheckoutCustomer());
+    const timer = window.setTimeout(() => {
+      setCustomerPrefill(loadCheckoutCustomer());
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (!storefront?.voiceDeliveryMethod) return;
-    setDeliveryMethod(storefront.voiceDeliveryMethod as DeliveryMethodType);
+    const method = storefront.voiceDeliveryMethod as DeliveryMethodType;
+    const timer = window.setTimeout(() => setDeliveryMethod(method), 0);
+    return () => window.clearTimeout(timer);
   }, [storefront?.voiceDeliveryMethod]);
 
   useEffect(() => {
     if (storefront?.voiceDeliveryMethod) return;
     if (deliveryMethod || !priced?.deliveryMethod) return;
-    setDeliveryMethod(priced.deliveryMethod as DeliveryMethodType);
+    const method = priced.deliveryMethod as DeliveryMethodType;
+    const timer = window.setTimeout(() => setDeliveryMethod(method), 0);
+    return () => window.clearTimeout(timer);
   }, [deliveryMethod, priced?.deliveryMethod, storefront?.voiceDeliveryMethod]);
 
   const availableDeliveryMethods = priced?.availableDeliveryMethods ?? [];

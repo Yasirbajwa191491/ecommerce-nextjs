@@ -62,22 +62,26 @@ export default function EmailTemplateDetailPage({
 
   useEffect(() => {
     if (!template) return;
-    setName(template.name);
-    setSubject(template.subject);
-    setHeadline(template.headline ?? "");
-    setPreviewText(template.previewText ?? "");
-    setCtaText(template.ctaText ?? "");
-    setProductPromoText(template.productPromoText ?? "");
-    setStatus(template.status);
-    setContentJson(template.contentJson || EMPTY_TIPTAP_DOC);
-    setContentHtml(template.contentHtml);
-    setProductIds(template.productIds ?? []);
+    const timer = window.setTimeout(() => {
+      setName(template.name);
+      setSubject(template.subject);
+      setHeadline(template.headline ?? "");
+      setPreviewText(template.previewText ?? "");
+      setCtaText(template.ctaText ?? "");
+      setProductPromoText(template.productPromoText ?? "");
+      setStatus(template.status);
+      setContentJson(template.contentJson || EMPTY_TIPTAP_DOC);
+      setContentHtml(template.contentHtml);
+      setProductIds(template.productIds ?? []);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [template]);
 
   useEffect(() => {
     if (!aiProducts || aiProducts.length === 0) return;
     if (selectedProducts.length === 0 && productIds.length > 0) {
-      setSelectedProducts(aiProducts);
+      const timer = window.setTimeout(() => setSelectedProducts(aiProducts), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [aiProducts, productIds.length, selectedProducts.length]);
 

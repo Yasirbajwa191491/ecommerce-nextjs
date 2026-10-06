@@ -189,6 +189,17 @@ export function passesStarFilter(
   return product.stars >= minStars;
 }
 
+export function applyHardSearchConstraints<T extends SearchProductCandidate>(
+  ranked: T[],
+  constraints: { maxPrice?: number; minPrice?: number; minStars?: number }
+): T[] {
+  return ranked.filter(
+    (product) =>
+      passesPriceFilters(product, constraints.maxPrice, constraints.minPrice) &&
+      passesStarFilter(product, constraints.minStars)
+  );
+}
+
 export function tokenizeQuery(query: string): string[] {
   return query
     .toLowerCase()

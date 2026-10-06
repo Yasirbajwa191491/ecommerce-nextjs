@@ -41,10 +41,10 @@ type CatalogFilterFacets = FunctionReturnType<
 >;
 
 /** Persists facet sidebar data across remounts so Brand/Promotions don't flash away. */
-let catalogFacetsCache: CatalogFilterFacets | undefined;
+const catalogFacetsCache = new Map<"facets", CatalogFilterFacets>();
 
 /** Persists product count across remounts so the toolbar doesn't flash skeleton. */
-let catalogTotalCountCache: { filterKey: string; count: number } | undefined;
+const catalogTotalCountCache = new Map<string, number>();
 
 function sortProductsClient(products: Product[], sort: ProductSort): Product[] {
   const sorted = [...products];
@@ -128,10 +128,11 @@ export default function ProductCatalog() {
 
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(0);
+  const [pageCursor, setPageCursor] = useState<string | null>(null);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const loadingMoreRef = useRef(false);
   const catalogSignatureRef = useRef("");
-  const applyPriceImmediatelyRef = useRef(false);
+  const [applyPriceImmediately, setApplyPriceImmediately] = useState(false);
   const [priceRange, setPriceRangeLocal] = useState<[number, number]>([0, 0]);
   const debouncedPriceRange = useDebouncedValue(priceRange, 400);
   const [priceInitialized, setPriceInitialized] = useState(false);
@@ -143,6 +144,25 @@ export default function ProductCatalog() {
     debouncedQuery: urlSearch,
     limit: PAGE_SIZE,
     source: "catalog",
+    filters: {
+      categoryId: categoryId === "all" ? undefined : categoryId,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      brands: filters.brandSlugs.length ? filters.brandSlugs : undefined,
+      colors: filters.colorSlugs.length ? filters.colorSlugs : undefined,
+      minRating: filters.minRating,
+      promotions: filters.promotionSlugs.length
+        ? (filters.promotionSlugs as Array<
+            | "on_sale"
+            | "discounted"
+            | "bogo"
+            | "free_gift"
+            | "buy_x_get_y"
+            | "limited_time"
+          >)
+        : undefined,
+      inStockOnly: filters.inStockOnly || undefined,
+    },
   });
 
   const facetArgs = useMemo(
@@ -184,40 +204,49 @@ export default function ProductCatalog() {
 
   const facetsQuery = useQuery(api.products.getPublicFilterFacets, facetArgs);
   if (facetsQuery !== undefined) {
-    catalogFacetsCache = facetsQuery;
+    catalogFacetsCache.set("facets", facetsQuery);
   }
-  const facets = facetsQuery ?? catalogFacetsCache;
+  const facets = facetsQuery ?? catalogFacetsCache.get("facets");
 
   useEffect(() => {
     if (!priceBounds) return;
 
-    if (!priceInitialized) {
-      const min = filters.minPrice ?? priceBounds.minPrice;
-      const max = filters.maxPrice ?? priceBounds.maxPrice;
-      setPriceRangeLocal([min, max]);
-      setPriceInitialized(true);
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (!priceInitialized) {
+        const min = filters.minPrice ?? priceBounds.minPrice;
+        const max = filters.maxPrice ?? priceBounds.maxPrice;
+        setPriceRangeLocal([min, max]);
+        setPriceInitialized(true);
+        return;
+      }
 
-    setPriceRangeLocal((current) => [
-      Math.min(current[0], priceBounds.minPrice),
-      Math.max(current[1], priceBounds.maxPrice),
-    ]);
+      setPriceRangeLocal((current) => {
+        const minBound = priceBounds.minPrice;
+        const maxBound = priceBounds.maxPrice;
+        const nextMin = Math.min(Math.max(current[0], minBound), maxBound);
+        const nextMax = Math.min(Math.max(current[1], minBound), maxBound);
+        if (nextMin === current[0] && nextMax === current[1]) return current;
+        return [nextMin, nextMax];
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [priceBounds, priceInitialized, filters.minPrice, filters.maxPrice]);
 
   useEffect(() => {
     if (
-      applyPriceImmediatelyRef.current &&
-      debouncedPriceRange[0] === priceRange[0] &&
-      debouncedPriceRange[1] === priceRange[1]
+      !applyPriceImmediately ||
+      debouncedPriceRange[0] !== priceRange[0] ||
+      debouncedPriceRange[1] !== priceRange[1]
     ) {
-      applyPriceImmediatelyRef.current = false;
+      return;
     }
-  }, [debouncedPriceRange, priceRange]);
 
-  const activePriceRange = applyPriceImmediatelyRef.current
-    ? priceRange
-    : debouncedPriceRange;
+    const timer = window.setTimeout(() => setApplyPriceImmediately(false), 0);
+    return () => window.clearTimeout(timer);
+  }, [applyPriceImmediately, debouncedPriceRange, priceRange]);
+
+  const activePriceRange = applyPriceImmediately ? priceRange : debouncedPriceRange;
 
   const priceFilterReady =
     priceInitialized &&
@@ -331,9 +360,13 @@ export default function ProductCatalog() {
   const filterKey = useMemo(() => JSON.stringify(filterArgs), [filterArgs]);
 
   useEffect(() => {
-    setPage(0);
-    loadingMoreRef.current = false;
-    catalogSignatureRef.current = "";
+    const timer = window.setTimeout(() => {
+      setPage(0);
+      setPageCursor(null);
+      loadingMoreRef.current = false;
+      catalogSignatureRef.current = "";
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [filterKey]);
 
   const totalCountQuery = useQuery(
@@ -341,13 +374,9 @@ export default function ProductCatalog() {
     isHybridSearch ? "skip" : filterArgs
   );
   if (totalCountQuery !== undefined) {
-    catalogTotalCountCache = { filterKey, count: totalCountQuery };
+    catalogTotalCountCache.set(filterKey, totalCountQuery);
   }
-  const totalCount =
-    totalCountQuery ??
-    (catalogTotalCountCache?.filterKey === filterKey
-      ? catalogTotalCountCache.count
-      : undefined);
+  const totalCount = totalCountQuery ?? catalogTotalCountCache.get(filterKey);
 
   const firstPage = useQuery(
     api.products.listPublicPaginated,
@@ -365,7 +394,7 @@ export default function ProductCatalog() {
       ? {
         paginationOpts: {
           numItems: PAGE_SIZE,
-          cursor: String(page * PAGE_SIZE),
+          cursor: pageCursor,
         },
         ...filterArgs,
       }
@@ -381,39 +410,48 @@ export default function ProductCatalog() {
     if (!firstPage || !remoteCatalogSignature) return;
     const firstBatch = firstPage.page as Product[];
 
-    if (catalogSignatureRef.current !== remoteCatalogSignature) {
-      catalogSignatureRef.current = remoteCatalogSignature;
-      setPage(0);
-      setAllProducts(firstBatch);
-      loadingMoreRef.current = false;
-      return;
-    }
-
-    setAllProducts((previous) => {
-      if (page === 0 || previous.length === 0) {
-        return firstBatch;
+    const timer = window.setTimeout(() => {
+      if (catalogSignatureRef.current !== remoteCatalogSignature) {
+        catalogSignatureRef.current = remoteCatalogSignature;
+        setPage(0);
+        setPageCursor(null);
+        setAllProducts(firstBatch);
+        loadingMoreRef.current = false;
+        return;
       }
-      const updates = new Map(firstBatch.map((product) => [product._id, product]));
-      return previous.map((product) => updates.get(product._id) ?? product);
-    });
-    loadingMoreRef.current = false;
+
+      setAllProducts((previous) => {
+        if (page === 0 || previous.length === 0) {
+          return firstBatch;
+        }
+        const updates = new Map(firstBatch.map((product) => [product._id, product]));
+        return previous.map((product) => updates.get(product._id) ?? product);
+      });
+      loadingMoreRef.current = false;
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [firstPage, remoteCatalogSignature, page]);
 
   useEffect(() => {
     if (page === 0 || !morePage || !firstPage) return;
 
-    loadingMoreRef.current = false;
-    setAllProducts((previous) => {
-      const firstBatch = firstPage.page as Product[];
-      const base =
-        previous.length >= firstBatch.length ? previous : firstBatch;
-      const existingIds = new Set(base.map((product) => product._id));
-      const nextItems = (morePage.page as Product[]).filter(
-        (product) => !existingIds.has(product._id)
-      );
-      if (nextItems.length === 0) return base;
-      return [...base, ...nextItems];
-    });
+    const timer = window.setTimeout(() => {
+      loadingMoreRef.current = false;
+      setAllProducts((previous) => {
+        const firstBatch = firstPage.page as Product[];
+        const base =
+          previous.length >= firstBatch.length ? previous : firstBatch;
+        const existingIds = new Set(base.map((product) => product._id));
+        const nextItems = (morePage.page as Product[]).filter(
+          (product) => !existingIds.has(product._id)
+        );
+        if (nextItems.length === 0) return base;
+        return [...base, ...nextItems];
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [morePage, page, firstPage]);
 
   const isSearchLoading = isHybridSearch && hybridSearch.loading;
@@ -458,9 +496,12 @@ export default function ProductCatalog() {
       void hybridSearch.loadMore();
       return;
     }
+    const cursor = page === 0 ? firstPage?.continueCursor : morePage?.continueCursor;
+    if (!cursor) return;
     loadingMoreRef.current = true;
+    setPageCursor(cursor);
     setPage((current) => current + 1);
-  }, [hasMore, isHybridSearch, isLoadingMore, hybridSearch]);
+  }, [hasMore, isHybridSearch, isLoadingMore, hybridSearch, page, firstPage, morePage]);
 
   useEffect(() => {
     if (isInitialLoading || isLoadingMore || loadingMoreRef.current || !hasMore) {
@@ -477,10 +518,11 @@ export default function ProductCatalog() {
   const handleClear = () => {
     clearAllFilters();
     setPage(0);
+    setPageCursor(null);
     loadingMoreRef.current = false;
 
     if (priceBounds) {
-      applyPriceImmediatelyRef.current = true;
+      setApplyPriceImmediately(true);
       setPriceRangeLocal([priceBounds.minPrice, priceBounds.maxPrice]);
     }
   };

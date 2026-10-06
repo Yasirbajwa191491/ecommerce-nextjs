@@ -45,7 +45,10 @@ export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBanne
   }, [accessToken, customerEmail, push, refreshOsPermission]);
 
   useEffect(() => {
-    void refreshOsPermission();
+    const timer = setTimeout(() => {
+      void refreshOsPermission();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [push?.expoPushToken, push?.permission, refreshOsPermission]);
 
   useEffect(() => {

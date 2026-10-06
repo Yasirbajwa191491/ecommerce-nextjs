@@ -1,7 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type MotionCartBadgeProps = {
@@ -12,15 +12,18 @@ type MotionCartBadgeProps = {
 export function MotionCartBadge({ count, className }: MotionCartBadgeProps) {
   const reduceMotion = useReducedMotion();
   const prevCountRef = useRef(count);
-  const pulseKeyRef = useRef(0);
-  const shouldPulse = count > prevCountRef.current;
+  const [pulseKey, setPulseKey] = useState(0);
 
   useEffect(() => {
-    if (shouldPulse && !reduceMotion) {
-      pulseKeyRef.current += 1;
-    }
+    const previous = prevCountRef.current;
     prevCountRef.current = count;
-  }, [count, shouldPulse, reduceMotion]);
+    if (count <= previous || reduceMotion) return;
+
+    const timer = window.setTimeout(() => {
+      setPulseKey((key) => key + 1);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [count, reduceMotion]);
 
   const display = count > 99 ? "99+" : count;
 
@@ -39,9 +42,9 @@ export function MotionCartBadge({ count, className }: MotionCartBadgeProps) {
       layout
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
     >
-      {shouldPulse ? (
+      {pulseKey > 0 ? (
         <m.span
-          key={pulseKeyRef.current}
+          key={pulseKey}
           className="pointer-events-none absolute inset-0 rounded-full bg-[#6254f3]"
           initial={{ scale: 1, opacity: 0.6 }}
           animate={{ scale: 1.8, opacity: 0 }}

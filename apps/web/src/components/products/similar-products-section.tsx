@@ -30,7 +30,10 @@ export function SimilarProductsSection({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled && !settled) setLoading(true);
+    }, 0);
 
     void getSimilar({ productId, limit: 8 })
       .then((results: SearchResultItem[]) => {
@@ -42,11 +45,13 @@ export function SimilarProductsSection({
         if (!cancelled) setProductIds([]);
       })
       .finally(() => {
+        settled = true;
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [getSimilar, productId]);
 

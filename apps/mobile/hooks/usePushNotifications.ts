@@ -220,7 +220,10 @@ export function usePushNotifications() {
   }, [syncTokenWithBackend, visitorId]);
 
   useEffect(() => {
-    void refreshPermissionAndSync();
+    const timer = setTimeout(() => {
+      void refreshPermissionAndSync();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refreshPermissionAndSync]);
 
   useEffect(() => {

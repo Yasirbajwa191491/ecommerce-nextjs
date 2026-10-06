@@ -87,22 +87,59 @@ export async function assertStockAvailable(
   }
 }
 
+type StockWriter = {
+  db: {
+    get: (id: Id<"products">) => Promise<{ name: string; stock: number } | null>;
+    patch: (id: Id<"products">, fields: { stock: number }) => Promise<void>;
+  };
+};
+
+/**
+ * Validate every line before writing. If a later write fails, restore the
+ * lines already patched. A caught error in the caller must not leave a
+ * partial deduction while `stockReleasedAt` still says the order is uncommitted.
+ */
 export async function decrementStock(
-  ctx: MutationCtx,
+  ctx: StockWriter,
   lines: StockLine[]
 ): Promise<void> {
-  for (const line of aggregateStockLines(lines)) {
+  const aggregated = aggregateStockLines(lines);
+  const prepared: Array<{
+    productId: Id<"products">;
+    name: string;
+    previousStock: number;
+    nextStock: number;
+  }> = [];
+
+  for (const line of aggregated) {
     const product = await ctx.db.get(line.productId);
     if (!product) {
       throw new Error("A product in your cart no longer exists");
     }
-    const nextStock = product.stock - line.quantity;
-    if (nextStock < 0) {
+    if (product.stock < line.quantity) {
       throw new Error(
         `Insufficient stock for "${product.name}". Only ${product.stock} available.`
       );
     }
-    await ctx.db.patch(line.productId, { stock: nextStock });
+    prepared.push({
+      productId: line.productId,
+      name: product.name,
+      previousStock: product.stock,
+      nextStock: product.stock - line.quantity,
+    });
+  }
+
+  const written: Array<(typeof prepared)[number]> = [];
+  try {
+    for (const row of prepared) {
+      await ctx.db.patch(row.productId, { stock: row.nextStock });
+      written.push(row);
+    }
+  } catch (error) {
+    for (const row of written.reverse()) {
+      await ctx.db.patch(row.productId, { stock: row.previousStock });
+    }
+    throw error;
   }
 }
 

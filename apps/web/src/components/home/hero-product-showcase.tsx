@@ -604,7 +604,8 @@ export function HeroProductShowcase({ products }: HeroProductShowcaseProps) {
   const count = products.length;
 
   useEffect(() => {
-    setHasMounted(true);
+    const timer = window.setTimeout(() => setHasMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const advanceFeatured = useCallback(() => {

@@ -32,12 +32,15 @@ export function useRecommendations({
 
   useEffect(() => {
     if (!enabled) {
-      setLoading(false);
-      return;
+      const timer = window.setTimeout(() => setLoading(false), 0);
+      return () => window.clearTimeout(timer);
     }
 
     let cancelled = false;
-    setLoading(true);
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled && !settled) setLoading(true);
+    }, 0);
     const visitorId = getVisitorId();
 
     void getRecommendations({
@@ -59,11 +62,13 @@ export function useRecommendations({
         if (!cancelled) setProductIds([]);
       })
       .finally(() => {
+        settled = true;
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [
     getRecommendations,

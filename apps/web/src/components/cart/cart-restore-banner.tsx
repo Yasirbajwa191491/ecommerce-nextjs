@@ -10,9 +10,9 @@ export function CartRestoreBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("restored") === "1") {
-      setVisible(true);
-    }
+    if (searchParams.get("restored") !== "1") return;
+    const timer = window.setTimeout(() => setVisible(true), 0);
+    return () => window.clearTimeout(timer);
   }, [searchParams]);
 
   if (!visible) return null;

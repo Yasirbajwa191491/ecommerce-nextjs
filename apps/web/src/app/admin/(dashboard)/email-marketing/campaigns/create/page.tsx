@@ -77,30 +77,34 @@ export default function CreateEmailCampaignPage() {
 
   useEffect(() => {
     if (!aiProducts || aiProducts.length === 0) return;
-    setSelectedProducts(aiProducts);
+    const timer = window.setTimeout(() => setSelectedProducts(aiProducts), 0);
+    return () => window.clearTimeout(timer);
   }, [aiProducts]);
 
   useEffect(() => {
     if (!existingCampaign || !editId || loadedEditId === editId) return;
     if (existingCampaign.status !== "draft") return;
-    setName(existingCampaign.name);
-    setSubject(existingCampaign.subject);
-    setHeadline(existingCampaign.headline ?? "");
-    setPreviewText(existingCampaign.previewText ?? "");
-    setCtaText(existingCampaign.ctaText ?? "");
-    setProductPromoText(existingCampaign.productPromoText ?? "");
-    setContentJson(existingCampaign.contentJson || EMPTY_TIPTAP_DOC);
-    setContentHtml(existingCampaign.contentHtml ?? "");
-    setProductIds(existingCampaign.productIds ?? []);
-    setTemplateId(existingCampaign.templateId ?? "none");
-    setAudience(
-      campaignSegmentToAudience(
-        existingCampaign.segmentType,
-        existingCampaign.segmentCriteria,
-        existingCampaign.selectedSubscriberIds
-      )
-    );
-    setLoadedEditId(editId);
+    const timer = window.setTimeout(() => {
+      setName(existingCampaign.name);
+      setSubject(existingCampaign.subject);
+      setHeadline(existingCampaign.headline ?? "");
+      setPreviewText(existingCampaign.previewText ?? "");
+      setCtaText(existingCampaign.ctaText ?? "");
+      setProductPromoText(existingCampaign.productPromoText ?? "");
+      setContentJson(existingCampaign.contentJson || EMPTY_TIPTAP_DOC);
+      setContentHtml(existingCampaign.contentHtml ?? "");
+      setProductIds(existingCampaign.productIds ?? []);
+      setTemplateId(existingCampaign.templateId ?? "none");
+      setAudience(
+        campaignSegmentToAudience(
+          existingCampaign.segmentType,
+          existingCampaign.segmentCriteria,
+          existingCampaign.selectedSubscriberIds
+        )
+      );
+      setLoadedEditId(editId);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [existingCampaign, editId, loadedEditId]);
 
   const templateDetail = useQuery(
@@ -110,16 +114,19 @@ export default function CreateEmailCampaignPage() {
 
   useEffect(() => {
     if (!templateDetail || editId) return;
-    setSubject(templateDetail.subject);
-    setHeadline(templateDetail.headline ?? "");
-    setPreviewText(templateDetail.previewText ?? "");
-    setCtaText(templateDetail.ctaText ?? "");
-    setProductPromoText(templateDetail.productPromoText ?? "");
-    setContentJson(templateDetail.contentJson || EMPTY_TIPTAP_DOC);
-    setContentHtml(templateDetail.contentHtml);
-    setProductIds(templateDetail.productIds ?? []);
-    setSelectedProducts([]);
-  }, [templateDetail]);
+    const timer = window.setTimeout(() => {
+      setSubject(templateDetail.subject);
+      setHeadline(templateDetail.headline ?? "");
+      setPreviewText(templateDetail.previewText ?? "");
+      setCtaText(templateDetail.ctaText ?? "");
+      setProductPromoText(templateDetail.productPromoText ?? "");
+      setContentJson(templateDetail.contentJson || EMPTY_TIPTAP_DOC);
+      setContentHtml(templateDetail.contentHtml);
+      setProductIds(templateDetail.productIds ?? []);
+      setSelectedProducts([]);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [templateDetail, editId]);
 
   const selectedTemplateLabel =
     templateId === "none"

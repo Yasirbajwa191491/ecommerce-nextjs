@@ -27,11 +27,14 @@ export function CartRecommendationsSection({
 
   useEffect(() => {
     if (!sourceId) {
-      setSimilarIds([]);
-      return;
+      const timer = window.setTimeout(() => setSimilarIds([]), 0);
+      return () => window.clearTimeout(timer);
     }
     let cancelled = false;
-    setLoading(true);
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled && !settled) setLoading(true);
+    }, 0);
     void getSimilar({ productId: sourceId, limit: 4 })
       .then((results) => {
         if (!cancelled) {
@@ -44,10 +47,12 @@ export function CartRecommendationsSection({
         }
       })
       .finally(() => {
+        settled = true;
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [getSimilar, sourceId, productIds]);
 

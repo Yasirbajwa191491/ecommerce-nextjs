@@ -181,16 +181,27 @@ export default function CheckoutScreen() {
       address: form.address.trim(),
       notes: form.notes.trim() || undefined,
     };
+    const stored = await loadCheckoutCustomer();
+    const sameEmail =
+      stored?.email.trim().toLowerCase() === customerRecord.email.trim().toLowerCase();
 
-    await saveCheckoutCustomer(customerRecord);
+    await saveCheckoutCustomer({
+      ...customerRecord,
+      profileToken: sameEmail ? stored?.profileToken : undefined,
+    });
 
     try {
-      await saveCustomerProfile({
+      const saved = await saveCustomerProfile({
         email: customerRecord.email,
         fullName: customerRecord.fullName,
         phone: customerRecord.phone,
         address: customerRecord.address,
         visitorId: await getVisitorId(),
+        profileToken: sameEmail ? stored?.profileToken : undefined,
+      });
+      await saveCheckoutCustomer({
+        ...customerRecord,
+        profileToken: saved.profileToken,
       });
     } catch {
       // Non-blocking

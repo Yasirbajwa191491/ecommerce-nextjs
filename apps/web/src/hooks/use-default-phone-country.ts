@@ -11,7 +11,10 @@ export function useDefaultPhoneCountry(): PhoneCountryCode {
   const [country, setCountry] = useState<PhoneCountryCode>(FALLBACK_PHONE_COUNTRY);
 
   useEffect(() => {
-    setCountry(detectRuntimePhoneCountry());
+    const timer = window.setTimeout(() => {
+      setCountry(detectRuntimePhoneCountry());
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   return country;

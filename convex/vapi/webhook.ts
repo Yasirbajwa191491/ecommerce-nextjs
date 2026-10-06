@@ -711,6 +711,10 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
     const upsert = await ctx.runMutation(internal.vapi.logging.upsertConversation, {
       vapiCallId: callId,
       channel,
+      browserSessionToken:
+        typeof callMetadata.browserSessionToken === "string"
+          ? callMetadata.browserSessionToken
+          : undefined,
       summary: message.summary,
       ended: message.type === "end-of-call-report",
     });
