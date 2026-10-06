@@ -64,9 +64,6 @@ export function useVapiStorefrontSync(options: {
   const pushBrowserCartToVoice = useMutation(
     api.vapi.voiceCartSync.pushBrowserCartToVoice
   );
-  const bindVoiceBrowserSession = useMutation(
-    api.vapi.voiceCheckout.bindVoiceBrowserSession
-  );
   const [browserSessionToken, setBrowserSessionToken] = useState("");
 
   useEffect(() => {
@@ -75,17 +72,6 @@ export function useVapiStorefrontSync(options: {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    const callId = options.vapiCallId?.trim();
-    if (!callId || browserSessionToken.length < 16) return;
-    void bindVoiceBrowserSession({
-      vapiCallId: callId,
-      browserSessionToken,
-    }).catch(() => {
-      // A mismatched claim means this browser does not own the call.
-    });
-  }, [bindVoiceBrowserSession, browserSessionToken, options.vapiCallId]);
 
   const boundCallIdRef = useRef<string | null>(null);
   const lastCartSyncRef = useRef<number | null>(null);
@@ -304,7 +290,9 @@ export function useVapiStorefrontSync(options: {
       !effectiveCallId ||
       syncingFromVoiceRef.current ||
       browserLines.length === 0 ||
-      !sync
+      !sync ||
+      sync.resolvedCallId !== effectiveCallId ||
+      !browserSessionToken
     ) {
       return;
     }
@@ -321,10 +309,20 @@ export function useVapiStorefrontSync(options: {
     lastBrowserPushRef.current = browserFingerprint;
     void pushBrowserCartToVoice({
       vapiCallId: effectiveCallId,
+      browserSessionToken,
       lines: browserLines,
+    }).then(({ updated }) => {
+      if (!updated && lastBrowserPushRef.current === browserFingerprint) {
+        lastBrowserPushRef.current = null;
+      }
+    }).catch(() => {
+      if (lastBrowserPushRef.current === browserFingerprint) {
+        lastBrowserPushRef.current = null;
+      }
     });
   }, [
     browserFingerprint,
+    browserSessionToken,
     browserLines,
     effectiveCallId,
     pushBrowserCartToVoice,

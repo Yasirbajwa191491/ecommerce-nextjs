@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { conversationForBrowser } from "./browserSession";
 
 const browserCartLineValidator = v.object({
   productId: v.id("products"),
@@ -16,6 +17,7 @@ type PushBrowserCartToVoiceResult = {
 export const pushBrowserCartToVoice = mutation({
   args: {
     vapiCallId: v.string(),
+    browserSessionToken: v.string(),
     lines: v.array(browserCartLineValidator),
   },
   returns: v.object({ updated: v.boolean() }),
@@ -25,10 +27,7 @@ export const pushBrowserCartToVoice = mutation({
       return { updated: false };
     }
 
-    const conversation = await ctx.db
-      .query("vapiConversations")
-      .withIndex("by_vapi_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
+    const conversation = await conversationForBrowser(ctx, callId, args.browserSessionToken);
 
     if (!conversation) {
       return { updated: false };

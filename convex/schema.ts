@@ -769,6 +769,11 @@ export default defineSchema({
     pendingCheckoutCurrency: v.optional(v.string()),
     pendingCheckoutAt: v.optional(v.number()),
     browserSessionToken: v.optional(v.string()),
+    browserSessionVerifiedAt: v.optional(v.number()),
+    messageCount: v.optional(v.number()),
+    userMessages: v.optional(v.number()),
+    assistantMessages: v.optional(v.number()),
+    toolCalls: v.optional(v.number()),
   })
     .index("by_vapi_call_id", ["vapiCallId"])
     .index("by_started_at", ["startedAt"])
@@ -1237,6 +1242,9 @@ export default defineSchema({
     reason: v.string(),
     feePercent: v.optional(v.number()),
     idempotencyKey: v.string(),
+    leaseVersion: v.optional(v.number()),
+    stripeRefundId: v.optional(v.string()),
+    stripeRefundedAt: v.optional(v.number()),
     status: v.union(
       v.literal("pending"),
       v.literal("processing"),
@@ -1259,6 +1267,29 @@ export default defineSchema({
   })
     .index("by_product", ["productId"])
     .index("by_units_sold", ["unitsSold"]),
+
+  aggregateContributions: defineTable({
+    key: v.string(),
+    sourceId: v.string(),
+    countsJson: v.string(),
+    groupKey: v.optional(v.string()),
+  }).index("by_key_source", ["key", "sourceId"]),
+
+  aggregateGroups: defineTable({
+    key: v.string(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
+
+  orderSalesContributions: defineTable({
+    orderId: v.id("orders"),
+    unitsJson: v.string(),
+  }).index("by_order", ["orderId"]),
+
+  productPaidSales: defineTable({
+    productId: v.id("products"),
+    unitsSold: v.number(),
+    updatedAt: v.number(),
+  }).index("by_product", ["productId"]).index("by_units_sold", ["unitsSold"]),
 
   maintainedAggregates: defineTable({
     key: v.string(),

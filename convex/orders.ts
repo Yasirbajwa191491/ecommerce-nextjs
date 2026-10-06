@@ -1350,7 +1350,6 @@ export const saveCustomerProfile = mutation({
     address: v.string(),
     visitorId: v.optional(v.string()),
     profileToken: v.optional(v.string()),
-    orderAccessToken: v.optional(v.string()),
   },
   returns: v.object({
     profileId: v.id("customerProfiles"),
@@ -1363,23 +1362,11 @@ export const saveCustomerProfile = mutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
-    let orderAccessMatches = false;
-    if (args.orderAccessToken?.trim()) {
-      const order = await ctx.db
-        .query("orders")
-        .withIndex("by_access_token", (q) => q.eq("accessToken", args.orderAccessToken!.trim()))
-        .unique();
-      orderAccessMatches = Boolean(
-        order && normalizeEmail(order.customerEmail) === email
-      );
-    }
-
     if (
       !canMutateCustomerProfile({
         profileExists: Boolean(existing),
         storedToken: existing?.accessToken,
         providedToken: args.profileToken,
-        orderAccessMatches,
       })
     ) {
       throw new ConvexError("Not authorized to update this customer profile");
@@ -1402,7 +1389,7 @@ export const saveCustomerProfile = mutation({
       await ctx.db.patch(existing._id, profile);
     }
 
-    if (args.visitorId && (existing?.accessToken === args.profileToken || orderAccessMatches || !existing)) {
+    if (args.visitorId && (existing?.accessToken === args.profileToken || !existing)) {
       await mergeVisitorIntoCustomer(ctx, args.visitorId, email, email);
     }
 

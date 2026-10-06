@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { buildStripeRefundIdempotencyKey, planStripeRefundRetry } from "./lib/stripeRefundRetry";
+import { internal } from "./_generated/api";
+import {
+  buildStripeRefundIdempotencyKey,
+  planStripeRefundRetry,
+  STRIPE_REFUND_LEASE_MS,
+} from "./lib/stripeRefundRetry";
 
 export const enqueueStripeRefundAttempt = internalMutation({
   args: {
@@ -50,18 +55,31 @@ export const claimStripeRefundAttempt = internalMutation({
       reason: v.string(),
       feePercent: v.optional(v.number()),
       idempotencyKey: v.string(),
+      leaseVersion: v.number(),
+      stripeRefundId: v.optional(v.string()),
+      stripeRefundedAt: v.optional(v.number()),
     }),
     v.null()
   ),
   handler: async (ctx, args) => {
     const attempt = await ctx.db.get(args.attemptId);
     if (!attempt || attempt.status === "succeeded") return null;
-    if (attempt.status === "processing" && Date.now() - attempt.updatedAt < 60_000) {
+    const now = Date.now();
+    if (attempt.status === "pending" && attempt.nextAttemptAt > now) return null;
+    if (
+      attempt.status === "processing" &&
+      (attempt.leaseVersion == null
+        ? attempt.updatedAt + STRIPE_REFUND_LEASE_MS
+        : attempt.nextAttemptAt) > now
+    ) {
       return null;
     }
+    const leaseVersion = (attempt.leaseVersion ?? 0) + 1;
     await ctx.db.patch(attempt._id, {
       status: "processing",
-      updatedAt: Date.now(),
+      leaseVersion,
+      nextAttemptAt: now + STRIPE_REFUND_LEASE_MS,
+      updatedAt: now,
     });
     return {
       orderId: attempt.orderId,
@@ -70,33 +88,82 @@ export const claimStripeRefundAttempt = internalMutation({
       reason: attempt.reason,
       feePercent: attempt.feePercent,
       idempotencyKey: attempt.idempotencyKey,
+      leaseVersion,
+      stripeRefundId: attempt.stripeRefundId,
+      stripeRefundedAt: attempt.stripeRefundedAt,
     };
   },
 });
 
-export const completeStripeRefundAttempt = internalMutation({
-  args: { attemptId: v.id("stripeRefundAttempts") },
-  returns: v.null(),
+/** Persist Stripe's outcome before reconciling the order, so a retry need not refund again. */
+export const recordStripeRefundResult = internalMutation({
+  args: {
+    attemptId: v.id("stripeRefundAttempts"),
+    leaseVersion: v.number(),
+    stripeRefundId: v.optional(v.string()),
+    refunded: v.boolean(),
+  },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const attempt = await ctx.db.get(args.attemptId);
-    if (!attempt) return null;
+    if (
+      !attempt ||
+      attempt.status !== "processing" ||
+      attempt.leaseVersion !== args.leaseVersion
+    ) return false;
     await ctx.db.patch(attempt._id, {
-      status: "succeeded",
+      stripeRefundId: args.stripeRefundId ?? attempt.stripeRefundId,
+      stripeRefundedAt: args.refunded
+        ? attempt.stripeRefundedAt ?? Date.now()
+        : attempt.stripeRefundedAt,
       updatedAt: Date.now(),
     });
-    return null;
+    return true;
+  },
+});
+
+/** The nested mutation and job completion share one transaction and roll back together. */
+export const completeStripeRefundAttempt = internalMutation({
+  args: {
+    attemptId: v.id("stripeRefundAttempts"),
+    leaseVersion: v.number(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const attempt = await ctx.db.get(args.attemptId);
+    if (
+      !attempt ||
+      attempt.status !== "processing" ||
+      attempt.leaseVersion !== args.leaseVersion ||
+      attempt.stripeRefundedAt == null
+    ) return false;
+    await ctx.runMutation(internal.orders.markOrderRefunded, {
+      orderId: attempt.orderId,
+      stripePaymentIntentId: attempt.paymentIntentId,
+    });
+    await ctx.db.patch(attempt._id, {
+      status: "succeeded",
+      lastError: undefined,
+      updatedAt: Date.now(),
+    });
+    return true;
   },
 });
 
 export const deferStripeRefundAttempt = internalMutation({
   args: {
     attemptId: v.id("stripeRefundAttempts"),
+    leaseVersion: v.number(),
     message: v.string(),
   },
-  returns: v.null(),
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const attempt = await ctx.db.get(args.attemptId);
-    if (!attempt || attempt.status === "succeeded") return null;
+    if (
+      !attempt ||
+      attempt.status !== "processing" ||
+      attempt.leaseVersion !== args.leaseVersion
+    ) return false;
     const attempts = attempt.attempts + 1;
     const now = Date.now();
     await ctx.db.patch(attempt._id, {
@@ -106,7 +173,7 @@ export const deferStripeRefundAttempt = internalMutation({
       lastError: args.message.slice(0, 400),
       updatedAt: now,
     });
-    return null;
+    return true;
   },
 });
 
@@ -139,12 +206,20 @@ export const listDueStripeRefunds = internalQuery({
   args: { now: v.number() },
   returns: v.array(v.id("stripeRefundAttempts")),
   handler: async (ctx, args) => {
-    const due = await ctx.db
-      .query("stripeRefundAttempts")
-      .withIndex("by_status_next", (q) =>
-        q.eq("status", "pending").lte("nextAttemptAt", args.now)
-      )
-      .take(20);
-    return due.map((attempt) => attempt._id);
+    const [pending, interrupted] = await Promise.all([
+      ctx.db
+        .query("stripeRefundAttempts")
+        .withIndex("by_status_next", (q) =>
+          q.eq("status", "pending").lte("nextAttemptAt", args.now)
+        )
+        .take(10),
+      ctx.db
+        .query("stripeRefundAttempts")
+        .withIndex("by_status_next", (q) =>
+          q.eq("status", "processing").lte("nextAttemptAt", args.now)
+        )
+        .take(10),
+    ]);
+    return [...interrupted, ...pending].map((attempt) => attempt._id);
   },
 });

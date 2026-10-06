@@ -11,7 +11,7 @@ export const APP_LINK_PATH_PREFIXES = [
   "/promotions",
 ] as const;
 
-export const APP_LINK_PATHS = APP_LINK_PATH_PREFIXES.map((prefix) => `${prefix}/*`);
+export const APP_LINK_PATHS = APP_LINK_PATH_PREFIXES.flatMap((prefix) => [prefix, `${prefix}/*`]);
 
 const APPLE_TEAM_ID = /^[A-Z0-9]{10}$/;
 const SHA256_FINGERPRINT = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){31}$/;

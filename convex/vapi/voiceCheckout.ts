@@ -1,5 +1,10 @@
-import { mutation, query } from "../_generated/server";
-import { ConvexError, v } from "convex/values";
+import { query } from "../_generated/server";
+import { v } from "convex/values";
+import {
+  conversationForBrowser,
+  normalizeBrowserSessionToken,
+  ownsVoiceConversation,
+} from "./browserSession";
 
 const pendingCheckoutValidator = v.union(
   v.object({
@@ -72,7 +77,7 @@ function parseCheckoutToolOutput(toolOutput: string | undefined) {
   }
 }
 
-/** Checkout for a call that this browser has bound. */
+/** Checkout owned by the browser capability verified by the Vapi webhook. */
 export const getPendingCheckoutByCallId = query({
   args: {
     vapiCallId: v.string(),
@@ -80,20 +85,9 @@ export const getPendingCheckoutByCallId = query({
   },
   returns: pendingCheckoutValidator,
   handler: async (ctx, args) => {
-    const callId = args.vapiCallId.trim();
-    const token = args.browserSessionToken.trim();
-    if (!callId || !token) return null;
-
-    const claim = await ctx.db
-      .query("vapiBrowserClaims")
-      .withIndex("by_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
-    const conversation = await ctx.db
-      .query("vapiConversations")
-      .withIndex("by_vapi_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
-    const bound = claim?.browserSessionToken ?? conversation?.browserSessionToken;
-    if (bound !== token || !conversation) return null;
+    if (!args.vapiCallId.trim()) return null;
+    const conversation = await conversationForBrowser(ctx, args.vapiCallId, args.browserSessionToken);
+    if (!conversation) return null;
 
     const fromConversation = checkoutFromConversation(conversation);
     if (fromConversation) return fromConversation;
@@ -113,13 +107,12 @@ export const getPendingCheckoutByCallId = query({
     return null;
   },
 });
-
 /** Latest checkout bound to this browser. Never scans other shoppers. */
 export const getLatestPendingCheckout = query({
   args: { browserSessionToken: v.string() },
   returns: pendingCheckoutValidator,
   handler: async (ctx, args) => {
-    const token = args.browserSessionToken.trim();
+    const token = normalizeBrowserSessionToken(args.browserSessionToken);
     if (!token) return null;
     const conversations = await ctx.db
       .query("vapiConversations")
@@ -128,6 +121,7 @@ export const getLatestPendingCheckout = query({
       .take(5);
 
     for (const conversation of conversations) {
+      if (!ownsVoiceConversation(conversation, token)) continue;
       const checkout = checkoutFromConversation(conversation);
       if (checkout) return checkout;
     }
@@ -135,47 +129,3 @@ export const getLatestPendingCheckout = query({
   },
 });
 
-export const bindVoiceBrowserSession = mutation({
-  args: {
-    vapiCallId: v.string(),
-    browserSessionToken: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const callId = args.vapiCallId.trim();
-    const token = args.browserSessionToken.trim();
-    if (!callId || token.length < 16) {
-      throw new ConvexError("Invalid voice session");
-    }
-
-    const existing = await ctx.db
-      .query("vapiBrowserClaims")
-      .withIndex("by_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
-    if (existing && existing.browserSessionToken !== token) {
-      throw new ConvexError("Voice session is bound to another browser");
-    }
-    if (!existing) {
-      await ctx.db.insert("vapiBrowserClaims", {
-        vapiCallId: callId,
-        browserSessionToken: token,
-        createdAt: Date.now(),
-      });
-    }
-
-    const conversation = await ctx.db
-      .query("vapiConversations")
-      .withIndex("by_vapi_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
-    if (
-      conversation?.browserSessionToken &&
-      conversation.browserSessionToken !== token
-    ) {
-      throw new ConvexError("Voice session is bound to another browser");
-    }
-    if (conversation && !conversation.browserSessionToken) {
-      await ctx.db.patch(conversation._id, { browserSessionToken: token });
-    }
-    return null;
-  },
-});

@@ -86,7 +86,8 @@ export const getActivePromotions = internalQuery({
     const promotions = await ctx.db
       .query("productPromotions")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+      .order("desc")
+      .take(100);
     const active = promotions.filter((p) => isPromotionActive(p, args.now));
     active.sort((a, b) => b.updatedAt - a.updatedAt);
     const page = active.slice(0, limit);

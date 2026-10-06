@@ -1,6 +1,7 @@
 import { query, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { conversationForBrowser } from "./browserSession";
 
 const cartLineValidator = v.object({
   productId: v.id("products"),
@@ -109,37 +110,6 @@ function parseToolInputRecord(
 function productIdFromPayload(payload: Record<string, unknown>): string | null {
   const id = payload.id ?? payload.productId;
   return typeof id === "string" && id.trim() ? id.trim() : null;
-}
-
-async function conversationForBrowser(
-  ctx: QueryCtx,
-  vapiCallId: string | undefined,
-  browserSessionToken: string | undefined
-): Promise<Doc<"vapiConversations"> | null> {
-  const token = browserSessionToken?.trim();
-  if (!token) return null;
-
-  const callId = vapiCallId?.trim();
-  if (callId) {
-    const claim = await ctx.db
-      .query("vapiBrowserClaims")
-      .withIndex("by_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
-    const conversation = await ctx.db
-      .query("vapiConversations")
-      .withIndex("by_vapi_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
-    const bound = claim?.browserSessionToken ?? conversation?.browserSessionToken;
-    if (bound !== token) return null;
-    return conversation;
-  }
-
-  const matches = await ctx.db
-    .query("vapiConversations")
-    .withIndex("by_browser_session", (q) => q.eq("browserSessionToken", token))
-    .order("desc")
-    .take(1);
-  return matches[0] ?? null;
 }
 
 async function buildStorefrontSyncFromConversation(

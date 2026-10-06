@@ -7,7 +7,6 @@ describe("customer profile access", () => {
     expect(
       canMutateCustomerProfile({
         profileExists: false,
-        orderAccessMatches: false,
       })
     ).toBe(true);
     expect(
@@ -15,26 +14,29 @@ describe("customer profile access", () => {
         profileExists: true,
         storedToken: "secret",
         providedToken: "other",
-        orderAccessMatches: false,
       })
     ).toBe(false);
   });
 
-  it("accepts the stored profile token or a matching order access token", () => {
+  it("accepts only the stored profile capability for an existing profile", () => {
     expect(
       canMutateCustomerProfile({
         profileExists: true,
         storedToken: "secret",
         providedToken: "secret",
-        orderAccessMatches: false,
       })
     ).toBe(true);
     expect(
       canMutateCustomerProfile({
         profileExists: true,
         storedToken: "secret",
-        orderAccessMatches: true,
+        providedToken: "new-order-token",
       })
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it("does not claim a legacy profile with no stored capability", () => {
+    expect(canMutateCustomerProfile({ profileExists: true, providedToken: "new-token" })).toBe(false);
+    expect(canMutateCustomerProfile({ profileExists: true })).toBe(false);
   });
 });

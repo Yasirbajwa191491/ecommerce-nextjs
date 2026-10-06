@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { createCatalogPriceSelection } from "@ecommerce/shared";
 import { useHybridProductSearchPaginated } from "@/hooks/use-hybrid-product-search";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useCatalogFilters } from "@/hooks/use-catalog-filters";
@@ -132,10 +132,10 @@ export default function ProductCatalog() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const loadingMoreRef = useRef(false);
   const catalogSignatureRef = useRef("");
-  const [applyPriceImmediately, setApplyPriceImmediately] = useState(false);
-  const [priceRange, setPriceRangeLocal] = useState<[number, number]>([0, 0]);
-  const debouncedPriceRange = useDebouncedValue(priceRange, 400);
-  const [priceInitialized, setPriceInitialized] = useState(false);
+  const [priceSelection] = useState(() => createCatalogPriceSelection());
+  const { range: priceRange } = useSyncExternalStore(
+    priceSelection.subscribe, priceSelection.getSnapshot, priceSelection.getServerSnapshot
+  );
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const catalogNow = useCatalogNow();
@@ -209,80 +209,16 @@ export default function ProductCatalog() {
   const facets = facetsQuery ?? catalogFacetsCache.get("facets");
 
   useEffect(() => {
-    if (!priceBounds) return;
+    priceSelection.sync(
+      priceBounds ? [priceBounds.minPrice, priceBounds.maxPrice] : undefined,
+      filters.minPrice, filters.maxPrice,
+      (range) => range ? setPriceRangeInUrl(range[0], range[1]) : clearPriceRange()
+    );
+  }, [priceBounds, priceSelection, filters.minPrice, filters.maxPrice, setPriceRangeInUrl, clearPriceRange]);
 
-    const timer = window.setTimeout(() => {
-      if (!priceInitialized) {
-        const min = filters.minPrice ?? priceBounds.minPrice;
-        const max = filters.maxPrice ?? priceBounds.maxPrice;
-        setPriceRangeLocal([min, max]);
-        setPriceInitialized(true);
-        return;
-      }
+  useEffect(() => () => priceSelection.dispose(), [priceSelection]);
 
-      setPriceRangeLocal((current) => {
-        const minBound = priceBounds.minPrice;
-        const maxBound = priceBounds.maxPrice;
-        const nextMin = Math.min(Math.max(current[0], minBound), maxBound);
-        const nextMax = Math.min(Math.max(current[1], minBound), maxBound);
-        if (nextMin === current[0] && nextMax === current[1]) return current;
-        return [nextMin, nextMax];
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [priceBounds, priceInitialized, filters.minPrice, filters.maxPrice]);
-
-  useEffect(() => {
-    if (
-      !applyPriceImmediately ||
-      debouncedPriceRange[0] !== priceRange[0] ||
-      debouncedPriceRange[1] !== priceRange[1]
-    ) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setApplyPriceImmediately(false), 0);
-    return () => window.clearTimeout(timer);
-  }, [applyPriceImmediately, debouncedPriceRange, priceRange]);
-
-  const activePriceRange = applyPriceImmediately ? priceRange : debouncedPriceRange;
-
-  const priceFilterReady =
-    priceInitialized &&
-    activePriceRange[1] > activePriceRange[0] &&
-    activePriceRange[1] > 0;
-
-  useEffect(() => {
-    if (!priceFilterReady || !priceBounds) return;
-    const isDefaultRange =
-      activePriceRange[0] === priceBounds.minPrice &&
-      activePriceRange[1] === priceBounds.maxPrice;
-    if (isDefaultRange) {
-      if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-        clearPriceRange();
-      }
-      return;
-    }
-    if (
-      filters.minPrice !== activePriceRange[0] ||
-      filters.maxPrice !== activePriceRange[1]
-    ) {
-      setPriceRangeInUrl(activePriceRange[0], activePriceRange[1]);
-    }
-  }, [
-    activePriceRange,
-    priceFilterReady,
-    priceBounds,
-    filters.minPrice,
-    filters.maxPrice,
-    setPriceRangeInUrl,
-    clearPriceRange,
-  ]);
-
-  const handlePriceRangeChange = (range: [number, number]) => {
-    setPriceRangeLocal(range);
-  };
+  const handlePriceRangeChange = (range: [number, number]) => priceSelection.select(range);
 
   const hybridProductIds = useMemo(
     () => hybridSearch.products.map((product) => product._id as Id<"products">),
@@ -308,26 +244,12 @@ export default function ProductCatalog() {
     return sortProductsClient(products, sort);
   }, [isHybridSearch, hybridSearch.products, hybridProductIds, sort]);
 
-  const isCatalogDefaultPriceRange =
-    priceFilterReady &&
-    priceBounds !== undefined &&
-    activePriceRange[0] === priceBounds.minPrice &&
-    activePriceRange[1] === priceBounds.maxPrice;
-
   const filterArgs = useMemo(
     () => ({
       search: urlSearch.trim() || undefined,
       categoryId: categoryId === "all" ? undefined : categoryId,
-      minPrice:
-        filters.minPrice ??
-        (priceFilterReady && !isCatalogDefaultPriceRange
-          ? activePriceRange[0]
-          : undefined),
-      maxPrice:
-        filters.maxPrice ??
-        (priceFilterReady && !isCatalogDefaultPriceRange
-          ? activePriceRange[1]
-          : undefined),
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
       brands: filters.brandSlugs.length ? filters.brandSlugs : undefined,
       colors: filters.colorSlugs.length ? filters.colorSlugs : undefined,
       minRating: filters.minRating,
@@ -348,9 +270,6 @@ export default function ProductCatalog() {
     [
       urlSearch,
       categoryId,
-      activePriceRange,
-      priceFilterReady,
-      isCatalogDefaultPriceRange,
       filters,
       sort,
       catalogNow,
@@ -516,15 +435,11 @@ export default function ProductCatalog() {
   });
 
   const handleClear = () => {
+    priceSelection.clear(false);
     clearAllFilters();
     setPage(0);
     setPageCursor(null);
     loadingMoreRef.current = false;
-
-    if (priceBounds) {
-      setApplyPriceImmediately(true);
-      setPriceRangeLocal([priceBounds.minPrice, priceBounds.maxPrice]);
-    }
   };
 
   const bounds = priceBounds ?? { minPrice: 0, maxPrice: 0 };
@@ -680,7 +595,7 @@ export default function ProductCatalog() {
                 onTogglePromotion={togglePromotion}
                 onClearRating={() => setMinRating(undefined)}
                 onClearInStock={() => setInStockOnly(false)}
-                onClearPrice={clearPriceRange}
+                onClearPrice={() => priceSelection.clear()}
               />
             </div>
 

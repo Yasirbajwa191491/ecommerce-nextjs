@@ -4,7 +4,7 @@ import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { requireAdmin } from "../lib/requireAdmin";
-import { paginateArray } from "../lib/pagination";
+import { readTableCounts } from "../lib/maintainedAggregates";
 
 function getConvexSiteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
@@ -12,11 +12,6 @@ function getConvexSiteUrl(): string {
   const cloud = process.env.CONVEX_CLOUD_URL?.trim();
   if (cloud) return cloud.replace(/\.convex\.cloud\/?$/i, ".convex.site");
   return "https://your-project.convex.site";
-}
-
-function startOfTodayMs() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 }
 
 export const getAnalytics = query({
@@ -34,41 +29,25 @@ export const getAnalytics = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const conversations = await ctx.db.query("vapiConversations").collect();
-    const todayStart = startOfTodayMs();
-    const conversationsToday = conversations.filter(
-      (c) => c.startedAt >= todayStart
-    ).length;
-
-    const analyticsRows = await ctx.db.query("vapiAnalyticsDaily").collect();
-    const totals = analyticsRows.reduce(
-      (acc, row) => ({
-        productSearches: acc.productSearches + row.productSearches,
-        orderTrackingRequests:
-          acc.orderTrackingRequests + row.orderTrackingRequests,
-        leadsCaptured: acc.leadsCaptured + row.leadsCaptured,
-        humanEscalations: acc.humanEscalations + row.humanEscalations,
-      }),
-      {
-        productSearches: 0,
-        orderTrackingRequests: 0,
-        leadsCaptured: 0,
-        humanEscalations: 0,
-      }
-    );
-
-    const leads = await ctx.db.query("vapiLeads").collect();
-    const tickets = await ctx.db.query("vapiSupportTickets").collect();
+    const [conversations, totals, leads, tickets, today] = await Promise.all([
+      readTableCounts(ctx, "vapiConversations"),
+      readTableCounts(ctx, "vapiAnalyticsDaily"),
+      readTableCounts(ctx, "vapiLeads"),
+      readTableCounts(ctx, "vapiSupportTickets"),
+      ctx.db.query("vapiAnalyticsDaily").withIndex("by_dateKey", (q) =>
+        q.eq("dateKey", new Date().toISOString().slice(0, 10))
+      ).unique(),
+    ]);
 
     return {
-      totalConversations: conversations.length,
-      conversationsToday,
-      productSearches: totals.productSearches,
-      orderTrackingRequests: totals.orderTrackingRequests,
-      leadsCaptured: totals.leadsCaptured,
-      humanEscalations: totals.humanEscalations,
-      openTickets: tickets.filter((t) => t.status !== "resolved").length,
-      newLeads: leads.filter((l) => l.status === "new").length,
+      totalConversations: conversations.all ?? 0,
+      conversationsToday: today?.conversations ?? 0,
+      productSearches: totals.sum_productSearches ?? 0,
+      orderTrackingRequests: totals.sum_orderTrackingRequests ?? 0,
+      leadsCaptured: totals.sum_leadsCaptured ?? 0,
+      humanEscalations: totals.sum_humanEscalations ?? 0,
+      openTickets: (tickets.open ?? 0) + (tickets.in_progress ?? 0),
+      newLeads: leads.new ?? 0,
     };
   },
 });
@@ -163,13 +142,10 @@ async function summarizeConversation(
   const logs = await ctx.db
     .query("vapiConversationLogs")
     .withIndex("by_conversation", (q) => q.eq("conversationId", conversation._id))
-    .collect();
+    .order("desc")
+    .take(1);
 
-  const userMessages = logs.filter((log) => log.role === "user").length;
-  const assistantMessages = logs.filter((log) => log.role === "assistant").length;
-  const toolCalls = logs.filter((log) => log.role === "tool").length;
-  const sorted = [...logs].sort((a, b) => b.createdAt - a.createdAt);
-  const lastMessage = sorted.find((log) => log.role !== "system");
+  const lastMessage = logs[0];
   const preview =
     lastMessage?.content ??
     conversation.summary ??
@@ -188,10 +164,10 @@ async function summarizeConversation(
     summary: conversation.summary ?? null,
     status: endedAt ? ("ended" as const) : ("active" as const),
     durationMs: endedAt ? endedAt - conversation.startedAt : null,
-    messageCount: logs.length,
-    userMessages,
-    assistantMessages,
-    toolCalls,
+    messageCount: conversation.messageCount ?? 0,
+    userMessages: conversation.userMessages ?? 0,
+    assistantMessages: conversation.assistantMessages ?? 0,
+    toolCalls: conversation.toolCalls ?? 0,
     preview,
   };
 }
@@ -211,8 +187,9 @@ export const listConversationsPaginated = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    let conversations = await ctx.db.query("vapiConversations").collect();
-    conversations.sort((a, b) => b.startedAt - a.startedAt);
+    const result = await ctx.db.query("vapiConversations").withIndex("by_started_at")
+      .order("desc").paginate({ ...args.paginationOpts, numItems: Math.min(Math.max(args.paginationOpts.numItems, 1), 50) });
+    let conversations = result.page;
 
     if (args.channel) {
       conversations = conversations.filter((c) => c.channel === args.channel);
@@ -235,16 +212,11 @@ export const listConversationsPaginated = query({
       );
     }
 
-    const { page, isDone, continueCursor } = paginateArray(
-      conversations,
-      args.paginationOpts
-    );
-
     const summaries = await Promise.all(
-      page.map((conversation) => summarizeConversation(ctx, conversation))
+      conversations.map((conversation) => summarizeConversation(ctx, conversation))
     );
 
-    return { page: summaries, isDone, continueCursor };
+    return { ...result, page: summaries };
   },
 });
 
@@ -253,7 +225,6 @@ export const getConversationDetail = query({
   returns: v.union(
     v.object({
       conversation: conversationSummaryValidator,
-      logs: v.array(conversationLogValidator),
     }),
     v.null()
   ),
@@ -262,17 +233,23 @@ export const getConversationDetail = query({
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) return null;
 
-    const logs = await ctx.db
-      .query("vapiConversationLogs")
-      .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", args.conversationId)
-      )
-      .collect();
-    logs.sort((a, b) => a.createdAt - b.createdAt);
-
     return {
       conversation: await summarizeConversation(ctx, conversation),
-      logs: logs.map((log) => ({
+    };
+  },
+});
+
+export const getConversationLogsPaginated = query({
+  args: { conversationId: v.id("vapiConversations"), paginationOpts: paginationOptsValidator },
+  returns: v.object({ page: v.array(conversationLogValidator), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const result = await ctx.db.query("vapiConversationLogs")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .order("asc").paginate({ ...args.paginationOpts, numItems: Math.min(Math.max(args.paginationOpts.numItems, 1), 50) });
+    return {
+      ...result,
+      page: result.page.map((log) => ({
         _id: log._id,
         role: log.role,
         content: log.content,
@@ -295,12 +272,11 @@ export const listLeadsPaginated = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let leads = await ctx.db.query("vapiLeads").collect();
-    leads.sort((a, b) => b.createdAt - a.createdAt);
-
-    if (args.status) {
-      leads = leads.filter((lead) => lead.status === args.status);
-    }
+    const source = args.status
+      ? ctx.db.query("vapiLeads").withIndex("by_status", (q) => q.eq("status", args.status!))
+      : ctx.db.query("vapiLeads").withIndex("by_created_at");
+    const result = await source.order("desc").paginate({ ...args.paginationOpts, numItems: Math.min(Math.max(args.paginationOpts.numItems, 1), 50) });
+    let leads = result.page;
 
     if (args.search?.trim()) {
       const term = args.search.trim().toLowerCase();
@@ -312,11 +288,7 @@ export const listLeadsPaginated = query({
       );
     }
 
-    const { page, isDone, continueCursor } = paginateArray(
-      leads,
-      args.paginationOpts
-    );
-    return { page, isDone, continueCursor };
+    return { ...result, page: leads };
   },
 });
 
@@ -330,12 +302,11 @@ export const listTicketsPaginated = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let tickets = await ctx.db.query("vapiSupportTickets").collect();
-    tickets.sort((a, b) => b.createdAt - a.createdAt);
-
-    if (args.status) {
-      tickets = tickets.filter((ticket) => ticket.status === args.status);
-    }
+    const source = args.status
+      ? ctx.db.query("vapiSupportTickets").withIndex("by_status", (q) => q.eq("status", args.status!))
+      : ctx.db.query("vapiSupportTickets").withIndex("by_created_at");
+    const result = await source.order("desc").paginate({ ...args.paginationOpts, numItems: Math.min(Math.max(args.paginationOpts.numItems, 1), 50) });
+    let tickets = result.page;
 
     if (args.search?.trim()) {
       const term = args.search.trim().toLowerCase();
@@ -347,11 +318,7 @@ export const listTicketsPaginated = query({
       );
     }
 
-    const { page, isDone, continueCursor } = paginateArray(
-      tickets,
-      args.paginationOpts
-    );
-    return { page, isDone, continueCursor };
+    return { ...result, page: tickets };
   },
 });
 
@@ -408,7 +375,7 @@ export const getDailyAnalytics = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const limit = Math.min(Math.max(args.days ?? 14, 1), 30);
-    const rows = await ctx.db.query("vapiAnalyticsDaily").collect();
+    const rows = await ctx.db.query("vapiAnalyticsDaily").withIndex("by_dateKey").order("desc").take(limit);
     return rows
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
       .slice(-limit)

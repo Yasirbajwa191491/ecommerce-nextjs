@@ -790,7 +790,7 @@ export const createCashOrder = internalMutation({
     const orderPromotions = await ctx.db
       .query("orderPromotions")
       .withIndex("by_order_id", (q) => q.eq("orderId", result.orderId))
-      .collect();
+      .take(200);
 
     const promotions = orderPromotions.map((promo) => ({
       promotionId: promo.promotionId,

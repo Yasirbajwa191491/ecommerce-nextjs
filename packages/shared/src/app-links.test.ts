@@ -21,6 +21,10 @@ describe("app link association files", () => {
     expect(APP_LINK_PATHS).toContain("/category/*");
     expect(APP_LINK_PATHS).toContain("/checkout/*");
     expect(APP_LINK_PATHS).toContain("/promotions/*");
+    for (const root of ["/checkout", "/promotions", "/track-order"]) {
+      expect(APP_LINK_PATHS).toContain(root);
+      expect(APP_LINK_PATHS).toContain(`${root}/*`);
+    }
 
     const fingerprint = "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99";
     const assetLinks = buildAssetLinks(parseSha256Fingerprints(fingerprint.toLowerCase()));

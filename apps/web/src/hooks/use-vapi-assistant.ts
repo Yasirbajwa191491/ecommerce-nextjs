@@ -657,9 +657,12 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     await ensureMicrophoneAccess();
 
     const ready = waitForCallStart(vapi);
-    await vapi.start(assistantId, {
+    const call = await vapi.start(assistantId, {
       metadata: { browserSessionToken: getVapiBrowserSessionToken() },
     });
+    if (mountedRef.current && call?.id) {
+      setVapiCallId(call.id);
+    }
     await ready;
     return vapi;
   }, [assistantId, getVapiClient]);

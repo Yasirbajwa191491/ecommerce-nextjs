@@ -33,3 +33,5 @@ export {
   type PhoneCountryCode,
   type PhoneCountryOption,
 } from "./phone/country";
+export { createSearchLifecycle, type SearchPage, type SearchSnapshot } from "./search/lifecycle";
+export { createCatalogPriceSelection, type CatalogPriceRange } from "./search/priceSelection";
