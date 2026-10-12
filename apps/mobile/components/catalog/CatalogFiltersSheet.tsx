@@ -55,7 +55,7 @@ type CatalogFiltersSheetProps = {
   onClose: () => void;
   filters: CatalogFilterState;
   onApply: (filters: CatalogFilterState) => void;
-  priceBounds?: { minPrice: number; maxPrice: number };
+  priceBounds?: Array<{ currency: string; minPrice: number; maxPrice: number; count: number }>;
   facets?: CatalogFacets;
   categories?: HomeCategory[];
   showCategorySection?: boolean;
@@ -99,6 +99,8 @@ export function CatalogFiltersSheet({
     [colors, textStyles]
   );
   const [local, setLocal] = useState(filters);
+  const selectedBounds = priceBounds?.find((range) => range.currency === local.currency);
+  const invalidPrice = [local.minPrice, local.maxPrice].some((price) => price !== undefined && (!Number.isFinite(price) || price < 0)) || (local.minPrice !== undefined && local.maxPrice !== undefined && local.minPrice > local.maxPrice);
 
   const handleReset = () => {
     setLocal(
@@ -126,6 +128,14 @@ export function CatalogFiltersSheet({
           <Text style={styles.title}>Filters</Text>
 
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Currency</Text>
+              <View style={styles.chipRow}>
+                <Chip label="All currencies" selected={!local.currency} onPress={() => setLocal((prev) => ({ ...prev, currency: undefined, minPrice: undefined, maxPrice: undefined, sort: prev.sort === "lowest" || prev.sort === "highest" ? "default" : prev.sort }))} />
+                {priceBounds?.map((range) => <Chip key={range.currency} label={`${range.currency} (${range.count})`} selected={local.currency === range.currency} onPress={() => setLocal((prev) => ({ ...prev, currency: range.currency, minPrice: undefined, maxPrice: undefined }))} />)}
+              </View>
+              <Text style={styles.hint}>Choose a currency to compare prices. Product amounts are never converted.</Text>
+            </View>
             {showCategorySection && !fixedCategoryId ? (
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>Category</Text>
@@ -253,10 +263,9 @@ export function CatalogFiltersSheet({
                     }
                     label={
                       <View style={styles.facetLabelRow}>
-                        <RatingStars rating={bucket.minRating} size={12} />
+                        <RatingStars rating={bucket.minRating} size={12} showCount={false} />
                         <Text style={styles.facetLabel}>
-                          {" "}
-                          & up{" "}
+                          {bucket.label}{" "}
                           <Text style={styles.facetCount}>({bucket.count})</Text>
                         </Text>
                       </View>
@@ -268,11 +277,13 @@ export function CatalogFiltersSheet({
             ) : null}
 
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Price</Text>
+              <Text style={styles.sectionLabel}>Price{local.currency ? ` (${local.currency})` : ""}</Text>
               <View style={styles.priceRow}>
                 <View style={styles.priceInput}>
                   <Input
                     placeholder="Min"
+                    accessibilityLabel={`Minimum price${local.currency ? ` in ${local.currency}` : ", choose a currency first"}`}
+                    editable={Boolean(local.currency)}
                     keyboardType="numeric"
                     value={local.minPrice?.toString() ?? ""}
                     onChangeText={(text) =>
@@ -287,6 +298,8 @@ export function CatalogFiltersSheet({
                 <View style={styles.priceInput}>
                   <Input
                     placeholder="Max"
+                    accessibilityLabel={`Maximum price${local.currency ? ` in ${local.currency}` : ", choose a currency first"}`}
+                    editable={Boolean(local.currency)}
                     keyboardType="numeric"
                     value={local.maxPrice?.toString() ?? ""}
                     onChangeText={(text) =>
@@ -298,12 +311,12 @@ export function CatalogFiltersSheet({
                   />
                 </View>
               </View>
-              {priceBounds ? (
+              {selectedBounds ? (
                 <Text style={styles.hint}>
-                  Store range: ${priceBounds.minPrice.toFixed(0)} – $
-                  {priceBounds.maxPrice.toFixed(0)}
+                  Store range: {selectedBounds.currency} {selectedBounds.minPrice.toLocaleString()} – {selectedBounds.maxPrice.toLocaleString()}
                 </Text>
-              ) : null}
+              ) : <Text style={styles.hint}>Choose a currency above to set a price range.</Text>}
+              {invalidPrice ? <Text accessibilityRole="alert" style={[styles.hint, { color: colors.destructive }]}>Enter a valid range with a maximum at least as high as the minimum.</Text> : null}
             </View>
 
             <View style={styles.section}>
@@ -357,6 +370,7 @@ export function CatalogFiltersSheet({
             />
             <Button
               label="Apply filters"
+              disabled={invalidPrice}
               onPress={() => {
                 onApply(local);
                 onClose();

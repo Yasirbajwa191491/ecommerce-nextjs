@@ -106,18 +106,15 @@ export function Button({
         sizeStyle.container,
         fullWidth && styles.fullWidth,
         pressed && !isDisabled && variantStyle.pressed,
-        isDisabled && styles.disabled,
+        disabled && !loading && styles.disabled,
         style as ViewStyle,
       ]}
       {...props}
     >
-      {loading ? (
-        <ActivityIndicator color={variantStyle.spinner} size="small" />
-      ) : (
-        <Text style={[styles.label, { color: variantStyle.text, fontSize: sizeStyle.fontSize }]}>
-          {label}
-        </Text>
-      )}
+      {loading ? <ActivityIndicator color={variantStyle.spinner} size="small" /> : null}
+      <Text style={[styles.label, { color: variantStyle.text, fontSize: sizeStyle.fontSize }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -128,6 +125,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
+    gap: 8,
+    paddingVertical: 10,
   },
   fullWidth: {
     alignSelf: "stretch",
@@ -137,5 +136,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: "600",
+    textAlign: "center",
+    flexShrink: 1,
   },
 });

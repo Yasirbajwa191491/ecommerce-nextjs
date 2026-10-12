@@ -4,7 +4,7 @@ import {
   type PhoneCountryCode,
 } from "@ecommerce/shared";
 import { AsYouType, parsePhoneNumberFromString } from "libphonenumber-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Ref } from "react";
 import {
   FlatList,
   Modal,
@@ -28,6 +28,8 @@ type PhoneInputProps = {
   error?: string;
   disabled?: boolean;
   accessibilityLabel?: string;
+  inputRef?: Ref<TextInput>;
+  onSubmitEditing?: () => void;
 };
 
 function nationalDigitsFrom(value: string): string {
@@ -46,6 +48,8 @@ export function PhoneInput({
   error,
   disabled,
   accessibilityLabel,
+  inputRef,
+  onSubmitEditing,
 }: PhoneInputProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -239,6 +243,7 @@ export function PhoneInput({
           <Ionicons name="chevron-down" size={16} color={colors.muted} />
         </Pressable>
         <TextInput
+          ref={inputRef}
           accessibilityLabel={accessibilityLabel ?? label}
           value={national}
           onChangeText={(text) => emitChange(country, text)}
@@ -249,6 +254,8 @@ export function PhoneInput({
           }}
           editable={!disabled}
           keyboardType="phone-pad"
+          returnKeyType="next"
+          onSubmitEditing={onSubmitEditing}
           autoComplete="tel"
           textContentType="telephoneNumber"
           placeholder="Phone number"

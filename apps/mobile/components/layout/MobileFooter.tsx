@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -22,9 +22,11 @@ const BRAND_TAGLINE =
 type MobileFooterProps = {
   /** Extra bottom inset when nested inside tab screens (tab bar already handled by safe area). */
   compactBottom?: boolean;
+  /** Full store information belongs in Help & more, rather than shopping feeds. */
+  expanded?: boolean;
 };
 
-export function MobileFooter({ compactBottom = false }: MobileFooterProps) {
+export function MobileFooter({ compactBottom = false, expanded = false }: MobileFooterProps) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createMobileFooterStyles);
   const insets = useSafeAreaInsets();
@@ -40,6 +42,29 @@ export function MobileFooter({ compactBottom = false }: MobileFooterProps) {
   const bottomPadding = compactBottom
     ? spacing["2xl"]
     : Math.max(insets.bottom, spacing.lg) + spacing["2xl"];
+
+  if (!expanded) {
+    return (
+      <View style={[styles.compactFooter, { paddingHorizontal: horizontalPadding, paddingBottom: bottomPadding }]}>
+        <Text style={styles.compactTitle}>Here to help</Text>
+        <View style={styles.compactActions}>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/contact")} style={({ pressed }) => [styles.compactAction, pressed && styles.legalLinkPressed]}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.foreground} />
+            <Text style={styles.compactActionText}>Contact us</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/you" as Href)} style={({ pressed }) => [styles.compactAction, pressed && styles.legalLinkPressed]}>
+            <Ionicons name="help-circle-outline" size={20} color={colors.foreground} />
+            <Text style={styles.compactActionText}>Help & more</Text>
+          </Pressable>
+        </View>
+        <View style={styles.compactLegal}>
+          <Text style={styles.copyright}>© {year} {storeName}</Text>
+          <Pressable accessibilityRole="link" onPress={() => router.push("/privacy")} style={styles.legalLink}><Text style={styles.legalLinkText}>Privacy</Text></Pressable>
+          <Pressable accessibilityRole="link" onPress={() => router.push("/terms")} style={styles.legalLink}><Text style={styles.legalLinkText}>Terms</Text></Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.outer}>
@@ -237,7 +262,7 @@ function createMobileFooterStyles({ colors, textStyles }: ThemeStyleTokens) {
     storeName: {
       ...textStyles.sectionTitle,
       fontSize: typography.xl,
-      color: colors.navy,
+      color: colors.foreground,
     },
     tagline: {
       ...textStyles.bodySmall,
@@ -374,7 +399,7 @@ function createMobileFooterStyles({ colors, textStyles }: ThemeStyleTokens) {
       gap: spacing.lg,
     },
     legalLink: {
-      minHeight: 44,
+      minHeight: 48,
       justifyContent: "center" as const,
       paddingHorizontal: spacing.sm,
     },
@@ -386,5 +411,11 @@ function createMobileFooterStyles({ colors, textStyles }: ThemeStyleTokens) {
       fontWeight: "600" as const,
       color: colors.primary,
     },
+    compactFooter: { marginTop: spacing["2xl"], paddingTop: spacing.xl, gap: spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+    compactTitle: { ...textStyles.sectionTitle },
+    compactActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+    compactAction: { flex: 1, minWidth: 130, minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+    compactActionText: { fontSize: typography.sm, fontWeight: "600", color: colors.foreground },
+    compactLegal: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: spacing.sm },
   });
 }

@@ -1,187 +1,54 @@
 import * as Linking from "expo-linking";
-import { useCallback, useEffect, useState } from "react";
-import { AppState, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
 import { strings } from "@/lib/i18n/strings";
-import { getNotificationPermissionStatus } from "@/lib/push-notifications";
 import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
 import { useTheme } from "@/providers/theme-context";
 import { useToast } from "@/providers/toast-context";
 
-type PushStatusBannerProps = {
-  customerEmail?: string;
-  accessToken?: string;
-};
+type PushStatusBannerProps = { customerEmail?: string; accessToken?: string; dismissible?: boolean };
 
-export function PushStatusBanner({ customerEmail, accessToken }: PushStatusBannerProps) {
+export function PushStatusBanner({ customerEmail, accessToken, dismissible = true }: PushStatusBannerProps) {
   const push = usePushNotificationContextOptional();
   const { colors } = useTheme();
   const { showError, showSuccess } = useToast();
   const [enabling, setEnabling] = useState(false);
-  const [osPermission, setOsPermission] = useState<
-    "granted" | "denied" | "undetermined" | null
-  >(null);
-
-  const refreshOsPermission = useCallback(async () => {
-    const permission = await getNotificationPermissionStatus();
-    setOsPermission(permission);
-    return permission;
-  }, []);
-
-  const registerDevice = useCallback(async () => {
-    if (!push) {
-      return false;
-    }
-
-    const permission = await refreshOsPermission();
-    if (permission === "granted") {
-      await push.refreshPushRegistration();
-      return push.syncPushTokenIfPermitted(customerEmail, accessToken);
-    }
-
-    return push.enablePushNotifications(customerEmail, accessToken);
-  }, [accessToken, customerEmail, push, refreshOsPermission]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void refreshOsPermission();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [push?.expoPushToken, push?.permission, refreshOsPermission]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active" || !push) {
-        return;
-      }
-
-      void (async () => {
-        const permission = await refreshOsPermission();
-        if (permission === "granted") {
-          await push.refreshPushRegistration();
-          await push.syncPushTokenIfPermitted(customerEmail, accessToken);
-        }
-      })();
-    });
-
-    return () => subscription.remove();
-  }, [accessToken, customerEmail, push, refreshOsPermission]);
-
-  const handleEnable = useCallback(async () => {
-    if (!push || enabling) {
-      return;
-    }
-
+  const [dismissed, setDismissed] = useState(false);
+  if (!push || dismissed || push.registered) return null;
+  const unavailable = !push.capability.available;
+  const denied = push.permission === "denied";
+  const needsRegistration = push.permission === "granted";
+  const handleEnable = async () => {
+    if (enabling || push.syncing || unavailable) return;
     setEnabling(true);
     try {
-      const registered = await registerDevice();
-      if (registered) {
-        showSuccess(strings.notifications.pushEnabled);
-        return;
-      }
-
-      const permission = await refreshOsPermission();
-      if (permission === "denied") {
-        showError(strings.notifications.pushBlocked);
-        return;
-      }
-
-      showError(push.lastError ?? strings.notifications.pushEnableFailed);
-    } finally {
-      setEnabling(false);
-    }
-  }, [enabling, push, refreshOsPermission, registerDevice, showError, showSuccess]);
-
-  const handleOpenSettings = useCallback(async () => {
-    await Linking.openSettings();
-  }, []);
-
-  if (!push) {
-    return null;
-  }
-
-  const permission = osPermission ?? push.permission;
-  const isFullyRegistered = permission === "granted" && Boolean(push.expoPushToken);
-
-  if (isFullyRegistered) {
-    return null;
-  }
-
-  const isDenied = permission === "denied";
-  const isGrantedNeedsSync = permission === "granted" && !push.expoPushToken;
-
-  return (
-    <View
-      style={[
-        styles.banner,
-        {
-          backgroundColor: colors.primarySubtle,
-          borderColor: colors.primary,
-        },
-      ]}
-    >
-      <Text style={[styles.title, { color: colors.foreground }]}>
-        {isDenied
-          ? strings.notifications.pushBlockedTitle
-          : isGrantedNeedsSync
-            ? strings.notifications.pushRegisterTitle
-            : strings.notifications.pushOffTitle}
-      </Text>
-      <Text style={[styles.body, { color: colors.mutedForeground }]}>
-        {isDenied
-          ? strings.notifications.pushBlockedBody
-          : isGrantedNeedsSync
-            ? strings.notifications.pushRegisterBody
-            : strings.notifications.pushOffBody}
-      </Text>
-      <View style={styles.actions}>
-        {isDenied ? (
-          <Button
-            label={strings.notifications.openSettings}
-            variant="primary"
-            size="sm"
-            onPress={() => void handleOpenSettings()}
-          />
-        ) : (
-          <Button
-            label={
-              enabling
-                ? strings.common.loading
-                : isGrantedNeedsSync
-                  ? strings.notifications.registerDevice
-                  : strings.notifications.promptEnable
-            }
-            variant="primary"
-            size="sm"
-            onPress={() => void handleEnable()}
-          />
-        )}
-      </View>
+      const registered = needsRegistration
+        ? await push.syncPushTokenIfPermitted(customerEmail, accessToken)
+        : await push.enablePushNotifications(customerEmail, accessToken);
+      if (registered) showSuccess(strings.notifications.pushEnabled);
+      else showError(strings.notifications.pushEnableFailed);
+    } catch {
+      showError(strings.notifications.pushEnableFailed);
+    } finally { setEnabling(false); }
+  };
+  return <View style={[styles.banner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <Text style={[styles.title, { color: colors.foreground }]}>{unavailable ? strings.notifications.pushUnavailableTitle : denied ? strings.notifications.pushBlockedTitle : needsRegistration ? strings.notifications.pushRegisterTitle : strings.notifications.pushOffTitle}</Text>
+    <Text style={[styles.body, { color: colors.textSecondary }]}>{unavailable ? push.capability.message : denied ? strings.notifications.pushBlockedBody : needsRegistration ? strings.notifications.pushRegisterBody : strings.notifications.pushOffBody}</Text>
+    <View style={styles.actions}>
+      {!unavailable ? <Button
+        label={denied ? strings.notifications.openSettings : enabling || push.syncing ? "Enabling alerts…" : strings.notifications.promptEnable}
+        variant="outline" size="sm" loading={enabling || push.syncing} disabled={enabling || push.syncing}
+        onPress={() => { if (denied) void Linking.openSettings().catch(() => showError("Couldn't open settings. Please open your phone's notification settings.")); else void handleEnable(); }} /> : null}
+      {dismissible ? <Button label={unavailable ? "Dismiss" : "Later"} variant="ghost" size="sm" onPress={() => setDismissed(true)} /> : null}
     </View>
-  );
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  banner: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: spacing.sm,
-  },
-  title: {
-    fontSize: typography.base,
-    fontWeight: "600",
-  },
-  body: {
-    fontSize: typography.sm,
-    lineHeight: 20,
-  },
-  actions: {
-    alignSelf: "flex-start",
-  },
+  banner: { width: "100%", padding: spacing.md, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, gap: spacing.sm },
+  title: { fontSize: typography.sm, fontWeight: "600" }, body: { fontSize: typography.sm, lineHeight: 20 },
+  actions: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm },
 });

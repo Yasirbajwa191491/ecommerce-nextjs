@@ -35,6 +35,7 @@ type RecommendationSectionProps = {
   cartProductIds?: Id<"products">[];
   limit?: number;
   accent?: boolean;
+  excludeProductIds?: readonly string[];
 };
 
 export function RecommendationSection({
@@ -43,6 +44,7 @@ export function RecommendationSection({
   cartProductIds,
   limit = 8,
   accent = false,
+  excludeProductIds = [],
 }: RecommendationSectionProps) {
   const { products, loading, isEmpty } = useRecommendations({
     sectionType,
@@ -51,7 +53,9 @@ export function RecommendationSection({
     limit,
   });
 
-  if (isEmpty && !loading) return null;
+  const excluded = new Set(excludeProductIds);
+  const uniqueProducts = products?.filter((product) => !excluded.has(product._id));
+  if ((isEmpty || uniqueProducts?.length === 0) && !loading) return null;
 
   const copy = SECTION_COPY[sectionType];
 
@@ -62,7 +66,7 @@ export function RecommendationSection({
       accent={accent}
       onAction={() => router.push("/(tabs)/shop")}
     >
-      <ProductCarousel products={products} isLoading={loading} />
+      <ProductCarousel products={uniqueProducts} isLoading={loading} />
     </HomeSection>
   );
 }

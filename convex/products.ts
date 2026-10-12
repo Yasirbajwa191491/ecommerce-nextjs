@@ -232,6 +232,7 @@ function filterProducts<
 }
 
 const publicFilterArgs = {
+  currency: v.optional(v.string()),
   /** Scope catalog to these products (e.g. hybrid search result set). Ignores `search`. */
   productIds: v.optional(v.array(v.id("products"))),
   search: v.optional(v.string()),
@@ -257,6 +258,7 @@ function scopeProductsByIds<
 }
 
 function toCatalogFilterArgs(args: {
+  currency?: string;
   productIds?: import("./_generated/dataModel").Id<"products">[];
   search?: string;
   categoryId?: import("./_generated/dataModel").Id<"productCategories">;
@@ -406,6 +408,23 @@ export const getPublicPriceBounds = query({
   },
 });
 
+/** Comparable ranges only; mobile never labels PKR amounts as dollars. */
+export const getPublicCurrencyPriceBounds = query({
+  args: {},
+  returns: v.array(v.object({ currency: v.string(), minPrice: v.number(), maxPrice: v.number(), count: v.number() })),
+  handler: async (ctx) => {
+    const ranges = new Map<string, { currency: string; minPrice: number; maxPrice: number; count: number }>();
+    await forEachProduct(ctx, (product) => {
+      if (!isProductActive(product)) return;
+      const currency = (product.currency ?? "USD").trim().toUpperCase();
+      const price = calculateFinalPrice(product.price, product.discountPercent ?? 0);
+      const previous = ranges.get(currency);
+      ranges.set(currency, { currency, minPrice: Math.min(previous?.minPrice ?? price, price), maxPrice: Math.max(previous?.maxPrice ?? price, price), count: (previous?.count ?? 0) + 1 });
+    });
+    return [...ranges.values()].sort((a, b) => a.currency.localeCompare(b.currency));
+  },
+});
+
 /** Total count for current public filters (pagination UI). */
 export const countPublicFiltered = query({
   args: publicFilterArgs,
@@ -423,6 +442,7 @@ export const countPublicFiltered = query({
 /** Faceted filter counts for catalog sidebar. */
 export const getPublicFilterFacets = query({
   args: {
+    currency: v.optional(v.string()),
     search: v.optional(v.string()),
     /** Scope facets to these products (e.g. hybrid search result set). Ignores `search`. */
     productIds: v.optional(v.array(v.id("products"))),
@@ -467,7 +487,7 @@ export const getPublicFilterFacets = query({
     const products: Doc<"products">[] = [];
     await forEachProduct(ctx, (product) => {
       if (!isProductActive(product)) return;
-      if (args.productIds?.length && !args.productIds.includes(product._id)) return;
+      if (args.productIds !== undefined && !args.productIds.includes(product._id)) return;
       products.push(product);
     });
     const promotions = await loadActivePromotions(ctx);
@@ -475,7 +495,7 @@ export const getPublicFilterFacets = query({
     const { productIds: _productIds, ...facetArgs } = args;
     const facets = computeFilterFacets(products, promotionIndex, {
       ...facetArgs,
-      search: args.productIds?.length ? undefined : facetArgs.search,
+      search: args.productIds !== undefined ? undefined : facetArgs.search,
     });
     return {
       ...facets,
@@ -518,8 +538,23 @@ export const listPublicPaginated = query({
       };
     }
 
+    const sort = args.sort ?? "default";
+    // Use the catalog indexes so sort applies to every page, not just loaded cards.
+    // Price sorts group currencies by requiring the mobile picker before comparison.
+    const orderedQuery = () => {
+      switch (sort) {
+        case "lowest": return ctx.db.query("products").withIndex("by_final_price").order("asc");
+        case "highest": return ctx.db.query("products").withIndex("by_final_price").order("desc");
+        case "rating": return ctx.db.query("products").withIndex("by_stars").order("desc");
+        case "popular": return ctx.db.query("products").withIndex("by_reviews").order("desc");
+        case "a-z": return ctx.db.query("products").withIndex("by_name").order("asc");
+        case "z-a": return ctx.db.query("products").withIndex("by_name").order("desc");
+        case "newest": return ctx.db.query("products").order("desc");
+        default: return ctx.db.query("products").withIndex("by_sort_order").order("asc");
+      }
+    };
     const result = await paginateMatching(
-      (opts) => ctx.db.query("products").order("desc").paginate(opts),
+      (opts) => orderedQuery().paginate(opts),
       paginationOpts,
       (product) => {
         if (!isProductActive(product)) return false;

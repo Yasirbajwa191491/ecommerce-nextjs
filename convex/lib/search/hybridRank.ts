@@ -10,6 +10,7 @@ export type SearchProductCandidate = {
   company: string;
   price: number;
   discountPercent: number;
+  currency?: string;
   stars: number;
   reviews: number;
   featured: boolean;
@@ -191,19 +192,31 @@ export function passesStarFilter(
 
 export function applyHardSearchConstraints<T extends SearchProductCandidate>(
   ranked: T[],
-  constraints: { maxPrice?: number; minPrice?: number; minStars?: number }
+  constraints: { maxPrice?: number; minPrice?: number; minStars?: number; currency?: string; categoryHint?: string; productTypeTerms?: string[] }
 ): T[] {
   return ranked.filter(
     (product) =>
+      (!constraints.currency || (product.currency ?? "USD").trim().toUpperCase() === constraints.currency.trim().toUpperCase()) &&
+      (!constraints.categoryHint || product.categoryName.toLowerCase() === constraints.categoryHint.toLowerCase()) &&
+      (!constraints.productTypeTerms?.length || constraints.productTypeTerms.some((term) => {
+        const identity = normalizeMatchText([product.name, product.categoryName, ...product.keywords].join(" "));
+        return identity.split(" ").some((word) => word === term || word === `${term}s` || (term === "watch" && word === "watches"));
+      })) &&
       passesPriceFilters(product, constraints.maxPrice, constraints.minPrice) &&
       passesStarFilter(product, constraints.minStars)
   );
 }
 
 export function tokenizeQuery(query: string): string[] {
+  const stopWords = new Set(["find", "me", "show", "something", "for", "my", "the", "a", "an", "and", "with", "need", "want", "please", "products", "product", "best", "buy", "looking", "get", "some", "of", "to", "is", "are", "whats", "right", "now"]);
   return query
     .toLowerCase()
     .split(/\s+/)
     .map((t) => t.replace(/[^a-z0-9]/g, ""))
-    .filter((t) => t.length >= 2);
+    .filter((t) => t.length >= 2 && !stopWords.has(t));
+}
+
+/** A positive cosine score alone is not evidence of a useful match. */
+export function isRelevantSearchCandidate(product: SearchProductCandidate, queryTerms: string[], semanticScore: number): boolean {
+  return computeKeywordScore(product, queryTerms) > 0 || (queryTerms.length > 0 && semanticScore >= 0.65);
 }

@@ -10,6 +10,7 @@ type RatingStarsProps = {
   reviewCount?: number;
   size?: number;
   showCount?: boolean;
+  compact?: boolean;
 };
 
 export function RatingStars({
@@ -17,6 +18,7 @@ export function RatingStars({
   reviewCount,
   size = 16,
   showCount = true,
+  compact = false,
 }: RatingStarsProps) {
   const { colors, textStyles } = useTheme();
   const styles = useMemo(
@@ -31,8 +33,8 @@ export function RatingStars({
     [colors, textStyles]
   );
 
-  if (showCount && (reviewCount ?? 0) === 0) {
-    return <Text style={styles.empty}>No Reviews Yet</Text>;
+  if (showCount && reviewCount === 0) {
+    return <Text style={styles.empty}>No reviews yet</Text>;
   }
 
   const clamped = Math.max(0, Math.min(5, rating));
@@ -43,11 +45,11 @@ export function RatingStars({
   return (
     <View style={styles.row} accessibilityRole="text" accessibilityLabel={label}>
       <View style={styles.stars} accessibilityElementsHidden>
-        {Array.from({ length: 5 }).map((_, index) => {
+        {Array.from({ length: compact ? 1 : 5 }).map((_, index) => {
           const filled = clamped >= index + 1;
           const half = !filled && clamped > index && clamped < index + 1;
           let iconName: keyof typeof Ionicons.glyphMap = "star-outline";
-          if (filled) iconName = "star";
+          if (filled || compact) iconName = "star";
           else if (half) iconName = "star-half";
 
           return (
@@ -55,7 +57,7 @@ export function RatingStars({
               key={index}
               name={iconName}
               size={size}
-              color={filled || half ? colors.warning : colors.mutedForeground}
+              color={filled || half || compact ? colors.warning : colors.mutedForeground}
             />
           );
         })}
@@ -63,7 +65,7 @@ export function RatingStars({
       <Text style={styles.value}>{clamped.toFixed(1)}</Text>
       {showCount && reviewCount !== undefined ? (
         <Text style={styles.count}>
-          ({reviewCount.toLocaleString()} {reviewCount === 1 ? "review" : "reviews"})
+          ({reviewCount.toLocaleString()}{compact ? "" : ` ${reviewCount === 1 ? "review" : "reviews"}`})
         </Text>
       ) : null}
     </View>

@@ -24,7 +24,7 @@ type CatalogHybridSearchState = {
   resultProductIds: Id<"products">[];
 };
 
-export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
+export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refreshVersion = 0) {
   const searchHybrid = useAction(api.productSearch.searchHybrid);
   const [state, setState] = useState<CatalogHybridSearchState>({
     products: [],
@@ -38,9 +38,11 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
   const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
     const trimmed = debouncedQuery.trim();
     if (trimmed.length < 1) {
       queueMicrotask(() => {
+        if (requestId !== requestIdRef.current) return;
         setState({
           products: [],
           totalCount: 0,
@@ -54,11 +56,10 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
       return;
     }
 
-    const requestId = ++requestIdRef.current;
-
     void (async () => {
       if (!getIsOnline()) {
         const cachedMatches = searchCachedProducts(trimmed).map(productToSearchResult);
+        if (requestId !== requestIdRef.current) return;
         setState({
           products: cachedMatches,
           totalCount: cachedMatches.length,
@@ -117,7 +118,8 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
         });
       }
     })();
-  }, [debouncedQuery, limit, searchHybrid]);
+    return () => { requestIdRef.current += 1; };
+  }, [debouncedQuery, limit, searchHybrid, refreshVersion]);
 
   const loadMore = useCallback(async () => {
     const trimmed = debouncedQuery.trim();

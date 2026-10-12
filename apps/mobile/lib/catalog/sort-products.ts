@@ -10,10 +10,10 @@ export function sortProductsClient(products: Product[], sort: CatalogSort): Prod
   const sorted = [...products];
   switch (sort) {
     case "lowest":
-      sorted.sort((a, b) => finalPrice(a) - finalPrice(b));
+      sorted.sort((a, b) => a.currency.localeCompare(b.currency) || finalPrice(a) - finalPrice(b));
       break;
     case "highest":
-      sorted.sort((a, b) => finalPrice(b) - finalPrice(a));
+      sorted.sort((a, b) => a.currency.localeCompare(b.currency) || finalPrice(b) - finalPrice(a));
       break;
     case "a-z":
       sorted.sort((a, b) => a.name.localeCompare(b.name));

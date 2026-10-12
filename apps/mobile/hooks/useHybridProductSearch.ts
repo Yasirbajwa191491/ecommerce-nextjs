@@ -12,6 +12,7 @@ import { searchCachedProducts } from "@/lib/offline/search-local";
 export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
   const searchHybrid = useAction(api.productSearch.searchHybrid);
   const [lifecycle] = useState(() => createSearchLifecycle<SearchResultProduct>());
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const state = useSyncExternalStore(lifecycle.subscribe, lifecycle.getSnapshot, lifecycle.getServerSnapshot);
 
   useEffect(() => {
@@ -34,11 +35,12 @@ export function useHybridProductSearch(debouncedQuery: string, limit = 12) {
       });
     }
     return () => lifecycle.invalidate();
-  }, [debouncedQuery, lifecycle, limit, searchHybrid]);
+  }, [debouncedQuery, lifecycle, limit, searchHybrid, refreshVersion]);
 
   return {
     ...state,
     hasMore: state.nextCursor !== undefined,
+    retry: () => setRefreshVersion((version) => version + 1),
     loadMore: () => getIsOnline() ? lifecycle.loadMore() : Promise.resolve(),
   };
 }

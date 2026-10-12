@@ -1,6 +1,6 @@
 import { useMutation } from "convex/react";
 import Constants from "expo-constants";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
@@ -12,6 +12,7 @@ import {
   ensureAndroidNotificationChannel,
   formatPushRegistrationError,
   getExpoPushToken,
+  getPushCapability,
   getNotificationPermissionStatus,
   getPushPlatform,
   requestNotificationPermission,
@@ -23,9 +24,11 @@ type PushSyncState = {
   expoPushToken: string | null;
   syncing: boolean;
   lastError: string | null;
+  registered: boolean;
 };
 
 export function usePushNotifications() {
+  const capability = useMemo(() => getPushCapability(), []);
   const visitorId = useVisitorId();
   const registerPushToken = useMutation(api.pushTokens.registerPushToken);
   const touchPushToken = useMutation(api.pushTokens.touchPushToken);
@@ -41,6 +44,7 @@ export function usePushNotifications() {
     expoPushToken: null,
     syncing: false,
     lastError: null,
+    registered: false,
   });
 
   const tokenRef = useRef<string | null>(null);
@@ -54,6 +58,11 @@ export function usePushNotifications() {
       setState((current) => ({ ...current, syncing: true, lastError: null }));
 
       try {
+        const currentCapability = getPushCapability();
+        if (!currentCapability.available) {
+          setState((current) => ({ ...current, permission: "unavailable", syncing: false, registered: false, lastError: currentCapability.message }));
+          return { success: false as const, reason: "unavailable" as const, message: currentCapability.message ?? "Order alerts are unavailable right now." };
+        }
         await ensureAndroidNotificationChannel();
 
         let permission = await getNotificationPermissionStatus();
@@ -76,6 +85,7 @@ export function usePushNotifications() {
             permission: permission === "denied" ? "denied" : "undetermined",
             syncing: false,
             lastError: failureMessage,
+            registered: false,
           }));
           return {
             success: false as const,
@@ -104,7 +114,7 @@ export function usePushNotifications() {
             : !customerEmail
               ? "Complete checkout once so we can link order alerts to your account."
               : formatPushRegistrationError(
-                  "Could not obtain an Expo push token. Rebuild the APK with Firebase (FCM) configured in EAS."
+                  "Could not obtain a push token."
                 );
           setState((current) => ({
             ...current,
@@ -112,6 +122,7 @@ export function usePushNotifications() {
             expoPushToken: token,
             syncing: false,
             lastError: failureMessage,
+            registered: false,
           }));
           return {
             success: false as const,
@@ -144,13 +155,14 @@ export function usePushNotifications() {
           expoPushToken: token,
           syncing: false,
           lastError: null,
+          registered: true,
         });
 
         return { success: true as const };
       } catch (error) {
         const rawMessage = error instanceof Error ? error.message : "Push sync failed";
         const message = formatPushRegistrationError(rawMessage);
-        const permission = await getNotificationPermissionStatus();
+        const permission = await getNotificationPermissionStatus().catch(() => "undetermined" as const);
         addMonitoringBreadcrumb("Push token sync failed", "notification");
         logAppError(error, { segment: "push-token-sync" });
         setState((current) => ({
@@ -158,6 +170,7 @@ export function usePushNotifications() {
           permission: permission === "granted" ? "granted" : current.permission,
           syncing: false,
           lastError: message,
+          registered: false,
         }));
         return { success: false as const, reason: "error" as const, message };
       }
@@ -193,11 +206,19 @@ export function usePushNotifications() {
     }
     await deactivatePushTokensForVisitor({ visitorId });
     tokenRef.current = null;
-    setState((current) => ({ ...current, expoPushToken: null }));
+    setState((current) => ({ ...current, expoPushToken: null, registered: false }));
   }, [deactivatePushTokensForVisitor, visitorId]);
 
   const refreshPermissionAndSync = useCallback(async () => {
-    const permission = await getNotificationPermissionStatus();
+    const currentCapability = getPushCapability();
+    if (!currentCapability.available) {
+      setState((current) => ({ ...current, permission: "unavailable", syncing: false, registered: false, lastError: currentCapability.message }));
+      return;
+    }
+    const permission = await getNotificationPermissionStatus().catch((error: unknown) => {
+      logAppError(error, { segment: "push-permission-refresh", expected: true });
+      return "undetermined" as const;
+    });
 
     if (permission === "granted") {
       if (!visitorId) {
@@ -254,6 +275,7 @@ export function usePushNotifications() {
 
   return {
     ...state,
+    capability,
     syncTokenWithBackend,
     syncPreferences,
     deactivateCurrentDevice,

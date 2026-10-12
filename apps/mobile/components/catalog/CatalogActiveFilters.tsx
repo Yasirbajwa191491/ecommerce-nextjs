@@ -62,6 +62,8 @@ export function CatalogActiveFilters({
   const styles = useThemedStyles(createCatalogActiveFiltersStyles);
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
 
+  if (filters.currency) chips.push({ key: "currency", label: filters.currency, onRemove: () => onChange({ ...filters, currency: undefined, minPrice: undefined, maxPrice: undefined, sort: filters.sort === "lowest" || filters.sort === "highest" ? "default" : filters.sort }) });
+
   if (filters.categoryId && categoryName) {
     chips.push({
       key: "category",
@@ -128,7 +130,7 @@ export function CatalogActiveFilters({
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     chips.push({
       key: "price",
-      label: "Price range",
+      label: `${filters.currency ?? "USD"} ${filters.minPrice ?? 0} – ${filters.maxPrice ?? "any"}`,
       onRemove: () =>
         onChange({ ...filters, minPrice: undefined, maxPrice: undefined }),
     });

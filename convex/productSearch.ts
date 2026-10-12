@@ -10,6 +10,7 @@ import {
   computeKeywordScore,
   rankSearchCandidates,
   tokenizeQuery,
+  isRelevantSearchCandidate,
   type SearchProductCandidate,
 } from "./lib/search/hybridRank";
 import type { Id } from "./_generated/dataModel";
@@ -118,7 +119,7 @@ function buildCandidateMap(
     const keywordScore = computeKeywordScore(product, queryTerms);
     const semanticScore = semanticScores.get(product._id) ?? 0;
 
-    if (keywordScore > 0 || semanticScore > 0) {
+    if (isRelevantSearchCandidate(product, queryTerms, semanticScore)) {
       map.set(product._id, {
         ...product,
         keywordScore,
@@ -141,6 +142,7 @@ export const searchHybrid = action({
     customerKey: v.optional(v.string()),
     categoryId: v.optional(v.id("productCategories")),
     minPrice: v.optional(v.number()),
+    currency: v.optional(v.string()),
     maxPrice: v.optional(v.number()),
     brands: v.optional(v.array(v.string())),
     colors: v.optional(v.array(v.string())),
@@ -172,7 +174,7 @@ export const searchHybrid = action({
     }
 
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 50);
-    const cursor = args.cursor ?? 0;
+    const cursor = Math.max(0, Math.floor(args.cursor ?? 0));
     const queryNormalized = trimmed.toLowerCase();
 
     const categories = await ctx.runQuery(
@@ -213,32 +215,6 @@ export const searchHybrid = action({
 
     const candidateMap = buildCandidateMap(catalog, queryTerms, semanticScores);
 
-    if (candidateMap.size === 0 && semanticScores.size > 0) {
-      for (const product of catalog) {
-        const semanticScore = semanticScores.get(product._id) ?? 0;
-        if (semanticScore > 0) {
-          candidateMap.set(product._id, {
-            ...product,
-            keywordScore: 0,
-            semanticScore,
-          });
-        }
-      }
-    }
-
-    if (candidateMap.size === 0) {
-      for (const product of catalog) {
-        const keywordScore = computeKeywordScore(product, queryTerms);
-        if (keywordScore > 0) {
-          candidateMap.set(product._id, {
-            ...product,
-            keywordScore,
-            semanticScore: 0,
-          });
-        }
-      }
-    }
-
     let ranked = rankSearchCandidates(candidateMap, {
       categoryHint: parsed.categoryHint,
       maxReviews,
@@ -257,36 +233,18 @@ export const searchHybrid = action({
       args.minRating !== undefined && parsed.minStars !== undefined
         ? Math.max(args.minRating, parsed.minStars)
         : (args.minRating ?? parsed.minStars);
-    const hardConstraints = { minPrice, maxPrice, minStars };
+    const currencyConflict = Boolean(args.currency && parsed.currency && args.currency.toUpperCase() !== parsed.currency);
+    const currency = parsed.currency ?? args.currency;
+    // Bare numeric budgets cannot compare incomparable amounts. Existing callers without
+    // a selected currency retain the legacy USD budget interpretation; browsing stays mixed.
+    const budgetCurrency = currency ?? ((minPrice !== undefined || maxPrice !== undefined) ? "USD" : undefined);
+    const hardConstraints = { minPrice, maxPrice, minStars, currency: budgetCurrency, categoryHint: parsed.categoryHint, productTypeTerms: parsed.productTypeTerms };
 
     ranked = applyHardSearchConstraints(ranked, hardConstraints);
 
-    let isSimilarFallback = false;
-    if (ranked.length === 0 && semanticScores.size > 0) {
-      isSimilarFallback = true;
-      const fallbackMap = new Map<
-        string,
-        SearchProductCandidate & { semanticScore: number; keywordScore: number }
-      >();
-      for (const product of catalog) {
-        const semanticScore = semanticScores.get(product._id) ?? 0;
-        if (semanticScore > 0) {
-          fallbackMap.set(product._id, {
-            ...product,
-            keywordScore: 0,
-            semanticScore,
-          });
-        }
-      }
-      ranked = applyHardSearchConstraints(
-        rankSearchCandidates(fallbackMap, {
-          categoryHint: parsed.categoryHint,
-          maxReviews,
-          query: parsed.embeddingQuery,
-        }),
-        hardConstraints
-      );
-    }
+    if (currencyConflict) ranked = [];
+    // Recommendations are a separate opt-in surface, never a no-match fallback.
+    const isSimilarFallback = false;
 
     const hasCatalogFilters = Boolean(
       args.categoryId ||
@@ -301,6 +259,7 @@ export const searchHybrid = action({
           productIds: ranked.map((product) => product._id as Id<"products">),
           categoryId: args.categoryId,
           minPrice,
+          currency: budgetCurrency,
           maxPrice,
           brands: args.brands,
           colors: args.colors,

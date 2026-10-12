@@ -19,6 +19,7 @@ export type PromotionFilterSlug =
   | "limited_time";
 
 export type CatalogFilterState = {
+  currency?: string;
   categoryId?: Id<"productCategories">;
   brandSlugs: string[];
   colorSlugs: string[];
@@ -43,6 +44,7 @@ export const DEFAULT_CATALOG_FILTERS: CatalogFilterState = {
 export function countActiveCatalogFilters(filters: CatalogFilterState): number {
   let count = 0;
   if (filters.categoryId) count += 1;
+  if (filters.currency) count += 1;
   if (filters.brandSlugs.length) count += filters.brandSlugs.length;
   if (filters.colorSlugs.length) count += filters.colorSlugs.length;
   if (filters.promotionSlugs.length) count += filters.promotionSlugs.length;
@@ -64,6 +66,7 @@ export function clearAllCatalogFilters(
 }
 
 export type PublicFilterQueryArgs = {
+  currency?: string;
   now: number;
   productIds?: Id<"products">[];
   search?: string;
@@ -105,6 +108,7 @@ export function toPublicFilterArgs(
         ? filters.search.trim()
         : undefined,
     categoryId,
+    currency: filters.currency,
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
     brands: filters.brandSlugs.length ? filters.brandSlugs : undefined,
@@ -137,7 +141,7 @@ export function toFacetArgs(
   return {
     ...facetBase,
     productIds:
-      options?.isHybridSearch && options.hybridProductIds?.length
+      options?.isHybridSearch && options.hybridProductIds !== undefined
         ? options.hybridProductIds
         : undefined,
   };

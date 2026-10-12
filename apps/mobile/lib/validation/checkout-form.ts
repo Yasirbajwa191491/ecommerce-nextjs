@@ -7,11 +7,34 @@ export type CheckoutFormValues = {
   email: string;
   phone: string;
   address: string;
+  structuredAddress?: boolean;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  country?: string;
   notes: string;
   paymentMethod: PaymentMethod | "";
   termsAccepted: boolean;
   privacyAccepted: boolean;
 };
+
+/** Preserve saved free-form addresses; only compose fields the shopper entered. */
+export function formatCheckoutAddress(values: CheckoutFormValues): string {
+  if (!values.structuredAddress) return values.address.trim();
+  return [values.address, values.city, values.region, values.postalCode, values.country]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+export const CHECKOUT_FIELD_ORDER: (keyof CheckoutFormValues)[] = [
+  "fullName", "email", "phone", "address", "city", "region", "postalCode", "country",
+  "notes", "paymentMethod", "termsAccepted", "privacyAccepted",
+];
+
+export function getFirstCheckoutError(errors: Partial<Record<keyof CheckoutFormValues, string>>) {
+  return CHECKOUT_FIELD_ORDER.find((field) => errors[field]);
+}
 
 const EMAIL_REGEX =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
@@ -77,12 +100,24 @@ export function validateCheckoutForm(
   const addressRequired = validateRequired(values.address, "Address");
   if (addressRequired) errors.address = addressRequired;
   else {
-    const addressMin = validateMinLength(values.address, 10, "Address");
+    const addressMin = validateMinLength(values.address, values.structuredAddress ? 3 : 10, "Address");
     if (addressMin) errors.address = addressMin;
     else {
       const addressMax = validateMaxLength(values.address, 500, "Address");
       if (addressMax) errors.address = addressMax;
     }
+  }
+
+  if (values.structuredAddress) {
+    const city = validateRequired(values.city ?? "", "City");
+    if (city) errors.city = city;
+    const country = validateRequired(values.country ?? "", "Country");
+    if (country) errors.country = country;
+    for (const field of ["city", "region", "postalCode", "country"] as const) {
+      const max = validateMaxLength(values[field] ?? "", field === "postalCode" ? 20 : 100, field === "region" ? "State / province" : field === "postalCode" ? "Postal code" : field === "city" ? "City" : "Country");
+      if (max) errors[field] = max;
+    }
+    if (formatCheckoutAddress(values).length > 500) errors.address = "Complete address must be 500 characters or fewer";
   }
 
   if (values.notes.trim()) {

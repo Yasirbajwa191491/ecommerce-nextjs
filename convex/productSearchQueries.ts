@@ -119,7 +119,7 @@ export const getActiveCategories = internalQuery({
     const categories = await ctx.db
       .query("productCategories")
       .withIndex("by_active_sort", (q) => q.eq("active", true))
-      .collect();
+      .take(100);
     return categories.map((c) => ({ name: c.name, slug: c.slug }));
   },
 });
@@ -229,6 +229,7 @@ export const getSearchCandidates = internalQuery({
 
 export const filterSearchProductIds = internalQuery({
   args: {
+    currency: v.optional(v.string()),
     productIds: v.array(v.id("products")),
     categoryId: v.optional(v.id("productCategories")),
     minPrice: v.optional(v.number()),

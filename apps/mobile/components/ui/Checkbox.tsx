@@ -57,6 +57,8 @@ function createCheckboxStyles({ colors }: ThemeStyleTokens) {
       flexDirection: "row" as const,
       alignItems: "flex-start" as const,
       gap: spacing.md,
+      minHeight: 48,
+      paddingVertical: spacing.sm,
     },
     pressed: {
       opacity: 0.88,
@@ -69,7 +71,7 @@ function createCheckboxStyles({ colors }: ThemeStyleTokens) {
       height: 22,
       borderRadius: radius.xs,
       borderWidth: 1.5,
-      borderColor: colors.border,
+      borderColor: colors.textSecondary,
       backgroundColor: colors.surface,
       alignItems: "center" as const,
       justifyContent: "center" as const,

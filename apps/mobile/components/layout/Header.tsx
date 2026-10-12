@@ -75,12 +75,11 @@ export function Header({
           height: sizes.qtyControl,
           alignItems: "center",
           justifyContent: "center",
-          marginLeft: -8,
         },
         actions: {
           flexDirection: "row",
           alignItems: "center",
-          gap: spacing.xs,
+          gap: 0,
         },
         compareBadge: {
           position: "absolute",
@@ -159,12 +158,12 @@ export function Header({
           {showSettings ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={strings.accessibility.openSettings}
+              accessibilityLabel="Open You and help"
               hitSlop={8}
-              onPress={() => router.push("/settings" as Href)}
+              onPress={() => router.push("/you" as Href)}
               style={styles.iconButton}
             >
-              <Ionicons name="settings-outline" size={sizes.iconMd} color={colors.foreground} />
+              <Ionicons name="person-circle-outline" size={sizes.iconLg} color={colors.foreground} />
             </Pressable>
           ) : null}
           {showWishlist ? (

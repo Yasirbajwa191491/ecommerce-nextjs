@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -16,7 +16,7 @@ type InputProps = TextInputProps & {
   hint?: string;
 };
 
-export function Input({
+export const Input = forwardRef<TextInput, InputProps>(function Input({
   label,
   error,
   hint,
@@ -25,7 +25,7 @@ export function Input({
   onFocus,
   onBlur,
   ...props
-}: InputProps) {
+}: InputProps, ref) {
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
   const inputLabel = accessibilityLabel ?? label;
@@ -52,7 +52,7 @@ export function Input({
         inputFocused: { borderColor: colors.primary },
         inputError: { borderColor: colors.destructive },
         error: { fontSize: typography.sm, color: colors.destructive },
-        hint: { fontSize: typography.sm, color: colors.muted },
+        hint: { fontSize: typography.sm, color: colors.textSecondary, lineHeight: 20 },
       }),
     [colors]
   );
@@ -61,8 +61,9 @@ export function Input({
     <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
+        ref={ref}
         accessibilityLabel={inputLabel}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.textSecondary}
         onFocus={(event) => {
           setFocused(true);
           onFocus?.(event);
@@ -88,4 +89,4 @@ export function Input({
       ) : null}
     </View>
   );
-}
+});

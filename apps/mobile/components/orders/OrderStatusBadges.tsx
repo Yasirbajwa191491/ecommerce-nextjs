@@ -2,7 +2,8 @@ import { StyleSheet, View } from "react-native";
 
 import { Badge } from "@/components/ui/Badge";
 import {
-  formatOrderLabel,
+  getOrderStatusLabel,
+  getPaymentStatusLabel,
   getOrderStatusBadgeVariant,
   getPaymentMethodLabel,
   getPaymentStatusBadgeVariant,
@@ -15,16 +16,16 @@ import { spacing } from "@/constants/theme";
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
     <Badge
-      label={formatOrderLabel(status)}
+      label={getOrderStatusLabel(status)}
       variant={getOrderStatusBadgeVariant(status)}
     />
   );
 }
 
-export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+export function PaymentStatusBadge({ status, method, orderStatus }: { status: PaymentStatus; method?: PaymentMethod; orderStatus?: OrderStatus }) {
   return (
     <Badge
-      label={formatOrderLabel(status)}
+      label={getPaymentStatusLabel(status, method, orderStatus)}
       variant={getPaymentStatusBadgeVariant(status)}
     />
   );
@@ -47,7 +48,7 @@ export function OrderStatusBadgeRow({
     <View style={styles.row}>
       <OrderStatusBadge status={status} />
       <PaymentMethodBadge method={paymentMethod} />
-      <PaymentStatusBadge status={paymentStatus} />
+      <PaymentStatusBadge status={paymentStatus} method={paymentMethod} orderStatus={status} />
     </View>
   );
 }

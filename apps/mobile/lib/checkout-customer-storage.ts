@@ -7,6 +7,7 @@ export type SavedCheckoutCustomer = {
   address: string;
   notes?: string;
   profileToken?: string;
+  addressParts?: { street: string; city: string; region: string; postalCode: string; country: string };
 };
 
 const STORAGE_KEY = "checkoutCustomer";
@@ -28,6 +29,7 @@ function migrateLegacyCustomer(raw: LegacySavedCheckoutCustomer): SavedCheckoutC
       address: raw.address,
       notes: raw.notes,
       profileToken: raw.profileToken,
+      addressParts: raw.addressParts,
     };
   }
 

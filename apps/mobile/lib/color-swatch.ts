@@ -7,7 +7,24 @@ export function isHexColor(value: string): boolean {
 export function formatColorLabel(color: string): string {
   const trimmed = color.trim();
   if (!trimmed) return "Selected color";
-  if (isHexColor(trimmed)) return "Selected color";
+  if (isHexColor(trimmed)) {
+    const hex = trimmed.slice(1);
+    const rgb = hex.length === 3 ? hex.split("").map((digit) => digit + digit).join("") : hex.slice(0, 6);
+    const [r, g, b] = [0, 2, 4].map((offset) => parseInt(rgb.slice(offset, offset + 2), 16) / 255);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    let label: string;
+    if (max < 0.18) label = "Black";
+    else if (min > 0.9) label = "White";
+    else if (delta < 0.12) label = "Gray";
+    else {
+      const hue = ((max === r ? (g - b) / delta : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4) * 60 + 360) % 360;
+      label = hue < 15 || hue >= 345 ? "Red" : hue < 45 ? "Orange" : hue < 70 ? "Yellow" : hue < 165 ? "Green" : hue < 195 ? "Teal" : hue < 260 ? "Blue" : hue < 300 ? "Purple" : "Pink";
+    }
+    // The exact code keeps similar shades distinguishable without inventing variant names.
+    return `${label} (${trimmed.toUpperCase()})`;
+  }
 
   return trimmed
     .split(/\s+/)

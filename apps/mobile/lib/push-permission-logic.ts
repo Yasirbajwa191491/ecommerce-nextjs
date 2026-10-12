@@ -60,13 +60,31 @@ export function formatPushRegistrationError(message: string): string {
     lower.includes("firebase") ||
     lower.includes("google-services")
   ) {
-    return "Push delivery is not configured for this Android build yet. Rebuild the APK with Firebase (FCM) credentials in EAS.";
+    return "Order alerts are unavailable in this version of the app. You can still track your order here.";
   }
   if (lower.includes("verify a recent order")) {
-    return "Place or open your order once more, then tap Register this device.";
+    return "Open a recent order, then try enabling order alerts again.";
   }
   if (lower.includes("project id is missing")) {
-    return "This app build is missing the Expo project ID required for push notifications.";
+    return "Order alerts are unavailable in this version of the app. You can still track your order here.";
   }
-  return message;
+  if (lower.includes("network") || lower.includes("offline") || lower.includes("fetch")) {
+    return "Check your internet connection, then try enabling order alerts again.";
+  }
+  return "We couldn't enable order alerts right now. You can still track your order here and try again later.";
+}
+
+export type PushCapability = { available: boolean; reason: "available" | "preview" | "unsupported" | "not_configured"; message: string | null };
+
+export function resolvePushCapability(args: { platform: string; isDevice: boolean; environment: string; enabled: boolean; projectId?: string }): PushCapability {
+  if (args.platform !== "android" && args.platform !== "ios" || !args.isDevice) {
+    return { available: false, reason: "unsupported", message: "Order alerts aren't available on this device. Track your order in the app." };
+  }
+  if (args.environment === "storeClient") {
+    return { available: false, reason: "preview", message: "Device order alerts aren't available in this preview. Track your order in the app." };
+  }
+  if (!args.enabled || !args.projectId) {
+    return { available: false, reason: "not_configured", message: "Order alerts are unavailable in this version of the app. You can still track your order here." };
+  }
+  return { available: true, reason: "available", message: null };
 }

@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useMemo,
 } from "react";
 
 import {
@@ -15,10 +16,9 @@ import {
   getNotificationPermissionStatus,
   parsePushNotificationData,
 } from "@/lib/push-notifications";
-import { useFirstLaunchPushPermission } from "@/hooks/useFirstLaunchPushPermission";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
-import { getVisitorId, useVisitorId } from "@/lib/visitor-id";
+import { getVisitorId } from "@/lib/visitor-id";
 import { useTheme } from "@/providers/theme-context";
 import {
   loadCheckoutCustomer,
@@ -35,12 +35,15 @@ import {
   type NotificationNavigationCredentials,
 } from "@/lib/notification-navigation";
 import { whenAppUnlocked } from "@/lib/app-lock";
+import type { PushCapability } from "@/lib/push-permission-logic";
 
 type PushNotificationContextValue = {
   permission: "undetermined" | "granted" | "denied" | "unavailable";
   expoPushToken: string | null;
   syncing: boolean;
   lastError: string | null;
+  registered: boolean;
+  capability: PushCapability;
   /** User-initiated: may show the OS prompt once when still undetermined. Never prompts if denied. */
   enablePushNotifications: (customerEmail?: string, accessToken?: string) => Promise<boolean>;
   /** Silent registration when OS permission is already granted — never shows the OS prompt. */
@@ -90,15 +93,9 @@ async function resolveNotificationAccess(): Promise<NotificationAccess | null> {
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
   const convex = useConvex();
   const push = usePushNotifications();
-  const visitorId = useVisitorId();
   const { preferences } = useTheme();
   const markReadByEventKey = useMutation(api.inAppNotifications.markReadByEventKey);
   const handledNotificationIds = useRef<Set<string>>(new Set());
-
-  useFirstLaunchPushPermission({
-    visitorReady: Boolean(visitorId),
-    onPermissionResolved: push.refreshPermissionAndSync,
-  });
 
   const resolveEnrollment = useCallback(
     async (customerEmail?: string, accessToken?: string) => {
@@ -131,12 +128,13 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       }
       return result.success;
     },
-    [preferences.notifications, push, resolveEnrollment]
+    [preferences.notifications, push.syncTokenWithBackend, push.syncPreferences, resolveEnrollment]
   );
 
   const enablePushNotifications = useCallback(
     async (customerEmail?: string, accessToken?: string) => {
-      const osPermission = await getNotificationPermissionStatus();
+      if (!push.capability.available) return false;
+      const osPermission = await getNotificationPermissionStatus().catch(() => "undetermined" as const);
       if (osPermission === "denied") {
         return false;
       }
@@ -160,7 +158,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       }
       return result.success;
     },
-    [preferences.notifications, push, resolveEnrollment]
+    [preferences.notifications, push.capability.available, push.syncTokenWithBackend, push.syncPreferences, resolveEnrollment]
   );
 
   const navigateFromNotification = useCallback(
@@ -300,17 +298,19 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     return () => subscription.remove();
   }, [navigateFromNotification]);
 
-  const value: PushNotificationContextValue = {
+  const value: PushNotificationContextValue = useMemo(() => ({
     permission: push.permission,
     expoPushToken: push.expoPushToken,
     syncing: push.syncing,
     lastError: push.lastError,
+    registered: push.registered,
+    capability: push.capability,
     enablePushNotifications,
     syncPushTokenIfPermitted,
     refreshPushRegistration: push.refreshPermissionAndSync,
     syncPreferences: push.syncPreferences,
     deactivateCurrentDevice: push.deactivateCurrentDevice,
-  };
+  }), [push.permission, push.expoPushToken, push.syncing, push.lastError, push.registered, push.capability, enablePushNotifications, syncPushTokenIfPermitted, push.refreshPermissionAndSync, push.syncPreferences, push.deactivateCurrentDevice]);
 
   return (
     <PushNotificationContext.Provider value={value}>

@@ -34,12 +34,12 @@ export function OrderSummaryCards({
         <Text style={styles.label}>Payment</Text>
         <View style={styles.badgeRow}>
           <PaymentMethodBadge method={paymentMethod} />
-          <PaymentStatusBadge status={paymentStatus} />
+          <PaymentStatusBadge status={paymentStatus} method={paymentMethod} />
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Total amount</Text>
+        <Text style={styles.label}>{paymentMethod === "cod" && paymentStatus === "pending" ? "Amount due on delivery" : paymentStatus === "paid" ? "Amount paid" : "Order total"}</Text>
         <Text style={styles.totalValue}>{formatCurrencyAmount(total, currency)}</Text>
       </View>
 

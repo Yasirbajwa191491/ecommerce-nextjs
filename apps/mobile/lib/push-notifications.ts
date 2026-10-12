@@ -7,12 +7,23 @@ import {
   canRequestNotificationPermission,
   formatPushRegistrationError,
   resolveNotificationPermissionState,
+  resolvePushCapability,
   type NotificationPermissionState,
 } from "@/lib/push-permission-logic";
 import type { PushPlatform } from "@/types/notifications";
+import { getPushExecutionEnvironment } from "@/lib/push-environment";
 
 export type { NotificationPermissionState };
 export { canRequestNotificationPermission, formatPushRegistrationError };
+
+export function getPushCapability() {
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  return resolvePushCapability({
+    platform: Platform.OS, isDevice: Device.isDevice, environment: getPushExecutionEnvironment(),
+    enabled: Constants.expoConfig?.extra?.pushNotificationsEnabled === true,
+    projectId: typeof projectId === "string" ? projectId : undefined,
+  });
+}
 
 export function configureForegroundNotificationBehavior() {
   Notifications.setNotificationHandler({

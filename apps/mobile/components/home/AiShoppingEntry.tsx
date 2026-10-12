@@ -15,7 +15,7 @@ export function AiShoppingEntry() {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="AI Shopping Assistant"
+      accessibilityLabel="Search by describing what you need"
       onPress={() => router.push("/(tabs)/ai")}
       style={({ pressed }) => [
         styles.container,
@@ -28,14 +28,14 @@ export function AiShoppingEntry() {
           <Ionicons name="sparkles" size={17} color={colors.cta} />
         </View>
         <View style={styles.copy}>
-          <Text style={styles.title}>Shop smarter with AI</Text>
+          <Text style={styles.title}>Need help finding something?</Text>
           <Text style={styles.subtitle} numberOfLines={2}>
-            Describe what you need and get personalized product recommendations.
+            Describe it, or search with a photo.
           </Text>
         </View>
       </View>
       <View style={styles.cta}>
-        <Text style={styles.ctaText}>Ask AI</Text>
+        <Text style={styles.ctaText}>Search</Text>
         <Ionicons name="chevron-forward" size={14} color={colors.ctaForeground} />
       </View>
     </Pressable>
@@ -95,7 +95,7 @@ function createStyles({ colors, textStyles }: ThemeStyleTokens) {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       borderRadius: radius.full,
-      minHeight: 36,
+      minHeight: 48,
       justifyContent: "center" as const,
     },
     ctaText: {

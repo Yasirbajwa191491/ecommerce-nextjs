@@ -4,14 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
-import type { OrderStatus } from "@/lib/order-display";
-
-const PROGRESS_STEPS: { key: OrderStatus; label: string }[] = [
-  { key: "confirmed", label: "Confirmed" },
-  { key: "processing", label: "Processing" },
-  { key: "shipped", label: "Shipped" },
-  { key: "delivered", label: "Delivered" },
-];
+import { getOrderProgressStepIndex, ORDER_PROGRESS_STEPS as PROGRESS_STEPS, type OrderStatus } from "@/lib/order-display";
 
 const TERMINAL_STATUSES: Record<
   string,
@@ -22,12 +15,6 @@ const TERMINAL_STATUSES: Record<
   failed: { label: "Order failed", tone: "destructive" },
   expired: { label: "Checkout expired", tone: "muted" },
 };
-
-function getActiveStepIndex(status: OrderStatus): number {
-  if (status === "pending") return -1;
-  const directIndex = PROGRESS_STEPS.findIndex((step) => step.key === status);
-  return directIndex >= 0 ? directIndex : -1;
-}
 
 type OrderProgressTimelineProps = {
   status: OrderStatus;
@@ -60,12 +47,12 @@ export function OrderProgressTimeline({ status }: OrderProgressTimelineProps) {
     );
   }
 
-  const activeIndex = getActiveStepIndex(status);
+  const activeIndex = getOrderProgressStepIndex(status);
   const progressRatio =
     PROGRESS_STEPS.length > 1 ? activeIndex / (PROGRESS_STEPS.length - 1) : 0;
 
   return (
-    <View style={styles.wrapper}>
+    <View style={styles.wrapper} accessibilityLabel={`Order progress: ${PROGRESS_STEPS[activeIndex]?.label ?? status}`}>
       <View style={styles.gridWrap}>
         <View
           style={[
@@ -150,7 +137,7 @@ function createOrderProgressTimelineStyles({ colors }: ThemeStyleTokens) {
     },
     stepsRow: {
       flexDirection: "row" as const,
-      gap: spacing.sm,
+      gap: spacing.xs,
       width: "100%" as const,
     },
     stepBox: {

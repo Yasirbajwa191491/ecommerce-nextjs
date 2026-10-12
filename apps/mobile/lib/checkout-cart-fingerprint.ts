@@ -7,6 +7,7 @@ export type PendingStripeOrder = {
 
 export function buildCheckoutCartFingerprint(args: {
   email: string;
+  customer: { fullName: string; phone: string; address: string; notes?: string };
   deliveryMethod?: string;
   lines: Array<{ productId: string; color: string; quantity: number }>;
 }): string {
@@ -23,7 +24,14 @@ export function buildCheckoutCartFingerprint(args: {
     });
 
   return JSON.stringify({
+    version: 2,
     email: args.email.trim().toLowerCase(),
+    customer: {
+      fullName: args.customer.fullName.trim(),
+      phone: args.customer.phone.trim(),
+      address: args.customer.address.trim(),
+      notes: args.customer.notes?.trim() ?? "",
+    },
     deliveryMethod: args.deliveryMethod ?? "",
     lines,
   });
