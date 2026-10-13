@@ -60,7 +60,7 @@ Open http://localhost:3000/home
    - Resolves `SITE_URL` (preview: `https://<branch>.vercel.app`, production: production domain)
    - Syncs `SITE_URL` to the target Convex deployment
    - Runs `npx convex deploy` + `next build` for `@ecommerce/web`
-   - Seeds admin + system settings if missing (`seed:seedAdminAndSettings`)
+   - Attempts to seed admin + system settings (`seed:seedAdminAndSettings`). A production deploy key that cannot run internal mutations skips this step instead of failing the build. Run `npx convex run seed:seedAdminAndSettings --prod` once if the admin account is missing.
 
 `apps/web/vercel.json` installs from the monorepo root and runs `npm run build:vercel`. For a custom domain, set `SITE_URL` in Vercel Production env vars.
 

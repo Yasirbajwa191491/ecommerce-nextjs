@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import {
   convexBuildEnv,
   requireConvexDeployKey,
+  trySeedAdminAndSettings,
   trySyncConvexSiteUrl,
 } from "./convex-deploy-env.mjs";
 import { resolveSiteUrl } from "./resolve-site-url.mjs";
@@ -29,10 +30,6 @@ execSync(
   { stdio: "inherit", env: buildEnv }
 );
 
-console.log("[vercel-build] Ensuring admin user and settings exist...");
-execSync("npx convex run seed:seedAdminAndSettings", {
-  stdio: "inherit",
-  env: buildEnv,
-});
+trySeedAdminAndSettings(buildEnv);
 
 console.log("[vercel-build] Done.");

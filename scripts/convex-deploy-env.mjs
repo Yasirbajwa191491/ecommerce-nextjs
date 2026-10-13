@@ -82,3 +82,41 @@ export function trySyncConvexSiteUrl(siteUrl, env = process.env) {
     throw error;
   }
 }
+
+/**
+ * Seed admin + settings after deploy. Best-effort — production deploy keys
+ * often cannot run internal mutations. Returns true when seeded.
+ */
+export function trySeedAdminAndSettings(env = process.env) {
+  const buildEnv = convexBuildEnv(env);
+
+  console.log("[vercel-build] Ensuring admin user and settings exist...");
+  try {
+    const output = execSync("npx convex run seed:seedAdminAndSettings", {
+      stdio: "pipe",
+      encoding: "utf8",
+      env: buildEnv,
+    });
+    if (output?.trim()) console.log(output.trim());
+    console.log("[vercel-build] Admin user and settings are ready.");
+    return true;
+  } catch (error) {
+    const output = `${error.stdout ?? ""}${error.stderr ?? ""}`;
+    const lacksPermission =
+      output.includes("runInternalMutations") ||
+      output.includes("do not have permission");
+
+    if (lacksPermission) {
+      console.warn(
+        "[vercel-build] Deploy key cannot run internal Convex functions. Skipping admin seed.\n" +
+          "Run this once while logged into Convex:\n" +
+          "  npx convex run seed:seedAdminAndSettings --prod\n" +
+          "Or use a deploy key that includes deployment:functions:runInternalMutations."
+      );
+      return false;
+    }
+
+    console.error(output || error.message);
+    throw error;
+  }
+}
