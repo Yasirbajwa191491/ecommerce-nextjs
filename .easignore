@@ -1,0 +1,82 @@
+# Same rules as .gitignore, except apps/mobile/google-services.json is uploaded
+# so the Android build can register for push notifications.
+
+# dependencies (root and nested workspaces)
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+.next/
+apps/web/.next/
+out/
+
+#posts
+/posts/*
+
+# production
+build/
+dist/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# convex generated local state
+.convex/
+
+# expo (mobile app)
+apps/mobile/.expo/
+apps/mobile/.expo-export-test/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/expo-env.d.ts
+apps/mobile/firebase-service-account.json
+apps/mobile/ecommerce-store-236cf-firebase-adminsdk-fbsvc-e9bd843ab4.json
+
+# AI worker — model caches and heavy runtime data
+services/review-ai-worker/node_modules/
+services/review-ai-worker/.cache/
+**/.cache/huggingface/
+**/.cache/transformers/
+*.onnx
+*.onnx.data
+*.bin
+*.safetensors
+*.gguf
+
+# docker / ollama local volumes (if created beside compose)
+ollama_data/
+transformers_cache/
+
+# logs and temp
+*.log
+tmp/
+temp/
+
+# local audit artifacts, downloads, and tools
+/.artifacts/

@@ -54,6 +54,44 @@ export async function readRecommendationCounts(ctx: DbCtx): Promise<Recommendati
   return { ...EMPTY_RECOMMENDATIONS, ...counts };
 }
 
+export async function readTableCounts(
+  ctx: DbCtx,
+  key: string
+): Promise<Record<string, number>> {
+  const counts = await readAggregate<Record<string, number>>(ctx, key, {});
+  const result: Record<string, number> = {};
+  for (const [name, value] of Object.entries(counts)) {
+    if (typeof value === "number" && Number.isFinite(value)) result[name] = value;
+  }
+  return result;
+}
+
+export async function replaceTableCounts(
+  ctx: MutationCtx,
+  key: string,
+  counts: Record<string, number>
+): Promise<void> {
+  const countsJson = JSON.stringify(counts);
+  const existing = await ctx.db
+    .query("maintainedAggregates")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+  if (!existing) {
+    await ctx.db.insert("maintainedAggregates", {
+      key,
+      countsJson,
+      ready: true,
+      updatedAt: Date.now(),
+    });
+    return;
+  }
+  await ctx.db.patch(existing._id, {
+    countsJson,
+    ready: true,
+    updatedAt: Date.now(),
+  });
+}
+
 async function updateAggregate(
   ctx: MutationCtx,
   key: string,
@@ -112,6 +150,22 @@ export async function adjustOrderStatusCount(
     if (next) counts[next] = (counts[next] ?? 0) + 1;
     counts.all = Math.max(0, (counts.all ?? 0) + (previous ? -1 : 0) + (next ? 1 : 0));
     return counts;
+  });
+}
+
+export async function adjustTableCount(
+  ctx: MutationCtx,
+  key: string,
+  deltas: Record<string, number>
+): Promise<void> {
+  const changes = Object.entries(deltas).filter(([, amount]) => amount !== 0);
+  if (changes.length === 0) return;
+  await updateAggregate(ctx, key, (current) => {
+    const next = { ...current };
+    for (const [name, amount] of changes) {
+      next[name] = Math.max(0, (next[name] ?? 0) + amount);
+    }
+    return next;
   });
 }
 

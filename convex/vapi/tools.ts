@@ -15,6 +15,7 @@ import {
 } from "../lib/publicOrderDto";
 import { buildTrackingBucketKey, checkAndIncrementRateLimit } from "../lib/rateLimit";
 import { incrementDailyAnalytics } from "./analyticsHelpers";
+import { adjustTableCount } from "../lib/maintainedAggregates";
 import {
   calculateAverageRating,
   calculateRatingDistribution,
@@ -894,6 +895,7 @@ export const createLead = internalMutation({
     });
 
     await incrementDailyAnalytics(ctx, "leadsCaptured");
+    await adjustTableCount(ctx, "vapiLeads", { new: 1 });
 
     return { success: true, leadId };
   },
@@ -1024,6 +1026,7 @@ export const requestHumanSupport = internalMutation({
     });
 
     await incrementDailyAnalytics(ctx, "humanEscalations");
+    await adjustTableCount(ctx, "vapiSupportTickets", { open: 1 });
 
     return { success: true, ticketId };
   },

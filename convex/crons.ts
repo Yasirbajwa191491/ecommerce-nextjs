@@ -24,4 +24,11 @@ crons.interval(
   {}
 );
 
+crons.interval(
+  "backfill vapi table counts",
+  { minutes: 1 },
+  internal.vapi.admin.backfillVapiTableCounts,
+  {}
+);
+
 export default crons;

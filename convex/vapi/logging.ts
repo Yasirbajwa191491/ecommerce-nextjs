@@ -2,6 +2,7 @@ import { internalMutation, internalQuery } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { incrementDailyAnalytics } from "./analyticsHelpers";
 import { normalizeBrowserSessionToken } from "./browserSession";
+import { adjustTableCount } from "../lib/maintainedAggregates";
 
 export const incrementAnalytics = internalMutation({
   args: {
@@ -82,6 +83,7 @@ export const upsertConversation = internalMutation({
     });
 
     await incrementDailyAnalytics(ctx, "conversations");
+    await adjustTableCount(ctx, "vapiConversations", { all: 1 });
     return { conversationId, isNew: true };
   },
 });

@@ -192,10 +192,11 @@ export function VapiAssistantWidget() {
 
     const browserLines = cartItemsToCheckoutLines(cart);
     const sessionCallId = vapiCallId;
-    if (sessionCallId && browserLines.length > 0) {
+    if (sessionCallId && browserSessionToken && browserLines.length > 0) {
       try {
         await pushBrowserCartToVoice({
           vapiCallId: sessionCallId,
+          browserSessionToken,
           lines: browserLines,
         });
       } catch {
