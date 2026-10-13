@@ -27,6 +27,7 @@ import {
   type VapiTranscriptEntry,
 } from "@/lib/vapi-config";
 import { inferAssistantStateFromTool } from "@/lib/vapi-ui-actions/activity-phases";
+import { getVapiBrowserSessionToken } from "@/lib/vapi-browser-session";
 
 export type UseVapiAssistantOptions = {
   onToolStart?: (event: VapiToolEvent) => void;
@@ -263,10 +264,12 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
   const onStateOverrideRef = useRef(options?.onStateOverride);
   const stateOverrideRef = useRef<VapiAssistantState | null>(null);
 
-  onToolStartRef.current = options?.onToolStart;
-  onToolCompleteRef.current = options?.onToolComplete;
-  onUserMessageRef.current = options?.onUserMessage;
-  onStateOverrideRef.current = options?.onStateOverride;
+  useEffect(() => {
+    onToolStartRef.current = options?.onToolStart;
+    onToolCompleteRef.current = options?.onToolComplete;
+    onUserMessageRef.current = options?.onUserMessage;
+    onStateOverrideRef.current = options?.onStateOverride;
+  });
 
   const [state, setState] = useState<VapiAssistantState>("idle");
   const [isConnected, setIsConnected] = useState(false);
@@ -654,7 +657,12 @@ export function useVapiAssistant(options?: UseVapiAssistantOptions) {
     await ensureMicrophoneAccess();
 
     const ready = waitForCallStart(vapi);
-    await vapi.start(assistantId);
+    const call = await vapi.start(assistantId, {
+      metadata: { browserSessionToken: getVapiBrowserSessionToken() },
+    });
+    if (mountedRef.current && call?.id) {
+      setVapiCallId(call.id);
+    }
     await ready;
     return vapi;
   }, [assistantId, getVapiClient]);

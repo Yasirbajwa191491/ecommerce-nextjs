@@ -62,7 +62,9 @@ export function ReviewAiPanel({ review }: ReviewAiPanelProps) {
   const regenerateAll = useMutation(api.adminReviewAi.regenerateAll);
 
   useEffect(() => {
-    setReplyDraft(review.adminReplyDraft ?? "");
+    const draft = review.adminReplyDraft ?? "";
+    const timer = window.setTimeout(() => setReplyDraft(draft), 0);
+    return () => window.clearTimeout(timer);
   }, [review.adminReplyDraft]);
 
   const isAnalyzing =

@@ -43,6 +43,7 @@ export type CatalogProduct = {
   name: string;
   company: string;
   price: number;
+  currency?: string;
   discountPercent?: number | null;
   colors: string[];
   stock: number;
@@ -57,6 +58,7 @@ export type CatalogProduct = {
 export type PublicFilterArgs = {
   search?: string;
   categoryId?: Id<"productCategories">;
+  currency?: string;
   minPrice?: number;
   maxPrice?: number;
   brands?: string[];
@@ -176,6 +178,12 @@ export function filterCatalogProducts<
     filtered = filtered.filter((p) => p.categoryId === args.categoryId);
   }
 
+  const currency = args.currency?.trim().toUpperCase() ??
+    ((args.minPrice !== undefined || args.maxPrice !== undefined) ? "USD" : undefined);
+  if (currency) {
+    filtered = filtered.filter((product) => (product.currency ?? "USD").trim().toUpperCase() === currency);
+  }
+
   if (args.search?.trim()) {
     const term = args.search.trim().toLowerCase();
     filtered = filtered.filter(
@@ -233,6 +241,7 @@ export function sortCatalogProducts<
     case "lowest":
       sorted.sort(
         (a, b) =>
+          (a.currency ?? "USD").toUpperCase().localeCompare((b.currency ?? "USD").toUpperCase()) ||
           calculateFinalPrice(a.price, a.discountPercent ?? 0) -
           calculateFinalPrice(b.price, b.discountPercent ?? 0)
       );
@@ -240,6 +249,7 @@ export function sortCatalogProducts<
     case "highest":
       sorted.sort(
         (a, b) =>
+          (a.currency ?? "USD").toUpperCase().localeCompare((b.currency ?? "USD").toUpperCase()) ||
           calculateFinalPrice(b.price, b.discountPercent ?? 0) -
           calculateFinalPrice(a.price, a.discountPercent ?? 0)
       );

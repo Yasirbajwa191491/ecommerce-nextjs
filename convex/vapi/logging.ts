@@ -1,6 +1,7 @@
 import { internalMutation, internalQuery } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { incrementDailyAnalytics } from "./analyticsHelpers";
+import { normalizeBrowserSessionToken } from "./browserSession";
 
 export const incrementAnalytics = internalMutation({
   args: {
@@ -26,6 +27,7 @@ export const upsertConversation = internalMutation({
   args: {
     vapiCallId: v.string(),
     channel: v.union(v.literal("voice"), v.literal("chat")),
+    browserSessionToken: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
     summary: v.optional(v.string()),
@@ -42,13 +44,24 @@ export const upsertConversation = internalMutation({
       .unique();
 
     const now = Date.now();
+    const requestedToken = normalizeBrowserSessionToken(args.browserSessionToken);
 
     if (existing) {
+      if (
+        requestedToken &&
+        existing.browserSessionVerifiedAt !== undefined &&
+        normalizeBrowserSessionToken(existing.browserSessionToken) !== requestedToken
+      ) {
+        throw new ConvexError("Voice session metadata does not match its verified owner");
+      }
       await ctx.db.patch(existing._id, {
         customerEmail: args.customerEmail ?? existing.customerEmail,
         customerPhone: args.customerPhone ?? existing.customerPhone,
         summary: args.summary ?? existing.summary,
         endedAt: args.ended ? now : existing.endedAt,
+        ...(requestedToken && existing.browserSessionVerifiedAt === undefined
+          ? { browserSessionToken: requestedToken, browserSessionVerifiedAt: now }
+          : {}),
       });
       return { conversationId: existing._id, isNew: false };
     }
@@ -57,6 +70,12 @@ export const upsertConversation = internalMutation({
       vapiCallId: args.vapiCallId,
       channel: args.channel,
       startedAt: now,
+      browserSessionToken: requestedToken,
+      browserSessionVerifiedAt: requestedToken ? now : undefined,
+      messageCount: 0,
+      userMessages: 0,
+      assistantMessages: 0,
+      toolCalls: 0,
       customerEmail: args.customerEmail,
       customerPhone: args.customerPhone,
       summary: args.summary,
@@ -102,7 +121,9 @@ export const appendLog = internalMutation({
       if (duplicate) return null;
     }
 
-    return await ctx.db.insert("vapiConversationLogs", {
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new ConvexError("Voice conversation not found");
+    const logId = await ctx.db.insert("vapiConversationLogs", {
       conversationId: args.conversationId,
       role: args.role,
       content,
@@ -111,6 +132,13 @@ export const appendLog = internalMutation({
       toolOutput: args.toolOutput,
       createdAt: Date.now(),
     });
+    await ctx.db.patch(args.conversationId, {
+      messageCount: (conversation.messageCount ?? 0) + 1,
+      userMessages: (conversation.userMessages ?? 0) + (args.role === "user" ? 1 : 0),
+      assistantMessages: (conversation.assistantMessages ?? 0) + (args.role === "assistant" ? 1 : 0),
+      toolCalls: (conversation.toolCalls ?? 0) + (args.role === "tool" ? 1 : 0),
+    });
+    return logId;
   },
 });
 

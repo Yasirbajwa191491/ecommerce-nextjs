@@ -3,6 +3,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { PromotionsPageView } from "@/components/promotions/promotions-page-view";
 import { PromotionsSeoSnapshot } from "@/components/promotions/promotions-seo-snapshot";
+import { readServerNow } from "@/lib/server-now";
 import { STORE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export default async function PromotionsPage() {
   try {
     initialPromotions = await fetchQuery(
       api.productPromotions.listActiveForStorefront,
-      { now: Date.now() }
+      { now: readServerNow() }
     );
   } catch {
     initialPromotions = undefined;

@@ -11,6 +11,7 @@ type PaymentMethodSelectorProps = {
   onChange: (method: PaymentMethod) => void;
   error?: string;
   disabled?: boolean;
+  cardAvailable?: boolean;
 };
 
 const OPTIONS: {
@@ -28,7 +29,7 @@ const OPTIONS: {
   {
     id: "stripe",
     title: "Card",
-    description: "Pay securely with your card using native Stripe checkout.",
+    description: "Pay securely with a debit or credit card.",
     icon: "card-outline",
   },
 ];
@@ -38,6 +39,7 @@ export function PaymentMethodSelector({
   onChange,
   error,
   disabled = false,
+  cardAvailable = true,
 }: PaymentMethodSelectorProps) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createPaymentMethodSelectorStyles);
@@ -48,18 +50,21 @@ export function PaymentMethodSelector({
       <View style={styles.options}>
         {OPTIONS.map((option) => {
           const selected = value === option.id;
+          const unavailable = option.id === "stripe" && !cardAvailable;
+          const optionDisabled = disabled || unavailable;
           return (
             <Pressable
               key={option.id}
               accessibilityRole="radio"
-              accessibilityState={{ selected, disabled }}
-              disabled={disabled}
+              accessibilityState={{ selected, disabled: optionDisabled }}
+              accessibilityLabel={`${option.title}. ${unavailable ? "Currently unavailable" : option.description}`}
+              disabled={optionDisabled}
               onPress={() => onChange(option.id)}
               style={({ pressed }) => [
                 styles.option,
                 selected && styles.optionSelected,
                 pressed && !disabled && styles.optionPressed,
-                disabled && styles.optionDisabled,
+                optionDisabled && styles.optionDisabled,
               ]}
             >
               <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
@@ -73,7 +78,7 @@ export function PaymentMethodSelector({
                 <Text style={[styles.optionTitle, selected && styles.optionTitleSelected]}>
                   {option.title}
                 </Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
+                <Text style={styles.optionDescription}>{unavailable ? "Currently unavailable. Choose cash on delivery." : option.description}</Text>
               </View>
               <View style={[styles.radio, selected && styles.radioSelected]}>
                 {selected ? (

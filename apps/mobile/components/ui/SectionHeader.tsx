@@ -52,7 +52,7 @@ export function SectionHeader({
           flexDirection: "row",
           alignItems: "center",
           gap: 2,
-          minHeight: 44,
+          minHeight: 48,
           paddingVertical: spacing.xs,
           justifyContent: "center",
         },

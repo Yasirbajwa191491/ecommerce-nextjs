@@ -2,8 +2,6 @@ import type { Id } from "@convex/_generated/dataModel";
 
 import type { CheckoutCartLine } from "@ecommerce/shared";
 
-
-
 export type CartLineLike = {
 
   id: string;
@@ -23,20 +21,15 @@ export type CartLineLike = {
   currency?: string;
 
   max: number;
+  unavailableReason?: string;
 
 };
-
-
 
 /** Fallback when a product has no color variants (matches web storefront). */
 
 export const DEFAULT_CART_COLOR = "#000000";
 
-
-
 const CART_LINE_SEP = "::";
-
-
 
 function expandHexShorthand(hex: string): string {
 
@@ -52,8 +45,6 @@ function expandHexShorthand(hex: string): string {
 
 }
 
-
-
 export function normalizeCartColor(color: string): string {
 
   const trimmed = color.trim();
@@ -67,8 +58,6 @@ export function normalizeCartColor(color: string): string {
   return trimmed;
 
 }
-
-
 
 /** Match selected color to a product option (case-insensitive hex). */
 
@@ -96,8 +85,6 @@ export function resolveProductColor(
 
 }
 
-
-
 export function resolveProductColorOrDefault(
 
   productColors: string[],
@@ -117,8 +104,6 @@ export function resolveProductColorOrDefault(
   return normalized || DEFAULT_CART_COLOR;
 
 }
-
-
 
 export function resolveCartProductId(
 
@@ -140,23 +125,17 @@ export function resolveCartProductId(
 
 }
 
-
-
 export function buildCartLineId(productId: string, color: string): string {
 
   return `${productId}${CART_LINE_SEP}${normalizeCartColor(color)}`;
 
 }
 
-
-
 export function cartLineKey(productId: string, color: string): string {
 
   return buildCartLineId(productId, color);
 
 }
-
-
 
 export function findCartLineIndex(
 
@@ -186,13 +165,9 @@ export function findCartLineIndex(
 
 }
 
-
-
 export function consolidateCartItems(cart: CartLineLike[]): CartLineLike[] {
 
   const merged = new Map<string, CartLineLike>();
-
-
 
   for (const item of cart) {
 
@@ -203,8 +178,6 @@ export function consolidateCartItems(cart: CartLineLike[]): CartLineLike[] {
     const lineId = buildCartLineId(productId, color);
 
     const existing = merged.get(lineId);
-
-
 
     if (existing) {
 
@@ -234,13 +207,9 @@ export function consolidateCartItems(cart: CartLineLike[]): CartLineLike[] {
 
   }
 
-
-
   return Array.from(merged.values());
 
 }
-
-
 
 export function cartItemsToCheckoutLines(cart: CartLineLike[]): CheckoutCartLine[] {
 
@@ -256,8 +225,6 @@ export function cartItemsToCheckoutLines(cart: CartLineLike[]): CheckoutCartLine
 
 }
 
-
-
 /** Resolve checkout lines using live product color options. */
 
 export function cartItemsToCheckoutLinesForProducts(
@@ -272,17 +239,7 @@ export function cartItemsToCheckoutLinesForProducts(
 
     const productId = resolveCartProductId(item);
 
-    const product = productsById.get(productId);
-
-    const color = resolveProductColorOrDefault(
-
-      product?.colors ?? [],
-
-      item.color
-
-    );
-
-
+    const color = normalizeCartColor(item.color);
 
     return {
 
@@ -297,8 +254,6 @@ export function cartItemsToCheckoutLinesForProducts(
   });
 
 }
-
-
 
 export function sanitizeCartItemsWithProducts(
 
@@ -316,19 +271,16 @@ export function sanitizeCartItemsWithProducts(
 
       const product = productsById.get(productId);
 
-      if (!product) return item;
+      if (!product) return { ...item, unavailableReason: "This product is no longer available. Remove it to continue." };
 
-
-
-      const color = resolveProductColorOrDefault(
-
-        product.colors ?? [],
-
-        item.color
-
-      );
-
-
+      const color = normalizeCartColor(item.color);
+      const unavailableReason = (product.stock ?? item.max) <= 0
+        ? "This product is out of stock. Remove it to continue."
+        : (product.colors?.length && !resolveProductColor(product.colors, color))
+          ? "This color is no longer available. Remove this item and choose another color."
+          : item.amount > (product.stock ?? item.max)
+            ? "Only " + product.stock + " available. Reduce the quantity to continue."
+            : undefined;
 
       return {
 
@@ -340,7 +292,8 @@ export function sanitizeCartItemsWithProducts(
 
         id: buildCartLineId(productId, color),
 
-        max: Math.max(product.stock ?? item.max, 1),
+        max: Math.max(product.stock ?? item.max, 0),
+        unavailableReason,
 
         currency: product.currency ?? item.currency,
 
@@ -351,8 +304,6 @@ export function sanitizeCartItemsWithProducts(
   );
 
 }
-
-
 
 export type PricedCartItem = {
 
@@ -385,5 +336,4 @@ export type PricedCartItem = {
   promotionName?: string;
 
 };
-
 

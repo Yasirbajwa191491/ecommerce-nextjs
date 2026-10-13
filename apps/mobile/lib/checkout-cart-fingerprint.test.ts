@@ -9,6 +9,7 @@ describe("pending stripe checkout resume", () => {
   const cart = {
     email: "Ada@Example.com",
     deliveryMethod: "standard" as const,
+    customer: { fullName: "Ada Lovelace", phone: "+923001234567", address: "10 Main Street, Lahore", notes: "Front door" },
     lines: [
       { productId: "prod-b", color: "Red", quantity: 1 },
       { productId: "prod-a", color: "Blue", quantity: 2 },
@@ -55,5 +56,31 @@ describe("pending stripe checkout resume", () => {
         buildCheckoutCartFingerprint(cart)
       )
     ).toBe(false);
+  });
+
+  it.each(["fullName", "phone", "address", "notes"] as const)(
+    "creates a fresh order when the shopper changes %s after cancelling payment",
+    (field) => {
+      const saved = buildCheckoutCartFingerprint(cart);
+      const changed = buildCheckoutCartFingerprint({
+        ...cart,
+        customer: { ...cart.customer, [field]: "Updated delivery detail" },
+      });
+      expect(pendingStripeOrderMatchesCart({ orderNumber: "ORD-1", email: cart.email, cartFingerprint: saved }, changed)).toBe(false);
+    }
+  );
+
+  it("normalizes email, trims customer details and ignores cart line ordering", () => {
+    expect(buildCheckoutCartFingerprint({
+      ...cart,
+      email: " ada@example.com ",
+      customer: { ...cart.customer, fullName: " Ada Lovelace " },
+      lines: [...cart.lines].reverse(),
+    })).toBe(buildCheckoutCartFingerprint(cart));
+  });
+
+  it("does not reuse old fingerprints that lack shipping identity", () => {
+    const oldFingerprint = JSON.stringify({ email: "ada@example.com", deliveryMethod: "standard", lines: cart.lines });
+    expect(pendingStripeOrderMatchesCart({ orderNumber: "ORD-1", email: cart.email, cartFingerprint: oldFingerprint }, buildCheckoutCartFingerprint(cart))).toBe(false);
   });
 });

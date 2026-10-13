@@ -6,12 +6,33 @@ export type ParsedSearchQuery = {
   minStars?: number;
   categoryHint?: string;
   categorySlug?: string;
+  currency?: string;
+  /** Explicit product type: alternatives must not silently replace it. */
+  productTypeTerms?: string[];
 };
 
-const UNDER_PRICE =
-  /\b(?:under|below|less than|cheaper than|max|up to)\s+\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars?|usd|\$)?/i;
-const OVER_PRICE =
-  /\b(?:over|above|more than|at least|min)\s+\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars?|usd|\$)?/i;
+const MONEY = String.raw`(?:(US\$|\$|USD|PKR|Rs\.?|EUR|€|GBP|£)\s*)?(\d[\d,]*(?:\.\d{1,2})?)\s*(USD|dollars?|PKR|rupees?|EUR|euros?|GBP|pounds?)?`;
+const UNDER_PRICE = new RegExp(String.raw`\b(?:under|below|less than|cheaper than|max(?:imum)?|up to)\s*${MONEY}`, "i");
+const OVER_PRICE = new RegExp(String.raw`\b(?:over|above|more than|at least|min(?:imum)?)\s*${MONEY}`, "i");
+const PRODUCT_TYPES: Array<{ expression: RegExp; terms: string[] }> = [
+  { expression: /\b(?:shoes?|sneakers?|trainers?|footwear)\b/i, terms: ["shoe", "sneaker", "trainer", "footwear"] },
+  { expression: /\b(?:headphones?|earphones?|earbuds?|airpods?)\b/i, terms: ["headphone", "earphone", "earbud", "airpod"] },
+  { expression: /\b(?:phones?|smartphones?|iphones?)\b/i, terms: ["phone", "smartphone", "iphone"] },
+  { expression: /\b(?:laptops?|notebooks?|macbooks?)\b/i, terms: ["laptop", "notebook", "macbook"] },
+  { expression: /\b(?:watches|watch|smartwatches|smartwatch)\b/i, terms: ["watch", "smartwatch"] },
+  { expression: /\b(?:tablets?|ipads?)\b/i, terms: ["tablet", "ipad"] },
+  { expression: /\b(?:desks?|workstations?)\b/i, terms: ["desk", "workstation"] },
+  { expression: /\b(?:chairs?|seating)\b/i, terms: ["chair", "seating"] },
+];
+
+function moneyCurrency(value?: string): string | undefined {
+  if (!value) return undefined;
+  if (/^(?:US\$|\$|USD|dollars?)$/i.test(value)) return "USD";
+  if (/^(?:PKR|Rs\.?|rupees?)$/i.test(value)) return "PKR";
+  if (/^(?:EUR|€|euros?)$/i.test(value)) return "EUR";
+  if (/^(?:GBP|£|pounds?)$/i.test(value)) return "GBP";
+  return undefined;
+}
 const STAR_RATING = /\b(\d(?:\.\d)?)\s*(?:\+?\s*)?stars?\b/i;
 const GOOD_REVIEWS =
   /\b(?:good reviews?|highly rated|top rated|best rated|well reviewed)\b/i;
@@ -27,16 +48,19 @@ export function parseSearchQuery(
   let minStars: number | undefined;
   let categoryHint: string | undefined;
   let categorySlug: string | undefined;
+  let currency: string | undefined;
 
   const underMatch = working.match(UNDER_PRICE);
-  if (underMatch?.[1]) {
-    maxPrice = parseFloat(underMatch[1]);
+  if (underMatch?.[2]) {
+    maxPrice = Number(underMatch[2].replace(/,/g, ""));
+    currency = moneyCurrency(underMatch[1] ?? underMatch[3]);
     working = working.replace(underMatch[0], " ").trim();
   }
 
   const overMatch = working.match(OVER_PRICE);
-  if (overMatch?.[1]) {
-    minPrice = parseFloat(overMatch[1]);
+  if (overMatch?.[2]) {
+    minPrice = Number(overMatch[2].replace(/,/g, ""));
+    currency = currency ?? moneyCurrency(overMatch[1] ?? overMatch[3]);
     working = working.replace(overMatch[0], " ").trim();
   }
 
@@ -53,10 +77,8 @@ export function parseSearchQuery(
   for (const category of categories) {
     const nameLower = category.name.toLowerCase();
     const slugLower = category.slug.toLowerCase();
-    if (
-      lowerWorking.includes(nameLower) ||
-      lowerWorking.includes(slugLower.replace(/-/g, " "))
-    ) {
+    const haystack = ` ${lowerWorking.replace(/[^a-z0-9]+/g, " ")} `;
+    if (haystack.includes(` ${nameLower} `) || haystack.includes(` ${slugLower.replace(/-/g, " ")} `)) {
       categoryHint = category.name;
       categorySlug = category.slug;
       break;
@@ -64,6 +86,7 @@ export function parseSearchQuery(
   }
 
   const embeddingQuery = working.replace(/\s+/g, " ").trim() || originalQuery;
+  const productTypeTerms = PRODUCT_TYPES.find((type) => type.expression.test(embeddingQuery))?.terms;
 
   return {
     originalQuery,
@@ -73,5 +96,7 @@ export function parseSearchQuery(
     minStars,
     categoryHint,
     categorySlug,
+    currency,
+    productTypeTerms,
   };
 }

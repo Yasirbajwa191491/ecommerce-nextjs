@@ -11,7 +11,7 @@ export default function TrackScreen() {
   return (
     <ScreenContainer>
       <View style={[styles.container, rootStyle]}>
-        <Header title="Track Order" showSearch={false} showCart={false} showNotifications showScan />
+        <Header title="Orders" subtitle="Track a delivery or find your orders" showSearch={false} showCart={false} showNotifications showScan showSettings />
         <TrackOrderView />
       </View>
     </ScreenContainer>

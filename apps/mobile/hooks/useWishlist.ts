@@ -7,13 +7,13 @@ import { api } from "@/lib/convex-api";
 import { getIsOnline } from "@/lib/network";
 import {
   cacheWishlistIds,
-  dequeueWishlistChange,
   enqueueWishlistChange,
   getCachedWishlistIds,
   getWishlistQueue,
   hydrateWishlistStore,
   mergeWishlistIds,
   subscribeWishlistStore,
+  syncWishlistChange,
 } from "@/lib/offline/wishlist-queue";
 import type { Id } from "@convex/_generated/dataModel";
 
@@ -54,7 +54,7 @@ export function useWishlist() {
     async (productId: Id<"products">) => {
       if (!visitorId) return false;
       const add = !wishlistSet.has(productId);
-      await enqueueWishlistChange(productId, add);
+      const operation = await enqueueWishlistChange(productId, add);
       void triggerHaptic("light");
 
       if (!getIsOnline()) {
@@ -62,9 +62,9 @@ export function useWishlist() {
       }
 
       try {
-        const result = await toggleWishlist({ visitorId, productId, add });
-        await dequeueWishlistChange(productId);
-        return result;
+        return await syncWishlistChange(operation, () =>
+          toggleWishlist({ visitorId, productId, add })
+        );
       } catch (error) {
         throw error;
       }

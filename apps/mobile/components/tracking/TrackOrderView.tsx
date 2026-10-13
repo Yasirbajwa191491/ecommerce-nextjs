@@ -18,6 +18,7 @@ import {
   CustomerOrderCard,
   TrackOrderResultCard,
 } from "@/components/tracking/TrackOrderCards";
+import { RecentOrdersSection } from "@/components/tracking/RecentOrdersSection";
 import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
 import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { Button } from "@/components/ui/Button";
@@ -223,7 +224,7 @@ export function TrackOrderView() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior="padding"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
     >
       <ScrollView
@@ -241,7 +242,7 @@ export function TrackOrderView() {
             <View style={styles.heroIcon}>
               <Ionicons name="locate-outline" size={28} color={colors.primary} />
             </View>
-            <Text style={styles.heroTitle}>Track your order</Text>
+            <Text style={styles.heroTitle}>Your orders</Text>
             <Text style={styles.heroSub}>
               Enter your order number or the contact details used at checkout to see
               your delivery progress.
@@ -263,6 +264,8 @@ export function TrackOrderView() {
               <Text style={styles.aiLinkText}>Ask AI about my order</Text>
             </Pressable>
           </View>
+
+          <RecentOrdersSection />
 
           <SegmentedControl
             options={TRACK_METHOD_OPTIONS}

@@ -2,12 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { ExpoConfig } from "expo/config";
+import appLinkConfig from "../../packages/shared/src/app-link-config.json";
+
+// Keep build config independent of the runtime package's ESM/React Native graph.
+const { bundleId: APP_LINK_BUNDLE_ID, pathPrefixes: APP_LINK_PATH_PREFIXES } = appLinkConfig;
 
 const googleServicesPath = path.join(__dirname, "google-services.json");
 const hasGoogleServices = fs.existsSync(googleServicesPath);
 
 const plugins: NonNullable<ExpoConfig["plugins"]> = [
   "expo-router",
+  ["expo-splash-screen", { backgroundColor: "#F9FAFB", image: "./assets/icon.png", imageWidth: 120, dark: { backgroundColor: "#111827" } }],
   [
     "expo-image-picker",
     {
@@ -80,7 +85,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.yasir.ecommerce",
+    bundleIdentifier: APP_LINK_BUNDLE_ID,
     infoPlist: {
       NSCameraUsageDescription:
         "Allow camera access to scan QR codes and take a photo to find similar products.",
@@ -102,8 +107,8 @@ const config: ExpoConfig = {
       : {}),
   },
   android: {
-    package: "com.yasir.ecommerce",
-    softwareKeyboardLayoutMode: "pan",
+    package: APP_LINK_BUNDLE_ID,
+    softwareKeyboardLayoutMode: "resize",
     ...(hasGoogleServices ? { googleServicesFile: "./google-services.json" } : {}),
     adaptiveIcon: {
       foregroundImage: "./assets/icon.png",
@@ -120,43 +125,11 @@ const config: ExpoConfig = {
             {
               action: "VIEW" as const,
               autoVerify: true,
-              data: [
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/qr",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/product",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/category",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/track-order",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/checkout",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/order",
-                },
-                {
-                  scheme: "https" as const,
-                  host: new URL(process.env.EXPO_PUBLIC_SITE_URL).host,
-                  pathPrefix: "/promotions",
-                },
-              ],
+              data: APP_LINK_PATH_PREFIXES.map((pathPrefix) => ({
+                scheme: "https" as const,
+                host: new URL(process.env.EXPO_PUBLIC_SITE_URL ?? "https://localhost").host,
+                pathPrefix,
+              })),
               category: ["BROWSABLE" as const, "DEFAULT" as const],
             },
           ]
@@ -165,7 +138,7 @@ const config: ExpoConfig = {
   },
   splash: {
     image: "./assets/icon.png",
-    backgroundColor: "#6254f3",
+    backgroundColor: "#F9FAFB",
     resizeMode: "contain",
   },
   web: {
@@ -177,6 +150,8 @@ const config: ExpoConfig = {
     typedRoutes: true,
   },
   extra: {
+    pushNotificationsEnabled: hasGoogleServices,
+    pushNotificationsIosEnabled: true,
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
     router: {
       origin: false,

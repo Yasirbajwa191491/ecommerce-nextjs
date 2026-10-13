@@ -19,6 +19,8 @@ import {
 } from "./lib/recommendations/sections";
 import { buildScoredProducts } from "./lib/recommendations/scoring";
 import { isProductActive } from "./lib/productActive";
+import { requireAdmin } from "./lib/requireAdmin";
+import { readRecommendationCounts } from "./lib/maintainedAggregates";
 
 export const getProfileByIdentity = internalQuery({
   args: {
@@ -89,24 +91,8 @@ export const getRecommendationStats = query({
     totalConversions: v.number(),
   }),
   handler: async (ctx) => {
-    const profiles = await ctx.db
-      .query("customerRecommendationProfiles")
-      .take(1000);
-    const cache = await ctx.db.query("recommendationCache").take(1000);
-    const jobs = await ctx.db
-      .query("recommendationJobs")
-      .withIndex("by_status_created", (q) => q.eq("status", "pending"))
-      .take(100);
-    const analytics = await ctx.db.query("recommendationAnalytics").take(1000);
-
-    return {
-      profileCount: profiles.length,
-      cacheCount: cache.length,
-      pendingJobs: jobs.length,
-      totalImpressions: analytics.reduce((sum, row) => sum + row.impressions, 0),
-      totalClicks: analytics.reduce((sum, row) => sum + row.clicks, 0),
-      totalConversions: analytics.reduce((sum, row) => sum + row.conversions, 0),
-    };
+    await requireAdmin(ctx);
+    return await readRecommendationCounts(ctx);
   },
 });
 
@@ -126,6 +112,7 @@ export const listRecommendationAnalytics = query({
     })
   ),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const limit = Math.min(args.limit ?? 30, 100);
     const rows = await ctx.db
       .query("recommendationAnalytics")
@@ -160,6 +147,7 @@ export const listRecentRecommendationJobs = query({
     })
   ),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const limit = Math.min(args.limit ?? 20, 50);
     const jobs = await ctx.db
       .query("recommendationJobs")
@@ -192,24 +180,7 @@ export const getRecommendationStatsInternal = internalQuery({
   args: {},
   returns: v.any(),
   handler: async (ctx) => {
-    const profiles = await ctx.db
-      .query("customerRecommendationProfiles")
-      .take(1000);
-    const cache = await ctx.db.query("recommendationCache").take(1000);
-    const jobs = await ctx.db
-      .query("recommendationJobs")
-      .withIndex("by_status_created", (q) => q.eq("status", "pending"))
-      .take(100);
-    const analytics = await ctx.db.query("recommendationAnalytics").take(1000);
-
-    return {
-      profileCount: profiles.length,
-      cacheCount: cache.length,
-      pendingJobs: jobs.length,
-      totalImpressions: analytics.reduce((sum, row) => sum + row.impressions, 0),
-      totalClicks: analytics.reduce((sum, row) => sum + row.clicks, 0),
-      totalConversions: analytics.reduce((sum, row) => sum + row.conversions, 0),
-    };
+    return await readRecommendationCounts(ctx);
   },
 });
 

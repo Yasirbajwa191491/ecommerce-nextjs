@@ -20,7 +20,7 @@ function webhookEventToLogs(
   order: Doc<"orders">,
   event: Doc<"stripeWebhookEvents">
 ) {
-  const at = event.processedAt;
+  const at = event.processedAt ?? event.receivedAt ?? event._creationTime;
   switch (event.type) {
     case "checkout.session.completed":
       return {
@@ -197,7 +197,11 @@ export async function backfillOrderLogsIfEmpty(
     .withIndex("by_order_id", (q) => q.eq("orderId", orderId))
     .collect();
 
-  webhookEvents.sort((a, b) => a.processedAt - b.processedAt);
+  webhookEvents.sort(
+    (a, b) =>
+      (a.processedAt ?? a.receivedAt ?? a._creationTime) -
+      (b.processedAt ?? b.receivedAt ?? b._creationTime)
+  );
 
   let paymentCompletedLogged = false;
 

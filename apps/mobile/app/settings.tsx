@@ -110,7 +110,8 @@ export default function SettingsScreen() {
       requiresPermission = false
     ) => {
       if (requiresPermission && pushNotifications) {
-        if (pushNotifications.permission === "denied") {
+        const readPermission = () => pushNotifications.permission;
+        if (readPermission() === "denied") {
           showError(strings.notifications.pushBlocked);
           await Linking.openSettings();
           return;
@@ -118,7 +119,7 @@ export default function SettingsScreen() {
 
         const enabled = await pushNotifications.enablePushNotifications();
         if (!enabled) {
-          if (pushNotifications.permission === "denied") {
+          if (readPermission() === "denied") {
             showError(strings.notifications.pushBlocked);
             await Linking.openSettings();
           } else {

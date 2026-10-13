@@ -1,4 +1,5 @@
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/lib/secure-storage";
+import { saveRecentOrder } from "@/lib/recent-orders";
 
 export type SavedCheckoutCustomer = {
   fullName: string;
@@ -6,6 +7,8 @@ export type SavedCheckoutCustomer = {
   phone: string;
   address: string;
   notes?: string;
+  profileToken?: string;
+  addressParts?: { street: string; city: string; region: string; postalCode: string; country: string };
 };
 
 const STORAGE_KEY = "checkoutCustomer";
@@ -26,6 +29,8 @@ function migrateLegacyCustomer(raw: LegacySavedCheckoutCustomer): SavedCheckoutC
       phone: raw.phone,
       address: raw.address,
       notes: raw.notes,
+      profileToken: raw.profileToken,
+      addressParts: raw.addressParts,
     };
   }
 
@@ -43,6 +48,7 @@ function migrateLegacyCustomer(raw: LegacySavedCheckoutCustomer): SavedCheckoutC
     phone: raw.phone,
     address: parts.join(", "),
     notes: raw.notes,
+    profileToken: raw.profileToken,
   };
 }
 
@@ -76,6 +82,7 @@ export async function saveLastOrderInfo(
   email: string,
   accessToken?: string
 ): Promise<void> {
+  if (accessToken?.trim()) await saveRecentOrder({ orderNumber, email, accessToken });
   await Promise.all([
     setSecureItem(LAST_ORDER_NUMBER_KEY, orderNumber),
     setSecureItem(LAST_ORDER_EMAIL_KEY, email),
@@ -156,6 +163,8 @@ export async function savePushEnrollmentProof(
   await setSecureItem(PUSH_ENROLLMENT_EMAIL_KEY, trimmedEmail);
   if (accessToken?.trim()) {
     await setSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY, accessToken.trim());
+  } else {
+    await removeSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY);
   }
 }
 

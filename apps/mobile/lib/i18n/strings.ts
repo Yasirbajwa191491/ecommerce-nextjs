@@ -80,21 +80,22 @@ export const strings = {
     preferencesReset: "Preferences reset",
   },
   notifications: {
-    promptEnable: "Enable notifications",
+    promptEnable: "Enable order alerts",
     registerDevice: "Register this device",
-    pushRegisterTitle: "Finish enabling device alerts",
+    pushRegisterTitle: "Get delivery updates",
     pushRegisterBody:
-      "Notification permission is on. Register this device to receive order alerts on your phone.",
-    pushOffTitle: "Device alerts are off",
+      "Your phone allows notifications. Enable order alerts to connect this device to your purchases.",
+    pushOffTitle: "Get delivery updates",
     pushOffBody:
-      "Turn on push notifications to receive order and payment updates on this phone. Your in-app notification history works either way.",
+      "Receive order and payment updates on this phone. You can always track purchases in the app.",
+    pushUnavailableTitle: "Track your order in the app",
     pushBlockedTitle: "Notifications blocked",
     pushBlockedBody:
       "Push alerts are disabled in your phone settings. Open settings to allow notifications for this app.",
     openSettings: "Open settings",
     pushEnabled: "Push notifications enabled on this device.",
     pushBlocked: "Notifications are blocked in system settings.",
-    pushEnableFailed: "Could not enable push notifications on this device.",
+    pushEnableFailed: "We couldn't enable order alerts right now. You can track your order in the app and try again later.",
   },
   accessibility: {
     openSettings: "Open settings",

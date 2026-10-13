@@ -20,7 +20,7 @@ export type StorefrontPromotionsList = FunctionReturnType<
 
 const activeForProductCache = new Map<string, ActiveProductPromotions>();
 const storefrontByIdCache = new Map<string, StorefrontPromotionDetail>();
-let storefrontListCache: StorefrontPromotionsList | undefined;
+const storefrontListCache = new Map<"list", StorefrontPromotionsList>();
 
 function catalogCacheKey(...parts: (string | number)[]) {
   return parts.join(":");
@@ -60,7 +60,7 @@ export function useStorefrontPromotionsList() {
   const now = useCatalogNow();
   const query = useQuery(api.productPromotions.listActiveForStorefront, { now });
   if (query !== undefined) {
-    storefrontListCache = query;
+    storefrontListCache.set("list", query);
   }
-  return query ?? storefrontListCache;
+  return query ?? storefrontListCache.get("list");
 }

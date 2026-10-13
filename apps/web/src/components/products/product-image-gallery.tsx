@@ -42,13 +42,14 @@ export function ProductImageGallery({
   );
 
   useEffect(() => {
-    setActiveIndex(0);
+    const timer = window.setTimeout(() => setActiveIndex(0), 0);
+    return () => window.clearTimeout(timer);
   }, [imageFingerprint]);
 
   useEffect(() => {
-    if (activeIndex >= galleryImages.length) {
-      setActiveIndex(0);
-    }
+    if (activeIndex < galleryImages.length) return;
+    const timer = window.setTimeout(() => setActiveIndex(0), 0);
+    return () => window.clearTimeout(timer);
   }, [activeIndex, galleryImages.length]);
 
   const activeImage = galleryImages[activeIndex];

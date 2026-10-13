@@ -2,10 +2,12 @@ import { formatCurrencyAmount, normalizePhoneToE164 } from "@ecommerce/shared";
 import { useAction, useMutation } from "convex/react";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DeliveryMethodSelector } from "@/components/checkout/DeliveryMethodSelector";
+import { CheckoutCountryPicker } from "@/components/checkout/CheckoutCountryPicker";
+import { CHECKOUT_POLICIES, CheckoutPolicySheet } from "@/components/checkout/CheckoutPolicySheet";
 import { OrderSummarySection } from "@/components/checkout/OrderSummarySection";
 import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
 import { PriceBreakdown } from "@/components/checkout/PriceBreakdown";
@@ -53,11 +55,15 @@ import {
   OFFLINE_TITLE,
 } from "@/lib/network";
 import {
+  CHECKOUT_FIELD_ORDER,
+  formatCheckoutAddress,
+  getFirstCheckoutError,
   validateCheckoutForm,
   type CheckoutFormValues,
   type PaymentMethod,
 } from "@/lib/validation/checkout-form";
 import { getVisitorId } from "@/lib/visitor-id";
+import type { PolicySettingKey } from "@/lib/legal-content";
 import { useCart } from "@/providers/cart-context";
 import { useToast } from "@/providers/toast-context";
 
@@ -68,6 +74,11 @@ const emptyForm = (): CheckoutFormValues => ({
   email: "",
   phone: "",
   address: "",
+  structuredAddress: true,
+  city: "",
+  region: "",
+  postalCode: "",
+  country: "",
   notes: "",
   paymentMethod: "",
   termsAccepted: false,
@@ -93,6 +104,13 @@ export default function CheckoutScreen() {
   const [touched, setTouched] = useState<Partial<Record<keyof CheckoutFormValues, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [customerLoaded, setCustomerLoaded] = useState(false);
+  const [policy, setPolicy] = useState<PolicySettingKey | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldPositions = useRef<Partial<Record<keyof CheckoutFormValues, number>>>({});
+  const inputRefs = useRef<Partial<Record<keyof CheckoutFormValues, TextInput | null>>>({});
+  const phoneRef = useRef<TextInput>(null);
+  const lastSubmissionRef = useRef<string | null>(null);
+  const cardAvailable = Boolean(getStripePublishableKey());
 
   const idempotencyKeyRef = useRef(createIdempotencyKey());
   const submittingRef = useRef(false);
@@ -116,6 +134,7 @@ export default function CheckoutScreen() {
   const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
 
   useEffect(() => {
+    if (customerLoaded) return;
     let cancelled = false;
     void (async () => {
       const saved = await loadCheckoutCustomer();
@@ -125,7 +144,12 @@ export default function CheckoutScreen() {
           fullName: saved.fullName,
           email: saved.email,
           phone: normalizePhoneToE164(saved.phone, defaultPhoneCountry),
-          address: saved.address,
+          address: saved.addressParts?.street ?? saved.address,
+          structuredAddress: Boolean(saved.addressParts),
+          city: saved.addressParts?.city ?? "",
+          region: saved.addressParts?.region ?? "",
+          postalCode: saved.addressParts?.postalCode ?? "",
+          country: saved.addressParts?.country ?? "",
           notes: saved.notes ?? "",
         }));
       }
@@ -134,7 +158,7 @@ export default function CheckoutScreen() {
     return () => {
       cancelled = true;
     };
-  }, [defaultPhoneCountry]);
+  }, [defaultPhoneCountry, customerLoaded]);
 
   const errors = useMemo(() => validateCheckoutForm(form), [form]);
   const visibleErrors = useMemo(() => {
@@ -161,16 +185,14 @@ export default function CheckoutScreen() {
   }, []);
 
   const touchAll = useCallback(() => {
-    setTouched({
-      fullName: true,
-      email: true,
-      phone: true,
-      address: true,
-      notes: true,
-      paymentMethod: true,
-      termsAccepted: true,
-      privacyAccepted: true,
-    });
+    setTouched(Object.fromEntries(CHECKOUT_FIELD_ORDER.map((field) => [field, true])));
+  }, []);
+
+  const focusField = useCallback((field: keyof CheckoutFormValues) => {
+    scrollRef.current?.scrollTo({ y: Math.max(0, (fieldPositions.current[field] ?? 0) - spacing.md), animated: true });
+    const input = field === "phone" ? phoneRef.current : inputRefs.current[field];
+    if (input) input.focus();
+    else Keyboard.dismiss();
   }, []);
 
   const persistCustomer = useCallback(async () => {
@@ -178,19 +200,34 @@ export default function CheckoutScreen() {
       fullName: form.fullName.trim(),
       email: form.email.trim(),
       phone: normalizePhoneToE164(form.phone, defaultPhoneCountry),
-      address: form.address.trim(),
+      address: formatCheckoutAddress(form),
+      addressParts: form.structuredAddress ? {
+        street: form.address.trim(), city: form.city?.trim() ?? "", region: form.region?.trim() ?? "",
+        postalCode: form.postalCode?.trim() ?? "", country: form.country?.trim() ?? "",
+      } : undefined,
       notes: form.notes.trim() || undefined,
     };
+    const stored = await loadCheckoutCustomer();
+    const sameEmail =
+      stored?.email.trim().toLowerCase() === customerRecord.email.trim().toLowerCase();
 
-    await saveCheckoutCustomer(customerRecord);
+    await saveCheckoutCustomer({
+      ...customerRecord,
+      profileToken: sameEmail ? stored?.profileToken : undefined,
+    });
 
     try {
-      await saveCustomerProfile({
+      const saved = await saveCustomerProfile({
         email: customerRecord.email,
         fullName: customerRecord.fullName,
         phone: customerRecord.phone,
         address: customerRecord.address,
         visitorId: await getVisitorId(),
+        profileToken: sameEmail ? stored?.profileToken : undefined,
+      });
+      await saveCheckoutCustomer({
+        ...customerRecord,
+        profileToken: saved.profileToken,
       });
     } catch {
       // Non-blocking
@@ -201,7 +238,9 @@ export default function CheckoutScreen() {
     if (submittingRef.current) return;
     touchAll();
     if (!isFormValid) {
-      showError("Please complete all required fields.");
+      const firstError = getFirstCheckoutError(errors);
+      if (firstError) focusField(firstError);
+      showError(firstError ? errors[firstError] ?? "Review the highlighted fields." : "Review the highlighted fields.");
       return;
     }
 
@@ -245,11 +284,21 @@ export default function CheckoutScreen() {
       fullName: form.fullName.trim(),
       email: form.email.trim(),
       phone: normalizePhoneToE164(form.phone, defaultPhoneCountry),
-      address: form.address.trim(),
+      address: formatCheckoutAddress(form),
       notes: form.notes.trim() || undefined,
       termsAccepted: form.termsAccepted,
       privacyAccepted: form.privacyAccepted,
     };
+
+    const cartFingerprint = buildCheckoutCartFingerprint({
+      email: customerPayload.email, customer: customerPayload,
+      deliveryMethod: selectedDeliveryMethod, lines: cartLines,
+    });
+    const submissionFingerprint = `${form.paymentMethod}:${cartFingerprint}`;
+    if (lastSubmissionRef.current && lastSubmissionRef.current !== submissionFingerprint) {
+      idempotencyKeyRef.current = createIdempotencyKey();
+    }
+    lastSubmissionRef.current = submissionFingerprint;
 
     const payload = {
       lines: cartLines,
@@ -267,9 +316,11 @@ export default function CheckoutScreen() {
         addMonitoringBreadcrumb("Order created", "checkout", {
           orderNumber: result.orderNumber,
         });
-        await persistCustomer();
-        await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
-        await savePushEnrollmentProof(customerPayload.email, result.accessToken);
+        await persistCustomer().catch((error: unknown) => logAppError(error, { segment: "checkout-customer-storage", expected: true }));
+        await Promise.all([
+          saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken),
+          savePushEnrollmentProof(customerPayload.email, result.accessToken),
+        ]).catch((error: unknown) => logAppError(error, { segment: "checkout-order-storage", expected: true }));
         clearCart();
         showSuccess("Order placed successfully!");
         router.replace({
@@ -292,11 +343,6 @@ export default function CheckoutScreen() {
 
       addMonitoringBreadcrumb("PaymentIntent creation started", "checkout");
       let result: Awaited<ReturnType<typeof createMobilePaymentIntent>> | null = null;
-      const cartFingerprint = buildCheckoutCartFingerprint({
-        email: customerPayload.email,
-        deliveryMethod: selectedDeliveryMethod,
-        lines: cartLines,
-      });
       const pendingSaved = await loadPendingStripeOrder();
       if (pendingStripeOrderMatchesCart(pendingSaved, cartFingerprint) && pendingSaved) {
         try {
@@ -327,15 +373,17 @@ export default function CheckoutScreen() {
         alreadyPaid: Boolean(result.alreadyPaid),
       });
 
-      await persistCustomer();
-      await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
-      await savePushEnrollmentProof(customerPayload.email, result.accessToken);
-      await savePendingStripeOrder({
+      await persistCustomer().catch((error: unknown) => logAppError(error, { segment: "checkout-customer-storage", expected: true }));
+      await Promise.all([
+        saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken),
+        savePushEnrollmentProof(customerPayload.email, result.accessToken),
+        savePendingStripeOrder({
         orderNumber: result.orderNumber,
         email: customerPayload.email,
         accessToken: result.accessToken,
         cartFingerprint,
-      });
+        }),
+      ]).catch((error: unknown) => logAppError(error, { segment: "checkout-order-storage", expected: true }));
       if (result.alreadyPaid) {
         router.replace({
           pathname: "/checkout/success",
@@ -411,14 +459,17 @@ export default function CheckoutScreen() {
     showError,
     showSuccess,
     touchAll,
+    errors,
+    focusField,
   ]);
 
   const ctaLabel = useMemo(() => {
     if (submitting) {
       return form.paymentMethod === "stripe" ? "Opening payment…" : "Placing order…";
     }
+    if (pricingLoading || !priced) return "Checking total…";
     return form.paymentMethod === "stripe" ? "Pay with card" : "Place order";
-  }, [form.paymentMethod, submitting]);
+  }, [form.paymentMethod, submitting, pricingLoading, priced]);
 
   if (!hydrated || !customerLoaded || isConnected === null) {
     return (
@@ -491,38 +542,30 @@ export default function CheckoutScreen() {
         <Header title="Checkout" showBack showSearch={false} showCart={false} />
 
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.scrollContent,
             {
               paddingHorizontal: horizontalPadding,
-              paddingBottom: insets.bottom + 120,
+              paddingBottom: spacing.lg,
             },
           ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <PromotionAppliedSection
-            gifts={giftItems.map((item) => ({
-              productName: item.productName ?? "Gift item",
-              color: item.color,
-              quantity: item.quantity ?? 1,
-              imageUrl: item.imageUrl,
-              promotionName: item.promotionName,
-            }))}
-            summaries={priced?.promotionSummaries}
-            promotionSavingsTotal={priced?.promotionSavingsTotal}
-            currency={priced?.currency}
-          />
-
           <OrderSummarySection
             cart={cart}
             getPricedItem={getPricedItem}
             currency={priced?.currency}
           />
 
-          <View style={styles.card}>
+          <View style={styles.card} onLayout={(event) => {
+            for (const field of ["fullName", "email", "phone"] as const) fieldPositions.current[field] = event.nativeEvent.layout.y;
+          }}>
             <Text style={styles.cardTitle}>1. Contact information</Text>
             <Input
+              ref={(input) => { inputRefs.current.fullName = input; }}
               label="Full name *"
               value={form.fullName}
               onChangeText={(value) => updateField("fullName", value)}
@@ -530,8 +573,12 @@ export default function CheckoutScreen() {
               error={visibleErrors.fullName}
               autoComplete="name"
               textContentType="name"
+              returnKeyType="next"
+              onSubmitEditing={() => inputRefs.current.email?.focus()}
+              editable={!submitting}
             />
             <Input
+              ref={(input) => { inputRefs.current.email = input; }}
               label="Email *"
               value={form.email}
               onChangeText={(value) => updateField("email", value)}
@@ -541,33 +588,57 @@ export default function CheckoutScreen() {
               autoCapitalize="none"
               autoComplete="email"
               textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => phoneRef.current?.focus()}
+              editable={!submitting}
             />
             <PhoneInput
+              inputRef={phoneRef}
               label="Phone number *"
               value={form.phone}
               onChange={(value) => updateField("phone", value)}
               onBlur={() => touchField("phone")}
               error={visibleErrors.phone}
+              disabled={submitting}
+              onSubmitEditing={() => focusField("address")}
             />
           </View>
 
-          <View style={styles.card}>
+          <View style={styles.card} onLayout={(event) => {
+            for (const field of ["address", "city", "region", "postalCode", "country", "notes"] as const) fieldPositions.current[field] = event.nativeEvent.layout.y;
+          }}>
             <Text style={styles.cardTitle}>2. Delivery address</Text>
             <Input
-              label="Address *"
+              ref={(input) => { inputRefs.current.address = input; }}
+              label={form.structuredAddress ? "Street address *" : "Saved delivery address *"}
               value={form.address}
               onChangeText={(value) => updateField("address", value)}
               onBlur={() => touchField("address")}
               error={visibleErrors.address}
-              placeholder="Street address, city, state, postal code"
+              placeholder={form.structuredAddress ? "House / apartment, street or area" : "Street address, city, region and country"}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
               style={styles.textArea}
               autoComplete="street-address"
               textContentType="fullStreetAddress"
+              editable={!submitting}
+              hint={form.structuredAddress ? "Include your house or apartment number." : "Your saved address is preserved. You can update it here or enter separate address fields."}
             />
+            {form.structuredAddress ? <>
+              <Input ref={(input) => { inputRefs.current.city = input; }} label="City *" value={form.city ?? ""}
+                onChangeText={(value) => updateField("city", value)} onBlur={() => touchField("city")} error={visibleErrors.city}
+                autoComplete="postal-address-locality" textContentType="addressCity" returnKeyType="next" onSubmitEditing={() => inputRefs.current.region?.focus()} editable={!submitting} />
+              <Input ref={(input) => { inputRefs.current.region = input; }} label="State / province (optional)" value={form.region ?? ""}
+                onChangeText={(value) => updateField("region", value)} onBlur={() => touchField("region")} error={visibleErrors.region}
+                autoComplete="postal-address-region" textContentType="addressState" returnKeyType="next" onSubmitEditing={() => inputRefs.current.postalCode?.focus()} editable={!submitting} />
+              <Input ref={(input) => { inputRefs.current.postalCode = input; }} label="Postal code (optional)" value={form.postalCode ?? ""}
+                onChangeText={(value) => updateField("postalCode", value)} onBlur={() => touchField("postalCode")} error={visibleErrors.postalCode}
+                autoComplete="postal-code" textContentType="postalCode" autoCapitalize="characters" returnKeyType="done" editable={!submitting} />
+              <CheckoutCountryPicker value={form.country ?? ""} onChange={(value) => { updateField("country", value); touchField("country"); }} error={visibleErrors.country} disabled={submitting} />
+            </> : <Button label="Enter separate address fields" variant="ghost" onPress={() => updateField("structuredAddress", true)} disabled={submitting} />}
             <Input
+              ref={(input) => { inputRefs.current.notes = input; }}
               label="Order notes"
               value={form.notes}
               onChangeText={(value) => updateField("notes", value)}
@@ -578,6 +649,7 @@ export default function CheckoutScreen() {
               numberOfLines={2}
               textAlignVertical="top"
               style={styles.notesArea}
+              editable={!submitting}
             />
           </View>
 
@@ -595,7 +667,7 @@ export default function CheckoutScreen() {
             </View>
           ) : null}
 
-          <View style={styles.card}>
+          <View style={styles.card} onLayout={(event) => { fieldPositions.current.paymentMethod = event.nativeEvent.layout.y; }}>
             <PaymentMethodSelector
               value={form.paymentMethod}
               onChange={(method: PaymentMethod) => {
@@ -604,8 +676,16 @@ export default function CheckoutScreen() {
               }}
               error={visibleErrors.paymentMethod}
               disabled={submitting}
+              cardAvailable={cardAvailable}
             />
           </View>
+
+          <PromotionAppliedSection
+            gifts={giftItems.map((item) => ({ productName: item.productName ?? "Gift item", color: item.color, quantity: item.quantity ?? 1, imageUrl: item.imageUrl, promotionName: item.promotionName }))}
+            summaries={priced?.promotionSummaries}
+            promotionSavingsTotal={priced?.promotionSavingsTotal}
+            currency={priced?.currency}
+          />
 
           <PriceBreakdown
             subtotal={priced?.subtotal ?? 0}
@@ -620,14 +700,23 @@ export default function CheckoutScreen() {
             isLoading={pricingLoading}
           />
 
-          <View style={styles.card}>
+          <View style={styles.card} onLayout={(event) => {
+            fieldPositions.current.termsAccepted = event.nativeEvent.layout.y;
+            fieldPositions.current.privacyAccepted = event.nativeEvent.layout.y;
+          }}>
+            <Text style={styles.cardTitle}>Review store policies</Text>
+            <View style={styles.policyLinks}>
+              {CHECKOUT_POLICIES.map((item) => <Pressable key={item.key} accessibilityRole="link" onPress={() => { Keyboard.dismiss(); setPolicy(item.key); }} style={styles.policyLink}>
+                <Text style={styles.policyLinkText}>{item.title}</Text>
+              </Pressable>)}
+            </View>
             <Checkbox
               checked={form.termsAccepted}
               onChange={(checked) => {
                 updateField("termsAccepted", checked);
                 touchField("termsAccepted");
               }}
-              label="I agree to the Terms & Conditions, Shipping Policy, and Return Policy."
+              label="I accept the Terms & Conditions, Shipping and Return policies."
               error={visibleErrors.termsAccepted}
               disabled={submitting}
             />
@@ -661,10 +750,11 @@ export default function CheckoutScreen() {
             size="lg"
             fullWidth
             loading={submitting}
-            disabled={submitting || pricingLoading || !isFormValid || !isOnline || !priced}
+            disabled={submitting || pricingLoading || !isOnline || !priced}
             onPress={() => void handleSubmit()}
           />
         </View>
+        {policy ? <CheckoutPolicySheet policy={policy} onClose={() => setPolicy(null)} /> : null}
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -705,16 +795,15 @@ function createIndexStyles({ colors, textStyles }: ThemeStyleTokens) {
     paddingTop: spacing.md,
   },
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     paddingTop: spacing.md,
     gap: spacing.md,
   },
+  policyLinks: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  policyLink: { minHeight: 48, justifyContent: "center", paddingHorizontal: spacing.sm },
+  policyLinkText: { color: colors.primary, fontSize: typography.sm, textDecorationLine: "underline" },
   footerTotal: {
     flexDirection: "row",
     justifyContent: "space-between",

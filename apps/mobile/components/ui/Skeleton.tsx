@@ -3,6 +3,7 @@ import { Animated, StyleSheet, View, ViewProps } from "react-native";
 
 import { layout, radius, spacing, type ColorPalette } from "@/constants/theme";
 import { useTheme } from "@/providers/theme-context";
+import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 
 type SkeletonProps = ViewProps & {
   width?: number | `${number}%`;
@@ -69,7 +70,7 @@ export function ProductCardSkeleton({ width }: ProductCardSkeletonProps) {
         <Skeleton height={14} width="90%" />
         <Skeleton height={12} width="50%" />
         <Skeleton height={16} width="40%" />
-        <Skeleton height={40} borderRadius={radius.sm} />
+        <Skeleton height={48} borderRadius={radius.sm} />
       </View>
     </View>
   );
@@ -112,16 +113,15 @@ export function ProductDetailSkeleton() {
 export function HomeFeedSkeleton() {
   const { colors } = useTheme();
   const styles = skeletonStyles(colors);
+  const { horizontalPadding, gridItemWidth, gridColumns } = useLayoutMetrics();
   return (
-    <View style={styles.homeFeed} accessibilityLabel="Loading home">
+    <View style={[styles.homeFeed, { paddingHorizontal: horizontalPadding }]} accessibilityLabel="Loading home">
       <Skeleton height={72} borderRadius={radius.md} />
-      <View style={styles.homeCarousel}>
-        <ProductCardSkeleton width={240} />
-        <ProductCardSkeleton width={240} />
-      </View>
       <View style={styles.homeCats}>
-        <CategoryCardSkeleton />
-        <CategoryCardSkeleton />
+        {Array.from({ length: gridColumns }).map((_, index) => <CategoryCardSkeleton key={index} width={gridItemWidth} />)}
+      </View>
+      <View style={styles.homeCarousel}>
+        {Array.from({ length: gridColumns }).map((_, index) => <ProductCardSkeleton key={index} width={gridItemWidth} />)}
       </View>
     </View>
   );

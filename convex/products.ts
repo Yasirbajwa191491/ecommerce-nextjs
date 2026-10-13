@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
@@ -15,9 +16,9 @@ import {
 } from "./lib/products";
 import { getPrimaryImageUrl } from "./lib/productImages";
 import { isProductActive } from "./lib/productActive";
-import { paginateArray } from "./lib/pagination";
+import { decodeScanCursor, encodeScanCursor, paginateMatching } from "./lib/indexedScan";
+import { readAggregate, adjustCatalogCounts } from "./lib/maintainedAggregates";
 import { insertAdminActivityLog } from "./lib/adminActivityLogs";
-import { aggregateTopProducts } from "./lib/dashboardAggregates";
 import { productImageValidator } from "./schema";
 import {
   calculateFinalPrice,
@@ -231,6 +232,7 @@ function filterProducts<
 }
 
 const publicFilterArgs = {
+  currency: v.optional(v.string()),
   /** Scope catalog to these products (e.g. hybrid search result set). Ignores `search`. */
   productIds: v.optional(v.array(v.id("products"))),
   search: v.optional(v.string()),
@@ -256,6 +258,7 @@ function scopeProductsByIds<
 }
 
 function toCatalogFilterArgs(args: {
+  currency?: string;
   productIds?: import("./_generated/dataModel").Id<"products">[];
   search?: string;
   categoryId?: import("./_generated/dataModel").Id<"productCategories">;
@@ -276,16 +279,35 @@ function toCatalogFilterArgs(args: {
   };
 }
 
-async function loadActiveProducts(ctx: QueryCtx) {
-  const products = await ctx.db.query("products").collect();
-  return products.filter(isProductActive);
+const CATALOG_SCAN_LIMIT = 800;
+
+async function forEachProduct(
+  ctx: QueryCtx,
+  visit: (product: Doc<"products">) => void,
+  limit = CATALOG_SCAN_LIMIT
+): Promise<void> {
+  let cursor: string | null = null;
+  let scanned = 0;
+  while (scanned < limit) {
+    const batch = await ctx.db.query("products").order("desc").paginate({
+      numItems: 50,
+      cursor,
+    });
+    for (const product of batch.page) {
+      scanned += 1;
+      visit(product);
+      if (scanned >= limit) return;
+    }
+    if (batch.isDone) return;
+    cursor = batch.continueCursor;
+  }
 }
 
 async function loadActivePromotions(ctx: QueryCtx) {
   return await ctx.db
     .query("productPromotions")
     .withIndex("by_status", (q) => q.eq("status", "active"))
-    .collect();
+    .take(100);
 }
 
 async function applyPublicFilters<
@@ -331,21 +353,16 @@ export const listBrands = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 24);
-    const products = await loadActiveProducts(ctx);
     const brandCounts = new Map<string, { name: string; productCount: number }>();
-
-    for (const product of products) {
+    await forEachProduct(ctx, (product) => {
+      if (!isProductActive(product)) return;
       const name = product.company.trim();
-      if (!name) continue;
-
+      if (!name) return;
       const key = name.toLowerCase();
       const existing = brandCounts.get(key);
-      if (existing) {
-        existing.productCount += 1;
-      } else {
-        brandCounts.set(key, { name, productCount: 1 });
-      }
-    }
+      if (existing) existing.productCount += 1;
+      else brandCounts.set(key, { name, productCount: 1 });
+    });
 
     return Array.from(brandCounts.values())
       .sort(
@@ -365,7 +382,10 @@ export const listBrands = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const products = await loadActiveProducts(ctx);
+    const products: Doc<"products">[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (isProductActive(product)) products.push(product);
+    }, 150);
     const sorted = products.sort(bySortOrder).slice(0, 100);
     return await enrichProducts(ctx, sorted);
   },
@@ -375,13 +395,12 @@ export const list = query({
 export const getPublicPriceBounds = query({
   args: {},
   handler: async (ctx) => {
-    const products = await loadActiveProducts(ctx);
-    if (products.length === 0) {
-      return { minPrice: 0, maxPrice: 0 };
-    }
-    const prices = products.map((p) =>
-      calculateFinalPrice(p.price, p.discountPercent ?? 0)
-    );
+    const prices: number[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (!isProductActive(product)) return;
+      prices.push(calculateFinalPrice(product.price, product.discountPercent ?? 0));
+    });
+    if (prices.length === 0) return { minPrice: 0, maxPrice: 0 };
     return {
       minPrice: Math.min(...prices),
       maxPrice: Math.max(...prices),
@@ -389,13 +408,33 @@ export const getPublicPriceBounds = query({
   },
 });
 
+/** Comparable ranges only; mobile never labels PKR amounts as dollars. */
+export const getPublicCurrencyPriceBounds = query({
+  args: {},
+  returns: v.array(v.object({ currency: v.string(), minPrice: v.number(), maxPrice: v.number(), count: v.number() })),
+  handler: async (ctx) => {
+    const ranges = new Map<string, { currency: string; minPrice: number; maxPrice: number; count: number }>();
+    await forEachProduct(ctx, (product) => {
+      if (!isProductActive(product)) return;
+      const currency = (product.currency ?? "USD").trim().toUpperCase();
+      const price = calculateFinalPrice(product.price, product.discountPercent ?? 0);
+      const previous = ranges.get(currency);
+      ranges.set(currency, { currency, minPrice: Math.min(previous?.minPrice ?? price, price), maxPrice: Math.max(previous?.maxPrice ?? price, price), count: (previous?.count ?? 0) + 1 });
+    });
+    return [...ranges.values()].sort((a, b) => a.currency.localeCompare(b.currency));
+  },
+});
+
 /** Total count for current public filters (pagination UI). */
 export const countPublicFiltered = query({
   args: publicFilterArgs,
   handler: async (ctx, args) => {
-    let products = await loadActiveProducts(ctx);
-    products = scopeProductsByIds(products, args.productIds);
-    const filtered = await applyPublicFilters(ctx, products, toCatalogFilterArgs(args));
+    const products: Doc<"products">[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (isProductActive(product)) products.push(product);
+    });
+    const scoped = scopeProductsByIds(products, args.productIds);
+    const filtered = await applyPublicFilters(ctx, scoped, toCatalogFilterArgs(args));
     return filtered.length;
   },
 });
@@ -403,6 +442,7 @@ export const countPublicFiltered = query({
 /** Faceted filter counts for catalog sidebar. */
 export const getPublicFilterFacets = query({
   args: {
+    currency: v.optional(v.string()),
     search: v.optional(v.string()),
     /** Scope facets to these products (e.g. hybrid search result set). Ignores `search`. */
     productIds: v.optional(v.array(v.id("products"))),
@@ -444,17 +484,18 @@ export const getPublicFilterFacets = query({
     ),
   }),
   handler: async (ctx, args) => {
-    let products = await loadActiveProducts(ctx);
-    if (args.productIds?.length) {
-      const allowedIds = new Set(args.productIds);
-      products = products.filter((product) => allowedIds.has(product._id));
-    }
+    const products: Doc<"products">[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (!isProductActive(product)) return;
+      if (args.productIds !== undefined && !args.productIds.includes(product._id)) return;
+      products.push(product);
+    });
     const promotions = await loadActivePromotions(ctx);
     const promotionIndex = buildPromotionIndex(products, promotions, args.now);
     const { productIds: _productIds, ...facetArgs } = args;
     const facets = computeFilterFacets(products, promotionIndex, {
       ...facetArgs,
-      search: args.productIds?.length ? undefined : facetArgs.search,
+      search: args.productIds !== undefined ? undefined : facetArgs.search,
     });
     return {
       ...facets,
@@ -473,15 +514,70 @@ export const listPublicPaginated = query({
     ...publicFilterArgs,
   },
   handler: async (ctx, args) => {
-    let products = await loadActiveProducts(ctx);
-    products = scopeProductsByIds(products, args.productIds);
-    const filtered = await applyPublicFilters(ctx, products, toCatalogFilterArgs(args));
-    const { page, isDone, continueCursor } = paginateArray(
-      filtered,
-      args.paginationOpts
+    const promotions = await loadActivePromotions(ctx);
+    const { paginationOpts, productIds, ...filterArgs } = args;
+    if (productIds !== undefined) {
+      const selected: Doc<"products">[] = [];
+      for (const productId of productIds.slice(0, 200)) {
+        const product = await ctx.db.get(productId);
+        if (product && isProductActive(product)) selected.push(product);
+      }
+      const filtered = await applyPublicFilters(ctx, selected, toCatalogFilterArgs({
+        ...filterArgs,
+        productIds,
+        now: args.now,
+      }));
+      const start = decodeScanCursor(paginationOpts.cursor).offset;
+      const pageSize = Math.min(Math.max(paginationOpts.numItems, 1), 100);
+      const page = filtered.slice(start, start + pageSize);
+      const next = start + page.length;
+      return {
+        page: await enrichProducts(ctx, page),
+        isDone: next >= filtered.length,
+        continueCursor: encodeScanCursor({ cursor: null, offset: next }),
+      };
+    }
+
+    const sort = args.sort ?? "default";
+    const currency = args.currency?.trim().toUpperCase() ??
+      ((args.minPrice !== undefined || args.maxPrice !== undefined) ? "USD" : undefined);
+    // Use the catalog indexes so sort applies to every page, not just loaded cards.
+    // Price sorts group currencies by requiring the mobile picker before comparison.
+    const orderedQuery = () => {
+      switch (sort) {
+        case "lowest": return currency
+          ? ctx.db.query("products").withIndex("by_currency_final_price", (q) => q.eq("currency", currency)).order("asc")
+          : ctx.db.query("products").withIndex("by_currency_final_price").order("asc");
+        case "highest": return currency
+          ? ctx.db.query("products").withIndex("by_currency_final_price", (q) => q.eq("currency", currency)).order("desc")
+          : ctx.db.query("products").withIndex("by_currency_final_price").order("desc");
+        case "rating": return ctx.db.query("products").withIndex("by_stars").order("desc");
+        case "popular": return ctx.db.query("products").withIndex("by_reviews").order("desc");
+        case "a-z": return ctx.db.query("products").withIndex("by_name").order("asc");
+        case "z-a": return ctx.db.query("products").withIndex("by_name").order("desc");
+        case "newest": return ctx.db.query("products").order("desc");
+        default: return currency
+          ? ctx.db.query("products").withIndex("by_currency_sort", (q) => q.eq("currency", currency)).order("asc")
+          : ctx.db.query("products").withIndex("by_sort_order").order("asc");
+      }
+    };
+    const result = await paginateMatching(
+      (opts) => orderedQuery().paginate(opts),
+      paginationOpts,
+      (product) => {
+        if (!isProductActive(product)) return false;
+        const promotionIndex = buildPromotionIndex([product], promotions, args.now);
+        return (
+          filterCatalogProducts([product], toCatalogFilterArgs(filterArgs), promotionIndex)
+            .length === 1
+        );
+      }
     );
-    const enriched = await enrichProducts(ctx, page);
-    return { page: enriched, isDone, continueCursor };
+    return {
+      page: await enrichProducts(ctx, result.page),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
   },
 });
 
@@ -489,11 +585,17 @@ export const countByStatus = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const products = await ctx.db.query("products").collect();
-    return {
-      active: products.filter((p) => isProductActive(p)).length,
-      inactive: products.filter((p) => !isProductActive(p)).length,
-    };
+    const stored = await readAggregate<{ active?: number; inactive?: number }>(ctx, "catalog", {});
+    if ((stored.active ?? 0) + (stored.inactive ?? 0) > 0) {
+      return { active: stored.active ?? 0, inactive: stored.inactive ?? 0 };
+    }
+    let active = 0;
+    let inactive = 0;
+    await forEachProduct(ctx, (product) => {
+      if (isProductActive(product)) active += 1;
+      else inactive += 1;
+    });
+    return { active, inactive };
   },
 });
 
@@ -511,14 +613,17 @@ export const listPaginated = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const products = await ctx.db.query("products").collect();
-    const filtered = filterProducts(products, args).sort(bySortOrder);
-    const { page, isDone, continueCursor } = paginateArray(
-      filtered,
-      args.paginationOpts
+    const { paginationOpts, ...filters } = args;
+    const result = await paginateMatching(
+      (opts) => ctx.db.query("products").order("desc").paginate(opts),
+      paginationOpts,
+      (product) => filterProducts([product], filters).length === 1
     );
-    const enriched = await enrichProducts(ctx, page);
-    return { page: enriched, isDone, continueCursor };
+    return {
+      page: await enrichProducts(ctx, result.page),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
   },
 });
 
@@ -557,10 +662,11 @@ export const listTakenNames = query({
   args: { excludeId: v.optional(v.id("products")) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const products = await ctx.db.query("products").collect();
-    return products
-      .filter((p) => p._id !== args.excludeId)
-      .map((p) => normalizeProductName(p.name));
+    const products: Doc<"products">[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (product._id !== args.excludeId) products.push(product);
+    });
+    return products.map((product) => normalizeProductName(product.name));
   },
 });
 
@@ -570,7 +676,7 @@ export const featured = query({
     const products = await ctx.db
       .query("products")
       .withIndex("by_featured", (q) => q.eq("featured", true))
-      .collect();
+      .take(24);
     const activeFeatured = products.filter(isProductActive).sort(bySortOrder).slice(0, 6);
     return await enrichProducts(ctx, activeFeatured);
   },
@@ -581,10 +687,11 @@ export const bestSellers = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 24);
-    const orders = await ctx.db.query("orders").collect();
-    const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
-    const topSales = await aggregateTopProducts(ctx, paidOrders, limit);
-
+    const topSales = await ctx.db
+      .query("productSalesTotals")
+      .withIndex("by_units_sold")
+      .order("desc")
+      .take(limit);
     if (topSales.length > 0) {
       const products = await Promise.all(
         topSales.map(async (entry) => {
@@ -601,10 +708,12 @@ export const bestSellers = query({
       }
     }
 
-    const fallback = (await loadActiveProducts(ctx))
-      .sort((a, b) => b.reviews - a.reviews || b.stars - a.stars)
-      .slice(0, limit);
-    return await enrichProducts(ctx, fallback);
+    const fallback: Doc<"products">[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (isProductActive(product)) fallback.push(product);
+    }, limit * 4);
+    fallback.sort((a, b) => b.reviews - a.reviews || b.stars - a.stars);
+    return await enrichProducts(ctx, fallback.slice(0, limit));
   },
 });
 
@@ -613,10 +722,11 @@ export const newArrivals = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 24);
-    const products = (await loadActiveProducts(ctx))
-      .sort((a, b) => b._creationTime - a._creationTime)
-      .slice(0, limit);
-    return await enrichProducts(ctx, products);
+    const products: Doc<"products">[] = [];
+    await forEachProduct(ctx, (product) => {
+      if (isProductActive(product)) products.push(product);
+    }, limit * 4);
+    return await enrichProducts(ctx, products.slice(0, limit));
   },
 });
 
@@ -631,14 +741,29 @@ export const searchSuggestions = query({
     if (term.length < 2) return [];
 
     const limit = Math.min(Math.max(args.limit ?? 6, 1), 10);
-    const products = await loadActiveProducts(ctx);
-    const matches = products
-      .filter(
-        (product) =>
+    const matches: Doc<"products">[] = [];
+    const seen = new Set<string>();
+    const hits = await ctx.db
+      .query("products")
+      .withSearchIndex("search_name", (q) => q.search("name", term))
+      .take(limit);
+    for (const product of hits) {
+      if (!isProductActive(product) || seen.has(product._id)) continue;
+      seen.add(product._id);
+      matches.push(product);
+    }
+    if (matches.length < limit) {
+      await forEachProduct(ctx, (product) => {
+        if (matches.length >= limit || !isProductActive(product) || seen.has(product._id)) return;
+        if (
           product.name.toLowerCase().includes(term) ||
           product.company.toLowerCase().includes(term)
-      )
-      .slice(0, limit);
+        ) {
+          seen.add(product._id);
+          matches.push(product);
+        }
+      }, 200);
+    }
 
     const enriched = await enrichProducts(ctx, matches);
     return enriched.map((product) => ({
@@ -664,11 +789,15 @@ export const create = mutation({
     }
     await assertUniqueProductName(ctx, args.name);
     const extended = normalizeProductExtendedFields(args);
-    const activeProducts = await ctx.db.query("products").collect();
-    const maxSortOrder = activeProducts
-      .filter(isProductActive)
-      .reduce((max, product) => Math.max(max, product.sortOrder ?? -1), -1);
+    let maxSortOrder = -1;
+    await forEachProduct(ctx, (product) => {
+      if (isProductActive(product)) {
+        maxSortOrder = Math.max(maxSortOrder, product.sortOrder ?? -1);
+      }
+    });
     const nextSortOrder = maxSortOrder + 1;
+    const active = args.active ?? true;
+    const finalPrice = calculateFinalPrice(args.price, extended.discountPercent ?? 0);
     const productId = await ctx.db.insert("products", {
       ...args,
       discountPercent: extended.discountPercent,
@@ -678,8 +807,9 @@ export const create = mutation({
       warrantyType: extended.warrantyType,
       warrantyDetails: extended.warrantyDetails,
       deliveryOptions: extended.deliveryOptions,
-      active: args.active ?? true,
+      active: active,
       sortOrder: nextSortOrder,
+      finalPrice,
       stars: 0,
       reviews: 0,
     });
@@ -705,6 +835,7 @@ export const create = mutation({
     });
 
     await scheduleImageEmbeddingIfNeeded(ctx, productId);
+    await adjustCatalogCounts(ctx, active ? { active: 1 } : { inactive: 1 });
 
     return productId;
   },
@@ -718,12 +849,15 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const { id, ...data } = args;
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new ConvexError("Product not found");
     const category = await ctx.db.get(data.categoryId);
     if (!category) {
       throw new Error("Category not found");
     }
     await assertUniqueProductName(ctx, data.name, id);
     const extended = normalizeProductExtendedFields(data);
+    const nextActive = data.active ?? true;
     await ctx.db.patch(id, {
       ...data,
       discountPercent: extended.discountPercent,
@@ -733,8 +867,15 @@ export const update = mutation({
       warrantyType: extended.warrantyType,
       warrantyDetails: extended.warrantyDetails,
       deliveryOptions: extended.deliveryOptions,
-      active: data.active ?? true,
+      active: nextActive,
+      finalPrice: calculateFinalPrice(data.price, extended.discountPercent ?? 0),
     });
+    if (isProductActive(existing) !== nextActive) {
+      await adjustCatalogCounts(
+        ctx,
+        nextActive ? { active: 1, inactive: -1 } : { active: -1, inactive: 1 }
+      );
+    }
 
     const now = Date.now();
     await insertAdminActivityLog(ctx, {
@@ -790,7 +931,9 @@ export const remove = mutation({
     if (!product) {
       throw new ConvexError("Product not found");
     }
+    if (!isProductActive(product)) return;
     await ctx.db.patch(args.id, { active: false });
+    await adjustCatalogCounts(ctx, { active: -1, inactive: 1 });
   },
 });
 
@@ -802,14 +945,18 @@ export const restore = mutation({
     if (!product) {
       throw new ConvexError("Product not found");
     }
-    const activeProducts = await ctx.db.query("products").collect();
-    const maxSortOrder = activeProducts
-      .filter(isProductActive)
-      .reduce((max, p) => Math.max(max, p.sortOrder ?? -1), -1);
+    if (isProductActive(product)) return;
+    let maxSortOrder = -1;
+    await forEachProduct(ctx, (item) => {
+      if (isProductActive(item)) {
+        maxSortOrder = Math.max(maxSortOrder, item.sortOrder ?? -1);
+      }
+    });
     await ctx.db.patch(args.id, {
       active: true,
       sortOrder: maxSortOrder + 1,
     });
+    await adjustCatalogCounts(ctx, { active: 1, inactive: -1 });
   },
 });
 
@@ -862,9 +1009,7 @@ function filterDiscountedProducts<
   return discounted.filter((p) => p.name.toLowerCase().includes(term));
 }
 
-function mapDiscountedProductPage(
-  page: Awaited<ReturnType<typeof loadActiveProducts>>
-) {
+function mapDiscountedProductPage(page: Doc<"products">[]) {
   return page.map((p) => {
     const discountPercent = p.discountPercent ?? 0;
     const discountedPrice = calculateFinalPrice(p.price, discountPercent);
@@ -914,8 +1059,6 @@ export const listDiscountedPaginated = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const products = await loadActiveProducts(ctx);
-
     let categoryId = args.categoryId;
     if (!categoryId && args.categorySlug) {
       const category = await ctx.db
@@ -925,21 +1068,20 @@ export const listDiscountedPaginated = query({
       categoryId = category?._id;
     }
 
-    const filtered = filterDiscountedProducts(products, args.search, {
-      categoryId,
-      minDiscountPercent: args.minDiscountPercent,
-    });
-    const sorted = filtered.sort(bySortOrder);
-
-    const { page, isDone, continueCursor } = paginateArray(
-      sorted,
-      args.paginationOpts
+    const result = await paginateMatching(
+      (opts) => ctx.db.query("products").order("desc").paginate(opts),
+      args.paginationOpts,
+      (product) =>
+        filterDiscountedProducts([product], args.search, {
+          categoryId,
+          minDiscountPercent: args.minDiscountPercent,
+        }).length === 1
     );
 
     return {
-      page: mapDiscountedProductPage(page),
-      isDone,
-      continueCursor,
+      page: mapDiscountedProductPage(result.page),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
     };
   },
 });

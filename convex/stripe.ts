@@ -901,60 +901,139 @@ export const refundUnfulfillablePayment = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const stripe = getStripe();
     const refundAmountCents =
       args.amountCents != null && Number.isFinite(args.amountCents)
         ? Math.max(0, Math.round(args.amountCents))
         : undefined;
 
-    if (refundAmountCents === 0) {
-      await ctx.runMutation(internal.orders.markOrderRefunded, {
+    const attemptId = await ctx.runMutation(
+      internal.stripeRefundAttempts.enqueueStripeRefundAttempt,
+      {
         orderId: args.orderId,
-        stripePaymentIntentId: args.paymentIntentId,
-      });
-      return null;
-    }
+        paymentIntentId: args.paymentIntentId,
+        reason: args.reason,
+        amountCents: refundAmountCents,
+        feePercent: args.feePercent,
+      }
+    );
+    const claimed = await ctx.runMutation(
+      internal.stripeRefundAttempts.claimStripeRefundAttempt,
+      { attemptId }
+    );
+    if (!claimed) return null;
 
     try {
-      await stripe.refunds.create({
-        payment_intent: args.paymentIntentId,
-        ...(refundAmountCents != null ? { amount: refundAmountCents } : {}),
-        metadata: {
-          orderId: args.orderId,
-          reason: args.reason,
-          ...(args.feePercent != null ? { feePercent: String(args.feePercent) } : {}),
-        },
-      });
-      await ctx.runMutation(internal.orders.markOrderRefunded, {
-        orderId: args.orderId,
-        stripePaymentIntentId: args.paymentIntentId,
+      if (claimed.stripeRefundedAt == null) {
+        let stripeRefundId: string | undefined;
+        let refunded = claimed.amountCents === 0;
+        if (claimed.amountCents !== 0) {
+          const stripe = getStripe();
+          let stripeRefund: Stripe.Refund | undefined;
+          if (claimed.stripeRefundId) {
+            stripeRefund = await stripe.refunds.retrieve(claimed.stripeRefundId);
+          }
+          // A previous worker may have stopped after Stripe accepted the refund.
+          // Metadata recovery also works after Stripe's idempotency cache expires.
+          if (!stripeRefund && claimed.leaseVersion > 1) {
+            const refunds = await stripe.refunds.list({
+              payment_intent: claimed.paymentIntentId,
+              limit: 100,
+            });
+            const existing = refunds.data.find(
+              (refund) => refund.metadata?.refundAttemptKey === claimed.idempotencyKey
+            );
+            if (existing) {
+              stripeRefund = existing;
+            } else if (refunds.has_more) {
+              throw new Error("Refund history needs reconciliation before another refund can be created.");
+            }
+          }
+          if (!stripeRefund) {
+            try {
+              stripeRefund = await stripe.refunds.create(
+                {
+                  payment_intent: claimed.paymentIntentId,
+                  ...(claimed.amountCents != null ? { amount: claimed.amountCents } : {}),
+                  metadata: {
+                    orderId: claimed.orderId,
+                    reason: claimed.reason,
+                    refundAttemptKey: claimed.idempotencyKey,
+                    ...(claimed.feePercent != null ? { feePercent: String(claimed.feePercent) } : {}),
+                  },
+                },
+                { idempotencyKey: claimed.idempotencyKey }
+              );
+            } catch (error) {
+              if (shouldRetryAutomaticStripeRefund(error)) throw error;
+              // Stripe confirms the charge was already fully refunded.
+              refunded = true;
+            }
+          }
+          if (stripeRefund) {
+            stripeRefundId = stripeRefund.id;
+            refunded = stripeRefund.status === "succeeded";
+          }
+        }
+        const recorded = await ctx.runMutation(
+          internal.stripeRefundAttempts.recordStripeRefundResult,
+          { attemptId, leaseVersion: claimed.leaseVersion, stripeRefundId, refunded }
+        );
+        if (!recorded) return null;
+        if (!refunded) {
+          throw new Error("Stripe refund has not completed. Its status will be checked again.");
+        }
+      }
+      await ctx.runMutation(internal.stripeRefundAttempts.completeStripeRefundAttempt, {
+        attemptId,
+        leaseVersion: claimed.leaseVersion,
       });
     } catch (error) {
-      if (!shouldRetryAutomaticStripeRefund(error)) {
-        await ctx.runMutation(internal.orders.markOrderRefunded, {
-          orderId: args.orderId,
-          stripePaymentIntentId: args.paymentIntentId,
-        });
-        return null;
-      }
       const message = error instanceof Error ? error.message : String(error);
+      const deferred = await ctx.runMutation(internal.stripeRefundAttempts.deferStripeRefundAttempt, {
+        attemptId,
+        leaseVersion: claimed.leaseVersion,
+        message,
+      });
+      if (!deferred) return null;
       try {
         await ctx.runMutation(internal.orders.recordStripeRefundFailure, {
-          orderId: args.orderId,
-          paymentIntentId: args.paymentIntentId,
+          orderId: claimed.orderId,
+          paymentIntentId: claimed.paymentIntentId,
           message,
         });
       } catch (logError) {
         console.error(
-          `[stripe] could not record refund failure orderId=${args.orderId}`,
+          `[stripe] could not record refund failure orderId=${claimed.orderId}`,
           logError
         );
       }
       console.error(
-        `[stripe] automatic refund failed orderId=${args.orderId} pi=${args.paymentIntentId}`,
+        `[stripe] automatic refund failed orderId=${claimed.orderId} pi=${claimed.paymentIntentId}`,
         error
       );
-      throw error;
+    }
+    return null;
+  },
+});
+
+export const retryDueStripeRefunds = internalAction({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const due = await ctx.runQuery(internal.stripeRefundAttempts.listDueStripeRefunds, {
+      now: Date.now(),
+    });
+    for (const attemptId of due) {
+      try {
+        const attempt = await ctx.runQuery(internal.stripeRefundAttempts.getStripeRefundAttempt, {
+          attemptId,
+        });
+        if (!attempt) continue;
+        await ctx.runAction(internal.stripe.refundUnfulfillablePayment, attempt);
+      } catch (error) {
+        // One unavailable worker must not prevent other due refunds from running.
+        console.error(`[stripe] refund worker failed attemptId=${attemptId}`, error);
+      }
     }
     return null;
   },

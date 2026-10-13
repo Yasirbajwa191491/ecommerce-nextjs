@@ -1,10 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  listPhoneCountries,
-  type PhoneCountryCode,
-} from "@ecommerce/shared";
+import { listPhoneCountries, type PhoneCountryCode } from "@ecommerce/shared";
 import { AsYouType, parsePhoneNumberFromString } from "libphonenumber-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type RefObject,
+} from "react";
 import {
   FlatList,
   Modal,
@@ -28,6 +31,8 @@ type PhoneInputProps = {
   error?: string;
   disabled?: boolean;
   accessibilityLabel?: string;
+  inputRef?: RefObject<TextInput | null>;
+  onSubmitEditing?: () => void;
 };
 
 function nationalDigitsFrom(value: string): string {
@@ -46,15 +51,17 @@ export function PhoneInput({
   error,
   disabled,
   accessibilityLabel,
+  inputRef,
+  onSubmitEditing,
 }: PhoneInputProps) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
   const defaultCountry = useDefaultPhoneCountry();
   const countries = useMemo(() => listPhoneCountries(), []);
 
   const parsedCountry = parsePhoneNumberFromString(value)?.country;
   const [country, setCountry] = useState<PhoneCountryCode>(
-    parsedCountry ?? defaultCountry
+    parsedCountry ?? defaultCountry,
   );
   const [national, setNational] = useState(() => nationalDigitsFrom(value));
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -62,21 +69,24 @@ export function PhoneInput({
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!parsedCountry) {
-      setCountry(defaultCountry);
-    }
+    if (parsedCountry) return;
+    const timer = setTimeout(() => setCountry(defaultCountry), 0);
+    return () => clearTimeout(timer);
   }, [defaultCountry, parsedCountry]);
 
   useEffect(() => {
     const parsed = parsePhoneNumberFromString(value);
-    if (parsed?.country) {
-      setCountry(parsed.country);
-      setNational(parsed.formatNational());
-      return;
-    }
-    if (!value.trim()) {
-      setNational("");
-    }
+    const timer = setTimeout(() => {
+      if (parsed?.country) {
+        setCountry(parsed.country);
+        setNational(parsed.formatNational());
+        return;
+      }
+      if (!value.trim()) {
+        setNational("");
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [value]);
 
   const selected = countries.find((item) => item.code === country) ?? {
@@ -90,7 +100,8 @@ export function PhoneInput({
     const term = query.trim().toLowerCase();
     if (!term) return countries;
     return countries.filter((item) => {
-      const haystack = `${item.name} ${item.code} ${item.callingCode}`.toLowerCase();
+      const haystack =
+        `${item.name} ${item.code} ${item.callingCode}`.toLowerCase();
       return haystack.includes(term);
     });
   }, [countries, query]);
@@ -103,7 +114,7 @@ export function PhoneInput({
       const e164 = typer.getNumberValue();
       onChange(e164 ?? (nextNational.trim() ? formatted : ""));
     },
-    [onChange]
+    [onChange],
   );
 
   const styles = useMemo(
@@ -141,7 +152,7 @@ export function PhoneInput({
           fontWeight: "700",
           color: colors.foreground,
         },
-        flag: { fontSize: typography.base },
+        flag: { fontSize: typography.base, color: colors.foreground },
         input: {
           flex: 1,
           paddingHorizontal: spacing.md,
@@ -155,6 +166,9 @@ export function PhoneInput({
           justifyContent: "flex-end",
         },
         sheet: {
+          width: "100%",
+          maxWidth: 560,
+          alignSelf: "center",
           maxHeight: "88%",
           backgroundColor: colors.surface,
           borderTopLeftRadius: radius.xl,
@@ -193,6 +207,7 @@ export function PhoneInput({
           backgroundColor: colors.background,
         },
         countryRow: {
+          minHeight: 52,
           flexDirection: "row",
           alignItems: "center",
           gap: spacing.md,
@@ -210,7 +225,7 @@ export function PhoneInput({
           color: colors.textSecondary,
         },
       }),
-    [colors, insets.bottom]
+    [colors, insets.bottom],
   );
 
   return (
@@ -226,16 +241,21 @@ export function PhoneInput({
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Country code ${selected.callingCode}`}
+          accessibilityLabel={`Choose phone country: ${selected.name}, ${selected.callingCode}`}
           disabled={disabled}
           onPress={() => setPickerOpen(true)}
           style={styles.countryBtn}
         >
           <Text style={styles.flag}>{selected.flag}</Text>
-          <Text style={styles.countryCode}>{selected.callingCode || country}</Text>
+          <Text style={styles.countryCode}>
+            {selected.callingCode || country}
+          </Text>
           <Ionicons name="chevron-down" size={16} color={colors.muted} />
         </Pressable>
         <TextInput
+          ref={(instance) => {
+            if (inputRef) inputRef.current = instance;
+          }}
           accessibilityLabel={accessibilityLabel ?? label}
           value={national}
           onChangeText={(text) => emitChange(country, text)}
@@ -246,6 +266,8 @@ export function PhoneInput({
           }}
           editable={!disabled}
           keyboardType="phone-pad"
+          returnKeyType="next"
+          onSubmitEditing={onSubmitEditing}
           autoComplete="tel"
           textContentType="telephoneNumber"
           placeholder="Phone number"
@@ -262,14 +284,18 @@ export function PhoneInput({
       <Modal
         visible={pickerOpen}
         transparent
-        animationType="slide"
+        animationType={reduceMotion ? "none" : "slide"}
         onRequestClose={() => setPickerOpen(false)}
       >
         <Pressable style={styles.overlay} onPress={() => setPickerOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
+          <Pressable
+            style={styles.sheet}
+            onPress={(event) => event.stopPropagation()}
+          >
             <View style={styles.handle} />
             <Text style={styles.sheetTitle}>Select country</Text>
             <TextInput
+              accessibilityLabel="Search phone country or code"
               value={query}
               onChangeText={setQuery}
               placeholder="Search country or code"
@@ -295,7 +321,9 @@ export function PhoneInput({
                     }}
                     style={[
                       styles.countryRow,
-                      selectedRow ? { backgroundColor: colors.primaryMuted } : null,
+                      selectedRow
+                        ? { backgroundColor: colors.primaryMuted }
+                        : null,
                     ]}
                   >
                     <Text style={styles.flag}>{item.flag}</Text>

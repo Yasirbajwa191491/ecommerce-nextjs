@@ -41,7 +41,7 @@ export function CartLineItem({
         style={styles.imageWrap}
       >
         {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.image} contentFit="cover" />
+          <Image source={{ uri: item.image }} style={styles.image} contentFit="contain" />
         ) : (
           <View style={styles.imagePlaceholder}>
             <Ionicons name="image-outline" size={24} color={colors.muted} />
@@ -54,6 +54,9 @@ export function CartLineItem({
           {item.name}
         </Text>
         {item.color ? <ColorSwatch color={item.color} /> : null}
+        {item.unavailableReason ? (
+          <Text accessibilityRole="alert" style={{ color: colors.destructive }}>{item.unavailableReason}</Text>
+        ) : null}
         <PriceDisplay price={displayTotal} currency={currency ?? item.currency} size="md" />
 
         <View style={styles.actions}>
@@ -116,13 +119,14 @@ function createCartLineItemStyles({ colors, textStyles }: ThemeStyleTokens) {
       color: colors.foreground,
     },
     actions: {
+      flexWrap: "wrap" as const,
       flexDirection: "row" as const,
       alignItems: "center" as const,
       justifyContent: "space-between" as const,
       marginTop: spacing.sm,
     },
     removeBtn: {
-      minHeight: 44,
+      minHeight: 48,
       justifyContent: "center" as const,
       paddingHorizontal: spacing.sm,
     },

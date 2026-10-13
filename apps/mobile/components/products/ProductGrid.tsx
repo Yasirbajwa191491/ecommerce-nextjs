@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/feedback/ErrorState";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { ProductCard } from "@/components/products/ProductCard";
 import { spacing } from "@/constants/theme";
+import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useTheme } from "@/providers/theme-context";
 import type { Product } from "@/types/product";
 
@@ -31,8 +32,6 @@ type ProductGridProps = Omit<
   onRefresh?: () => void;
 };
 
-const NUM_COLUMNS = 2;
-
 export function ProductGrid({
   products,
   isLoading = false,
@@ -46,23 +45,24 @@ export function ProductGrid({
   ...listProps
 }: ProductGridProps) {
   const { colors } = useTheme();
+  const { gridColumns, gridItemWidth, horizontalPadding } = useLayoutMetrics();
   const renderItem: ListRenderItem<Product> = useCallback(
     ({ item }) => (
-      <View style={styles.itemWrap}>
+      <View style={[styles.itemWrap, { width: gridItemWidth }]}>
         <ProductCard product={item} showActions />
       </View>
     ),
-    []
+    [gridItemWidth]
   );
 
   const keyExtractor = useCallback((item: Product) => item._id, []);
 
   if (isLoading && (!products || products.length === 0)) {
     return (
-      <View style={styles.skeletonGrid}>
-        {Array.from({ length: 6 }).map((_, index) => (
-          <View key={index} style={styles.itemWrap}>
-            <ProductCardSkeleton />
+      <View style={[styles.skeletonGrid, { paddingHorizontal: horizontalPadding }]}>
+        {Array.from({ length: gridColumns * 2 }).map((_, index) => (
+          <View key={index} style={{ width: gridItemWidth }}>
+            <ProductCardSkeleton width={gridItemWidth} />
           </View>
         ))}
       </View>
@@ -87,12 +87,13 @@ export function ProductGrid({
 
   return (
     <FlatList
+      key={`product-grid-${gridColumns}`}
       data={products ?? []}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
-      numColumns={NUM_COLUMNS}
+      numColumns={gridColumns}
       columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[styles.listContent, { paddingHorizontal: horizontalPadding }]}
       showsVerticalScrollIndicator={false}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.4}
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
   },
   itemWrap: {
-    flex: 1,
+    alignSelf: "stretch",
   },
   skeletonGrid: {
     flexDirection: "row",

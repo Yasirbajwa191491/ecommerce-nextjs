@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api";
 import ProductCatalog from "@/components/products/ProductCatalog";
 import { CatalogSeoSnapshot } from "@/components/products/catalog-seo-snapshot";
 import { MotionSkeleton } from "@/components/motion";
+import { readServerNow } from "@/lib/server-now";
 import { STORE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -28,27 +29,39 @@ function ProductsPageFallback() {
   );
 }
 
-async function ProductsCatalogSeo() {
-  try {
-    const now = Date.now();
-    const [priceBounds, firstPage] = await Promise.all([
-      fetchQuery(api.products.getPublicPriceBounds, {}),
-      fetchQuery(api.products.listPublicPaginated, {
-        paginationOpts: { numItems: 12, cursor: null },
-        sort: "default",
-        now,
-      }),
-    ]);
+async function loadProductsCatalogSeo(now: number) {
+  const [priceBounds, firstPage] = await Promise.all([
+    fetchQuery(api.products.getPublicPriceBounds, {}),
+    fetchQuery(api.products.listPublicPaginated, {
+      paginationOpts: { numItems: 12, cursor: null },
+      sort: "default",
+      now,
+    }),
+  ]);
 
-    return (
-      <CatalogSeoSnapshot
-        products={firstPage.page}
-        priceBounds={priceBounds}
-      />
-    );
+  return {
+    products: firstPage.page,
+    priceBounds,
+  };
+}
+
+async function ProductsCatalogSeo() {
+  let snapshot: Awaited<ReturnType<typeof loadProductsCatalogSeo>> | null =
+    null;
+  try {
+    snapshot = await loadProductsCatalogSeo(readServerNow());
   } catch {
-    return null;
+    snapshot = null;
   }
+
+  if (!snapshot) return null;
+
+  return (
+    <CatalogSeoSnapshot
+      products={snapshot.products}
+      priceBounds={snapshot.priceBounds}
+    />
+  );
 }
 
 export default function ProductsPage() {

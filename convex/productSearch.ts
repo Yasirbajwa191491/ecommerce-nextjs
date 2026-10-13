@@ -6,11 +6,11 @@ import { v } from "convex/values";
 import { embedProductText } from "./lib/ai/productIntelligence";
 import { parseSearchQuery } from "./lib/search/queryParser";
 import {
+  applyHardSearchConstraints,
   computeKeywordScore,
-  passesPriceFilters,
-  passesStarFilter,
   rankSearchCandidates,
   tokenizeQuery,
+  isRelevantSearchCandidate,
   type SearchProductCandidate,
 } from "./lib/search/hybridRank";
 import type { Id } from "./_generated/dataModel";
@@ -119,7 +119,7 @@ function buildCandidateMap(
     const keywordScore = computeKeywordScore(product, queryTerms);
     const semanticScore = semanticScores.get(product._id) ?? 0;
 
-    if (keywordScore > 0 || semanticScore > 0) {
+    if (isRelevantSearchCandidate(product, queryTerms, semanticScore)) {
       map.set(product._id, {
         ...product,
         keywordScore,
@@ -140,6 +140,26 @@ export const searchHybrid = action({
     sessionId: v.optional(v.string()),
     visitorId: v.optional(v.string()),
     customerKey: v.optional(v.string()),
+    categoryId: v.optional(v.id("productCategories")),
+    minPrice: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    maxPrice: v.optional(v.number()),
+    brands: v.optional(v.array(v.string())),
+    colors: v.optional(v.array(v.string())),
+    minRating: v.optional(v.number()),
+    promotions: v.optional(
+      v.array(
+        v.union(
+          v.literal("on_sale"),
+          v.literal("discounted"),
+          v.literal("bogo"),
+          v.literal("free_gift"),
+          v.literal("buy_x_get_y"),
+          v.literal("limited_time")
+        )
+      )
+    ),
+    inStockOnly: v.optional(v.boolean()),
   },
   returns: hybridSearchResultValidator,
   handler: async (ctx, args): Promise<HybridSearchResult> => {
@@ -154,7 +174,7 @@ export const searchHybrid = action({
     }
 
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 50);
-    const cursor = args.cursor ?? 0;
+    const cursor = Math.max(0, Math.floor(args.cursor ?? 0));
     const queryNormalized = trimmed.toLowerCase();
 
     const categories = await ctx.runQuery(
@@ -164,17 +184,13 @@ export const searchHybrid = action({
     const parsed = parseSearchQuery(trimmed, categories);
     const queryTerms = tokenizeQuery(parsed.embeddingQuery);
 
-    const { candidates: catalog, maxReviews } = (await ctx.runQuery(
-      internal.productSearchQueries.getSearchCandidates,
-      {}
-    )) as SearchCandidatesResult;
-
     const semanticScores = new Map<string, number>();
     const embedding = await getQueryEmbedding(
       ctx,
       queryNormalized,
       parsed.embeddingQuery
     );
+    const includeIds: Id<"products">[] = [];
 
     if (embedding) {
       try {
@@ -185,39 +201,19 @@ export const searchHybrid = action({
 
         for (const hit of vectorResults) {
           semanticScores.set(hit._id as string, hit._score);
+          includeIds.push(hit._id as Id<"products">);
         }
       } catch {
         // Fall through to keyword-only
       }
     }
 
+    const { candidates: catalog, maxReviews } = (await ctx.runQuery(
+      internal.productSearchQueries.getSearchCandidates,
+      { searchTerms: queryTerms, includeIds }
+    )) as SearchCandidatesResult;
+
     const candidateMap = buildCandidateMap(catalog, queryTerms, semanticScores);
-
-    if (candidateMap.size === 0 && semanticScores.size > 0) {
-      for (const product of catalog) {
-        const semanticScore = semanticScores.get(product._id) ?? 0;
-        if (semanticScore > 0) {
-          candidateMap.set(product._id, {
-            ...product,
-            keywordScore: 0,
-            semanticScore,
-          });
-        }
-      }
-    }
-
-    if (candidateMap.size === 0) {
-      for (const product of catalog) {
-        const keywordScore = computeKeywordScore(product, queryTerms);
-        if (keywordScore > 0) {
-          candidateMap.set(product._id, {
-            ...product,
-            keywordScore,
-            semanticScore: 0,
-          });
-        }
-      }
-    }
 
     let ranked = rankSearchCandidates(candidateMap, {
       categoryHint: parsed.categoryHint,
@@ -225,34 +221,55 @@ export const searchHybrid = action({
       query: parsed.embeddingQuery,
     });
 
-    ranked = ranked.filter(
-      (p) =>
-        passesPriceFilters(p, parsed.maxPrice, parsed.minPrice) &&
-        passesStarFilter(p, parsed.minStars)
-    );
+    const minPrice =
+      args.minPrice !== undefined && parsed.minPrice !== undefined
+        ? Math.max(args.minPrice, parsed.minPrice)
+        : (args.minPrice ?? parsed.minPrice);
+    const maxPrice =
+      args.maxPrice !== undefined && parsed.maxPrice !== undefined
+        ? Math.min(args.maxPrice, parsed.maxPrice)
+        : (args.maxPrice ?? parsed.maxPrice);
+    const minStars =
+      args.minRating !== undefined && parsed.minStars !== undefined
+        ? Math.max(args.minRating, parsed.minStars)
+        : (args.minRating ?? parsed.minStars);
+    const currencyConflict = Boolean(args.currency && parsed.currency && args.currency.toUpperCase() !== parsed.currency);
+    const currency = parsed.currency ?? args.currency;
+    // Bare numeric budgets cannot compare incomparable amounts. Existing callers without
+    // a selected currency retain the legacy USD budget interpretation; browsing stays mixed.
+    const budgetCurrency = currency ?? ((minPrice !== undefined || maxPrice !== undefined) ? "USD" : undefined);
+    const hardConstraints = { minPrice, maxPrice, minStars, currency: budgetCurrency, categoryHint: parsed.categoryHint, productTypeTerms: parsed.productTypeTerms };
 
-    let isSimilarFallback = false;
-    if (ranked.length === 0 && semanticScores.size > 0) {
-      isSimilarFallback = true;
-      const fallbackMap = new Map<
-        string,
-        SearchProductCandidate & { semanticScore: number; keywordScore: number }
-      >();
-      for (const product of catalog) {
-        const semanticScore = semanticScores.get(product._id) ?? 0;
-        if (semanticScore > 0) {
-          fallbackMap.set(product._id, {
-            ...product,
-            keywordScore: 0,
-            semanticScore,
-          });
-        }
-      }
-      ranked = rankSearchCandidates(fallbackMap, {
-        categoryHint: parsed.categoryHint,
-        maxReviews,
-        query: parsed.embeddingQuery,
-      });
+    ranked = applyHardSearchConstraints(ranked, hardConstraints);
+
+    if (currencyConflict) ranked = [];
+    // Recommendations are a separate opt-in surface, never a no-match fallback.
+    const isSimilarFallback = false;
+
+    const hasCatalogFilters = Boolean(
+      args.categoryId ||
+        args.brands?.length ||
+        args.colors?.length ||
+        args.promotions?.length ||
+        args.inStockOnly
+    );
+    if (hasCatalogFilters && ranked.length > 0) {
+      const allowedIds = new Set(
+        await ctx.runQuery(internal.productSearchQueries.filterSearchProductIds, {
+          productIds: ranked.map((product) => product._id as Id<"products">),
+          categoryId: args.categoryId,
+          minPrice,
+          currency: budgetCurrency,
+          maxPrice,
+          brands: args.brands,
+          colors: args.colors,
+          minRating: minStars,
+          promotions: args.promotions,
+          inStockOnly: args.inStockOnly,
+          now: Date.now(),
+        })
+      );
+      ranked = ranked.filter((product) => allowedIds.has(product._id as Id<"products">));
     }
 
     const totalCount = ranked.length;
@@ -311,7 +328,7 @@ export const getSimilarProducts = action({
       { productId: args.productId }
     );
 
-    let vectorResults: Array<{ _id: string; _score: number }> = [];
+    let vectorResults: Array<{ _id: Id<"products">; _score: number }> = [];
     try {
       vectorResults = await ctx.vectorSearch("products", "by_embedding", {
         vector: embedding,
@@ -323,7 +340,10 @@ export const getSimilarProducts = action({
 
     const { candidates: catalog, maxReviews } = (await ctx.runQuery(
       internal.productSearchQueries.getSearchCandidates,
-      {}
+      {
+        searchTerms: tokenizeQuery(sourceProduct?.name ?? ""),
+        includeIds: vectorResults.map((hit) => hit._id),
+      }
     )) as SearchCandidatesResult;
     const catalogById = new Map(catalog.map((p) => [p._id, p]));
 

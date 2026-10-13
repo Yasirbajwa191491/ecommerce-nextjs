@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canRequestNotificationPermission,
   formatPushRegistrationError,
+  resolvePushCapability,
 } from "@/lib/push-permission-logic";
 
 describe("push permission logic", () => {
@@ -26,9 +27,24 @@ describe("push permission logic", () => {
     ).toBe(false);
   });
 
-  it("formats FCM setup errors clearly", () => {
+  it("keeps build diagnostics out of customer errors", () => {
     expect(formatPushRegistrationError("Default FirebaseApp is not initialized")).toContain(
-      "Firebase (FCM)"
+      "You can still track your order"
     );
+    expect(formatPushRegistrationError("Expo project ID is missing")).not.toMatch(/Expo|FCM|Firebase|APK|EAS/);
+  });
+
+  it.each([
+    { platform: "web", isDevice: true, environment: "standalone", enabled: true, projectId: "project" },
+    { platform: "android", isDevice: false, environment: "standalone", enabled: true, projectId: "project" },
+    { platform: "android", isDevice: true, environment: "storeClient", enabled: true, projectId: "project" },
+    { platform: "android", isDevice: true, environment: "standalone", enabled: false, projectId: "project" },
+    { platform: "android", isDevice: true, environment: "standalone", enabled: true },
+  ])("does not offer enrollment in unsupported or unconfigured environments: %j", (args) => {
+    expect(resolvePushCapability(args).available).toBe(false);
+  });
+
+  it("supports an explicitly configured physical native build", () => {
+    expect(resolvePushCapability({ platform: "android", isDevice: true, environment: "bare", enabled: true, projectId: "project" }).available).toBe(true);
   });
 });

@@ -10,23 +10,46 @@ import { authComponent, createAuth } from "./betterAuth/auth";
 import { getAuthUserOrNull } from "./lib/requireAdmin";
 import { isAdminRole, isSuperAdminRole, normalizeRole } from "./lib/authRoles";
 
-type BetterAuthUser = {
-  _id: string;
-  email: string;
-  name: string;
-  role?: string | null;
-};
-
 async function superAdminExistsInDb(
   ctx: { runQuery: QueryCtx["runQuery"] } | { runQuery: MutationCtx["runQuery"] }
 ): Promise<boolean> {
-  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "user",
-    paginationOpts: { numItems: 200, cursor: null },
-  });
-  return (result.page as BetterAuthUser[]).some((u) =>
-    isSuperAdminRole(u.role)
-  );
+  let cursor: string | null = null;
+  for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+    const result: unknown = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "user",
+      paginationOpts: { numItems: 100, cursor },
+    });
+    if (typeof result !== "object" || result === null || !("page" in result)) {
+      throw new ConvexError("Could not verify administrator setup. Please try again.");
+    }
+    const page = result.page;
+    if (!Array.isArray(page)) {
+      throw new ConvexError("Could not verify administrator setup. Please try again.");
+    }
+    if (
+      page.some(
+        (user) =>
+          typeof user === "object" &&
+          user !== null &&
+          "role" in user &&
+          isSuperAdminRole(typeof user.role === "string" ? user.role : null)
+      )
+    ) {
+      return true;
+    }
+    if (!("isDone" in result) || typeof result.isDone !== "boolean") {
+      throw new ConvexError("Could not verify administrator setup. Please try again.");
+    }
+    if (result.isDone) return false;
+    if (!("continueCursor" in result) || typeof result.continueCursor !== "string") {
+      throw new ConvexError("Could not verify administrator setup. Please try again.");
+    }
+    if (result.continueCursor === cursor) {
+      throw new ConvexError("Could not finish checking existing administrators.");
+    }
+    cursor = result.continueCursor;
+  }
+  throw new ConvexError("Administrator setup check exceeded its safe limit. Seed an administrator through the configured internal setup.");
 }
 
 export const getCurrentUser = query({

@@ -10,13 +10,14 @@ export function useLayoutMetrics() {
 
   return useMemo(() => {
     const contentWidth = Math.min(screenWidth, layout.maxContentWidth);
-    const horizontalPadding = layout.screenPadding;
+    const horizontalPadding = contentWidth >= 768 ? spacing["2xl"] : screenWidth < 360 ? spacing.lg : layout.screenPadding;
     const gridGap = spacing.md;
     const contentInner = contentWidth - horizontalPadding * 2;
 
-    const gridItemWidth = (contentInner - gridGap) / layout.gridColumns;
-    const carouselCardWidth = contentInner * layout.carouselCardWidthRatio;
-    const featuredCarouselCardWidth = contentInner * layout.featuredCarouselWidthRatio;
+    const gridColumns = contentWidth >= 1000 ? 4 : contentWidth >= 600 ? 3 : layout.gridColumns;
+    const gridItemWidth = (contentInner - gridGap * (gridColumns - 1)) / gridColumns;
+    const carouselCardWidth = Math.min(300, contentInner * layout.carouselCardWidthRatio);
+    const featuredCarouselCardWidth = Math.min(360, contentInner * layout.featuredCarouselWidthRatio);
     const categoryCardWidth = layout.categoryCardWidth;
 
     return {
@@ -24,6 +25,7 @@ export function useLayoutMetrics() {
       contentWidth,
       horizontalPadding,
       gridGap,
+      gridColumns,
       gridItemWidth,
       carouselCardWidth,
       featuredCarouselCardWidth,

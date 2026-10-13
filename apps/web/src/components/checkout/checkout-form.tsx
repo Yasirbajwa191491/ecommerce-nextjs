@@ -38,6 +38,7 @@ import { useCartContext } from "@/context/cart_context";
 import { useFormValidation } from "@/hooks/use-form-validation";
 import {
   createIdempotencyKey,
+  loadCheckoutCustomer,
   saveCheckoutCustomer,
 } from "@/lib/checkout-customer-storage";
 import { getVisitorId } from "@/lib/recommendations/visitor-id";
@@ -145,20 +146,33 @@ export function CheckoutForm({
   );
 
   const persistCustomer = async () => {
+    const stored = loadCheckoutCustomer();
+    const sameEmail =
+      stored?.email.trim().toLowerCase() === customerPayload.email.trim().toLowerCase();
     saveCheckoutCustomer({
       fullName: customerPayload.fullName,
       email: customerPayload.email,
       phone: customerPayload.phone,
       address: customerPayload.address,
       notes: form.notes.trim() || undefined,
+      profileToken: sameEmail ? stored?.profileToken : undefined,
     });
     try {
-      await saveCustomerProfile({
+      const saved = await saveCustomerProfile({
         email: customerPayload.email,
         fullName: customerPayload.fullName,
         phone: customerPayload.phone,
         address: customerPayload.address,
         visitorId: getVisitorId() || undefined,
+        profileToken: sameEmail ? stored?.profileToken : undefined,
+      });
+      saveCheckoutCustomer({
+        fullName: customerPayload.fullName,
+        email: customerPayload.email,
+        phone: customerPayload.phone,
+        address: customerPayload.address,
+        notes: form.notes.trim() || undefined,
+        profileToken: saved.profileToken,
       });
     } catch {
       // Non-blocking for checkout completion

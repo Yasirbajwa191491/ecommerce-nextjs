@@ -26,7 +26,7 @@ function chipStyles(colors: ColorPalette) {
       justifyContent: "center",
     },
     chipCompact: {
-      minHeight: 36,
+      minHeight: sizes.chip,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.xs + 2,
     },

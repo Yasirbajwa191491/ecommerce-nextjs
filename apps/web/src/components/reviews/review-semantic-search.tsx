@@ -38,7 +38,10 @@ export function ReviewSemanticSearch({
     }
 
     let cancelled = false;
-    setLoading(true);
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled && !settled) setLoading(true);
+    }, 0);
 
     void search({ productId, queryText: debounced })
       .then((results) => {
@@ -69,11 +72,13 @@ export function ReviewSemanticSearch({
         }
       })
       .finally(() => {
+        settled = true;
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [debounced, onResults, productId, search]);
 

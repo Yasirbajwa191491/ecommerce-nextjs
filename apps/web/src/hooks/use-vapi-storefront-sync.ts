@@ -9,6 +9,7 @@ import { useCartContext } from "@/context/cart_context";
 import { useVapiCartSync } from "@/hooks/use-vapi-cart-sync";
 import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import { productPath } from "@/lib/product-url";
+import { getVapiBrowserSessionToken } from "@/lib/vapi-browser-session";
 import type { VapiToolEvent } from "@/lib/vapi-activity";
 import type { CheckoutProgressPhase, UiAction } from "@/lib/vapi-ui-actions/types";
 
@@ -63,6 +64,14 @@ export function useVapiStorefrontSync(options: {
   const pushBrowserCartToVoice = useMutation(
     api.vapi.voiceCartSync.pushBrowserCartToVoice
   );
+  const [browserSessionToken, setBrowserSessionToken] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBrowserSessionToken(getVapiBrowserSessionToken());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const boundCallIdRef = useRef<string | null>(null);
   const lastCartSyncRef = useRef<number | null>(null);
@@ -74,30 +83,35 @@ export function useVapiStorefrontSync(options: {
   const processedToolLogIdsRef = useRef<Set<string>>(new Set());
   const syncingFromVoiceRef = useRef(false);
   const onCheckoutBackupRef = useRef(options.onCheckoutBackupActions);
-  onCheckoutBackupRef.current = options.onCheckoutBackupActions;
   const onServerToolCompleteRef = useRef(options.onServerToolComplete);
-  onServerToolCompleteRef.current = options.onServerToolComplete;
   const onResolvedCallIdRef = useRef(options.onResolvedCallId);
-  onResolvedCallIdRef.current = options.onResolvedCallId;
+  useEffect(() => {
+    onCheckoutBackupRef.current = options.onCheckoutBackupActions;
+    onServerToolCompleteRef.current = options.onServerToolComplete;
+    onResolvedCallIdRef.current = options.onResolvedCallId;
+  });
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (options.voiceSessionActive && sessionStartedAt === null) {
-      setSessionStartedAt(Date.now());
-    }
-    if (!options.voiceSessionActive) {
-      setSessionStartedAt(null);
-    }
+    const timer = window.setTimeout(() => {
+      if (options.voiceSessionActive && sessionStartedAt === null) {
+        setSessionStartedAt(Date.now());
+      }
+      if (!options.voiceSessionActive) {
+        setSessionStartedAt(null);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [options.voiceSessionActive, sessionStartedAt]);
 
   const sessionActive = options.voiceSessionActive || Boolean(options.vapiCallId);
 
   const sync = useQuery(
     api.vapi.voiceStorefrontSync.getStorefrontSyncForSession,
-    sessionActive
+    sessionActive && browserSessionToken
       ? {
           vapiCallId: options.vapiCallId ?? undefined,
-          voiceSessionActive: options.voiceSessionActive,
+          browserSessionToken,
           sinceMs: sessionStartedAt ?? undefined,
         }
       : "skip"
@@ -276,7 +290,9 @@ export function useVapiStorefrontSync(options: {
       !effectiveCallId ||
       syncingFromVoiceRef.current ||
       browserLines.length === 0 ||
-      !sync
+      !sync ||
+      sync.resolvedCallId !== effectiveCallId ||
+      !browserSessionToken
     ) {
       return;
     }
@@ -293,10 +309,20 @@ export function useVapiStorefrontSync(options: {
     lastBrowserPushRef.current = browserFingerprint;
     void pushBrowserCartToVoice({
       vapiCallId: effectiveCallId,
+      browserSessionToken,
       lines: browserLines,
+    }).then(({ updated }) => {
+      if (!updated && lastBrowserPushRef.current === browserFingerprint) {
+        lastBrowserPushRef.current = null;
+      }
+    }).catch(() => {
+      if (lastBrowserPushRef.current === browserFingerprint) {
+        lastBrowserPushRef.current = null;
+      }
     });
   }, [
     browserFingerprint,
+    browserSessionToken,
     browserLines,
     effectiveCallId,
     pushBrowserCartToVoice,

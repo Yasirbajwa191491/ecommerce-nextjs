@@ -1,34 +1,25 @@
+import { ProductCatalogView } from "@/components/catalog/ProductCatalogView";
 import { useQuery } from "convex/react";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { EmptyState } from "@/components/feedback/EmptyState";
-import { ErrorState } from "@/components/feedback/ErrorState";
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
-import { ProductCard } from "@/components/products/ProductCard";
 import { Chip } from "@/components/ui/Chip";
-import { Button } from "@/components/ui/Button";
 import { SearchBarInput } from "@/components/ui/SearchBar";
-import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useHybridProductSearch } from "@/hooks/useHybridProductSearch";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useScreenRootStyle } from "@/hooks/useScreenStyles";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { searchResultToProduct } from "@/lib/product-adapters";
 import { api } from "@/lib/convex-api";
 import { offlineKeys } from "@/lib/offline/keys";
 import type { HomeCategory } from "@/lib/offline/types";
-import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
-import type { Product } from "@/types/product";
 
 const RECENT_KEY = "mobile-recent-searches";
 const MAX_RECENT = 6;
@@ -38,10 +29,12 @@ export default function SearchScreen() {
   const styles = useThemedStyles(createSearchStyles);
   const insets = useSafeAreaInsets();
   const { q } = useLocalSearchParams<{ q?: string }>();
-  const { horizontalPadding, gridGap } = useLayoutMetrics();
+  const { horizontalPadding } = useLayoutMetrics();
   const rootStyle = useScreenRootStyle();
-  const isOnline = useOnlineStatus();
-  const [query, setQuery] = useState(typeof q === "string" ? q : "");
+  const routeQuery = typeof q === "string" ? q : "";
+  const [queryState, setQueryState] = useState({ routeQuery, value: routeQuery });
+  const query = queryState.routeQuery === routeQuery ? queryState.value : routeQuery;
+  const setQuery = useCallback((value: string) => setQueryState({ routeQuery, value }), [routeQuery]);
   const [recent, setRecent] = useState<string[]>([]);
   const debouncedQuery = useDebouncedValue(query, 350);
 
@@ -58,27 +51,18 @@ export default function SearchScreen() {
     categoriesLive
   );
 
-  const {
-    products: searchResults,
-    totalCount,
-    loading,
-    loadingMore,
-    isSimilarFallback,
-    error,
-    hasMore,
-    loadMore,
-  } = useHybridProductSearch(debouncedQuery);
 
   useEffect(() => {
     void AsyncStorage.getItem(RECENT_KEY).then((raw) => {
       if (raw) {
         try {
-          setRecent(JSON.parse(raw) as string[]);
+          const parsed: unknown = JSON.parse(raw);
+          setRecent(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(0, MAX_RECENT) : []);
         } catch {
           setRecent([]);
         }
       }
-    });
+    }).catch(() => undefined);
   }, []);
 
   const saveRecent = useCallback(async (term: string) => {
@@ -86,41 +70,27 @@ export default function SearchScreen() {
     if (trimmed.length < 2) return;
     setRecent((prev) => {
       const next = [trimmed, ...prev.filter((t) => t !== trimmed)].slice(0, MAX_RECENT);
-      void AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      void AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => undefined);
       return next;
     });
   }, []);
 
   useEffect(() => {
-    if (debouncedQuery.trim().length >= 2 && !loading && searchResults.length > 0) {
-      const trimmed = debouncedQuery.trim();
-      void AsyncStorage.getItem(RECENT_KEY).then((raw) => {
-        try {
-          const prev = raw ? (JSON.parse(raw) as string[]) : [];
-          const next = [trimmed, ...prev.filter((t) => t !== trimmed)].slice(0, MAX_RECENT);
-          void AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next));
-        } catch {
-          void AsyncStorage.setItem(RECENT_KEY, JSON.stringify([trimmed]));
-        }
-      });
-    }
-  }, [debouncedQuery, loading, searchResults.length]);
+    const term = debouncedQuery.trim();
+    if (term.length < 2) return;
+    void AsyncStorage.getItem(RECENT_KEY).then((raw) => {
+      let previous: string[] = [];
+      try {
+        const parsed: unknown = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) previous = parsed.filter((item): item is string => typeof item === "string");
+      } catch { /* Replace an invalid saved list. */ }
+      return AsyncStorage.setItem(RECENT_KEY, JSON.stringify([term, ...previous.filter((item) => item !== term)].slice(0, MAX_RECENT)));
+    }).catch(() => undefined);
+  }, [debouncedQuery]);
 
-  const products = useMemo(
-    () => searchResults.map(searchResultToProduct),
-    [searchResults]
-  );
 
   const showResults = debouncedQuery.trim().length >= 2;
 
-  const renderItem: ListRenderItem<Product> = useCallback(
-    ({ item }) => (
-      <View style={styles.gridItem}>
-        <ProductCard product={item} showActions />
-      </View>
-    ),
-    []
-  );
 
   const EmptyContent = (
     <ScrollView
@@ -228,105 +198,16 @@ export default function SearchScreen() {
               value={query}
               onChangeText={setQuery}
               autoFocus
+              returnKeyType="search"
+              onSubmitEditing={() => { void saveRecent(query); Keyboard.dismiss(); }}
               placeholder="Search products…"
             />
           </View>
         </View>
 
-        {showResults && loading && products.length === 0 ? (
-          <View style={[styles.skeletonGrid, { paddingHorizontal: horizontalPadding, gap: gridGap }]}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <View key={i} style={styles.gridItem}>
-                <ProductCardSkeleton />
-              </View>
-            ))}
-          </View>
-        ) : showResults && error ? (
-          <ErrorState
-            title={isOnline ? "Search failed" : "Search requires an internet connection."}
-            message={
-              isOnline
-                ? "Something went wrong. Please try again."
-                : "Connect to search, or browse products you've already viewed."
-            }
-            onRetry={() => setQuery((q) => q.trim())}
-          />
-        ) : showResults && !loading && products.length === 0 ? (
-          <EmptyState
-            icon="search-outline"
-            title="No matching products"
-            description={`We couldn't find products matching "${debouncedQuery}". Try a different search, browse the shop, or find similar items from a photo.`}
-            actionLabel="Browse the shop"
-            onAction={() => router.push("/(tabs)/shop")}
-            compact
-          >
-            <View style={styles.emptyActions}>
-              <Button
-                label="Ask AI"
-                variant="outline"
-                onPress={() =>
-                  router.push({ pathname: "/(tabs)/ai", params: { q: debouncedQuery } })
-                }
-              />
-              <Button
-                label="Visual search"
-                variant="ghost"
-                onPress={() => router.push("/visual-search")}
-              />
-            </View>
-          </EmptyState>
-        ) : showResults ? (
-          <FlatList
-            data={products}
-            renderItem={renderItem}
-            keyExtractor={(item) => item._id}
-            numColumns={2}
-            columnWrapperStyle={[styles.gridRow, { gap: gridGap }]}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingHorizontal: horizontalPadding },
-            ]}
-            ListHeaderComponent={
-              <View style={styles.resultsHeader}>
-                {!isOnline ? (
-                  <CachedDataNotice
-                    title="Showing saved products"
-                    message="Search requires an internet connection for new results."
-                  />
-                ) : null}
-                {isSimilarFallback ? (
-                  <View style={styles.aiBanner}>
-                    <Ionicons name="sparkles" size={16} color={colors.primary} />
-                    <View style={styles.aiBannerCopy}>
-                      <Text style={styles.aiBannerTitle}>Similar products you may like</Text>
-                      <Text style={styles.aiBannerText}>
-                        No exact matches — here are AI-powered results.
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.exactLabel}>Exact matches</Text>
-                )}
-                <Text style={styles.resultCount}>
-                  {totalCount} result{totalCount === 1 ? "" : "s"}
-                </Text>
-              </View>
-            }
-            onEndReached={() => {
-              if (hasMore && !loadingMore) void loadMore();
-            }}
-            onEndReachedThreshold={0.4}
-            ListFooterComponent={
-              loadingMore ? (
-                <View style={styles.footerLoader}>
-                  <ProductCardSkeleton />
-                </View>
-              ) : null
-            }
-          />
-        ) : (
-          EmptyContent
-        )}
+        {showResults ? (
+          <ProductCatalogView showSearchInput={false} externalSearch={query} onSearchChange={setQuery} initialFilters={{ search: debouncedQuery }} />
+        ) : EmptyContent}
       </View>
     </ScreenContainer>
   );
@@ -347,8 +228,8 @@ function createSearchStyles({ colors, textStyles }: ThemeStyleTokens) {
     borderBottomColor: colors.borderLight,
   },
   backBtn: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
   },

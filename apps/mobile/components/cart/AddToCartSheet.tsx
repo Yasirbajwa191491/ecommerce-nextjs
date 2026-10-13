@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { formatColorLabel } from "@/lib/color-swatch";
 import { isHexColor } from "@/components/cart/ColorSwatch";
 import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
@@ -63,7 +64,7 @@ function AddToCartSheetBody({
     productId ? { id: productId } : "skip"
   );
 
-  const product = fetchedProduct ?? fallbackProduct ?? null;
+  const product = fetchedProduct === null ? null : fetchedProduct ?? fallbackProduct ?? null;
   const isLoading = productId != null && fetchedProduct === undefined && !fallbackProduct;
 
   const colorsList = useMemo(() => product?.colors ?? [], [product?.colors]);
@@ -78,8 +79,8 @@ function AddToCartSheetBody({
 
   const activeColor = useMemo(
     () =>
-      product ? resolveProductColorOrDefault(colorsList, selectedColor || colorsList[0] || "#000000") : "",
-    [product, colorsList, selectedColor]
+      product ? selectedColor || defaultColor : "",
+    [product, selectedColor, defaultColor]
   );
 
   const discountPercent = product?.discountPercent ?? 0;
@@ -97,7 +98,7 @@ function AddToCartSheetBody({
       return;
     }
 
-    addToCart(product, activeColor, quantity);
+    if (!addToCart(product, activeColor, quantity)) return;
     showSuccess(`Added ${quantity} to cart`);
     onClose();
   };
@@ -158,7 +159,7 @@ function AddToCartSheetBody({
 
               {hasColors ? (
                 <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Color</Text>
+                  <Text style={styles.sectionLabel}>Color: {formatColorLabel(activeColor)}</Text>
                   <View style={styles.colorRow}>
                     {colorsList.map((color) => {
                       const resolved = resolveProductColorOrDefault(colorsList, color);
@@ -168,7 +169,7 @@ function AddToCartSheetBody({
                         <Pressable
                           key={color}
                           accessibilityRole="button"
-                          accessibilityLabel={`Select color ${color}`}
+                          accessibilityLabel={`Select ${formatColorLabel(color)}`}
                           accessibilityState={{ selected }}
                           onPress={() => setColorOverride(color)}
                           style={[
@@ -308,8 +309,8 @@ function createAddToCartSheetStyles({ colors, textStyles }: ThemeStyleTokens) {
     gap: spacing.sm,
   },
   colorOption: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: radius.full,
     borderWidth: 2,
     borderColor: colors.border,
@@ -319,8 +320,8 @@ function createAddToCartSheetStyles({ colors, textStyles }: ThemeStyleTokens) {
     borderWidth: 3,
   },
   namedColorOption: {
-    minWidth: 44,
-    height: 44,
+    minWidth: 48,
+    height: 48,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.borderLight,

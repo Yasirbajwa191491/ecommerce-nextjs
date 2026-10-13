@@ -341,7 +341,10 @@ export default function QrResolveScreen() {
   }, [resolveQr, token, type]);
 
   useEffect(() => {
-    void load();
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [load]);
 
   const pay = useCallback(async () => {
@@ -528,7 +531,7 @@ function createStyles({ colors, textStyles }: ThemeStyleTokens) {
       borderRadius: radius.full,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: colors.surface,
     },
     shareLabel: {
       fontSize: typography.sm,

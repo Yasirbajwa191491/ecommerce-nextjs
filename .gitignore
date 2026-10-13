@@ -72,3 +72,6 @@ transformers_cache/
 *.log
 tmp/
 temp/
+
+# local audit artifacts, downloads, and tools
+/.artifacts/

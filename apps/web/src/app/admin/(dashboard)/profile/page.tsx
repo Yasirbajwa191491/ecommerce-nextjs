@@ -50,8 +50,13 @@ export default function AdminProfilePage() {
 
   useEffect(() => {
     if (!profile) return;
-    setName(profile.name);
-    setImageUrl(profile.image ?? null);
+    const nextName = profile.name;
+    const nextImage = profile.image ?? null;
+    const timer = window.setTimeout(() => {
+      setName(nextName);
+      setImageUrl(nextImage);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [profile?.email, profile?.image, profile?.name]);
 
   if (profile === undefined) {

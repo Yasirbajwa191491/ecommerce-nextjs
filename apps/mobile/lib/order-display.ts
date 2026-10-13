@@ -19,8 +19,35 @@ export function formatOrderLabel(value: string): string {
 
 export function getPaymentMethodLabel(method: PaymentMethod | string | undefined): string {
   if (method === "cod") return "Cash on delivery";
-  if (method === "stripe") return "Card (Stripe)";
+  if (method === "stripe") return "Card";
   return "—";
+}
+
+export function getOrderStatusLabel(status: OrderStatus): string {
+  if (status === "pending") return "Received";
+  if (status === "processing") return "Preparing";
+  return formatOrderLabel(status);
+}
+
+export function getPaymentStatusLabel(status: PaymentStatus | string, method?: PaymentMethod | string, orderStatus?: OrderStatus): string {
+  if (method === "cod" && status === "pending") {
+    if (orderStatus === "cancelled" || orderStatus === "failed" || orderStatus === "expired") return "No payment due";
+    return "Due on delivery";
+  }
+  if (status === "pending") return "Awaiting payment";
+  return formatOrderLabel(status);
+}
+
+export const ORDER_PROGRESS_STEPS: { key: OrderStatus; label: string }[] = [
+  { key: "pending", label: "Placed" },
+  { key: "confirmed", label: "Confirmed" },
+  { key: "processing", label: "Preparing" },
+  { key: "shipped", label: "Shipped" },
+  { key: "delivered", label: "Delivered" },
+];
+
+export function getOrderProgressStepIndex(status: OrderStatus): number {
+  return ORDER_PROGRESS_STEPS.findIndex((step) => step.key === status);
 }
 
 export function getOrderStatusBadgeVariant(
@@ -63,13 +90,18 @@ export function getCheckoutSuccessTitle(order: {
   paymentStatus?: string;
   status?: string;
 }): string {
+  if (order.status === "cancelled") return "Order cancelled";
+  if (order.status === "refunded" || order.paymentStatus === "refunded") return "Order refunded";
+  if (order.status === "expired") return "Checkout expired";
   if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") {
     return "Payment failed";
   }
   if (order.paymentMethod === "stripe" && order.paymentStatus === "pending") {
     return "Confirming payment";
   }
-  return "Order confirmed!";
+  if (order.status === "pending" || !order.status) return "Order received";
+  if (order.status === "delivered") return "Order delivered";
+  return "Order confirmed";
 }
 
 export function getCheckoutSuccessMessage(order: {
@@ -77,6 +109,9 @@ export function getCheckoutSuccessMessage(order: {
   paymentStatus?: string;
   status?: string;
 }): string {
+  if (order.status === "cancelled") return "This order has been cancelled. View your order for payment and refund details.";
+  if (order.status === "refunded" || order.paymentStatus === "refunded") return "View your order for refund details.";
+  if (order.status === "expired") return "This checkout has expired. Return to your cart to place a new order.";
   if (order.paymentMethod === "stripe" && order.paymentStatus === "failed") {
     return "Your payment could not be completed. You can retry payment or return to your cart.";
   }
@@ -84,10 +119,12 @@ export function getCheckoutSuccessMessage(order: {
     return "We are confirming your payment with your bank. This usually takes a few seconds.";
   }
   if (order.paymentMethod === "cod") {
-    return "Your order has been placed. Please prepare payment on delivery.";
+    return order.status === "pending"
+      ? "We've received your order. Payment is due when it arrives."
+      : "Your order is being prepared. Payment is due when it arrives.";
   }
   if (order.paymentStatus === "paid") {
-    return "Your payment was successful and your order is confirmed.";
+    return order.status === "pending" ? "Payment received. Your order is awaiting store confirmation." : "Payment received. Follow your delivery progress below.";
   }
   return "Your order has been received.";
 }

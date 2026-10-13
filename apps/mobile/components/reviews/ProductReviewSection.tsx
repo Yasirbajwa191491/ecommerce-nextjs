@@ -53,8 +53,11 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
   const [sort, setSort] = useState<ReviewSort>("recent");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [semanticReviews, setSemanticReviews] = useState<PublicReview[] | null>(null);
+  const [semanticReviews, setSemanticReviews] = useState<PublicReview[] | null>(
+    null,
+  );
   const [helpfulLoadingId, setHelpfulLoadingId] = useState<string | null>(null);
+  const [searchResetKey, setSearchResetKey] = useState(0);
 
   const styles = useMemo(
     () =>
@@ -83,7 +86,6 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
           color: colors.textSecondary,
           lineHeight: 20,
         },
-        trackLink: { color: colors.primary, fontWeight: "600" },
         chipRow: {
           flexDirection: "row",
           gap: spacing.sm,
@@ -111,12 +113,21 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
           lineHeight: 20,
         },
       }),
-    [colors, textStyles]
+    [colors, textStyles],
   );
 
-  const summary = useQuery(api.productReviews.getProductReviewSummary, { productId });
-  const insights = useQuery(api.productReviewInsights.getByProductId, { productId });
-  const tags = useQuery(api.productReviewInsights.listProductReviewTags, { productId });
+  const summary = useQuery(api.productReviews.getProductReviewSummary, {
+    productId,
+  });
+  const hasReviews = (summary?.totalReviews ?? 0) > 0;
+  const insights = useQuery(
+    api.productReviewInsights.getByProductId,
+    hasReviews ? { productId } : "skip",
+  );
+  const tags = useQuery(
+    api.productReviewInsights.listProductReviewTags,
+    hasReviews ? { productId } : "skip",
+  );
 
   const listArgs = useMemo(
     () => ({
@@ -125,20 +136,28 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
       ratingFilter: ratingFilter === "all" ? undefined : ratingFilter,
       tagFilter: tagFilter ?? undefined,
     }),
-    [productId, sort, ratingFilter, tagFilter]
+    [productId, sort, ratingFilter, tagFilter],
   );
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.productReviews.listProductReviews,
-    listArgs,
-    { initialNumItems: PAGE_SIZE }
+    hasReviews ? listArgs : "skip",
+    { initialNumItems: PAGE_SIZE },
   );
 
   const markHelpful = useMutation(api.productReviews.markReviewHelpful);
 
-  const handleSemanticResults = useCallback((reviews: PublicReview[] | null) => {
-    setSemanticReviews(reviews);
-  }, []);
+  const handleSemanticResults = useCallback(
+    (reviews: PublicReview[] | null) => {
+      setSemanticReviews(reviews);
+      if (reviews !== null) {
+        setRatingFilter("all");
+        setTagFilter(null);
+        setSort("recent");
+      }
+    },
+    [],
+  );
 
   const handleMarkHelpful = useCallback(
     async (reviewId: string) => {
@@ -157,17 +176,37 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
         setHelpfulLoadingId(null);
       }
     },
-    [markHelpful, showError, showSuccess]
+    [markHelpful, showError, showSuccess],
   );
 
   const displayedReviews = semanticReviews ?? results;
   const canLoadMore = status === "CanLoadMore" && !semanticReviews;
+  const clearSemanticSearch = () => {
+    setSemanticReviews(null);
+    setSearchResetKey((current) => current + 1);
+  };
 
   if (summary === undefined) {
     return (
       <View style={styles.loading}>
         <Skeleton height={24} width="48%" />
         <Skeleton height={120} borderRadius={radius.lg} />
+      </View>
+    );
+  }
+
+  if (!hasReviews) {
+    return (
+      <View style={styles.summaryCard}>
+        <Text style={styles.title}>Customer reviews</Text>
+        <Text style={styles.summaryText}>
+          No reviews yet. Share your experience after your order is delivered.
+        </Text>
+        <Button
+          label="Find my order"
+          variant="outline"
+          onPress={() => router.push("/(tabs)/track")}
+        />
       </View>
     );
   }
@@ -179,11 +218,20 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
         <Text style={styles.subtitle}>Ratings from verified purchases</Text>
       </View>
 
-      <ReviewAiSummary summary={insights?.summary} status={insights?.aiAnalysisStatus} />
-      <ReviewTopicInsights topics={insights?.topics} status={insights?.aiAnalysisStatus} />
+      <ReviewAiSummary
+        summary={insights?.summary}
+        status={insights?.aiAnalysisStatus}
+      />
+      <ReviewTopicInsights
+        topics={insights?.topics}
+        status={insights?.aiAnalysisStatus}
+      />
 
       <View style={styles.summaryCard}>
-        <RatingStars rating={summary.averageRating} reviewCount={summary.totalReviews} />
+        <RatingStars
+          rating={summary.averageRating}
+          reviewCount={summary.totalReviews}
+        />
         {summary.totalReviews > 0 ? (
           <Text style={styles.summaryText}>
             {summary.averageRating.toFixed(1)} out of 5 · Based on{" "}
@@ -198,78 +246,112 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
         ) : null}
         <View style={styles.trackHint}>
           <Text style={styles.trackHintText}>
-            Purchased this item?{" "}
-            <Text
-              style={styles.trackLink}
-              accessibilityRole="link"
-              onPress={() => router.push("/(tabs)/track")}
-            >
-              Track your order
-            </Text>{" "}
-            to leave a verified review after delivery.
+            Purchased this item? Find your order to leave a verified review
+            after delivery.
           </Text>
+          <Button
+            label="Find my order"
+            variant="ghost"
+            onPress={() => router.push("/(tabs)/track")}
+          />
         </View>
       </View>
 
-      <ReviewSemanticSearch productId={productId} onResults={handleSemanticResults} />
+      <ReviewSemanticSearch
+        key={searchResetKey}
+        productId={productId}
+        onResults={handleSemanticResults}
+      />
 
-      {tags && tags.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.chipRow} accessibilityRole="tablist" accessibilityLabel="Review topic filters">
-            {tags.map((tag) => (
-              <Chip
-                key={tag.tagSlug}
-                label={`${tag.tagLabel} (${tag.count})`}
-                selected={tagFilter === tag.tagSlug}
-                compact
-                onPress={() =>
-                  setTagFilter((current) =>
-                    current === tag.tagSlug ? null : tag.tagSlug
-                  )
-                }
-              />
-            ))}
-          </View>
-        </ScrollView>
-      ) : null}
+      {semanticReviews === null ? (
+        <>
+          {tags && tags.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View
+                style={styles.chipRow}
+                accessibilityRole="tablist"
+                accessibilityLabel="Review topic filters"
+              >
+                {tags.map((tag) => (
+                  <Chip
+                    key={tag.tagSlug}
+                    label={`${tag.tagLabel} (${tag.count})`}
+                    selected={tagFilter === tag.tagSlug}
+                    compact
+                    onPress={() => {
+                      clearSemanticSearch();
+                      setTagFilter((current) =>
+                        current === tag.tagSlug ? null : tag.tagSlug,
+                      );
+                    }}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+          ) : null}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.chipRow} accessibilityRole="tablist" accessibilityLabel="Rating filters">
-          {RATING_FILTERS.map((option) => (
-            <Chip
-              key={String(option.value)}
-              label={option.label}
-              selected={ratingFilter === option.value}
-              compact
-              onPress={() => setRatingFilter(option.value)}
-            />
-          ))}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View
+              style={styles.chipRow}
+              accessibilityRole="tablist"
+              accessibilityLabel="Rating filters"
+            >
+              {RATING_FILTERS.map((option) => (
+                <Chip
+                  key={String(option.value)}
+                  label={option.label}
+                  selected={ratingFilter === option.value}
+                  compact
+                  onPress={() => {
+                    clearSemanticSearch();
+                    setRatingFilter(option.value);
+                  }}
+                />
+              ))}
+            </View>
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View
+              style={styles.chipRow}
+              accessibilityRole="tablist"
+              accessibilityLabel="Sort reviews"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  selected={sort === option.value}
+                  compact
+                  onPress={() => {
+                    clearSemanticSearch();
+                    setSort(option.value);
+                  }}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </>
+      ) : (
+        <Button
+          label="Clear review search"
+          variant="outline"
+          onPress={clearSemanticSearch}
+        />
+      )}
+
+      {status === "LoadingFirstPage" && semanticReviews === null ? (
+        <View style={styles.loading}>
+          <Skeleton height={120} borderRadius={radius.lg} />
+          <Skeleton height={120} borderRadius={radius.lg} />
         </View>
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.chipRow} accessibilityRole="tablist" accessibilityLabel="Sort reviews">
-          {SORT_OPTIONS.map((option) => (
-            <Chip
-              key={option.value}
-              label={option.label}
-              selected={sort === option.value}
-              compact
-              onPress={() => setSort(option.value)}
-            />
-          ))}
-        </View>
-      </ScrollView>
-
-      {displayedReviews.length === 0 ? (
+      ) : displayedReviews.length === 0 ? (
         <View style={styles.empty} accessibilityRole="text">
-          <Text style={styles.emptyTitle}>
-            {semanticReviews ? "No matching reviews" : "No reviews yet"}
-          </Text>
+          <Text style={styles.emptyTitle}>No matching reviews</Text>
           <Text style={styles.emptyDescription}>
             {semanticReviews
               ? "Try a different search phrase."
-              : "Be the first to share your experience after your order is delivered."}
+              : "Try another rating or clear the selected topic."}
           </Text>
         </View>
       ) : (
@@ -292,6 +374,9 @@ export function ProductReviewSection({ productId }: ProductReviewSectionProps) {
           accessibilityLabel="Load more reviews"
           onPress={() => loadMore(PAGE_SIZE)}
         />
+      ) : null}
+      {status === "LoadingMore" && semanticReviews === null ? (
+        <Button label="Loading reviews…" loading variant="outline" />
       ) : null}
     </View>
   );

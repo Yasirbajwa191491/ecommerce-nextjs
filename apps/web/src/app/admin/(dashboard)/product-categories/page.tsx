@@ -95,7 +95,9 @@ export default function ProductCategoriesPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    if (activeTab === "inactive") setReorderMode(false);
+    if (activeTab !== "inactive") return;
+    const timer = window.setTimeout(() => setReorderMode(false), 0);
+    return () => window.clearTimeout(timer);
   }, [activeTab]);
 
   useEffect(() => {

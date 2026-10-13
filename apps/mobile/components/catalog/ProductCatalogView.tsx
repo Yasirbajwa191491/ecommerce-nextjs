@@ -1,7 +1,11 @@
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery, useQueries } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, View, type ListRenderItemInfo, type ViewStyle } from "react-native";
+import { ActivityIndicator, FlatList, ListRenderItem, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type ListRenderItemInfo, type ViewStyle } from "react-native";
+import { CatalogSortSheet } from "@/components/catalog/CatalogSortSheet";
+import { SearchConstraintChips } from "@/components/catalog/SearchConstraintChips";
+import { ErrorState } from "@/components/feedback/ErrorState";
 
 import { CatalogActiveFilters } from "@/components/catalog/CatalogActiveFilters";
 import {
@@ -54,6 +58,9 @@ export type ProductCatalogViewProps = {
   cacheKey?: string;
   listHeaderExtra?: React.ReactNode;
   initialFilters?: Partial<CatalogFilterState>;
+  externalSearch?: string;
+  onSearchChange?: (search: string) => void;
+  showSearchInput?: boolean;
   style?: ViewStyle;
 };
 
@@ -65,22 +72,31 @@ export function ProductCatalogView({
   cacheKey,
   listHeaderExtra,
   initialFilters,
+  externalSearch,
+  onSearchChange,
+  showSearchInput = true,
   style,
 }: ProductCatalogViewProps) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createProductCatalogViewStyles);
-  const now = useStableNow();
+  const stableNow = useStableNow();
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [refreshSnapshot, setRefreshSnapshot] = useState<{ scope: string; products: Product[] } | null>(null);
+  const now = stableNow + refreshVersion;
   const { isOffline } = useNetworkStatus();
-  const { horizontalPadding, gridGap } = useLayoutMetrics();
+  const { horizontalPadding, gridGap, gridColumns, gridItemWidth } = useLayoutMetrics();
   const { layout, setLayout } = useCatalogLayout();
 
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [sortVisible, setSortVisible] = useState(false);
   const [filters, setFilters] = useState<CatalogFilterState>({
     ...DEFAULT_CATALOG_FILTERS,
     ...initialFilters,
     categoryId: fixedCategoryId ?? initialFilters?.categoryId,
   });
-  const [searchInput, setSearchInput] = useState(filters.search);
+  const [localSearchInput, setSearchInput] = useState(filters.search);
+  const searchInput = externalSearch ?? localSearchInput;
+  const updateSearchInput = useCallback((search: string) => { setSearchInput(search); onSearchChange?.(search); }, [onSearchChange]);
   const debouncedSearch = useDebouncedValue(searchInput, 350);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -90,7 +106,7 @@ export function ProductCatalogView({
   );
 
   const isHybridSearch = debouncedSearch.trim().length > 0;
-  const hybridSearch = useCatalogHybridSearch(debouncedSearch, PAGE_SIZE);
+  const hybridSearch = useCatalogHybridSearch(debouncedSearch, PAGE_SIZE, refreshVersion, filters.currency);
   const hybridSearchReady = isHybridSearch && !hybridSearch.loading;
 
   const liveCategories = useQuery(api.productCategories.listActive);
@@ -98,7 +114,15 @@ export function ProductCatalogView({
     offlineKeys.categoriesActive,
     liveCategories
   );
-  const priceBounds = useQuery(api.products.getPublicPriceBounds, {});
+  // Currency metadata is optional during a staged backend/client rollout.
+  // useQueries exposes a failed query as Error instead of crashing the whole shop.
+  const currencyMetadataQueries = useMemo(
+    () => ({ ranges: { query: api.products.getPublicCurrencyPriceBounds, args: {} } }),
+    []
+  );
+  const metadata = useQueries(currencyMetadataQueries);
+  const priceBounds: FunctionReturnType<typeof api.products.getPublicCurrencyPriceBounds> | undefined =
+    metadata.ranges instanceof Error ? undefined : metadata.ranges;
 
   const facetArgs = useMemo(
     () =>
@@ -166,6 +190,14 @@ export function ProductCatalogView({
   ]);
 
   const products = paginatedProducts;
+  const filterScope = JSON.stringify(filtersWithSearch);
+  const refreshing = refreshSnapshot?.scope === filterScope &&
+    ((isHybridSearch && hybridSearch.loading) || (catalogQueryEnabled && status === "LoadingFirstPage"));
+  const refresh = useCallback(() => {
+    if (isOffline) return;
+    setRefreshSnapshot({ scope: filterScope, products });
+    setRefreshVersion((version) => version + 1);
+  }, [isOffline, filterScope, products]);
 
   const hasActiveConstraints = hasActiveCatalogConstraints(filtersWithSearch);
 
@@ -192,6 +224,8 @@ export function ProductCatalogView({
   const displayProducts =
     products.length > 0
       ? products
+      : refreshing && refreshSnapshot?.products.length
+        ? refreshSnapshot.products
       : isOffline && !hasActiveConstraints
         ? cachedShop.data ?? []
         : [];
@@ -263,7 +297,7 @@ export function ProductCatalogView({
         );
       }
       return (
-        <View style={styles.gridItem}>
+        <View style={[styles.gridItem, { maxWidth: gridItemWidth }]}>
           <ProductCard
             product={item}
             variant="grid"
@@ -273,7 +307,7 @@ export function ProductCatalogView({
         </View>
       );
     },
-    [layout]
+    [layout, gridItemWidth, styles.gridItem]
   );
 
   const ListHeader = (
@@ -285,12 +319,13 @@ export function ProductCatalogView({
         />
       ) : null}
       {listHeaderExtra}
-      <SearchBarInput
+      {showSearchInput ? <SearchBarInput
         value={searchInput}
-        onChangeText={setSearchInput}
+        onChangeText={updateSearchInput}
         placeholder="Search the catalog…"
         showVisualSearch
-      />
+      /> : null}
+      {isHybridSearch ? <SearchConstraintChips query={debouncedSearch} currency={filters.currency} /> : null}
 
       {showCategoryChips && !fixedCategoryId ? (
         <ScrollView
@@ -330,7 +365,7 @@ export function ProductCatalogView({
         promotionLabels={promotionLabels}
         onChange={(next) => {
           setFilters(next);
-          if (!next.search.trim()) setSearchInput("");
+          updateSearchInput(next.search);
         }}
         preserveCategoryId={Boolean(fixedCategoryId)}
       />
@@ -375,7 +410,7 @@ export function ProductCatalogView({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Sort by ${sortLabel}`}
-            onPress={() => setFiltersVisible(true)}
+            onPress={() => setSortVisible(true)}
             style={({ pressed }) => [styles.sortBtn, pressed && styles.filterPressed]}
           >
             <Text style={styles.sortBtnText} numberOfLines={1}>
@@ -417,18 +452,22 @@ export function ProductCatalogView({
     </>
   );
 
+  const SortSheet = <CatalogSortSheet visible={sortVisible} onClose={() => setSortVisible(false)} value={filters.sort} currency={filters.currency} onChooseCurrency={() => setFiltersVisible(true)} onChange={(sort) => setFilters((previous) => ({ ...previous, sort }))} />;
+
   if (isLoading && displayProducts.length === 0) {
     return (
-      <View style={[styles.skeletonGrid, { paddingHorizontal: horizontalPadding }]}>
+      <ScrollView contentContainerStyle={[styles.skeletonGrid, { paddingHorizontal: horizontalPadding }]}>
         {ListHeader}
-        <View style={styles.gridRow}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <View key={i} style={styles.gridItem}>
+        <View style={[styles.skeletonRows, { gap: gridGap }]}>
+          {Array.from({ length: gridColumns * 2 }).map((_, i) => (
+            <View key={i} style={{ width: gridItemWidth }}>
               <ProductCardSkeleton />
             </View>
           ))}
         </View>
-      </View>
+        {SortSheet}
+        <CatalogFiltersSheet visible={filtersVisible} onClose={() => setFiltersVisible(false)} filters={filtersWithSearch} onApply={(next) => { setFilters(next); updateSearchInput(next.search); }} priceBounds={priceBounds} facets={facets} categories={categories.data ?? []} showCategorySection={!fixedCategoryId} fixedCategoryId={fixedCategoryId} />
+      </ScrollView>
     );
   }
 
@@ -436,11 +475,12 @@ export function ProductCatalogView({
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
         contentContainerStyle={{ paddingBottom: spacing["2xl"] }}
       >
         <View style={{ paddingHorizontal: horizontalPadding }}>
           {ListHeader}
-          {isOffline && hasActiveConstraints ? (
+          {isHybridSearch && hybridSearch.error && !isOffline ? <ErrorState title="Search couldn't load" message="Check your connection and try again." onRetry={refresh} /> : isOffline && hasActiveConstraints ? (
             <OfflineNotice
               title="You're offline"
               message="Filtered and search results need an internet connection."
@@ -449,7 +489,7 @@ export function ProductCatalogView({
                   ...DEFAULT_CATALOG_FILTERS,
                   categoryId: fixedCategoryId,
                 });
-                setSearchInput("");
+                updateSearchInput("");
               }}
             />
           ) : isOffline ? (
@@ -462,14 +502,14 @@ export function ProductCatalogView({
             <EmptyState
               icon="search-outline"
               title="No products found"
-              description="Try different filters, search terms, or reset to see everything."
+              description={isHybridSearch ? `Nothing matches "${debouncedSearch.trim()}" and your current filters. We keep your product type, budget and currency when searching.` : "Try different filters, or reset to see everything."}
               actionLabel="Reset filters"
               onAction={() => {
                 setFilters({
                   ...DEFAULT_CATALOG_FILTERS,
                   categoryId: fixedCategoryId,
                 });
-                setSearchInput("");
+                updateSearchInput("");
               }}
               compact
             >
@@ -481,20 +521,21 @@ export function ProductCatalogView({
                     ...DEFAULT_CATALOG_FILTERS,
                     categoryId: fixedCategoryId,
                   });
-                  setSearchInput("");
+                  updateSearchInput("");
                 }}
               />
             </EmptyState>
           )}
         </View>
         <MobileFooter compactBottom />
+        {SortSheet}
         <CatalogFiltersSheet
           visible={filtersVisible}
           onClose={() => setFiltersVisible(false)}
-          filters={filters}
+          filters={filtersWithSearch}
           onApply={(next) => {
             setFilters(next);
-            if (!next.search.trim()) setSearchInput("");
+            updateSearchInput(next.search);
           }}
           priceBounds={priceBounds ?? undefined}
           facets={facets}
@@ -515,12 +556,12 @@ export function ProductCatalogView({
   return (
     <View style={[styles.root, style]}>
       <FlatList
-        key={layout}
+        key={`${layout}-${gridColumns}`}
         style={styles.list}
         data={displayProducts}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
-        numColumns={layout === "grid" ? 2 : 1}
+        numColumns={layout === "grid" ? gridColumns : 1}
         columnWrapperStyle={layout === "grid" ? [styles.gridRow, { gap: gridGap }] : undefined}
         contentContainerStyle={[
           styles.listContent,
@@ -530,16 +571,18 @@ export function ProductCatalogView({
         ListFooterComponent={ListFooter}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       />
+      {SortSheet}
 
       <CatalogFiltersSheet
         visible={filtersVisible}
         onClose={() => setFiltersVisible(false)}
-        filters={filters}
+        filters={filtersWithSearch}
         onApply={(next) => {
           setFilters(next);
-          if (!next.search.trim()) setSearchInput("");
+          updateSearchInput(next.search);
         }}
         priceBounds={priceBounds ?? undefined}
         facets={facets}
@@ -611,7 +654,7 @@ function createProductCatalogViewStyles({ colors }: ThemeStyleTokens) {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    minHeight: 36,
+    minHeight: 48,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
     backgroundColor: colors.surface,
@@ -629,7 +672,7 @@ function createProductCatalogViewStyles({ colors }: ThemeStyleTokens) {
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    minHeight: 36,
+    minHeight: 48,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.full,
@@ -664,7 +707,11 @@ function createProductCatalogViewStyles({ colors }: ThemeStyleTokens) {
     flex: 1,
   },
   skeletonGrid: {
-    flex: 1,
+    paddingBottom: spacing["2xl"],
+  },
+  skeletonRows: {
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   loadingMore: {
     paddingVertical: spacing.lg,

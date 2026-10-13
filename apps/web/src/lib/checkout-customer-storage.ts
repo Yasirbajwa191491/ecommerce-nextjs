@@ -4,6 +4,7 @@ export type SavedCheckoutCustomer = {
   phone: string;
   address: string;
   notes?: string;
+  profileToken?: string;
 };
 
 const STORAGE_KEY = "checkoutCustomer";

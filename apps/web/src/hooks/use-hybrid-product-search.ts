@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { getSearchSessionId } from "@/lib/search/recent-searches";
@@ -8,6 +8,21 @@ import {
   getCheckoutCustomerEmail,
   getVisitorId,
 } from "@/lib/recommendations/visitor-id";
+import { createSearchLifecycle } from "@ecommerce/shared";
+import type { Id } from "@convex/_generated/dataModel";
+
+export type CatalogSearchFilters = {
+  categoryId?: Id<"productCategories">;
+  minPrice?: number;
+  maxPrice?: number;
+  brands?: string[];
+  colors?: string[];
+  minRating?: number;
+  promotions?: Array<
+    "on_sale" | "discounted" | "bogo" | "free_gift" | "buy_x_get_y" | "limited_time"
+  >;
+  inStockOnly?: boolean;
+};
 
 export type HybridSearchProduct = {
   _id: string;
@@ -47,177 +62,59 @@ type HybridSearchState = {
 };
 
 export function useHybridProductSearch({
-  debouncedQuery,
-  limit = 8,
-  source = "header",
-  enabled = true,
+  debouncedQuery, limit = 8, source = "header", enabled = true,
 }: UseHybridProductSearchOptions): HybridSearchState {
   const searchHybrid = useAction(api.productSearch.searchHybrid);
-  const [state, setState] = useState<HybridSearchState>({
-    products: [],
-    totalCount: 0,
-    loading: false,
-    isSimilarFallback: false,
-    resultProductIds: [],
-  });
-  const requestIdRef = useRef(0);
+  const [lifecycle] = useState(() => createSearchLifecycle<HybridSearchProduct>());
+  const state = useSyncExternalStore(lifecycle.subscribe, lifecycle.getSnapshot, lifecycle.getServerSnapshot);
 
   useEffect(() => {
-    const trimmed = debouncedQuery.trim();
-    if (!enabled || trimmed.length < 2) {
-      setState({
-        products: [],
-        totalCount: 0,
-        loading: false,
-        isSimilarFallback: false,
-        resultProductIds: [],
-      });
-      return;
+    const query = debouncedQuery.trim();
+    if (!enabled || query.length < 2) {
+      lifecycle.clear();
+    } else {
+      void lifecycle.start((cursor) => searchHybrid({
+        query, limit, cursor, source,
+        sessionId: getSearchSessionId() || undefined,
+        visitorId: getVisitorId() || undefined,
+        customerKey: getCheckoutCustomerEmail(),
+      }));
     }
-
-    const requestId = ++requestIdRef.current;
-    setState({
-      products: [],
-      totalCount: 0,
-      loading: true,
-      isSimilarFallback: false,
-      resultProductIds: [],
-    });
-
-    void searchHybrid({
-      query: trimmed,
-      limit,
-      cursor: 0,
-      source,
-      sessionId: getSearchSessionId() || undefined,
-      visitorId: getVisitorId() || undefined,
-      customerKey: getCheckoutCustomerEmail(),
-    })
-      .then((result) => {
-        if (requestId !== requestIdRef.current) return;
-        setState({
-          products: result.products,
-          totalCount: result.totalCount,
-          loading: false,
-          isSimilarFallback: result.isSimilarFallback,
-          nextCursor: result.nextCursor,
-          resultProductIds: result.resultProductIds,
-        });
-      })
-      .catch(() => {
-        if (requestId !== requestIdRef.current) return;
-        setState({
-          products: [],
-          totalCount: 0,
-          loading: false,
-          isSimilarFallback: false,
-          resultProductIds: [],
-        });
-      });
-  }, [debouncedQuery, enabled, limit, searchHybrid, source]);
+    return () => lifecycle.invalidate();
+  }, [debouncedQuery, enabled, lifecycle, limit, searchHybrid, source]);
 
   return state;
 }
 
 export function useHybridProductSearchPaginated({
-  debouncedQuery,
-  limit = 12,
-  source = "catalog",
+  debouncedQuery, limit = 12, source = "catalog", filters,
 }: {
   debouncedQuery: string;
   limit?: number;
   source?: "header" | "catalog";
+  filters?: CatalogSearchFilters;
 }) {
   const searchHybrid = useAction(api.productSearch.searchHybrid);
-  const [products, setProducts] = useState<HybridSearchProduct[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [isSimilarFallback, setIsSimilarFallback] = useState(false);
-  const [nextCursor, setNextCursor] = useState<number | undefined>();
-  const [resultProductIds, setResultProductIds] = useState<string[]>([]);
-  const requestIdRef = useRef(0);
+  const [lifecycle] = useState(() => createSearchLifecycle<HybridSearchProduct>());
+  const state = useSyncExternalStore(lifecycle.subscribe, lifecycle.getSnapshot, lifecycle.getServerSnapshot);
+  const filterKey = JSON.stringify(filters ?? {});
+  const searchFilters = useMemo(() => JSON.parse(filterKey) as CatalogSearchFilters, [filterKey]);
 
   useEffect(() => {
-    const trimmed = debouncedQuery.trim();
-    if (trimmed.length < 1) {
-      setProducts([]);
-      setTotalCount(0);
-      setLoading(false);
-      setIsSimilarFallback(false);
-      setNextCursor(undefined);
-      setResultProductIds([]);
-      return;
-    }
-
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setProducts([]);
-    setTotalCount(0);
-    setIsSimilarFallback(false);
-    setNextCursor(undefined);
-    setResultProductIds([]);
-
-    void searchHybrid({
-      query: trimmed,
-      limit,
-      cursor: 0,
-      source,
-      sessionId: getSearchSessionId() || undefined,
-      visitorId: getVisitorId() || undefined,
-      customerKey: getCheckoutCustomerEmail(),
-    })
-      .then((result) => {
-        if (requestId !== requestIdRef.current) return;
-        setProducts(result.products);
-        setTotalCount(result.totalCount);
-        setIsSimilarFallback(result.isSimilarFallback);
-        setNextCursor(result.nextCursor);
-        setResultProductIds(result.resultProductIds);
-      })
-      .catch(() => {
-        if (requestId !== requestIdRef.current) return;
-        setProducts([]);
-        setTotalCount(0);
-        setIsSimilarFallback(false);
-        setNextCursor(undefined);
-        setResultProductIds([]);
-      })
-      .finally(() => {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
-      });
-  }, [debouncedQuery, limit, searchHybrid, source]);
-
-  const loadMore = async () => {
-    if (nextCursor === undefined || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const result = await searchHybrid({
-        query: debouncedQuery.trim(),
-        limit,
-        cursor: nextCursor,
-        source,
+    const query = debouncedQuery.trim();
+    if (!query) {
+      lifecycle.clear();
+    } else {
+      void lifecycle.start((cursor) => searchHybrid({
+        query, limit, cursor, source,
         sessionId: getSearchSessionId() || undefined,
-      visitorId: getVisitorId() || undefined,
-      customerKey: getCheckoutCustomerEmail(),
-      });
-      setProducts((prev) => [...prev, ...result.products]);
-      setNextCursor(result.nextCursor);
-    } finally {
-      setLoadingMore(false);
+        visitorId: getVisitorId() || undefined,
+        customerKey: getCheckoutCustomerEmail(),
+        ...searchFilters,
+      }));
     }
-  };
+    return () => lifecycle.invalidate();
+  }, [debouncedQuery, lifecycle, limit, searchHybrid, searchFilters, source]);
 
-  return {
-    products,
-    totalCount,
-    loading,
-    loadingMore,
-    isSimilarFallback,
-    hasMore: nextCursor !== undefined,
-    resultProductIds,
-    loadMore,
-  };
+  return { ...state, hasMore: state.nextCursor !== undefined, loadMore: lifecycle.loadMore };
 }

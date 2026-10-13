@@ -2,12 +2,18 @@ import { spawn } from "node:child_process";
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const expoCli = path.join(path.dirname(require.resolve("expo/package.json")), "bin", "cli");
 
 const mobileDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "apps", "mobile");
 const args = process.argv.slice(2);
 const tunnel = args.includes("--tunnel");
 const online = args.includes("--online");
 const passthrough = args.filter((arg) => arg !== "--tunnel" && arg !== "--online");
+const portIndex = passthrough.indexOf("--port");
+const previewPort = portIndex >= 0 ? passthrough[portIndex + 1] : (passthrough.find((arg) => arg.startsWith("--port="))?.split("=")[1] ?? "8081");
 
 function getWindowsWifiIp() {
   if (process.platform !== "win32") return null;
@@ -28,10 +34,14 @@ const wifiIp = getWindowsWifiIp();
 if (wifiIp && !tunnel) {
   env.REACT_NATIVE_PACKAGER_HOSTNAME = wifiIp;
   console.log(`Expo Go URL will use Wi-Fi IP: ${wifiIp}`);
-  console.log(`Manual entry in Expo Go: exp://${wifiIp}:8081`);
+  console.log(`Manual entry in Expo Go: exp://${wifiIp}:${previewPort}`);
 }
 
-const expoArgs = ["expo", "start"];
+const expoArgs = [expoCli, "start"];
+// Keep local preview memory reasonable on smaller laptops; callers can override.
+if (!passthrough.some((arg) => arg === "--max-workers" || arg.startsWith("--max-workers="))) {
+  expoArgs.push("--max-workers", "2");
+}
 
 if (tunnel) {
   expoArgs.push("--tunnel");
@@ -50,11 +60,17 @@ console.log(
     : "Starting Expo on LAN. Phone must be on the same Wi-Fi."
 );
 
-const child = spawn("npx", expoArgs, {
+const child = spawn(process.execPath, expoArgs, {
   cwd: mobileDir,
   env,
   stdio: "inherit",
-  shell: true,
+  shell: false,
+  windowsHide: true,
+});
+
+child.on("error", (error) => {
+  console.error(error.message);
+  process.exitCode = 1;
 });
 
 child.on("exit", (code) => {

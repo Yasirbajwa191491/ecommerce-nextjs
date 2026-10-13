@@ -57,8 +57,11 @@ export default function EditPromotionPage() {
     const next = promotionToForm(detail.promotion);
     next.buyProductName = detail.buyProduct?.name ?? "";
     next.getProductName = detail.getProduct?.name ?? "";
-    setForm(next);
-    setLoaded(true);
+    const timer = window.setTimeout(() => {
+      setForm(next);
+      setLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [detail, loaded]);
 
   const handleSave = async () => {

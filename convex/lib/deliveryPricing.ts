@@ -108,6 +108,25 @@ export function calculateDeliveryChargeForMethod(
   };
 }
 
+export function selectCheckoutDeliveryMethod(
+  available: DeliveryMethodOption[],
+  requested?: DeliveryMethodType
+): DeliveryMethodType {
+  if (available.length === 0) {
+    throw new Error(
+      "These products do not share a delivery method. Remove an item or choose products that can ship together."
+    );
+  }
+  if (requested) {
+    const match = available.find((method) => method.type === requested);
+    if (!match) {
+      throw new Error("Selected delivery method is not available for your cart");
+    }
+    return match.type;
+  }
+  return available[0]!.type;
+}
+
 export function getDefaultDeliveryMethod(
   products: Array<
     Pick<
@@ -116,8 +135,7 @@ export function getDefaultDeliveryMethod(
     >
   >
 ): DeliveryMethodType {
-  const available = resolveAvailableDeliveryMethods(products);
-  return available[0]?.type ?? "standard";
+  return selectCheckoutDeliveryMethod(resolveAvailableDeliveryMethods(products));
 }
 
 export function productHasDeliveryMethod(

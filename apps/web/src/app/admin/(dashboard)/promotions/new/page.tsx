@@ -34,15 +34,18 @@ export default function NewPromotionPage() {
 
   useEffect(() => {
     if (!prefilledProduct || prefilled) return;
-    setForm((f) => ({
-      ...f,
-      buyProductId: prefilledProduct._id,
-      buyProductName: prefilledProduct.name,
-      getProductId: f.type === "bogo" ? prefilledProduct._id : f.getProductId,
-      getProductName:
-        f.type === "bogo" ? prefilledProduct.name : f.getProductName,
-    }));
-    setPrefilled(true);
+    const product = prefilledProduct;
+    const timer = window.setTimeout(() => {
+      setForm((f) => ({
+        ...f,
+        buyProductId: product._id,
+        buyProductName: product.name,
+        getProductId: f.type === "bogo" ? product._id : f.getProductId,
+        getProductName: f.type === "bogo" ? product.name : f.getProductName,
+      }));
+      setPrefilled(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [prefilledProduct, prefilled]);
 
   const handleSave = async () => {

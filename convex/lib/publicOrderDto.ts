@@ -127,6 +127,9 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** Last-four display must never be enough to verify an order. */
+export const MIN_VERIFIED_PHONE_DIGITS = 8;
+
 export function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
 }
@@ -134,6 +137,8 @@ export function normalizePhone(phone: string): string {
 export function phonesMatch(stored: string, input: string): boolean {
   const a = normalizePhone(stored);
   const b = normalizePhone(input);
-  if (!a || !b) return false;
-  return a === b || a.endsWith(b) || b.endsWith(a);
+  if (a.length < MIN_VERIFIED_PHONE_DIGITS || b.length < MIN_VERIFIED_PHONE_DIGITS) {
+    return false;
+  }
+  return a === b;
 }

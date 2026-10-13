@@ -15,6 +15,7 @@ import {
   useContext,
 
   useEffect,
+  useLayoutEffect,
 
   useMemo,
 
@@ -25,8 +26,6 @@ import {
   type ReactNode,
 
 } from "react";
-
-
 
 import {
 
@@ -50,6 +49,9 @@ import {
 
 } from "@/lib/cart-lines";
 
+import { useToast } from "@/providers/toast-context";
+import { getCartAdditionError } from "@/lib/cart-addition";
+
 import { api } from "@/lib/convex-api";
 
 import { getIsOnline } from "@/lib/network";
@@ -58,8 +60,6 @@ import { CART_STORAGE_KEY } from "@ecommerce/shared";
 
 import type { Product } from "@/types/product";
 
-
-
 type CartState = {
 
   cart: CartLineLike[];
@@ -67,8 +67,6 @@ type CartState = {
   hydrated: boolean;
 
 };
-
-
 
 type CartAction =
 
@@ -89,8 +87,6 @@ type CartAction =
   | { type: "DECREMENT"; payload: string }
 
   | { type: "CLEAR" };
-
-
 
 function cartReducer(state: CartState, action: CartAction): CartState {
 
@@ -118,8 +114,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
       const max = Math.max(product.stock ?? 99, 1);
 
-
-
       if (index >= 0) {
 
         const existing = next[index];
@@ -131,6 +125,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           amount: Math.min(max, existing.amount + amount),
 
           max,
+          unavailableReason: undefined,
 
           currency: product.currency ?? existing.currency,
 
@@ -220,8 +215,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
 }
 
-
-
 type CartContextValue = {
 
   cart: CartLineLike[];
@@ -232,7 +225,7 @@ type CartContextValue = {
 
   hydrated: boolean;
 
-  addToCart: (product: Product, color?: string, amount?: number) => void;
+  addToCart: (product: Product, color?: string, amount?: number) => boolean;
 
   removeItem: (lineId: string) => void;
 
@@ -244,11 +237,7 @@ type CartContextValue = {
 
 };
 
-
-
 const CartContext = createContext<CartContextValue | null>(null);
-
-
 
 function CartSanitizer({
 
@@ -270,8 +259,6 @@ function CartSanitizer({
 
   const sanitizedRef = useRef<string>("");
 
-
-
   const productIds = useMemo(() => {
 
     if (!hydrated || cart.length === 0) return [] as Id<"products">[];
@@ -279,8 +266,6 @@ function CartSanitizer({
     return [...new Set(cart.map((item) => resolveCartProductId(item)))] as Id<"products">[];
 
   }, [cart, hydrated]);
-
-
 
   const products = useQuery(
 
@@ -290,13 +275,9 @@ function CartSanitizer({
 
   );
 
-
-
   useEffect(() => {
 
     if (!hydrated || products === undefined || cart.length === 0) return;
-
-
 
     const productsById = new Map(products.map((product) => [product._id, product]));
 
@@ -311,16 +292,15 @@ function CartSanitizer({
         color: item.color,
 
         amount: item.amount,
+        max: item.max,
+        currency: item.currency,
+        unavailableReason: item.unavailableReason,
 
       }))
 
     );
 
-
-
     if (signature === sanitizedRef.current) return;
-
-
 
     const currentSignature = JSON.stringify(
 
@@ -331,12 +311,13 @@ function CartSanitizer({
         color: item.color,
 
         amount: item.amount,
+        max: item.max,
+        currency: item.currency,
+        unavailableReason: item.unavailableReason,
 
       }))
 
     );
-
-
 
     if (signature !== currentSignature) {
 
@@ -352,15 +333,13 @@ function CartSanitizer({
 
   }, [cart, hydrated, onSanitize, products]);
 
-
-
   return null;
 
 }
 
-
-
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { showError } = useToast();
+  const cartRef = useRef<CartLineLike[]>([]);
 
   const [state, dispatch] = useReducer(cartReducer, {
 
@@ -370,13 +349,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   });
 
-
-
   useEffect(() => {
 
     let cancelled = false;
-
-
 
     async function hydrate() {
 
@@ -422,8 +397,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     }
 
-
-
     void hydrate();
 
     return () => {
@@ -434,8 +407,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   }, []);
 
-
-
   useEffect(() => {
 
     if (!state.hydrated) return;
@@ -444,29 +415,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   }, [state.cart, state.hydrated]);
 
-
-
   const handleSanitize = useCallback((next: CartLineLike[]) => {
 
     dispatch({ type: "HYDRATE", payload: next });
 
   }, []);
 
-
+  useLayoutEffect(() => { cartRef.current = state.cart; }, [state.cart]);
 
   const addToCart = useCallback(
 
     (product: Product, color = "", amount = 1) => {
 
-      dispatch({ type: "ADD", payload: { product, color, amount } });
+      if (!state.hydrated) { showError("Your cart is loading. Please try again in a moment."); return false; }
+      const error = getCartAdditionError(cartRef.current, product, color, amount);
+      if (error) { showError(error); return false; }
+      const payload = { product, color, amount: Math.floor(amount) };
+      // Keep consecutive adds (including reorder) subject to the same currency guard.
+      cartRef.current = cartReducer({ cart: cartRef.current, hydrated: true }, { type: "ADD", payload }).cart;
+      dispatch({ type: "ADD", payload });
+      return true;
 
     },
 
-    []
+    [showError, state.hydrated]
 
   );
-
-
 
   const removeItem = useCallback((lineId: string) => {
 
@@ -474,15 +448,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   }, []);
 
-
-
   const incrementItem = useCallback((lineId: string) => {
 
     dispatch({ type: "INCREMENT", payload: lineId });
 
   }, []);
-
-
 
   const decrementItem = useCallback((lineId: string) => {
 
@@ -490,15 +460,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   }, []);
 
-
-
   const clearCart = useCallback(() => {
-
+    cartRef.current = [];
     dispatch({ type: "CLEAR" });
 
   }, []);
-
-
 
   const lines = useMemo(
 
@@ -508,8 +474,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   );
 
-
-
   const itemCount = useMemo(
 
     () => state.cart.reduce((sum, item) => sum + item.amount, 0),
@@ -517,8 +481,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [state.cart]
 
   );
-
-
 
   const value = useMemo(
 
@@ -568,8 +530,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   );
 
-
-
   return (
 
     <CartContext.Provider value={value}>
@@ -592,8 +552,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 }
 
-
-
 export function useCart() {
 
   const context = useContext(CartContext);
@@ -607,5 +565,4 @@ export function useCart() {
   return context;
 
 }
-
 

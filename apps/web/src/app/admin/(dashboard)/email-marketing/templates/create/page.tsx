@@ -50,7 +50,8 @@ export default function CreateEmailTemplatePage() {
 
   useEffect(() => {
     if (!aiProducts || aiProducts.length === 0) return;
-    setSelectedProducts(aiProducts);
+    const timer = window.setTimeout(() => setSelectedProducts(aiProducts), 0);
+    return () => window.clearTimeout(timer);
   }, [aiProducts]);
 
   const handleSave = async () => {

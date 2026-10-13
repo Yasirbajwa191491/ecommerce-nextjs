@@ -1,17 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-
 import { useLocalSearchParams, router } from "expo-router";
-
 import { useQuery } from "convex/react";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-
-
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { CachedDataNotice } from "@/components/feedback/CachedDataNotice";
 import { OfflineNotice } from "@/components/feedback/OfflineNotice";
@@ -24,6 +16,7 @@ import { ProductReviewSection } from "@/components/reviews/ProductReviewSection"
 import { ProductWarrantySection } from "@/components/products/ProductWarrantySection";
 import { PromotionOfferBanner } from "@/components/products/PromotionOfferBanner";
 import { RatingStars } from "@/components/products/RatingStars";
+import { Accordion } from "@/components/ui/Accordion";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { IconButton } from "@/components/ui/IconButton";
@@ -43,7 +36,7 @@ import { useStableNow } from "@/hooks/useStableNow";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
-import { canRenderColorSwatch, resolveSwatchBackground } from "@/lib/color-swatch";
+import { canRenderColorSwatch, resolveSwatchBackground, formatColorLabel } from "@/lib/color-swatch";
 import { resolveProductColorOrDefault } from "@/lib/cart-lines";
 import { api } from "@/lib/convex-api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -57,130 +50,74 @@ import { useTheme } from "@/providers/theme-context";
 import { useNetworkStatus } from "@/providers/NetworkProvider";
 import { orderImagesForDisplay } from "@ecommerce/shared";
 import type { Id } from "@convex/_generated/dataModel";
-
-
-
 export default function ProductDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <ProductDetailContent key={id} />;
+}
 
+function ProductDetailContent() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createProductDetailStyles);
-
   const { id } = useLocalSearchParams<{ id: string }>();
-
   const insets = useSafeAreaInsets();
   const rootStyle = useScreenRootStyle();
-
   const now = useStableNow();
-
   const { addToCart, itemCount } = useCart();
-
   const { showError, showSuccess } = useToast();
-
   const { isWishlisted, toggle } = useWishlist();
   const { isOffline } = useNetworkStatus();
   const { record } = useRecentlyViewed();
-
-
-
   const productId = id as Id<"products"> | undefined;
-
   const liveProduct = useQuery(
-
     api.products.getById,
-
     productId ? { id: productId } : "skip"
-
   );
-
   const cachedProduct = useOfflineCache(
     productId ? `${offlineKeys.productStore}:${productId}` : offlineKeys.productStore,
     liveProduct ?? undefined
   );
-
   const product =
     liveProduct === null && !isOffline
       ? null
       : liveProduct ??
         cachedProduct.data ??
         (productId ? getCachedProduct(productId) : undefined);
-
   const fromCache = liveProduct === undefined && Boolean(product);
-
   useEffect(() => {
     if (product && product._id) {
       void record(product);
     }
   }, [product, record]);
-
   const promotions = useQuery(
     api.productPromotions.getActiveForProduct,
     productId ? { productId, now } : "skip"
   );
-
   const { products: similarProducts, loading: similarLoading, isEmpty: noSimilar } =
     useSimilarProducts(productId);
-
   const [selectedColor, setSelectedColor] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-
-
-
   const colorsList = product?.colors;
-
   const galleryImages = useMemo(
     () => (product ? orderImagesForDisplay(product) : []),
     [product]
   );
-
-  const activeColor = useMemo(
-
-    () =>
-
-      product
-
-        ? resolveProductColorOrDefault(
-            colorsList ?? [],
-            selectedColor || colorsList?.[0] || "#000000"
-          )
-
-        : "",
-
-    [product, colorsList, selectedColor]
-
-  );
-
-
-
+  const activeColor = selectedColor || resolveProductColorOrDefault(colorsList ?? [], "");
   const discountPercent = product?.discountPercent ?? 0;
-
   const hasDiscount = discountPercent > 0;
-
   const displayPrice = product
-
     ? hasDiscount
-
       ? product.price * (1 - discountPercent / 100)
-
       : product.price
-
     : 0;
-
-
-
   const inStock = (product?.stock ?? 0) > 0;
-
   const wishlisted = product ? isWishlisted(product._id) : false;
-
-
-
   const handleAddToCart = useCallback(() => {
     if (!product || !inStock) {
       showError("Out of stock");
       return;
     }
-
-    addToCart(product, activeColor, quantity);
+    if (!addToCart(product, activeColor, quantity)) return;
     const promo = promotions?.[0];
     if (promo) {
       const { subtitle } = getPromotionDisplay(promo);
@@ -198,7 +135,6 @@ export default function ProductDetailScreen() {
     showError,
     showSuccess,
   ]);
-
   const handleViewCart = useCallback(() => {
     if (itemCount > 0) {
       router.push("/checkout");
@@ -206,40 +142,11 @@ export default function ProductDetailScreen() {
     }
     router.push("/(tabs)/cart");
   }, [itemCount]);
-
-  const handleImageIndexChange = useCallback(
-    (index: number) => {
-      setActiveImageIndex(index);
-      const colorAtIndex = colorsList?.[index];
-      if (colorAtIndex) {
-        setSelectedColor(colorAtIndex);
-      }
-    },
-    [colorsList]
-  );
-
-  const handleColorSelect = useCallback(
-    (color: string) => {
-      setSelectedColor(color);
-      const colorIndex =
-        colorsList?.findIndex(
-          (entry) =>
-            resolveProductColorOrDefault(colorsList, entry) ===
-            resolveProductColorOrDefault(colorsList, color)
-        ) ?? -1;
-      if (colorIndex >= 0 && colorIndex < galleryImages.length) {
-        setActiveImageIndex(colorIndex);
-      }
-    },
-    [colorsList, galleryImages.length]
-  );
-
-
-
+  // The catalog has no image-to-variant metadata. Gallery navigation must never select a color.
+  const handleImageIndexChange = useCallback((index: number) => setActiveImageIndex(index), []);
+  const handleColorSelect = useCallback((color: string) => setSelectedColor(color), []);
   const handleShare = useCallback(async () => {
-
     if (!product) return;
-
     const productUrl = `https://ecommerce-nextjs-yasir.vercel.app/product/${product._id}`;
     const description = product.description?.trim().slice(0, 120) ?? "";
     const shareMessage = [
@@ -249,63 +156,31 @@ export default function ProductDetailScreen() {
     ]
       .filter(Boolean)
       .join("\n\n");
-
     try {
-
       await Share.share({
-
         message: shareMessage,
-
         url: productUrl,
-
         title: product.name,
-
       });
-
     } catch {
-
       // User cancelled share
-
     }
-
   }, [product]);
-
-
-
   const handleAskAi = useCallback(() => {
-
     router.push({
-
       pathname: "/(tabs)/ai",
-
       params: product ? { productId: product._id, productName: product.name } : {},
-
     });
-
   }, [product]);
-
-
-
   if (!id) {
-
     return (
-
       <EmptyState
-
         icon="alert-circle-outline"
-
         title="Product not found"
-
         description="This product link is invalid."
-
       />
-
     );
-
   }
-
-
-
   if (product === undefined) {
     if (isOffline) {
       return (
@@ -346,73 +221,37 @@ export default function ProductDetailScreen() {
       </ScreenContainer>
     );
   }
-
-
-
   if (product === null) {
-
     return (
-
       <EmptyState
-
         icon="cube-outline"
-
         title="Product unavailable"
-
         description="This product may have been removed or is no longer available."
-
       />
-
     );
-
   }
-
-
-
   return (
-
     <ScreenContainer>
-
       <View style={[styles.container, rootStyle]}>
-
         <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
-
           <IconButton
-
             icon="chevron-back"
-
             accessibilityLabel="Go back"
-
             variant="surface"
-
             onPress={() => router.back()}
-
           />
-
           <View style={styles.topActions}>
-
             <IconButton
-
               icon="share-outline"
-
               accessibilityLabel="Share product"
-
               variant="surface"
-
               onPress={() => void handleShare()}
-
             />
-
             <IconButton
-
               icon={wishlisted ? "heart" : "heart-outline"}
-
               accessibilityLabel={wishlisted ? "Remove product from wishlist" : "Add product to wishlist"}
-
               variant="surface"
-
               color={wishlisted ? colors.destructive : colors.foreground}
-
               onPress={() => {
                 void (async () => {
                   try {
@@ -424,29 +263,21 @@ export default function ProductDetailScreen() {
                   }
                 })();
               }}
-
             />
-
           </View>
-
         </View>
-
-
-
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces
         >
-
           <ProductImageGallery
             product={product}
             images={galleryImages}
             activeIndex={activeImageIndex}
             onActiveIndexChange={handleImageIndexChange}
           />
-
           <View style={styles.content}>
             {fromCache ? (
               <CachedDataNotice />
@@ -471,28 +302,12 @@ export default function ProductDetailScreen() {
                 variant={inStock ? "success" : "destructive"}
               />
             </View>
-
             {product.company ? (
               <Text style={styles.brand}>{product.company.toUpperCase()}</Text>
             ) : null}
-
             <Text style={styles.name}>{product.name}</Text>
-
             <RatingStars rating={product.stars} reviewCount={product.reviews} />
 
-            {product.description ? (
-              <Text style={styles.shortDescription} numberOfLines={3}>
-                {product.description}
-              </Text>
-            ) : null}
-
-            {promotions && promotions.length > 0 && !fromCache ? (
-              <View style={styles.promoSection}>
-                {promotions.map((promo) => (
-                  <PromotionOfferBanner key={promo._id} promotion={promo} now={now} />
-                ))}
-              </View>
-            ) : null}
 
             <View style={styles.priceCard}>
               <View style={styles.priceHeader}>
@@ -519,17 +334,15 @@ export default function ProductDetailScreen() {
                 </Text>
               </View>
             </View>
-
             <View style={styles.stockRow}>
               <View style={[styles.stockDot, inStock ? styles.inStockDot : styles.outStockDot]} />
               <Text style={[styles.stockText, !inStock && styles.outOfStock]}>
                 {inStock ? `${product.stock} available` : "Out of stock"}
               </Text>
             </View>
-
             {colorsList && colorsList.length > 0 ? (
               <View style={styles.optionSection}>
-                <Text style={styles.optionLabel}>Color</Text>
+                <Text style={styles.optionLabel}>Color: {formatColorLabel(activeColor)}</Text>
                 <View style={styles.colorRow}>
                   {colorsList.map((color) => {
                     const resolved = resolveProductColorOrDefault(colorsList, color);
@@ -539,7 +352,9 @@ export default function ProductDetailScreen() {
                     return (
                       <Pressable
                         key={color}
-                        accessibilityLabel={`Select color ${color}`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={`Select ${formatColorLabel(color)}`}
                         onPress={() => handleColorSelect(color)}
                         style={[
                           renderSwatch ? styles.colorSwatch : styles.namedColorSwatch,
@@ -556,108 +371,56 @@ export default function ProductDetailScreen() {
                     );
                   })}
                 </View>
+                <Text style={styles.shortDescription}>Photos show the product range. Your selected color is listed above and in your cart.</Text>
               </View>
             ) : null}
-
+            {promotions && promotions.length > 0 && !fromCache ? (
+              <View style={styles.promoSection}>
+                {promotions.map((promo) => (
+                  <PromotionOfferBanner key={promo._id} promotion={promo} now={now} />
+                ))}
+              </View>
+            ) : null}
             <ProductWarrantySection product={product} />
             <ProductDeliverySection product={product} />
-
-
-
             {product.description ? (
-
-              <View style={styles.section}>
-
-                <Text style={styles.sectionTitle}>Details</Text>
-
-                <Text style={styles.description}>{product.description}</Text>
-
-              </View>
-
+              <Accordion items={[{ id: "details", question: "Product details", answer: product.description }]} />
             ) : null}
-
-
-
             {product.highlights && product.highlights.length > 0 ? (
-
               <View style={styles.section}>
-
                 <Text style={styles.sectionTitle}>Highlights</Text>
-
                 {product.highlights.map((item, i) => (
-
                   <View key={i} style={styles.highlightRow}>
-
                     <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-
                     <Text style={styles.highlightText}>{item}</Text>
-
                   </View>
-
                 ))}
-
               </View>
-
             ) : null}
-
-
-
             <View style={styles.section}>
-
               <ProductReviewSection productId={product._id as Id<"products">} />
-
             </View>
-
-
-
             <PressableScale onPress={handleAskAi} style={styles.aiEntry}>
-
               <View style={styles.aiIconWrap}>
-
                 <Ionicons name="sparkles" size={18} color={colors.primary} />
-
               </View>
-
               <View style={styles.aiTextWrap}>
-
                 <Text style={styles.aiEntryTitle}>Ask AI about this product</Text>
-
                 <Text style={styles.aiEntrySubtitle}>Get personalized advice</Text>
-
               </View>
-
               <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-
             </PressableScale>
-
           </View>
-
-
-
           {!noSimilar ? (
-
             <HomeSection title="Because you viewed this" subtitle="Similar products">
-
               <ProductCarousel
-
                 products={similarProducts}
-
                 isLoading={similarLoading}
-
               />
-
             </HomeSection>
-
           ) : null}
 
-
-
-          <View style={{ height: 130 + insets.bottom }} />
-
         </ScrollView>
-
-
-
         <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
           <QuantityStepper
             value={quantity}
@@ -666,7 +429,6 @@ export default function ProductDetailScreen() {
             onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
             onIncrement={() => setQuantity((q) => Math.min(product.stock, q + 1))}
           />
-
           <View style={styles.footerActions}>
             <Button
               label="Add to Cart"
@@ -691,20 +453,12 @@ export default function ProductDetailScreen() {
             </View>
           </View>
         </View>
-
       </View>
-
     </ScreenContainer>
-
   );
-
 }
-
-
-
 function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
   return StyleSheet.create({
-
   container: {
     flex: 1,
   },
@@ -713,6 +467,8 @@ function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTo
   },
   scrollContent: {
     width: "100%",
+    maxWidth: 760,
+    alignSelf: "center",
     paddingBottom: spacing.md,
   },
   topBar: {
@@ -725,15 +481,10 @@ function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTo
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
   },
-
   topActions: {
-
     flexDirection: "row",
-
     gap: spacing.sm,
-
   },
-
   content: {
     padding: spacing.lg,
     gap: spacing.md,
@@ -791,88 +542,50 @@ function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTo
   freeShippingText: {
     color: colors.success,
   },
-
   stockRow: {
-
     flexDirection: "row",
-
     alignItems: "center",
-
     gap: spacing.sm,
-
   },
-
   stockDot: {
-
     width: 8,
-
     height: 8,
-
     borderRadius: radius.full,
-
   },
-
   inStockDot: {
-
     backgroundColor: colors.success,
-
   },
-
   outStockDot: {
-
     backgroundColor: colors.destructive,
-
   },
-
   stockText: {
-
     ...textStyles.bodySmall,
-
     color: colors.success,
-
     fontWeight: "600",
-
   },
-
   outOfStock: {
-
     color: colors.destructive,
-
   },
-
   promoSection: {
     gap: spacing.sm,
   },
-
   optionSection: {
-
     gap: spacing.sm,
-
     paddingTop: spacing.xs,
-
   },
-
   optionLabel: {
-
     ...textStyles.sectionTitle,
-
     fontSize: 15,
-
     color: colors.foreground,
-
   },
-
   colorRow: {
-
     flexDirection: "row",
-
+    flexWrap: "wrap",
     gap: spacing.md,
-
   },
-
   colorSwatch: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: radius.full,
     borderWidth: 2,
     borderColor: colors.border,
@@ -882,8 +595,8 @@ function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTo
     borderWidth: 3,
   },
   namedColorSwatch: {
-    minWidth: 44,
-    height: 44,
+    minWidth: 48,
+    height: 48,
     borderRadius: radius.md,
     borderWidth: 2,
     borderColor: colors.border,
@@ -898,122 +611,65 @@ function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTo
     color: colors.foreground,
     maxWidth: 80,
   },
-
   section: {
-
     gap: spacing.sm,
-
     paddingTop: spacing.md,
-
     borderTopWidth: StyleSheet.hairlineWidth,
-
     borderTopColor: colors.borderLight,
-
   },
-
   sectionTitle: {
-
     ...textStyles.sectionTitle,
-
     fontSize: 17,
-
   },
-
   description: {
-
     ...textStyles.body,
-
     fontSize: 14,
-
     lineHeight: 22,
-
   },
-
   highlightRow: {
-
     flexDirection: "row",
-
     alignItems: "flex-start",
-
     gap: spacing.sm,
-
   },
-
   highlightText: {
-
     flex: 1,
-
     ...textStyles.body,
-
     fontSize: 14,
-
     lineHeight: 20,
-
   },
-
   aiEntry: {
-
     flexDirection: "row",
-
     alignItems: "center",
-
     gap: spacing.md,
-
     backgroundColor: colors.surface,
-
     padding: spacing.lg,
-
     borderRadius: radius.lg,
-
     marginTop: spacing.sm,
-
     ...shadows.card,
-
   },
-
   aiIconWrap: {
-
     width: 40,
-
     height: 40,
-
     borderRadius: radius.md,
-
     backgroundColor: colors.primaryMuted,
-
     alignItems: "center",
-
     justifyContent: "center",
-
   },
-
   aiTextWrap: {
-
     flex: 1,
-
     gap: 2,
-
   },
-
   aiEntryTitle: {
-
     ...textStyles.cardTitle,
-
     fontSize: 15,
-
   },
-
   aiEntrySubtitle: {
-
     ...textStyles.caption,
-
   },
-
   footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: "100%",
+    maxWidth: 760,
+    alignSelf: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
@@ -1050,11 +706,8 @@ function createProductDetailStyles({ colors, textStyles, shadows }: ThemeStyleTo
     fontWeight: "700",
     color: colors.ctaForeground,
   },
-
   footerCta: {
     flex: 1,
   },
   });
 }
-
-

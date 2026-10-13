@@ -24,7 +24,7 @@ type CatalogHybridSearchState = {
   resultProductIds: Id<"products">[];
 };
 
-export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
+export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refreshVersion = 0, currency?: string) {
   const searchHybrid = useAction(api.productSearch.searchHybrid);
   const [state, setState] = useState<CatalogHybridSearchState>({
     products: [],
@@ -38,9 +38,11 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
   const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
     const trimmed = debouncedQuery.trim();
     if (trimmed.length < 1) {
       queueMicrotask(() => {
+        if (requestId !== requestIdRef.current) return;
         setState({
           products: [],
           totalCount: 0,
@@ -54,11 +56,10 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
       return;
     }
 
-    const requestId = ++requestIdRef.current;
-
     void (async () => {
       if (!getIsOnline()) {
         const cachedMatches = searchCachedProducts(trimmed).map(productToSearchResult);
+        if (requestId !== requestIdRef.current) return;
         setState({
           products: cachedMatches,
           totalCount: cachedMatches.length,
@@ -86,6 +87,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
         const sessionId = await getSearchSessionId();
         const result = await searchHybrid({
           query: trimmed,
+          currency,
           limit,
           cursor: 0,
           source: "catalog",
@@ -93,7 +95,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
           visitorId: getCachedVisitorId() || undefined,
         });
         if (requestId !== requestIdRef.current) return;
-        void cacheProducts(result.products.map(searchResultToProduct));
+        void cacheProducts(result.products.map(searchResultToProduct)).catch(() => undefined);
         setState({
           products: result.products,
           totalCount: result.totalCount,
@@ -117,7 +119,8 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
         });
       }
     })();
-  }, [debouncedQuery, limit, searchHybrid]);
+    return () => { requestIdRef.current += 1; };
+  }, [debouncedQuery, limit, searchHybrid, refreshVersion, currency]);
 
   const loadMore = useCallback(async () => {
     const trimmed = debouncedQuery.trim();
@@ -136,6 +139,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
       const sessionId = await getSearchSessionId();
       const result = await searchHybrid({
         query: trimmed,
+        currency,
         limit,
         cursor: state.nextCursor,
         source: "catalog",
@@ -153,7 +157,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20) {
       if (requestId !== requestIdRef.current) return;
       setState((prev) => ({ ...prev, loadingMore: false }));
     }
-  }, [debouncedQuery, limit, searchHybrid, state.loadingMore, state.nextCursor]);
+  }, [debouncedQuery, limit, searchHybrid, state.loadingMore, state.nextCursor, currency]);
 
   const trimmed = debouncedQuery.trim();
   const isActive = trimmed.length >= 1;

@@ -12,6 +12,7 @@ import {
   MAX_RECENTLY_VIEWED,
 } from "./constants";
 import { customerKeyFromEmail } from "./identity";
+import { adjustRecommendationCounts } from "../maintainedAggregates";
 import type { customerBehaviorEventTypeValidator } from "./validators";
 import type { Infer } from "convex/values";
 
@@ -103,6 +104,7 @@ export async function getOrCreateProfile(
 
   const created = await ctx.db.get(id);
   if (!created) throw new Error("Failed to create recommendation profile");
+  await adjustRecommendationCounts(ctx, { profileCount: 1 });
   return created;
 }
 

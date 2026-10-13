@@ -38,18 +38,23 @@ function TrackOrderDetailContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled && !settled) setIsLoading(true);
+    }, 0);
 
     getPublicOrderDetail({ orderNumber, customerEmail, accessToken })
       .then((response) => {
         if (!cancelled) setResult(response);
       })
       .finally(() => {
+        settled = true;
         if (!cancelled) setIsLoading(false);
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [getPublicOrderDetail, orderNumber, customerEmail, accessToken, refreshToken]);
 

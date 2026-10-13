@@ -5,6 +5,7 @@ import type { ReviewCallStatus } from "../lib/reviewCallValidators";
 import { enrichToolResult } from "./lib/uiActions";
 import { parseVoiceDeliveryMethod } from "./voiceDeliveryHelpers";
 import { ConvexError } from "convex/values";
+import { browserSessionTokenFromWebhook } from "./browserSession";
 
 type ToolCall = {
   id: string;
@@ -22,10 +23,13 @@ type VapiCallPayload = {
   type?: string;
   assistantId?: string;
   metadata?: Record<string, unknown>;
+  assistantOverrides?: { metadata?: Record<string, unknown> };
+  assistant?: { metadata?: Record<string, unknown> };
 };
 
 type VapiWebhookBody = {
   message?: {
+    assistant?: { metadata?: Record<string, unknown> };
     type?: string;
     role?: string;
     transcript?: string;
@@ -711,6 +715,7 @@ export const vapiWebhook = httpAction(async (ctx, request) => {
     const upsert = await ctx.runMutation(internal.vapi.logging.upsertConversation, {
       vapiCallId: callId,
       channel,
+      browserSessionToken: browserSessionTokenFromWebhook(message.call, message.assistant),
       summary: message.summary,
       ended: message.type === "end-of-call-report",
     });

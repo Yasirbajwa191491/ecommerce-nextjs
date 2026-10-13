@@ -24,7 +24,10 @@ export function isAlreadyRefundedStripeError(error: unknown): boolean {
   );
 }
 
-/** Transient Stripe refund errors should fail the scheduled action so Convex retries it. */
+/**
+ * Transient Stripe errors should stay queued. Convex does not retry scheduled
+ * actions; `stripeRefundAttempts` plus the refund cron perform the retry.
+ */
 export function shouldRetryAutomaticStripeRefund(error: unknown): boolean {
   return !isAlreadyRefundedStripeError(error);
 }

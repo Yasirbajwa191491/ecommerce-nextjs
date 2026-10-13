@@ -174,10 +174,13 @@ export default function AdminSettingsPage() {
     const emailFrom = settings.find((setting) => setting.key === "email_from");
     if (!emailFrom?.value.trim()) return;
 
-    setEnvSyncAttempted(true);
-    void syncResendFromToConvex(emailFrom.value).catch((error) => {
-      console.warn("[settings] Email From env sync skipped:", error);
-    });
+    const timer = window.setTimeout(() => {
+      setEnvSyncAttempted(true);
+      void syncResendFromToConvex(emailFrom.value).catch((error) => {
+        console.warn("[settings] Email From env sync skipped:", error);
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [defaultsReady, envSyncAttempted, settings]);
 
   const openCreate = () => {

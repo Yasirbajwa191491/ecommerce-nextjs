@@ -32,10 +32,10 @@ import { refreshNetworkSnapshot } from "@/lib/network";
 import { useTheme } from "@/providers/theme-context";
 
 const PROMPTS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { label: "Find me running shoes under $100", icon: "walk-outline" },
-  { label: "Show me something for a home office", icon: "desktop-outline" },
-  { label: "Find a gift for my friend", icon: "gift-outline" },
-  { label: "What's on sale right now?", icon: "pricetag-outline" },
+  { label: "Find wireless headphones", icon: "headset-outline" },
+  { label: "Show me a desk for a home office", icon: "desktop-outline" },
+  { label: "Find Apple phones", icon: "phone-portrait-outline" },
+  { label: "Show me highly rated laptops", icon: "laptop-outline" },
 ];
 
 export default function AiScreen() {
@@ -62,12 +62,8 @@ export default function AiScreen() {
     const trimmed = value.trim();
     if (!trimmed) return;
     if (!isOnline) return;
-    const contextBits = [
-      productName ? `product:${productName}` : null,
-      isOrderContext && orderNumber ? `order:${orderNumber}` : null,
-    ].filter(Boolean);
-    const q = contextBits.length > 0 ? `${trimmed} ${contextBits.join(" ")}` : trimmed;
-    router.push({ pathname: "/search", params: { q } });
+    // Order numbers and support context are not merchandise search terms.
+    router.push({ pathname: "/search", params: { q: trimmed } });
   };
 
   return (

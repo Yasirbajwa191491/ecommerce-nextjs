@@ -1,5 +1,5 @@
 import { internalMutation, internalQuery } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -15,7 +15,6 @@ import {
 } from "../lib/publicOrderDto";
 import { buildTrackingBucketKey, checkAndIncrementRateLimit } from "../lib/rateLimit";
 import { incrementDailyAnalytics } from "./analyticsHelpers";
-import { aggregateTopProducts } from "../lib/dashboardAggregates";
 import {
   calculateAverageRating,
   calculateRatingDistribution,
@@ -55,8 +54,17 @@ const TRACKING_NOT_FOUND =
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-async function loadActiveProducts(ctx: QueryCtx) {
-  const products = await ctx.db.query("products").collect();
+// Voice tools intentionally rank a bounded candidate set rather than claiming catalog totals.
+const VOICE_PRODUCT_CANDIDATE_LIMIT = 200;
+const VOICE_CATEGORY_CANDIDATE_LIMIT = 100;
+
+async function loadActiveProducts(ctx: QueryCtx, options?: { query?: string; categoryId?: Id<"productCategories"> }) {
+  const term = options?.query?.trim();
+  const products = term
+    ? await ctx.db.query("products").withSearchIndex("search_name", (q) => q.search("name", term)).take(VOICE_PRODUCT_CANDIDATE_LIMIT)
+    : options?.categoryId
+      ? await ctx.db.query("products").withIndex("by_category_id", (q) => q.eq("categoryId", options.categoryId!)).take(VOICE_PRODUCT_CANDIDATE_LIMIT)
+      : await ctx.db.query("products").withIndex("by_reviews").order("desc").take(VOICE_PRODUCT_CANDIDATE_LIMIT);
   return products.filter(isProductActive);
 }
 
@@ -66,7 +74,7 @@ async function findCategoryByName(ctx: QueryCtx, categoryName?: string) {
   const categories = await ctx.db
     .query("productCategories")
     .withIndex("by_active_sort", (q) => q.eq("active", true))
-    .collect();
+    .take(VOICE_CATEGORY_CANDIDATE_LIMIT);
   return (
     categories.find(
       (c) =>
@@ -134,11 +142,11 @@ async function lookupOrderForTracking(ctx: QueryCtx | MutationCtx, orderNumber: 
   const items = await ctx.db
     .query("orderItems")
     .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-    .collect();
+    .take(200);
   const promotions = await ctx.db
     .query("orderPromotions")
     .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-    .collect();
+    .take(200);
   const statusHistory = await getOrderStatusLogsForPublic(ctx, order._id);
   return { order, items, promotions, statusHistory };
 }
@@ -146,10 +154,10 @@ async function lookupOrderForTracking(ctx: QueryCtx | MutationCtx, orderNumber: 
 async function lookupOrdersByEmail(ctx: QueryCtx | MutationCtx, email: string) {
   const orders = await ctx.db
     .query("orders")
-    .withIndex("by_customer_email", (q) => q.eq("customerEmail", email))
-    .collect();
-  orders.sort((a, b) => b.createdAt - a.createdAt);
-  return orders.slice(0, 50);
+    .withIndex("by_customer_email_created", (q) => q.eq("customerEmail", email))
+    .order("desc")
+    .take(50);
+  return orders;
 }
 
 async function lookupOrderByNumber(ctx: QueryCtx | MutationCtx, orderNumber: string) {
@@ -253,7 +261,7 @@ export const searchProducts = internalQuery({
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 8, 1), 12);
     const category = await findCategoryByName(ctx, args.categoryName);
-    const products = filterProducts(await loadActiveProducts(ctx), {
+    const products = filterProducts(await loadActiveProducts(ctx, { query: args.query, categoryId: category?._id }), {
       query: args.query,
       categoryId: category?._id,
       maxPrice: args.maxPrice,
@@ -393,15 +401,14 @@ export const getBestSellers = internalQuery({
   }),
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 8, 1), 12);
-    const orders = await ctx.db.query("orders").collect();
-    const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
-    const topSales = await aggregateTopProducts(ctx, paidOrders, limit);
+    const topSales = await ctx.db.query("productSalesTotals").withIndex("by_units_sold")
+      .order("desc").take(limit * 4);
 
     let products = await loadActiveProducts(ctx);
 
     if (topSales.length > 0) {
       const ranked = await Promise.all(
-        topSales.map(async (entry) => ctx.db.get(entry.productId))
+        topSales.filter((entry) => entry.unitsSold > 0).map(async (entry) => ctx.db.get(entry.productId))
       );
       products = ranked.filter(
         (product): product is NonNullable<typeof product> =>
@@ -649,7 +656,7 @@ export const getCategories = internalQuery({
     const categories = await ctx.db
       .query("productCategories")
       .withIndex("by_active_sort", (q) => q.eq("active", true))
-      .collect();
+    .take(VOICE_CATEGORY_CANDIDATE_LIMIT);
     return categories
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((c) => ({
@@ -816,18 +823,8 @@ export const getStoreInfo = internalQuery({
       getSettingValue(ctx, "business_hours"),
     ]);
 
-    const products = await loadActiveProducts(ctx);
-    const categories = await ctx.db
-      .query("productCategories")
-      .withIndex("by_active_sort", (q) => q.eq("active", true))
-      .collect();
-    const orders = await ctx.db.query("orders").collect();
-    const processed = orders.filter(
-      (o) => o.status !== "expired" && o.status !== "failed"
-    );
-    const customerEmails = new Set(
-      processed.map((o) => o.customerEmail.toLowerCase())
-    );
+    const stats: { productsAvailable: number; ordersProcessed: number; happyCustomers: number; productCategories: number } =
+      await ctx.runQuery(api.aboutStats.getPublicStats, {});
 
     return {
       address,
@@ -839,12 +836,7 @@ export const getStoreInfo = internalQuery({
         channel,
         description,
       })),
-      stats: {
-        productsAvailable: products.length,
-        ordersProcessed: processed.length,
-        happyCustomers: customerEmails.size,
-        productCategories: categories.length,
-      },
+      stats,
     };
   },
 });

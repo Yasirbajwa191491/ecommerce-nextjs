@@ -20,6 +20,7 @@ import {
 import { resolveCustomerKey } from "./lib/recommendations/identity";
 import { PROFILE_REFRESH_DEBOUNCE_MS } from "./lib/recommendations/constants";
 import { scheduleRecommendationRefresh } from "./lib/recommendations/scheduleRecommendationJob";
+import { adjustRecommendationCounts } from "./lib/maintainedAggregates";
 
 export const recordBehaviorEvent = mutation({
   args: {
@@ -305,6 +306,11 @@ export const recordRecommendationInteraction = mutation({
         updatedAt: now,
       });
     }
+    await adjustRecommendationCounts(ctx, {
+      totalImpressions: args.eventType === "impression" ? 1 : 0,
+      totalClicks: args.eventType === "click" ? 1 : 0,
+      totalConversions: args.eventType === "conversion" ? 1 : 0,
+    });
 
     return null;
   },
@@ -342,6 +348,7 @@ export const saveRecommendationCache = internalMutation({
       await ctx.db.patch(existing._id, payload);
     } else {
       await ctx.db.insert("recommendationCache", payload);
+      await adjustRecommendationCounts(ctx, { cacheCount: 1 });
     }
     return null;
   },
@@ -502,11 +509,16 @@ export const markJobProcessing = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (!job) return null;
     await ctx.db.patch(args.jobId, {
       status: "processing",
       processedBy: args.processedBy,
       updatedAt: Date.now(),
     });
+    if (job.status === "pending") {
+      await adjustRecommendationCounts(ctx, { pendingJobs: -1 });
+    }
     return null;
   },
 });
@@ -518,12 +530,17 @@ export const markJobComplete = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (!job) return null;
     await ctx.db.patch(args.jobId, {
       status: "complete",
       processedBy: args.processedBy,
       completedAt: Date.now(),
       updatedAt: Date.now(),
     });
+    if (job.status === "pending") {
+      await adjustRecommendationCounts(ctx, { pendingJobs: -1 });
+    }
     return null;
   },
 });
@@ -546,6 +563,9 @@ export const markJobFailed = internalMutation({
       nextRetryAt: failed ? undefined : Date.now() + 60_000,
       updatedAt: Date.now(),
     });
+    if (job.status === "pending" && (failed || job.status === "pending")) {
+      await adjustRecommendationCounts(ctx, { pendingJobs: -1 });
+    }
     return null;
   },
 });

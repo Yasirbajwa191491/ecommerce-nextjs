@@ -116,7 +116,7 @@ export function IconSegmentedControl<T extends string>({
         },
         iconSegment: {
           width: touchTarget,
-          height: 36,
+          height: touchTarget,
           alignItems: "center",
           justifyContent: "center",
           borderRadius: radius.sm,

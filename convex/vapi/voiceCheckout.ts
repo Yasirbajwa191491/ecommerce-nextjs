@@ -1,5 +1,10 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import {
+  conversationForBrowser,
+  normalizeBrowserSessionToken,
+  ownsVoiceConversation,
+} from "./browserSession";
 
 const pendingCheckoutValidator = v.union(
   v.object({
@@ -72,29 +77,24 @@ function parseCheckoutToolOutput(toolOutput: string | undefined) {
   }
 }
 
-/** Fallback when the Vapi client misses tool-calls-result — reads stored checkout. */
+/** Checkout owned by the browser capability verified by the Vapi webhook. */
 export const getPendingCheckoutByCallId = query({
-  args: { vapiCallId: v.string() },
+  args: {
+    vapiCallId: v.string(),
+    browserSessionToken: v.string(),
+  },
   returns: pendingCheckoutValidator,
   handler: async (ctx, args) => {
-    const callId = args.vapiCallId.trim();
-    if (!callId) return null;
-
-    const conversation = await ctx.db
-      .query("vapiConversations")
-      .withIndex("by_vapi_call_id", (q) => q.eq("vapiCallId", callId))
-      .unique();
+    if (!args.vapiCallId.trim()) return null;
+    const conversation = await conversationForBrowser(ctx, args.vapiCallId, args.browserSessionToken);
+    if (!conversation) return null;
 
     const fromConversation = checkoutFromConversation(conversation);
     if (fromConversation) return fromConversation;
 
-    if (!conversation) return null;
-
     const logs = await ctx.db
       .query("vapiConversationLogs")
-      .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversation._id)
-      )
+      .withIndex("by_conversation", (q) => q.eq("conversationId", conversation._id))
       .order("desc")
       .take(30);
 
@@ -107,23 +107,25 @@ export const getPendingCheckoutByCallId = query({
     return null;
   },
 });
-
-/** Latest voice checkout in this browser session (no call id required). */
+/** Latest checkout bound to this browser. Never scans other shoppers. */
 export const getLatestPendingCheckout = query({
-  args: {},
+  args: { browserSessionToken: v.string() },
   returns: pendingCheckoutValidator,
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    const token = normalizeBrowserSessionToken(args.browserSessionToken);
+    if (!token) return null;
     const conversations = await ctx.db
       .query("vapiConversations")
-      .withIndex("by_started_at")
+      .withIndex("by_browser_session", (q) => q.eq("browserSessionToken", token))
       .order("desc")
-      .take(12);
+      .take(5);
 
     for (const conversation of conversations) {
+      if (!ownsVoiceConversation(conversation, token)) continue;
       const checkout = checkoutFromConversation(conversation);
       if (checkout) return checkout;
     }
-
     return null;
   },
 });
+

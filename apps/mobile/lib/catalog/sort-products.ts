@@ -1,5 +1,6 @@
 import type { CatalogSort } from "@/lib/catalog/filters";
 import type { Product } from "@/types/product";
+import { resolveProductCurrency } from "@/lib/product-display";
 
 function finalPrice(product: Product): number {
   const discount = product.discountPercent ?? 0;
@@ -10,10 +11,10 @@ export function sortProductsClient(products: Product[], sort: CatalogSort): Prod
   const sorted = [...products];
   switch (sort) {
     case "lowest":
-      sorted.sort((a, b) => finalPrice(a) - finalPrice(b));
+      sorted.sort((a, b) => resolveProductCurrency(a.currency).localeCompare(resolveProductCurrency(b.currency)) || finalPrice(a) - finalPrice(b));
       break;
     case "highest":
-      sorted.sort((a, b) => finalPrice(b) - finalPrice(a));
+      sorted.sort((a, b) => resolveProductCurrency(a.currency).localeCompare(resolveProductCurrency(b.currency)) || finalPrice(b) - finalPrice(a));
       break;
     case "a-z":
       sorted.sort((a, b) => a.name.localeCompare(b.name));

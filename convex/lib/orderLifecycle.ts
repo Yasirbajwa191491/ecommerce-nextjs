@@ -3,6 +3,8 @@ import { internal } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { releaseHeldStockIfNeeded } from "./inventory";
+import { adjustProductSales } from "./productSales";
+import { adjustOrderStatusCount } from "./maintainedAggregates";
 import { insertOrderStatusLog, insertPaymentLog } from "./orderLogs";
 import { buildNotificationEventKey } from "./orderNotificationLogic";
 import { planOrderCancellation } from "./orderCancellation";
@@ -39,6 +41,13 @@ export async function scheduleStripeRefundWithCancellationFee(
     feePercent,
   });
   await ctx.scheduler.runAfter(0, internal.stripe.refundUnfulfillablePayment, {
+    orderId: args.order._id,
+    paymentIntentId: args.order.stripePaymentIntentId,
+    reason: args.reason,
+    amountCents: breakdown.refundAmountCents,
+    feePercent: breakdown.feePercent,
+  });
+  await ctx.runMutation(internal.stripeRefundAttempts.enqueueStripeRefundAttempt, {
     orderId: args.order._id,
     paymentIntentId: args.order.stripePaymentIntentId,
     reason: args.reason,
@@ -84,6 +93,9 @@ export async function executeOrderCancellation(
       paymentStatus: nextPaymentStatus,
       updatedAt: now,
     });
+    if (previousStatus !== "cancelled") {
+      await adjustOrderStatusCount(ctx, previousStatus, "cancelled");
+    }
   }
 
   if (plan.cancelOpenPayment && previousPaymentStatus !== "failed") {
@@ -198,6 +210,12 @@ export async function applyOrderRefunded(
       args.stripePaymentIntentId ?? args.order.stripePaymentIntentId,
     updatedAt: now,
   });
+  if (args.order.salesCountedAt != null) {
+    await adjustProductSales(ctx, args.order._id, -1);
+  }
+  if (previousStatus !== "refunded") {
+    await adjustOrderStatusCount(ctx, previousStatus, "refunded");
+  }
 
   if (previousPaymentStatus !== "refunded") {
     await insertPaymentLog(ctx, {

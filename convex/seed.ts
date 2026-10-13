@@ -1,6 +1,7 @@
 import { internal } from "./_generated/api";
+import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, mutation } from "./_generated/server";
+import { internalAction, internalMutation } from "./_generated/server";
 import { authComponent, createAuth } from "./betterAuth/auth";
 import { slugify } from "./lib/products";
 import { getDefaultDeliveryOptions } from "./lib/productValidators";
@@ -168,43 +169,54 @@ export const seedCategoriesAndProducts = internalMutation({
 export const seedSuperAdmin = internalAction({
   args: {},
   handler: async (ctx) => {
-    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
-    const email = "yasir.sohail@savari.io";
-    const password = "12345678";
+    const email = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
+    const password = process.env.ADMIN_SEED_PASSWORD;
+    if (!email || !password || password.length < 8) {
+      throw new Error(
+        "Set ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD (at least 8 characters) before seeding an administrator."
+      );
+    }
 
-    try {
+    const existing: unknown = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "email", operator: "eq", value: email }],
+    });
+    if (!existing) {
+      const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
       await auth.api.signUpEmail({
         body: { email, password, name: "Super Admin" },
         headers,
       });
-    } catch {
-      // User may already exist
     }
 
-    const users = await auth.api.listUsers({
-      query: {
-        searchValue: email,
-        searchField: "email",
-        searchOperator: "contains",
-        limit: 1,
-      },
-      headers,
+    const user: unknown = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "email", operator: "eq", value: email }],
     });
-    const user = users.users?.[0];
-    if (user) {
-      await auth.api.adminUpdateUser({
-        body: {
-          userId: user.id,
-          data: { role: "superAdmin", emailVerified: true },
-        },
-        headers,
-      });
+    const userId =
+      typeof user === "object" && user !== null && "_id" in user && typeof user._id === "string"
+        ? user._id
+        : null;
+    if (!userId) {
+      throw new Error("Administrator account was not created");
     }
+
+    await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+      input: {
+        model: "user",
+        where: [{ field: "_id", value: userId }],
+        update: {
+          role: "superAdmin",
+          emailVerified: true,
+          updatedAt: Date.now(),
+        },
+      },
+    });
   },
 });
 
 /** Idempotent deploy seed: system settings + super admin only. */
-export const seedAdminAndSettings = mutation({
+export const seedAdminAndSettings = internalMutation({
   args: {},
   handler: async (ctx): Promise<{ settings: { inserted: number }; adminScheduled: true }> => {
     const settings = await ctx.runMutation(internal.settings.seedDefaults, {});
@@ -213,7 +225,7 @@ export const seedAdminAndSettings = mutation({
   },
 });
 
-export const seedAll = mutation({
+export const seedAll = internalMutation({
   args: {},
   handler: async (ctx) => {
     await ctx.runMutation(internal.migrations.migrateLegacyProducts, {});

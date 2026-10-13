@@ -6,7 +6,8 @@ import {
   cartItemsToCheckoutLinesForProducts,
   cartLineKey,
   resolveCartProductId,
-  resolveProductColorOrDefault,
+  normalizeCartColor,
+  sanitizeCartItemsWithProducts,
   type CartLineLike,
   type PricedCartItem,
 } from "@/lib/cart-lines";
@@ -69,19 +70,24 @@ export function useCartPricing(
     }));
   }, [cart, productsById]);
 
+  const unavailableReason = useMemo(() => {
+    const checked = productsById ? sanitizeCartItemsWithProducts(cart, productsById) : cart;
+    return checked.find((item) => item.unavailableReason)?.unavailableReason;
+  }, [cart, productsById]);
+
   const result = useQuery(
     api.orders.validateCartForCheckout,
-    isOnline && !mixedCurrency && lines && lines.length > 0
+    isOnline && !mixedCurrency && !unavailableReason && lines && lines.length > 0
       ? { lines, now, deliveryMethod }
       : "skip"
   );
 
   const priced = result?.status === "ok" ? result : undefined;
-  const pricingError = mixedCurrency
+  const pricingError = unavailableReason ?? (mixedCurrency
     ? MIXED_CURRENCY_CART_MESSAGE
     : result?.status === "error"
       ? result.message
-      : undefined;
+      : undefined);
 
   const pricedItemByKey = useMemo(() => {
     const map = new Map<string, PricedCartItem>();
@@ -95,8 +101,7 @@ export function useCartPricing(
 
   const getPricedItem = (item: CartLineLike) => {
     const productId = resolveCartProductId(item);
-    const product = productsById?.get(productId as Id<"products">);
-    const color = resolveProductColorOrDefault(product?.colors ?? [], item.color);
+    const color = normalizeCartColor(item.color);
     return pricedItemByKey.get(cartLineKey(productId, color));
   };
 
@@ -114,6 +119,7 @@ export function useCartPricing(
       isOnline &&
       cart.length > 0 &&
       !mixedCurrency &&
+      !unavailableReason &&
       (products === undefined || result === undefined),
     isOffline: !isOnline && cart.length > 0,
     getPricedItem,

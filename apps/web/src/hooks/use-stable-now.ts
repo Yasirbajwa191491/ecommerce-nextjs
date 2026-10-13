@@ -25,7 +25,8 @@ export function useStableNow(): number {
   }, []);
 
   useEffect(() => {
-    syncNow();
+    const timer = window.setTimeout(syncNow, 0);
+    return () => window.clearTimeout(timer);
   }, [pathname, syncNow]);
 
   useEffect(() => {

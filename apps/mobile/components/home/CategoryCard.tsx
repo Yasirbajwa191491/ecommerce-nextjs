@@ -65,7 +65,7 @@ export function CategoryCard({
         )}
       </View>
       <View style={styles.footer}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={styles.name} numberOfLines={2}>
           {name}
         </Text>
         <Text style={styles.count}>
@@ -100,12 +100,12 @@ function createStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
     },
     footer: {
       paddingHorizontal: spacing.sm + 2,
-      paddingVertical: spacing.sm,
+      paddingVertical: spacing.md,
       gap: 1,
     },
     name: {
       ...textStyles.cardTitle,
-      fontSize: typography.sm,
+      fontSize: typography.base,
       color: colors.foreground,
     },
     count: {

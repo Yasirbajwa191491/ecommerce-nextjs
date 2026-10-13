@@ -3,7 +3,6 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
-import { paginateArray } from "./lib/pagination";
 import {
   getMergedTransactionLogs,
   insertOrderStatusLog,
@@ -30,6 +29,13 @@ import {
   scheduleStripeRefundWithCancellationFee,
 } from "./lib/orderLifecycle";
 import { commitStockIfRequired } from "./lib/inventory";
+import { paginateMatching } from "./lib/indexedScan";
+import { adjustOrderStatusCount, readAggregate } from "./lib/maintainedAggregates";
+import { adjustProductSales } from "./lib/productSales";
+import {
+  orderMatchesAdminPhoneFilter,
+  orderMatchesAdminTextSearch,
+} from "./lib/adminOrderSearch";
 import {
   assertAdminRefundModeAllowed,
   resolveAdminRefundPlan,
@@ -92,9 +98,8 @@ function filterOrders(
   }
 
   if (args.customerPhone?.trim()) {
-    const term = args.customerPhone.replace(/\D/g, "");
     filtered = filtered.filter((order) =>
-      order.customerPhone.replace(/\D/g, "").includes(term)
+      orderMatchesAdminPhoneFilter(order.customerPhone, args.customerPhone ?? "")
     );
   }
 
@@ -119,50 +124,42 @@ function filterOrders(
   }
 
   if (args.search?.trim()) {
-    const term = args.search.trim().toLowerCase();
-    filtered = filtered.filter(
-      (order) =>
-        order.orderNumber.toLowerCase().includes(term) ||
-        order.customerName.toLowerCase().includes(term) ||
-        order.customerEmail.toLowerCase().includes(term) ||
-        order.customerPhone.replace(/\D/g, "").includes(term.replace(/\D/g, ""))
+    filtered = filtered.filter((order) =>
+      orderMatchesAdminTextSearch(order, args.search ?? "")
     );
   }
 
   return filtered;
 }
 
-function sortOrders(
-  orders: Doc<"orders">[],
-  sort: "newest" | "oldest" | "highest_amount" | "lowest_amount"
-) {
-  const sorted = [...orders];
-  switch (sort) {
-    case "oldest":
-      sorted.sort((a, b) => a.createdAt - b.createdAt);
-      break;
-    case "highest_amount":
-      sorted.sort((a, b) => b.total - a.total);
-      break;
-    case "lowest_amount":
-      sorted.sort((a, b) => a.total - b.total);
-      break;
-    case "newest":
-    default:
-      sorted.sort((a, b) => b.createdAt - a.createdAt);
-      break;
-  }
-  return sorted;
-}
-
 export const countByStatus = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const orders = await ctx.db.query("orders").collect();
-    const counts: Record<string, number> = { all: orders.length };
-    for (const status of ADMIN_ORDER_TAB_STATUSES) {
-      counts[status] = orders.filter((order) => order.status === status).length;
+    const stored = await readAggregate<Record<string, number>>(ctx, "orders", {});
+    if (Object.keys(stored).length > 0) {
+      const result: Record<string, number> = { all: stored.all ?? 0 };
+      for (const status of ADMIN_ORDER_TAB_STATUSES) {
+        result[status] = stored[status] ?? 0;
+      }
+      return result;
+    }
+    const counts: Record<string, number> = { all: 0 };
+    for (const status of ADMIN_ORDER_TAB_STATUSES) counts[status] = 0;
+    let cursor: string | null = null;
+    let scanned = 0;
+    while (scanned < 800) {
+      const batch = await ctx.db.query("orders").order("desc").paginate({
+        numItems: 50,
+        cursor,
+      });
+      for (const order of batch.page) {
+        scanned += 1;
+        counts.all = (counts.all ?? 0) + 1;
+        counts[order.status] = (counts[order.status] ?? 0) + 1;
+      }
+      if (batch.isDone) break;
+      cursor = batch.continueCursor;
     }
     return counts;
   },
@@ -185,14 +182,26 @@ export const listPaginated = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const orders = await ctx.db.query("orders").collect();
-    const filtered = filterOrders(orders, args);
-    const sorted = sortOrders(filtered, args.sort ?? "newest");
-    const { page, isDone, continueCursor } = paginateArray(
-      sorted,
-      args.paginationOpts
+    const sort = args.sort ?? "newest";
+    const direction = sort === "oldest" || sort === "lowest_amount" ? "asc" : "desc";
+    const result = await paginateMatching(
+      (opts) => {
+        if (sort === "highest_amount" || sort === "lowest_amount") {
+          return ctx.db.query("orders").withIndex("by_total").order(direction).paginate(opts);
+        }
+        if (args.status) {
+          return ctx.db
+            .query("orders")
+            .withIndex("by_status_created", (q) => q.eq("status", args.status!))
+            .order(direction)
+            .paginate(opts);
+        }
+        return ctx.db.query("orders").withIndex("by_created_at").order(direction).paginate(opts);
+      },
+      args.paginationOpts,
+      (order) => filterOrders([order], args).length === 1
     );
-    return { page, isDone, continueCursor };
+    return result;
   },
 });
 
@@ -304,6 +313,7 @@ export const updateOrderStatus = mutation({
       status: action.nextStatus,
       updatedAt: now,
     });
+    await adjustOrderStatusCount(ctx, previousStatus, action.nextStatus);
 
     await insertOrderStatusLog(ctx, {
       orderId: args.orderId,
@@ -508,6 +518,11 @@ export const updateCodPaymentStatus = mutation({
     }
 
     await ctx.db.patch(args.orderId, patch);
+
+    if (args.paymentStatus === "paid" && previousPaymentStatus !== "paid") {
+      await adjustProductSales(ctx, args.orderId, 1);
+      await ctx.db.patch(args.orderId, { salesCountedAt: now });
+    }
 
     await insertPaymentLog(ctx, {
       orderId: args.orderId,

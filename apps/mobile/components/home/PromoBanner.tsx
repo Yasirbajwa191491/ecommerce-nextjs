@@ -6,11 +6,12 @@ import { router } from "expo-router";
 
 import { Pressable, Text, View, StyleSheet } from "react-native";
 
-
-
 import { radius, spacing, typography } from "@/constants/theme";
 
-import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import {
+  useThemedStyles,
+  type ThemeStyleTokens,
+} from "@/hooks/useThemedStyles";
 
 import { useTheme } from "@/providers/theme-context";
 
@@ -20,10 +21,7 @@ import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 
 import { api } from "@/lib/convex-api";
 
-
-
 export function PromoBanner() {
-
   const { colors } = useTheme();
 
   const styles = useThemedStyles(createPromoBannerStyles);
@@ -32,188 +30,135 @@ export function PromoBanner() {
 
   const { horizontalPadding } = useLayoutMetrics();
 
-  const promotions = useQuery(api.productPromotions.listActiveForStorefront, { now });
-
-
+  const promotions = useQuery(api.productPromotions.listActiveForStorefront, {
+    now,
+  });
 
   if (!promotions || promotions.length === 0) return null;
-
-
 
   const promo = promotions[0];
 
   const headline = promo.bannerText || promo.name;
 
   const description =
-
     promo.promotionMessage || promo.description || promo.typeLabel;
 
-
-
   return (
-
     <Pressable
-
       accessibilityRole="button"
-
       accessibilityLabel={`Promotion: ${headline}`}
-
       onPress={() => {
         router.push(`/product/${promo.buyProductId}`);
       }}
-
       style={({ pressed }) => [
-
         styles.container,
 
         { marginHorizontal: horizontalPadding },
 
         pressed && styles.pressed,
-
       ]}
-
     >
-
       <View style={styles.iconWrap}>
-
         <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
-
       </View>
 
       <View style={styles.copy}>
-
-        <Text style={styles.title} numberOfLines={1}>
-
+        <Text style={styles.title} numberOfLines={2}>
           {headline}
-
         </Text>
 
         <Text style={styles.subtitle} numberOfLines={2}>
-
           {description}
-
         </Text>
-
       </View>
 
-      <View style={styles.cta}>
-
-        <Text style={styles.ctaText}>Shop deals</Text>
-
-      </View>
-
+      <Ionicons name="chevron-forward" size={20} color={colors.primary} />
     </Pressable>
-
   );
-
 }
-
-
 
 function createPromoBannerStyles({ colors, textStyles }: ThemeStyleTokens) {
-
   return StyleSheet.create({
+    container: {
+      flexDirection: "row" as const,
 
-  container: {
+      alignItems: "center" as const,
 
-    flexDirection: "row" as const,
+      gap: spacing.md,
 
-    alignItems: "center" as const,
+      padding: spacing.lg,
 
-    gap: spacing.md,
+      backgroundColor: colors.primaryMuted,
 
-    padding: spacing.md,
+      borderRadius: radius.lg,
 
-    backgroundColor: colors.surface,
+      borderWidth: 1,
 
-    borderRadius: radius.lg,
+      borderColor: colors.primarySubtle,
+    },
 
-    borderWidth: 1,
+    pressed: {
+      opacity: 0.94,
+    },
 
-    borderColor: colors.borderLight,
+    iconWrap: {
+      width: 40,
 
-  },
+      height: 40,
 
-  pressed: {
+      borderRadius: radius.sm,
 
-    opacity: 0.94,
+      backgroundColor: colors.primaryMuted,
 
-  },
+      alignItems: "center" as const,
 
-  iconWrap: {
+      justifyContent: "center" as const,
+    },
 
-    width: 36,
+    copy: {
+      flex: 1,
 
-    height: 36,
+      gap: 2,
+    },
 
-    borderRadius: radius.sm,
+    title: {
+      ...textStyles.cardTitle,
 
-    backgroundColor: colors.primaryMuted,
+      fontSize: typography.base,
 
-    alignItems: "center" as const,
+      fontWeight: "600" as const,
 
-    justifyContent: "center" as const,
+      color: colors.foreground,
+    },
 
-  },
+    subtitle: {
+      ...textStyles.bodySmall,
 
-  copy: {
+      lineHeight: 20,
 
-    flex: 1,
+      color: colors.textSecondary,
+    },
 
-    gap: 2,
+    cta: {
+      paddingHorizontal: spacing.md,
 
-  },
+      paddingVertical: spacing.sm,
 
-  title: {
+      borderRadius: radius.full,
 
-    ...textStyles.cardTitle,
+      borderWidth: 1,
 
-    fontSize: typography.base,
+      borderColor: colors.border,
 
-    fontWeight: "600" as const,
+      backgroundColor: colors.background,
+    },
 
-    color: colors.foreground,
+    ctaText: {
+      fontSize: typography.xs,
 
-  },
+      fontWeight: "600" as const,
 
-  subtitle: {
-
-    ...textStyles.caption,
-
-    lineHeight: 16,
-
-    color: colors.textSecondary,
-
-  },
-
-  cta: {
-
-    paddingHorizontal: spacing.md,
-
-    paddingVertical: spacing.sm,
-
-    borderRadius: radius.full,
-
-    borderWidth: 1,
-
-    borderColor: colors.border,
-
-    backgroundColor: colors.background,
-
-  },
-
-  ctaText: {
-
-    fontSize: typography.xs,
-
-    fontWeight: "600" as const,
-
-    color: colors.foreground,
-
-  },
-
-});
-
+      color: colors.foreground,
+    },
+  });
 }
-
-

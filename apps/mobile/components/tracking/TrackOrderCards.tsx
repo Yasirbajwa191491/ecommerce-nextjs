@@ -14,7 +14,7 @@ import {
   typography,
   type ColorPalette,
 } from "@/constants/theme";
-import { formatOrderDateTime, type OrderStatus } from "@/lib/order-display";
+import { formatOrderDateTime, getPaymentMethodLabel, getPaymentStatusLabel, type OrderStatus } from "@/lib/order-display";
 import { useTheme } from "@/providers/theme-context";
 
 function useTrackCardStyles() {
@@ -152,7 +152,7 @@ export function TrackOrderResultCard({
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Payment</Text>
           <Text style={styles.summaryValue}>
-            {paymentMethod} · {paymentStatus}
+            {getPaymentMethodLabel(paymentMethod)} · {getPaymentStatusLabel(paymentStatus, paymentMethod, status)}
           </Text>
         </View>
         <View style={styles.summaryItem}>

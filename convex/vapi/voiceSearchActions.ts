@@ -26,11 +26,6 @@ import {
   type BundleCandidate,
 } from "./bundleBuilder";
 
-type SearchCandidatesResult = {
-  candidates: SearchProductCandidate[];
-  maxReviews: number;
-};
-
 const vapiProductSummaryValidator = v.object({
   id: v.string(),
   name: v.string(),
@@ -62,11 +57,7 @@ async function runHybridSearch(
   const effectiveMaxPrice = maxPrice ?? parsed.maxPrice;
   const queryTerms = tokenizeQuery(parsed.embeddingQuery);
   const queryNormalized = trimmed.toLowerCase();
-
-  const { candidates: catalog, maxReviews } = (await ctx.runQuery(
-    internal.productSearchQueries.getSearchCandidates,
-    {}
-  )) as SearchCandidatesResult;
+  const includeIds: Id<"products">[] = [];
 
   const semanticScores = new Map<string, number>();
   let embedding: number[] | null = null;
@@ -96,12 +87,18 @@ async function runHybridSearch(
         limit: 50,
       });
       for (const hit of vectorResults) {
-        semanticScores.set(hit._id as string, hit._score);
+        semanticScores.set(hit._id, hit._score);
+        includeIds.push(hit._id);
       }
     } catch {
       // keyword-only fallback
     }
   }
+
+  const { candidates: catalog, maxReviews } = await ctx.runQuery(
+    internal.productSearchQueries.getSearchCandidates,
+    { searchTerms: queryTerms, includeIds }
+  );
 
   const candidateMap = new Map<
     string,

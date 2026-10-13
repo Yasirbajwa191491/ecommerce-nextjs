@@ -113,7 +113,7 @@ export const getOrderProductsForReview = internalQuery({
       const items = await ctx.db
         .query("orderItems")
         .withIndex("by_order_id", (q) => q.eq("orderId", meta.orderId))
-        .collect();
+        .take(200);
 
       const products = await Promise.all(
         items.map(async (item) => {
@@ -198,7 +198,7 @@ export const createProductReview = internalMutation({
       const items = await ctx.db
         .query("orderItems")
         .withIndex("by_order_id", (q) => q.eq("orderId", orderId))
-        .collect();
+        .take(200);
 
       if (!items.some((item) => item.productId === productId)) {
         return {

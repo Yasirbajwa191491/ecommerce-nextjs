@@ -29,11 +29,12 @@ export function OrderPromotionsSummary({ promotions, currency }: OrderPromotions
           <Text style={styles.name}>{promo.promotionName}</Text>
           <Text style={styles.meta}>
             {" "}
-            · {promo.freeQuantity} free · saved{" "}
+            · {promo.freeQuantity} free · gift value{" "}
             {formatCurrencyAmount(promo.savingsAmount, currency)}
           </Text>
         </Text>
       ))}
+      <Text style={styles.meta}>Gifts are included at no charge. Product discounts are shown in your totals.</Text>
     </View>
   );
 }

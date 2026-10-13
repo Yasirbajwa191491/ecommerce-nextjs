@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Bot, MessageSquare, Mic, User, Wrench } from "lucide-react";
 
@@ -91,6 +92,11 @@ function ConversationTimeline({
   conversationId: Id<"vapiConversations">;
 }) {
   const detail = useQuery(api.vapi.admin.getConversationDetail, { conversationId });
+  const { results: logs, status: logStatus, loadMore } = usePaginatedQuery(
+    api.vapi.admin.getConversationLogsPaginated,
+    { conversationId },
+    { initialNumItems: 30 }
+  );
 
   if (detail === undefined) {
     return (
@@ -108,7 +114,7 @@ function ConversationTimeline({
     );
   }
 
-  const { conversation, logs } = detail;
+  const { conversation } = detail;
 
   return (
     <div className="flex h-full flex-col">
@@ -162,7 +168,9 @@ function ConversationTimeline({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {logs.length === 0 ? (
+        {logStatus === "LoadingFirstPage" ? (
+          <Skeleton className="h-16 w-full" />
+        ) : logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No transcript logged yet. Messages appear when the session ends or when
             live transcript webhooks are enabled.
@@ -220,6 +228,11 @@ function ConversationTimeline({
             ))}
           </div>
         )}
+        {logStatus === "CanLoadMore" || logStatus === "LoadingMore" ? (
+          <Button className="mt-4" variant="outline" disabled={logStatus === "LoadingMore"} onClick={() => loadMore(30)}>
+            {logStatus === "LoadingMore" ? "Loading messages…" : "Load more messages"}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

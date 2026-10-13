@@ -7,7 +7,7 @@ import type { Id } from "@convex/_generated/dataModel";
 
 type EnrichedProduct = FunctionReturnType<typeof api.products.getById>;
 
-let productByIdCache = new Map<string, EnrichedProduct>();
+const productByIdCache = new Map<string, EnrichedProduct>();
 
 export function useProducts() {
   const products = useQuery(api.products.list);
