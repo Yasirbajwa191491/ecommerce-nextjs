@@ -15,6 +15,7 @@ import {
   useContext,
 
   useEffect,
+  useLayoutEffect,
 
   useMemo,
 
@@ -41,7 +42,6 @@ import {
   resolveCartProductId,
 
   resolveProductColorOrDefault,
-  resolveProductColor,
 
   sanitizeCartItemsWithProducts,
 
@@ -50,7 +50,7 @@ import {
 } from "@/lib/cart-lines";
 
 import { useToast } from "@/providers/toast-context";
-import { resolveProductCurrency } from "@/lib/product-display";
+import { getCartAdditionError } from "@/lib/cart-addition";
 
 import { api } from "@/lib/convex-api";
 
@@ -125,6 +125,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           amount: Math.min(max, existing.amount + amount),
 
           max,
+          unavailableReason: undefined,
 
           currency: product.currency ?? existing.currency,
 
@@ -420,26 +421,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   }, []);
 
-  cartRef.current = state.cart;
+  useLayoutEffect(() => { cartRef.current = state.cart; }, [state.cart]);
 
   const addToCart = useCallback(
 
     (product: Product, color = "", amount = 1) => {
 
-      if ((product.stock ?? 0) <= 0 || !Number.isFinite(amount) || amount < 1) {
-        showError("This item is not available to add.");
-        return false;
-      }
-      if (color && product.colors?.length && !resolveProductColor(product.colors, color)) {
-        showError("This color is no longer available. Please choose another.");
-        return false;
-      }
-      const currency = resolveProductCurrency(product.currency);
-      const existingCurrency = cartRef.current[0] && resolveProductCurrency(cartRef.current[0].currency);
-      if (existingCurrency && existingCurrency !== currency) {
-        showError("Your cart uses " + existingCurrency + ". Complete or empty it before adding " + currency + " items.");
-        return false;
-      }
+      if (!state.hydrated) { showError("Your cart is loading. Please try again in a moment."); return false; }
+      const error = getCartAdditionError(cartRef.current, product, color, amount);
+      if (error) { showError(error); return false; }
       const payload = { product, color, amount: Math.floor(amount) };
       // Keep consecutive adds (including reorder) subject to the same currency guard.
       cartRef.current = cartReducer({ cart: cartRef.current, hydrated: true }, { type: "ADD", payload }).cart;
@@ -448,7 +438,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     },
 
-    [showError]
+    [showError, state.hydrated]
 
   );
 
@@ -471,7 +461,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearCart = useCallback(() => {
-
+    cartRef.current = [];
     dispatch({ type: "CLEAR" });
 
   }, []);

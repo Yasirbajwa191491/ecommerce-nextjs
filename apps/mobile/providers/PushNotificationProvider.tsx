@@ -1,6 +1,7 @@
 import { useConvex, useMutation } from "convex/react";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
+import { Platform } from "react-native";
 import {
   createContext,
   ReactNode,
@@ -20,10 +21,6 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
 import { getVisitorId } from "@/lib/visitor-id";
 import { useTheme } from "@/providers/theme-context";
-import {
-  loadCheckoutCustomer,
-  loadPushEnrollmentProof,
-} from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import {
   addMonitoringBreadcrumb,
@@ -68,16 +65,12 @@ type NotificationAccess = NotificationNavigationCredentials & {
 };
 
 async function resolveNotificationAccess(): Promise<NotificationAccess | null> {
-  const [customer, enrollmentProof, visitorId] = await Promise.all([
-    loadCheckoutCustomer(),
-    loadPushEnrollmentProof(),
+  const [enrollment, visitorId] = await Promise.all([
+    resolvePushEnrollmentCredentials(),
     getVisitorId(),
   ]);
 
-  const customerEmail =
-    customer?.email?.trim().toLowerCase() ??
-    enrollmentProof?.email?.trim().toLowerCase() ??
-    null;
+  const customerEmail = enrollment?.customerEmail;
 
   if (!customerEmail || !visitorId) {
     return null;
@@ -86,7 +79,7 @@ async function resolveNotificationAccess(): Promise<NotificationAccess | null> {
   return {
     customerEmail,
     visitorId,
-    accessToken: enrollmentProof?.accessToken ?? undefined,
+    accessToken: enrollment?.accessToken,
   };
 }
 
@@ -242,10 +235,12 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   );
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
     configureForegroundNotificationBehavior();
   }, []);
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const handleReceived = (notification: Notifications.Notification) => {
       const parsed = parsePushNotificationData(
         notification.request.content.data as Record<string, unknown>
@@ -265,6 +260,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   }, []);
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const handleResponse = (response: Notifications.NotificationResponse) => {
       const identifier =
         response.notification.request.identifier ??
@@ -293,6 +289,8 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
       if (response) {
         handleResponse(response);
       }
+    }).catch((error: unknown) => {
+      logAppError(error, { segment: "notification-last-response", expected: true });
     });
 
     return () => subscription.remove();

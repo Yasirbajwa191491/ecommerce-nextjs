@@ -14,6 +14,7 @@ import {
 import { computeKeywordScore } from "./lib/search/hybridRank";
 
 const EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_TRENDING_EVENTS = 2000;
 
 const searchProductCandidateValidator = v.object({
   _id: v.id("products"),
@@ -368,7 +369,8 @@ export const getTrendingSearches = query({
     const events = await ctx.db
       .query("searchQueryEvents")
       .withIndex("by_searched_at", (q) => q.gte("searchedAt", since))
-      .collect();
+      .order("desc")
+      .take(MAX_TRENDING_EVENTS);
 
     const counts = new Map<string, { display: string; count: number }>();
     for (const event of events) {
@@ -416,7 +418,8 @@ export const getSearchSuggestions = query({
     const events = await ctx.db
       .query("searchQueryEvents")
       .withIndex("by_searched_at", (q) => q.gte("searchedAt", since))
-      .collect();
+      .order("desc")
+      .take(MAX_TRENDING_EVENTS);
 
     const counts = new Map<string, { display: string; count: number }>();
     for (const event of events) {

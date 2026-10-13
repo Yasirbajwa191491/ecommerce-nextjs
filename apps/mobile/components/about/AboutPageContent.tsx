@@ -367,7 +367,7 @@ function createAboutStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
   ctaTitle: {
     ...textStyles.sectionTitle,
     fontSize: typography["2xl"],
-    color: colors.primaryForeground,
+    color: "#FFFFFF",
     textAlign: "center",
   },
   ctaBody: {
@@ -397,7 +397,7 @@ function createAboutStyles({ colors, textStyles, shadows }: ThemeStyleTokens) {
   ctaSecondaryText: {
     fontSize: typography.base,
     fontWeight: "600",
-    color: colors.primaryForeground,
+    color: "#FFFFFF",
   },
   });
 }

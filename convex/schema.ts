@@ -126,6 +126,8 @@ export default defineSchema({
     .index("by_active_sort", ["active", "sortOrder"])
     .index("by_price", ["price"])
     .index("by_final_price", ["finalPrice"])
+    .index("by_currency_final_price", ["currency", "finalPrice"])
+    .index("by_currency_sort", ["currency", "sortOrder"])
     .index("by_stars", ["stars"])
     .index("by_reviews", ["reviews"])
     .index("by_name", ["name"])

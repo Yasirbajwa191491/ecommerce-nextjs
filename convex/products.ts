@@ -539,18 +539,26 @@ export const listPublicPaginated = query({
     }
 
     const sort = args.sort ?? "default";
+    const currency = args.currency?.trim().toUpperCase() ??
+      ((args.minPrice !== undefined || args.maxPrice !== undefined) ? "USD" : undefined);
     // Use the catalog indexes so sort applies to every page, not just loaded cards.
     // Price sorts group currencies by requiring the mobile picker before comparison.
     const orderedQuery = () => {
       switch (sort) {
-        case "lowest": return ctx.db.query("products").withIndex("by_final_price").order("asc");
-        case "highest": return ctx.db.query("products").withIndex("by_final_price").order("desc");
+        case "lowest": return currency
+          ? ctx.db.query("products").withIndex("by_currency_final_price", (q) => q.eq("currency", currency)).order("asc")
+          : ctx.db.query("products").withIndex("by_currency_final_price").order("asc");
+        case "highest": return currency
+          ? ctx.db.query("products").withIndex("by_currency_final_price", (q) => q.eq("currency", currency)).order("desc")
+          : ctx.db.query("products").withIndex("by_currency_final_price").order("desc");
         case "rating": return ctx.db.query("products").withIndex("by_stars").order("desc");
         case "popular": return ctx.db.query("products").withIndex("by_reviews").order("desc");
         case "a-z": return ctx.db.query("products").withIndex("by_name").order("asc");
         case "z-a": return ctx.db.query("products").withIndex("by_name").order("desc");
         case "newest": return ctx.db.query("products").order("desc");
-        default: return ctx.db.query("products").withIndex("by_sort_order").order("asc");
+        default: return currency
+          ? ctx.db.query("products").withIndex("by_currency_sort", (q) => q.eq("currency", currency)).order("asc")
+          : ctx.db.query("products").withIndex("by_sort_order").order("asc");
       }
     };
     const result = await paginateMatching(

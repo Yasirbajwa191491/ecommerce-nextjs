@@ -64,8 +64,8 @@ export function Header({
           justifyContent: "space-between",
           minHeight: sizes.headerRow,
         },
-        logo: { flex: 1, ...textStyles.logo },
-        titleBlock: { flex: 1, gap: 1 },
+        logo: { flex: 1, ...textStyles.logo, marginRight: spacing.sm },
+        titleBlock: { flex: 1, minWidth: 0, gap: 1, marginRight: spacing.sm },
         titleWithBack: { paddingLeft: spacing.xs },
         title: { ...textStyles.screenTitle, fontSize: 22 },
         subtitle: { ...textStyles.bodySmall },
@@ -100,14 +100,17 @@ export function Header({
         },
         searchRow: { width: "100%" },
       }),
-    [colors, textStyles]
+    [colors, textStyles],
   );
 
   return (
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top + spacing.xs, paddingHorizontal: horizontalPadding },
+        {
+          paddingTop: insets.top + spacing.xs,
+          paddingHorizontal: horizontalPadding,
+        },
       ]}
     >
       <View style={styles.topRow}>
@@ -119,17 +122,29 @@ export function Header({
             onPress={onBack ?? (() => router.back())}
             style={styles.iconButton}
           >
-            <Ionicons name="chevron-back" size={sizes.iconLg} color={colors.foreground} />
+            <Ionicons
+              name="chevron-back"
+              size={sizes.iconLg}
+              color={colors.foreground}
+            />
           </Pressable>
         ) : null}
 
         {showLogo ? (
-          <Text style={styles.logo} numberOfLines={1}>
+          <Text
+            accessibilityRole="header"
+            style={styles.logo}
+            numberOfLines={1}
+          >
             {APP_NAME}
           </Text>
         ) : title ? (
           <View style={[styles.titleBlock, showBack && styles.titleWithBack]}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text
+              accessibilityRole="header"
+              style={styles.title}
+              numberOfLines={1}
+            >
               {title}
             </Text>
             {subtitle ? (
@@ -151,10 +166,16 @@ export function Header({
               onPress={() => router.push("/scan" as Href)}
               style={styles.iconButton}
             >
-              <Ionicons name="qr-code-outline" size={sizes.iconMd} color={colors.foreground} />
+              <Ionicons
+                name="qr-code-outline"
+                size={sizes.iconMd}
+                color={colors.foreground}
+              />
             </Pressable>
           ) : null}
-          {showNotifications ? <NotificationBell color={colors.foreground} /> : null}
+          {showNotifications ? (
+            <NotificationBell color={colors.foreground} />
+          ) : null}
           {showSettings ? (
             <Pressable
               accessibilityRole="button"
@@ -163,7 +184,11 @@ export function Header({
               onPress={() => router.push("/you" as Href)}
               style={styles.iconButton}
             >
-              <Ionicons name="person-circle-outline" size={sizes.iconLg} color={colors.foreground} />
+              <Ionicons
+                name="person-circle-outline"
+                size={sizes.iconLg}
+                color={colors.foreground}
+              />
             </Pressable>
           ) : null}
           {showWishlist ? (
@@ -174,7 +199,11 @@ export function Header({
               onPress={() => router.push("/wishlist" as Href)}
               style={styles.iconButton}
             >
-              <Ionicons name="heart-outline" size={sizes.iconMd} color={colors.foreground} />
+              <Ionicons
+                name="heart-outline"
+                size={sizes.iconMd}
+                color={colors.foreground}
+              />
             </Pressable>
           ) : null}
           {showCompare ? (
@@ -185,16 +214,25 @@ export function Header({
               onPress={() => compare?.openCompare()}
               style={styles.iconButton}
             >
-              <Ionicons name="swap-horizontal-outline" size={sizes.iconMd} color={colors.foreground} />
+              <Ionicons
+                name="swap-horizontal-outline"
+                size={sizes.iconMd}
+                color={colors.foreground}
+              />
               {compare && compare.compareCount > 0 ? (
                 <View style={styles.compareBadge}>
-                  <Text style={styles.compareBadgeText}>{compare.compareCount}</Text>
+                  <Text style={styles.compareBadgeText}>
+                    {compare.compareCount}
+                  </Text>
                 </View>
               ) : null}
             </Pressable>
           ) : null}
           {showCart ? (
-            <CartBadge onPress={() => router.push("/cart")} color={colors.foreground} />
+            <CartBadge
+              onPress={() => router.push("/cart")}
+              color={colors.foreground}
+            />
           ) : null}
         </View>
       </View>

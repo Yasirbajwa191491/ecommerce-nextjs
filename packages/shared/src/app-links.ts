@@ -1,15 +1,9 @@
-export const APP_LINK_BUNDLE_ID = "com.yasir.ecommerce";
+import appLinkConfig from "./app-link-config.json";
+
+export const APP_LINK_BUNDLE_ID = appLinkConfig.bundleId;
 
 /** HTTPS paths the native app can open. Keep iOS and Android in sync. */
-export const APP_LINK_PATH_PREFIXES = [
-  "/qr",
-  "/product",
-  "/category",
-  "/track-order",
-  "/checkout",
-  "/order",
-  "/promotions",
-] as const;
+export const APP_LINK_PATH_PREFIXES = appLinkConfig.pathPrefixes;
 
 export const APP_LINK_PATHS = APP_LINK_PATH_PREFIXES.flatMap((prefix) => [prefix, `${prefix}/*`]);
 

@@ -4,7 +4,10 @@ import { Pressable, Text, View, StyleSheet } from "react-native";
 
 import { radius, spacing, typography } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
-import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import {
+  useThemedStyles,
+  type ThemeStyleTokens,
+} from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
 
 export function AiShoppingEntry() {
@@ -34,10 +37,7 @@ export function AiShoppingEntry() {
           </Text>
         </View>
       </View>
-      <View style={styles.cta}>
-        <Text style={styles.ctaText}>Search</Text>
-        <Ionicons name="chevron-forward" size={14} color={colors.ctaForeground} />
-      </View>
+      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
     </Pressable>
   );
 }

@@ -187,7 +187,7 @@ export function passesStarFilter(
   minStars?: number
 ): boolean {
   if (minStars === undefined) return true;
-  return product.stars >= minStars;
+  return product.reviews > 0 && product.stars >= minStars;
 }
 
 export function applyHardSearchConstraints<T extends SearchProductCandidate>(
@@ -199,7 +199,7 @@ export function applyHardSearchConstraints<T extends SearchProductCandidate>(
       (!constraints.currency || (product.currency ?? "USD").trim().toUpperCase() === constraints.currency.trim().toUpperCase()) &&
       (!constraints.categoryHint || product.categoryName.toLowerCase() === constraints.categoryHint.toLowerCase()) &&
       (!constraints.productTypeTerms?.length || constraints.productTypeTerms.some((term) => {
-        const identity = normalizeMatchText([product.name, product.categoryName, ...product.keywords].join(" "));
+        const identity = normalizeMatchText([product.name, product.categoryName].join(" "));
         return identity.split(" ").some((word) => word === term || word === `${term}s` || (term === "watch" && word === "watches"));
       })) &&
       passesPriceFilters(product, constraints.maxPrice, constraints.minPrice) &&

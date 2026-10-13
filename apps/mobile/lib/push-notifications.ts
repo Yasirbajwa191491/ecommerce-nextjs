@@ -20,7 +20,9 @@ export function getPushCapability() {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   return resolvePushCapability({
     platform: Platform.OS, isDevice: Device.isDevice, environment: getPushExecutionEnvironment(),
-    enabled: Constants.expoConfig?.extra?.pushNotificationsEnabled === true,
+    enabled: Platform.OS === "ios"
+      ? Constants.expoConfig?.extra?.pushNotificationsIosEnabled === true
+      : Constants.expoConfig?.extra?.pushNotificationsEnabled === true,
     projectId: typeof projectId === "string" ? projectId : undefined,
   });
 }

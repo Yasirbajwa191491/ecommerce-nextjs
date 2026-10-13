@@ -12,8 +12,8 @@ export type ParsedSearchQuery = {
 };
 
 const MONEY = String.raw`(?:(US\$|\$|USD|PKR|Rs\.?|EUR|€|GBP|£)\s*)?(\d[\d,]*(?:\.\d{1,2})?)\s*(USD|dollars?|PKR|rupees?|EUR|euros?|GBP|pounds?)?`;
-const UNDER_PRICE = new RegExp(String.raw`\b(?:under|below|less than|cheaper than|max(?:imum)?|up to)\s+${MONEY}`, "i");
-const OVER_PRICE = new RegExp(String.raw`\b(?:over|above|more than|at least|min(?:imum)?)\s+${MONEY}`, "i");
+const UNDER_PRICE = new RegExp(String.raw`\b(?:under|below|less than|cheaper than|max(?:imum)?|up to)\s*${MONEY}`, "i");
+const OVER_PRICE = new RegExp(String.raw`\b(?:over|above|more than|at least|min(?:imum)?)\s*${MONEY}`, "i");
 const PRODUCT_TYPES: Array<{ expression: RegExp; terms: string[] }> = [
   { expression: /\b(?:shoes?|sneakers?|trainers?|footwear)\b/i, terms: ["shoe", "sneaker", "trainer", "footwear"] },
   { expression: /\b(?:headphones?|earphones?|earbuds?|airpods?)\b/i, terms: ["headphone", "earphone", "earbud", "airpod"] },
@@ -77,10 +77,8 @@ export function parseSearchQuery(
   for (const category of categories) {
     const nameLower = category.name.toLowerCase();
     const slugLower = category.slug.toLowerCase();
-    if (
-      lowerWorking.includes(nameLower) ||
-      lowerWorking.includes(slugLower.replace(/-/g, " "))
-    ) {
+    const haystack = ` ${lowerWorking.replace(/[^a-z0-9]+/g, " ")} `;
+    if (haystack.includes(` ${nameLower} `) || haystack.includes(` ${slugLower.replace(/-/g, " ")} `)) {
       categoryHint = category.name;
       categorySlug = category.slug;
       break;

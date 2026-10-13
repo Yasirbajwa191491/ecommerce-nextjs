@@ -48,6 +48,7 @@ export function usePushNotifications() {
   });
 
   const tokenRef = useRef<string | null>(null);
+  const syncingRef = useRef(false);
 
   const syncTokenWithBackend = useCallback(
     async (options?: {
@@ -55,6 +56,8 @@ export function usePushNotifications() {
       customerEmail?: string;
       accessToken?: string;
     }) => {
+      if (syncingRef.current) return { success: false as const, reason: "busy" as const, message: "Order alerts are already being enabled." };
+      syncingRef.current = true;
       setState((current) => ({ ...current, syncing: true, lastError: null }));
 
       try {
@@ -106,7 +109,7 @@ export function usePushNotifications() {
           enrollment?.customerEmail ??
           null;
         const accessToken =
-          options?.accessToken?.trim() ?? enrollment?.accessToken ?? undefined;
+          options?.accessToken?.trim() ?? (enrollment?.customerEmail === customerEmail ? enrollment.accessToken : undefined);
 
         if (!token || !visitorId || !customerEmail) {
           const failureMessage = !visitorId
@@ -173,6 +176,8 @@ export function usePushNotifications() {
           registered: false,
         }));
         return { success: false as const, reason: "error" as const, message };
+      } finally {
+        syncingRef.current = false;
       }
     },
     [registerPushToken, visitorId]
@@ -237,6 +242,7 @@ export function usePushNotifications() {
       ...current,
       permission: permission === "denied" ? "denied" : "undetermined",
       syncing: false,
+      registered: false,
     }));
   }, [syncTokenWithBackend, visitorId]);
 
@@ -267,7 +273,7 @@ export function usePushNotifications() {
       void touchPushToken({
         expoPushToken: tokenRef.current!,
         visitorId,
-      });
+      }).catch((error: unknown) => logAppError(error, { segment: "push-token-touch", expected: true }));
     }, 15 * 60 * 1000);
 
     return () => clearInterval(interval);

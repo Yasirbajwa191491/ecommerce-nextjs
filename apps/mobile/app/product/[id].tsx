@@ -51,6 +51,11 @@ import { useNetworkStatus } from "@/providers/NetworkProvider";
 import { orderImagesForDisplay } from "@ecommerce/shared";
 import type { Id } from "@convex/_generated/dataModel";
 export default function ProductDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <ProductDetailContent key={id} />;
+}
+
+function ProductDetailContent() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createProductDetailStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -92,11 +97,6 @@ export default function ProductDetailScreen() {
   const [selectedColor, setSelectedColor] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  useEffect(() => {
-    setSelectedColor("");
-    setQuantity(1);
-    setActiveImageIndex(0);
-  }, [id]);
   const colorsList = product?.colors;
   const galleryImages = useMemo(
     () => (product ? orderImagesForDisplay(product) : []),

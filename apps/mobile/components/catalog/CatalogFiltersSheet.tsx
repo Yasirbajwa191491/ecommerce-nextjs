@@ -7,7 +7,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { FunctionReturnType } from "convex/server";
 
@@ -55,7 +54,7 @@ type CatalogFiltersSheetProps = {
   onClose: () => void;
   filters: CatalogFilterState;
   onApply: (filters: CatalogFilterState) => void;
-  priceBounds?: Array<{ currency: string; minPrice: number; maxPrice: number; count: number }>;
+  priceBounds?: { currency: string; minPrice: number; maxPrice: number; count: number }[];
   facets?: CatalogFacets;
   categories?: HomeCategory[];
   showCategorySection?: boolean;
@@ -99,10 +98,14 @@ export function CatalogFiltersSheet({
     [colors, textStyles]
   );
   const [local, setLocal] = useState(filters);
+  const [minPriceText, setMinPriceText] = useState(filters.minPrice?.toString() ?? "");
+  const [maxPriceText, setMaxPriceText] = useState(filters.maxPrice?.toString() ?? "");
   const selectedBounds = priceBounds?.find((range) => range.currency === local.currency);
   const invalidPrice = [local.minPrice, local.maxPrice].some((price) => price !== undefined && (!Number.isFinite(price) || price < 0)) || (local.minPrice !== undefined && local.maxPrice !== undefined && local.minPrice > local.maxPrice);
 
   const handleReset = () => {
+    setMinPriceText("");
+    setMaxPriceText("");
     setLocal(
       clearAllCatalogFilters(filters, {
         preserveSearch: true,
@@ -117,7 +120,7 @@ export function CatalogFiltersSheet({
       animationType="slide"
       transparent
       onRequestClose={onClose}
-      onShow={() => setLocal(filters)}
+      onShow={() => { setLocal(filters); setMinPriceText(filters.minPrice?.toString() ?? ""); setMaxPriceText(filters.maxPrice?.toString() ?? ""); }}
     >
       <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close filters">
         <Pressable
@@ -131,10 +134,10 @@ export function CatalogFiltersSheet({
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Currency</Text>
               <View style={styles.chipRow}>
-                <Chip label="All currencies" selected={!local.currency} onPress={() => setLocal((prev) => ({ ...prev, currency: undefined, minPrice: undefined, maxPrice: undefined, sort: prev.sort === "lowest" || prev.sort === "highest" ? "default" : prev.sort }))} />
-                {priceBounds?.map((range) => <Chip key={range.currency} label={`${range.currency} (${range.count})`} selected={local.currency === range.currency} onPress={() => setLocal((prev) => ({ ...prev, currency: range.currency, minPrice: undefined, maxPrice: undefined }))} />)}
+                <Chip label="All currencies" selected={!local.currency} onPress={() => { setMinPriceText(""); setMaxPriceText(""); setLocal((prev) => ({ ...prev, currency: undefined, minPrice: undefined, maxPrice: undefined, sort: prev.sort === "lowest" || prev.sort === "highest" ? "default" : prev.sort })); }} />
+                {priceBounds?.map((range) => <Chip key={range.currency} label={`${range.currency} (${range.count})`} selected={local.currency === range.currency} onPress={() => { setMinPriceText(""); setMaxPriceText(""); setLocal((prev) => ({ ...prev, currency: range.currency, minPrice: undefined, maxPrice: undefined })); }} />)}
               </View>
-              <Text style={styles.hint}>Choose a currency to compare prices. Product amounts are never converted.</Text>
+              <Text style={styles.hint}>{priceBounds ? "Choose a currency to compare prices. Product amounts are never converted." : "Currency filters are temporarily unavailable. You can still browse products and use the other filters."}</Text>
             </View>
             {showCategorySection && !fixedCategoryId ? (
               <View style={styles.section}>
@@ -251,6 +254,7 @@ export function CatalogFiltersSheet({
                 {facets.ratingBuckets.map((bucket) => (
                   <Checkbox
                     key={bucket.minRating}
+                    accessibilityLabel={`${bucket.label}, ${bucket.count} products`}
                     checked={local.minRating === bucket.minRating}
                     onChange={() =>
                       setLocal((prev) => ({
@@ -284,14 +288,15 @@ export function CatalogFiltersSheet({
                     placeholder="Min"
                     accessibilityLabel={`Minimum price${local.currency ? ` in ${local.currency}` : ", choose a currency first"}`}
                     editable={Boolean(local.currency)}
-                    keyboardType="numeric"
-                    value={local.minPrice?.toString() ?? ""}
-                    onChangeText={(text) =>
+                    keyboardType="decimal-pad"
+                    value={minPriceText}
+                    onChangeText={(text) => {
+                      setMinPriceText(text);
                       setLocal((prev) => ({
                         ...prev,
-                        minPrice: text ? Number(text) : undefined,
-                      }))
-                    }
+                        minPrice: text.trim() ? Number(text.replace(/,/g, "")) : undefined,
+                      }));
+                    }}
                   />
                 </View>
                 <Text style={styles.priceDash}>–</Text>
@@ -300,14 +305,15 @@ export function CatalogFiltersSheet({
                     placeholder="Max"
                     accessibilityLabel={`Maximum price${local.currency ? ` in ${local.currency}` : ", choose a currency first"}`}
                     editable={Boolean(local.currency)}
-                    keyboardType="numeric"
-                    value={local.maxPrice?.toString() ?? ""}
-                    onChangeText={(text) =>
+                    keyboardType="decimal-pad"
+                    value={maxPriceText}
+                    onChangeText={(text) => {
+                      setMaxPriceText(text);
                       setLocal((prev) => ({
                         ...prev,
-                        maxPrice: text ? Number(text) : undefined,
-                      }))
-                    }
+                        maxPrice: text.trim() ? Number(text.replace(/,/g, "")) : undefined,
+                      }));
+                    }}
                   />
                 </View>
               </View>
@@ -330,36 +336,7 @@ export function CatalogFiltersSheet({
               />
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Sort</Text>
-              <View style={styles.sortList}>
-                {SORT_OPTIONS.map((opt) => {
-                  const selected = local.sort === opt.value;
-                  return (
-                    <Pressable
-                      key={opt.value}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      accessibilityLabel={opt.label}
-                      onPress={() => setLocal((prev) => ({ ...prev, sort: opt.value }))}
-                      style={({ pressed }) => [
-                        styles.sortRow,
-                        selected && styles.sortRowSelected,
-                        pressed && styles.sortRowPressed,
-                      ]}
-                    >
-                      <Text style={[styles.sortLabel, selected && styles.sortLabelSelected]}>
-                        {opt.label}
-                      </Text>
-                      {selected ? (
-                        <Ionicons name="checkmark" size={18} color={colors.selected} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          </ScrollView>
+</ScrollView>
 
           <View style={styles.actions}>
             <Button

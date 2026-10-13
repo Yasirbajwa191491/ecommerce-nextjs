@@ -79,8 +79,8 @@ function AddToCartSheetBody({
 
   const activeColor = useMemo(
     () =>
-      product ? resolveProductColorOrDefault(colorsList, selectedColor || colorsList[0] || "#000000") : "",
-    [product, colorsList, selectedColor]
+      product ? selectedColor || defaultColor : "",
+    [product, selectedColor, defaultColor]
   );
 
   const discountPercent = product?.discountPercent ?? 0;

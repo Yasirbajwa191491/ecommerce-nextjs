@@ -1,7 +1,7 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   CANCELLATION_REASONS,
@@ -16,7 +16,7 @@ import {
   type ReorderAvailableLine,
   type ReorderUnavailableLine,
 } from "@/components/orders/ReorderPreviewSheet";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Button } from "@/components/ui/Button";
 import { radius, spacing, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -39,6 +39,8 @@ import { useCart } from "@/providers/cart-context";
 import { useToast } from "@/providers/toast-context";
 import type { Id } from "@convex/_generated/dataModel";
 import type { Product } from "@/types/product";
+import { getReorderCartError } from "@/lib/reorder-cart";
+import { useTheme } from "@/providers/theme-context";
 
 type ReorderCartEntry = {
   product: Product;
@@ -103,6 +105,7 @@ export function OrderActions({
   hasVerifiedAccess,
 }: OrderActionsProps) {
   const styles = useThemedStyles(createOrderActionsStyles);
+  const { colors } = useTheme();
   const { showError, showSuccess } = useToast();
   const isOnline = useOnlineStatus();
   const { cart, addToCart, clearCart } = useCart();
@@ -301,8 +304,9 @@ export function OrderActions({
 
   const applyReorderToCart = useCallback(
     (mode: "merge" | "replace", products: ReorderCartEntry[]) => {
-      if (products.length === 0) {
-        showError("None of the items from this order are available right now.");
+      const validationError = getReorderCartError(cart, products, mode);
+      if (validationError) {
+        showError(validationError);
         return;
       }
 
@@ -311,20 +315,23 @@ export function OrderActions({
       }
 
       for (const entry of products) {
-        addToCart(entry.product, entry.color, entry.quantity);
+        if (!addToCart(entry.product, entry.color, entry.quantity)) {
+          showError("Some items couldn't be added. Review your cart before checking out.");
+          return;
+        }
       }
 
       pendingReorderRef.current = [];
       setCartMergeVisible(false);
       setReorderPreviewVisible(false);
       showSuccess(
-        products.length === 1
+        products.reduce((sum, entry) => sum + entry.quantity, 0) === 1
           ? "1 item added to your cart."
           : `${products.reduce((sum, entry) => sum + entry.quantity, 0)} items added to your cart.`
       );
       router.push("/(tabs)/cart");
     },
-    [addToCart, clearCart, showError, showSuccess]
+    [addToCart, cart, clearCart, showError, showSuccess]
   );
 
   const stageReorderProducts = useCallback((products: ReorderCartEntry[]) => {
@@ -476,15 +483,18 @@ export function OrderActions({
         }}
       />
 
-      <ConfirmDialog
-        visible={cartMergeVisible}
-        title="Your cart has items"
-        message="Add these products to your existing cart or replace the cart with this order?"
-        confirmLabel="Replace cart"
-        cancelLabel="Add to cart"
-        onCancel={() => applyReorderToCart("merge", pendingReorderRef.current)}
-        onConfirm={() => applyReorderToCart("replace", pendingReorderRef.current)}
-      />
+      <Modal visible={cartMergeVisible} transparent animationType="fade" onRequestClose={() => setCartMergeVisible(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCartMergeVisible(false)} accessibilityLabel="Cancel reorder" />
+          <View style={[styles.cartChoice, { backgroundColor: colors.surface }]} accessibilityViewIsModal>
+            <Text style={styles.title}>Your cart has items</Text>
+            <Text style={{ color: colors.textSecondary, lineHeight: 22 }}>Add these products to your existing cart or replace it with this order?</Text>
+            <Button label="Add to existing cart" fullWidth onPress={() => applyReorderToCart("merge", pendingReorderRef.current)} />
+            <Button label="Replace cart" fullWidth variant="outline" onPress={() => applyReorderToCart("replace", pendingReorderRef.current)} />
+            <Button label="Cancel" fullWidth variant="ghost" onPress={() => setCartMergeVisible(false)} />
+          </View>
+        </View>
+      </Modal>
 
       {receiptForCapture ? (
         <View style={styles.captureHost} pointerEvents="none">
@@ -497,6 +507,8 @@ export function OrderActions({
 
 function createOrderActionsStyles({ colors, textStyles }: ThemeStyleTokens) {
   return StyleSheet.create({
+    modalOverlay: { flex: 1, justifyContent: "center", padding: spacing.lg },
+    cartChoice: { borderRadius: radius.xl, padding: spacing.lg, gap: spacing.md, width: "100%", maxWidth: 480, alignSelf: "center" },
     container: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,

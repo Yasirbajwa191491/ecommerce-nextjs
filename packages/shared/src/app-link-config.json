@@ -1,0 +1,4 @@
+{
+  "bundleId": "com.yasir.ecommerce",
+  "pathPrefixes": ["/qr", "/product", "/category", "/track-order", "/checkout", "/order", "/promotions"]
+}

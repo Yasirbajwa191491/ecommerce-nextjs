@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAction, useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { formatCurrencyAmount } from "@ecommerce/shared";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PushStatusBanner } from "@/components/notifications/PushStatusBanner";
@@ -14,7 +15,6 @@ import { OrderItemsSection } from "@/components/orders/OrderItemsSection";
 import { OrderProgressTimeline } from "@/components/orders/OrderProgressTimeline";
 import { OrderPromotionsSummary } from "@/components/orders/OrderPromotionsSummary";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadges";
-import { OrderSummaryCards } from "@/components/orders/OrderSummaryCards";
 import { CopyOrderNumber } from "@/components/orders/CopyOrderNumber";
 import { OrderActions } from "@/components/orders/OrderActions";
 import { Button } from "@/components/ui/Button";
@@ -26,10 +26,11 @@ import { usePublicSettingsMap } from "@/hooks/useSiteSettings";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
 import {
-  clearLastOrderInfo,
   clearPendingStripeOrder,
   loadLastOrderInfo,
   savePushEnrollmentProof,
+  saveLastOrderInfo,
+  loadPendingStripeOrder,
 } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { getFriendlyErrorMessage, logAppError } from "@/lib/errors";
@@ -38,7 +39,7 @@ import {
   canRetryStripePayment,
   getCheckoutSuccessMessage,
   getCheckoutSuccessTitle,
-  getPaymentMethodLabel,
+  getPaymentStatusLabel,
   type OrderStatus,
 } from "@/lib/order-display";
 import { getStripePublishableKey } from "@/lib/stripe-config";
@@ -61,6 +62,8 @@ export default function CheckoutSuccessScreen() {
   const resumeMobilePaymentIntent = useAction(api.stripe.resumeMobilePaymentIntent);
   const { presentPayment } = usePaymentSheetCheckout();
   const [resuming, setResuming] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const pushSyncOrderRef = useRef<string | null>(null);
 
   const params = useLocalSearchParams<{
     orderNumber?: string;
@@ -79,8 +82,7 @@ export default function CheckoutSuccessScreen() {
   useEffect(() => {
     void loadLastOrderInfo().then((info) => {
       setStoredOrder(info);
-      setStorageReady(true);
-    });
+    }).catch((error: unknown) => logAppError(error, { segment: "checkout-order-storage", expected: true })).finally(() => setStorageReady(true));
   }, []);
 
   const orderNumber =
@@ -113,7 +115,7 @@ export default function CheckoutSuccessScreen() {
     canQueryOrder ? { orderNumber: orderNumber!, customerEmail, accessToken } : "skip"
   );
 
-  const isLoading = awaitingStoredCredentials || (canQueryOrder && orderData === undefined);
+  const isLoading = (!storageReady && !params.orderNumber) || awaitingStoredCredentials || (canQueryOrder && orderData === undefined);
   const orderNotFound = canQueryOrder && orderData === null;
   const order = orderData?.order;
   const items = orderData?.items ?? [];
@@ -141,8 +143,9 @@ export default function CheckoutSuccessScreen() {
     });
     addMonitoringBreadcrumb("Cart cleared", "checkout");
     clearCart();
-    void clearLastOrderInfo();
-    void clearPendingStripeOrder();
+    void loadPendingStripeOrder().then((pending) => {
+      if (pending?.orderNumber === order.orderNumber) return clearPendingStripeOrder();
+    }).catch((error: unknown) => logAppError(error, { segment: "checkout-pending-storage", expected: true }));
   }, [clearCart, order]);
 
   useEffect(() => {
@@ -161,11 +164,14 @@ export default function CheckoutSuccessScreen() {
       return;
     }
 
-    void savePushEnrollmentProof(order.customerEmail, orderAccessToken);
-  }, [order?.customerEmail, orderAccessToken]);
+    void Promise.all([
+      savePushEnrollmentProof(order.customerEmail, orderAccessToken),
+      saveLastOrderInfo(order.orderNumber, order.customerEmail, orderAccessToken),
+    ]).catch((error: unknown) => logAppError(error, { segment: "checkout-order-storage", expected: true }));
+  }, [order?.customerEmail, order?.orderNumber, orderAccessToken]);
 
   useEffect(() => {
-    if (!order || !pushNotifications) {
+    if (!order || !pushNotifications?.capability.available || pushNotifications.permission !== "granted" || pushNotifications.registered) {
       return;
     }
 
@@ -173,8 +179,9 @@ export default function CheckoutSuccessScreen() {
     if (!email) {
       return;
     }
-
-    void pushNotifications.syncPushTokenIfPermitted(email, orderAccessToken);
+    if (pushSyncOrderRef.current === order.orderNumber) return;
+    pushSyncOrderRef.current = order.orderNumber;
+    void pushNotifications.syncPushTokenIfPermitted(email, orderAccessToken).catch((error: unknown) => logAppError(error, { segment: "checkout-push-sync", expected: true }));
   }, [
     customerEmail,
     order,
@@ -184,15 +191,14 @@ export default function CheckoutSuccessScreen() {
     pushNotifications?.permission,
   ]);
 
-  const paymentLabel = getPaymentMethodLabel(order?.paymentMethod);
-  const statusTitle = order ? getCheckoutSuccessTitle(order) : "Order confirmed!";
+  const statusTitle = order ? getCheckoutSuccessTitle(order) : "Order received";
   const statusMessage = order ? getCheckoutSuccessMessage(order) : "";
 
   const handleRetryPayment = useCallback(async () => {
     if (!orderNumber || resuming) return;
 
     if (!getStripePublishableKey()) {
-      showError("Card payments are not configured on this device.");
+      showError("Card payment is unavailable right now. Please try again later.");
       return;
     }
 
@@ -295,18 +301,13 @@ export default function CheckoutSuccessScreen() {
                         ? "time-outline"
                         : "checkmark-circle"
                   }
-                  size={56}
+                  size={40}
                   color={isFailedStripe ? colors.destructive : colors.success}
                 />
               </View>
 
               <Text style={styles.title}>{statusTitle}</Text>
               <Text style={styles.subtitle}>{statusMessage}</Text>
-
-              <PushStatusBanner
-                customerEmail={(order.customerEmail || customerEmail)?.trim().toLowerCase()}
-                accessToken={orderAccessToken}
-              />
 
               {isPendingStripe ? (
                 <Text style={styles.processingNote}>
@@ -326,25 +327,31 @@ export default function CheckoutSuccessScreen() {
                   <OrderStatusBadge status={order.status as OrderStatus} />
                 </View>
                 <OrderProgressTimeline status={order.status as OrderStatus} />
-                <OrderSummaryCards
-                  paymentMethod={order.paymentMethod}
-                  paymentStatus={order.paymentStatus}
-                  total={order.total}
-                  currency={order.currency}
-                  createdAt={order.createdAt}
-                  paidAt={order.paidAt}
-                />
                 <View style={styles.divider} />
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Payment</Text>
-                  <Text style={styles.infoValue}>{paymentLabel}</Text>
+                  <Text style={styles.infoLabel}>{getPaymentStatusLabel(order.paymentStatus, order.paymentMethod, order.status as OrderStatus)}</Text>
+                  <Text style={styles.amount}>{formatCurrencyAmount(order.total, order.currency)}</Text>
                 </View>
+                {order.deliveryEstimate ? <Text style={styles.infoSubValue}>{order.deliveryMethodLabel ?? "Delivery"} · Est. {order.deliveryEstimate}</Text> : null}
               </View>
 
+              <View style={styles.actions}>
+                {canRetryPayment ? <Button label={resuming ? "Opening payment…" : "Retry payment"} fullWidth loading={resuming} disabled={resuming} onPress={() => void handleRetryPayment()} /> : null}
+                <Button label="Track order" fullWidth variant={canRetryPayment ? "outline" : "primary"} onPress={() => router.push({ pathname: "/order/[id]", params: { id: order._id, orderNumber: order.orderNumber, customerEmail: customerEmail ?? order.customerEmail, accessToken: orderAccessToken ?? "" } })} />
+                {canRetryPayment ? <Button label="Return to cart" variant="outline" fullWidth onPress={() => router.replace("/(tabs)/cart")} /> : null}
+                <Button label="Continue shopping" variant="ghost" fullWidth onPress={() => router.replace("/(tabs)/shop")} />
+              </View>
+
+              <PushStatusBanner customerEmail={(order.customerEmail || customerEmail)?.trim().toLowerCase()} accessToken={orderAccessToken} />
+
+              <Pressable style={styles.detailsToggle} accessibilityRole="button" accessibilityState={{ expanded: detailsExpanded }} onPress={() => setDetailsExpanded((value) => !value)}>
+                <Text style={styles.cardSectionTitle}>Purchase details</Text>
+                <Ionicons name={detailsExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.textSecondary} />
+              </Pressable>
+              {detailsExpanded ? <>
               <View style={styles.fullWidthCard}>
                 <OrderItemsSection items={items} currency={order.currency} />
               </View>
-
               <OrderPromotionsSummary
                 promotions={promotions.map((promo) => ({
                   promotionName: promo.promotionName,
@@ -411,47 +418,8 @@ export default function CheckoutSuccessScreen() {
                   hasVerifiedAccess={hasLookupCredentials}
                 />
               </View>
+              </> : null}
 
-              <View style={styles.actions}>
-                {canRetryPayment ? (
-                  <Button
-                    label={resuming ? "Opening payment…" : "Retry payment"}
-                    fullWidth
-                    loading={resuming}
-                    disabled={resuming}
-                    onPress={() => void handleRetryPayment()}
-                  />
-                ) : null}
-                <Button
-                  label="View order"
-                  fullWidth
-                  variant={canRetryPayment ? "outline" : "primary"}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/order/[id]",
-                      params: {
-                        id: order._id,
-                        orderNumber: order.orderNumber,
-                        accessToken: accessToken ?? order.accessToken ?? "",
-                      },
-                    })
-                  }
-                />
-                {canRetryPayment ? (
-                  <Button
-                    label="Return to cart"
-                    variant="outline"
-                    fullWidth
-                    onPress={() => router.replace("/(tabs)/cart")}
-                  />
-                ) : null}
-                <Button
-                  label="Continue shopping"
-                  variant="outline"
-                  fullWidth
-                  onPress={() => router.replace("/(tabs)/shop")}
-                />
-              </View>
             </>
           )}
         </ScrollView>
@@ -482,8 +450,8 @@ function createSuccessStyles({ colors, textStyles }: ThemeStyleTokens) {
       maxWidth: 280,
     },
     iconWrap: {
-      width: 96,
-      height: 96,
+      width: 64,
+      height: 64,
       borderRadius: radius.full,
       backgroundColor: colors.successMuted,
       alignItems: "center",
@@ -538,6 +506,8 @@ function createSuccessStyles({ colors, textStyles }: ThemeStyleTokens) {
       textAlign: "right",
       flexShrink: 1,
     },
+    amount: { fontSize: typography.xl, fontWeight: "800", color: colors.foreground, flexShrink: 1, textAlign: "right" },
+    detailsToggle: { width: "100%", minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
     infoValueMultiline: {
       fontSize: typography.sm,
       fontWeight: "500",

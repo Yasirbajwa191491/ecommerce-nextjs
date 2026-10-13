@@ -1,4 +1,5 @@
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/lib/secure-storage";
+import { saveRecentOrder } from "@/lib/recent-orders";
 
 export type SavedCheckoutCustomer = {
   fullName: string;
@@ -81,6 +82,7 @@ export async function saveLastOrderInfo(
   email: string,
   accessToken?: string
 ): Promise<void> {
+  if (accessToken?.trim()) await saveRecentOrder({ orderNumber, email, accessToken });
   await Promise.all([
     setSecureItem(LAST_ORDER_NUMBER_KEY, orderNumber),
     setSecureItem(LAST_ORDER_EMAIL_KEY, email),
@@ -161,6 +163,8 @@ export async function savePushEnrollmentProof(
   await setSecureItem(PUSH_ENROLLMENT_EMAIL_KEY, trimmedEmail);
   if (accessToken?.trim()) {
     await setSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY, accessToken.trim());
+  } else {
+    await removeSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY);
   }
 }
 

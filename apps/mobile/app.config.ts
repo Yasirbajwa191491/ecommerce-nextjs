@@ -2,13 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { ExpoConfig } from "expo/config";
-import { APP_LINK_BUNDLE_ID, APP_LINK_PATH_PREFIXES } from "@ecommerce/shared";
+import appLinkConfig from "../../packages/shared/src/app-link-config.json";
+
+// Keep build config independent of the runtime package's ESM/React Native graph.
+const { bundleId: APP_LINK_BUNDLE_ID, pathPrefixes: APP_LINK_PATH_PREFIXES } = appLinkConfig;
 
 const googleServicesPath = path.join(__dirname, "google-services.json");
 const hasGoogleServices = fs.existsSync(googleServicesPath);
 
 const plugins: NonNullable<ExpoConfig["plugins"]> = [
   "expo-router",
+  ["expo-splash-screen", { backgroundColor: "#F9FAFB", image: "./assets/icon.png", imageWidth: 120, dark: { backgroundColor: "#111827" } }],
   [
     "expo-image-picker",
     {
@@ -104,7 +108,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: APP_LINK_BUNDLE_ID,
-    softwareKeyboardLayoutMode: "pan",
+    softwareKeyboardLayoutMode: "resize",
     ...(hasGoogleServices ? { googleServicesFile: "./google-services.json" } : {}),
     adaptiveIcon: {
       foregroundImage: "./assets/icon.png",
@@ -134,7 +138,7 @@ const config: ExpoConfig = {
   },
   splash: {
     image: "./assets/icon.png",
-    backgroundColor: "#6254f3",
+    backgroundColor: "#F9FAFB",
     resizeMode: "contain",
   },
   web: {
@@ -146,6 +150,8 @@ const config: ExpoConfig = {
     typedRoutes: true,
   },
   extra: {
+    pushNotificationsEnabled: hasGoogleServices,
+    pushNotificationsIosEnabled: true,
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
     router: {
       origin: false,

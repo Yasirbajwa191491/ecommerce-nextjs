@@ -1,6 +1,7 @@
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery, useQueries } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, ListRenderItem, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type ListRenderItemInfo, type ViewStyle } from "react-native";
 import { CatalogSortSheet } from "@/components/catalog/CatalogSortSheet";
 import { SearchConstraintChips } from "@/components/catalog/SearchConstraintChips";
@@ -58,6 +59,7 @@ export type ProductCatalogViewProps = {
   listHeaderExtra?: React.ReactNode;
   initialFilters?: Partial<CatalogFilterState>;
   externalSearch?: string;
+  onSearchChange?: (search: string) => void;
   showSearchInput?: boolean;
   style?: ViewStyle;
 };
@@ -71,6 +73,7 @@ export function ProductCatalogView({
   listHeaderExtra,
   initialFilters,
   externalSearch,
+  onSearchChange,
   showSearchInput = true,
   style,
 }: ProductCatalogViewProps) {
@@ -78,7 +81,7 @@ export function ProductCatalogView({
   const styles = useThemedStyles(createProductCatalogViewStyles);
   const stableNow = useStableNow();
   const [refreshVersion, setRefreshVersion] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshSnapshot, setRefreshSnapshot] = useState<{ scope: string; products: Product[] } | null>(null);
   const now = stableNow + refreshVersion;
   const { isOffline } = useNetworkStatus();
   const { horizontalPadding, gridGap, gridColumns, gridItemWidth } = useLayoutMetrics();
@@ -91,8 +94,9 @@ export function ProductCatalogView({
     ...initialFilters,
     categoryId: fixedCategoryId ?? initialFilters?.categoryId,
   });
-  const [searchInput, setSearchInput] = useState(filters.search);
-  useEffect(() => { if (externalSearch !== undefined) setSearchInput(externalSearch); }, [externalSearch]);
+  const [localSearchInput, setSearchInput] = useState(filters.search);
+  const searchInput = externalSearch ?? localSearchInput;
+  const updateSearchInput = useCallback((search: string) => { setSearchInput(search); onSearchChange?.(search); }, [onSearchChange]);
   const debouncedSearch = useDebouncedValue(searchInput, 350);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -102,7 +106,7 @@ export function ProductCatalogView({
   );
 
   const isHybridSearch = debouncedSearch.trim().length > 0;
-  const hybridSearch = useCatalogHybridSearch(debouncedSearch, PAGE_SIZE, refreshVersion);
+  const hybridSearch = useCatalogHybridSearch(debouncedSearch, PAGE_SIZE, refreshVersion, filters.currency);
   const hybridSearchReady = isHybridSearch && !hybridSearch.loading;
 
   const liveCategories = useQuery(api.productCategories.listActive);
@@ -110,7 +114,15 @@ export function ProductCatalogView({
     offlineKeys.categoriesActive,
     liveCategories
   );
-  const priceBounds = useQuery(api.products.getPublicCurrencyPriceBounds, {});
+  // Currency metadata is optional during a staged backend/client rollout.
+  // useQueries exposes a failed query as Error instead of crashing the whole shop.
+  const currencyMetadataQueries = useMemo(
+    () => ({ ranges: { query: api.products.getPublicCurrencyPriceBounds, args: {} } }),
+    []
+  );
+  const metadata = useQueries(currencyMetadataQueries);
+  const priceBounds: FunctionReturnType<typeof api.products.getPublicCurrencyPriceBounds> | undefined =
+    metadata.ranges instanceof Error ? undefined : metadata.ranges;
 
   const facetArgs = useMemo(
     () =>
@@ -178,16 +190,14 @@ export function ProductCatalogView({
   ]);
 
   const products = paginatedProducts;
-  const previousProducts = useRef<Product[]>([]);
-  useEffect(() => {
-    if (products.length) previousProducts.current = products;
-    if (status !== "LoadingFirstPage" && !hybridSearch.loading) setRefreshing(false);
-  }, [products, status, hybridSearch.loading]);
+  const filterScope = JSON.stringify(filtersWithSearch);
+  const refreshing = refreshSnapshot?.scope === filterScope &&
+    ((isHybridSearch && hybridSearch.loading) || (catalogQueryEnabled && status === "LoadingFirstPage"));
   const refresh = useCallback(() => {
     if (isOffline) return;
-    setRefreshing(true);
+    setRefreshSnapshot({ scope: filterScope, products });
     setRefreshVersion((version) => version + 1);
-  }, [isOffline]);
+  }, [isOffline, filterScope, products]);
 
   const hasActiveConstraints = hasActiveCatalogConstraints(filtersWithSearch);
 
@@ -214,8 +224,8 @@ export function ProductCatalogView({
   const displayProducts =
     products.length > 0
       ? products
-      : refreshing && previousProducts.current.length
-        ? previousProducts.current
+      : refreshing && refreshSnapshot?.products.length
+        ? refreshSnapshot.products
       : isOffline && !hasActiveConstraints
         ? cachedShop.data ?? []
         : [];
@@ -311,11 +321,11 @@ export function ProductCatalogView({
       {listHeaderExtra}
       {showSearchInput ? <SearchBarInput
         value={searchInput}
-        onChangeText={setSearchInput}
+        onChangeText={updateSearchInput}
         placeholder="Search the catalog…"
         showVisualSearch
       /> : null}
-      {isHybridSearch ? <SearchConstraintChips query={debouncedSearch} /> : null}
+      {isHybridSearch ? <SearchConstraintChips query={debouncedSearch} currency={filters.currency} /> : null}
 
       {showCategoryChips && !fixedCategoryId ? (
         <ScrollView
@@ -355,7 +365,7 @@ export function ProductCatalogView({
         promotionLabels={promotionLabels}
         onChange={(next) => {
           setFilters(next);
-          if (!next.search.trim()) setSearchInput("");
+          updateSearchInput(next.search);
         }}
         preserveCategoryId={Boolean(fixedCategoryId)}
       />
@@ -456,7 +466,7 @@ export function ProductCatalogView({
           ))}
         </View>
         {SortSheet}
-        <CatalogFiltersSheet visible={filtersVisible} onClose={() => setFiltersVisible(false)} filters={filters} onApply={setFilters} priceBounds={priceBounds} facets={facets} categories={categories.data ?? []} showCategorySection={!fixedCategoryId} fixedCategoryId={fixedCategoryId} />
+        <CatalogFiltersSheet visible={filtersVisible} onClose={() => setFiltersVisible(false)} filters={filtersWithSearch} onApply={(next) => { setFilters(next); updateSearchInput(next.search); }} priceBounds={priceBounds} facets={facets} categories={categories.data ?? []} showCategorySection={!fixedCategoryId} fixedCategoryId={fixedCategoryId} />
       </ScrollView>
     );
   }
@@ -479,7 +489,7 @@ export function ProductCatalogView({
                   ...DEFAULT_CATALOG_FILTERS,
                   categoryId: fixedCategoryId,
                 });
-                setSearchInput("");
+                updateSearchInput("");
               }}
             />
           ) : isOffline ? (
@@ -499,7 +509,7 @@ export function ProductCatalogView({
                   ...DEFAULT_CATALOG_FILTERS,
                   categoryId: fixedCategoryId,
                 });
-                setSearchInput("");
+                updateSearchInput("");
               }}
               compact
             >
@@ -511,7 +521,7 @@ export function ProductCatalogView({
                     ...DEFAULT_CATALOG_FILTERS,
                     categoryId: fixedCategoryId,
                   });
-                  setSearchInput("");
+                  updateSearchInput("");
                 }}
               />
             </EmptyState>
@@ -522,10 +532,10 @@ export function ProductCatalogView({
         <CatalogFiltersSheet
           visible={filtersVisible}
           onClose={() => setFiltersVisible(false)}
-          filters={filters}
+          filters={filtersWithSearch}
           onApply={(next) => {
             setFilters(next);
-            if (!next.search.trim()) setSearchInput("");
+            updateSearchInput(next.search);
           }}
           priceBounds={priceBounds ?? undefined}
           facets={facets}
@@ -569,10 +579,10 @@ export function ProductCatalogView({
       <CatalogFiltersSheet
         visible={filtersVisible}
         onClose={() => setFiltersVisible(false)}
-        filters={filters}
+        filters={filtersWithSearch}
         onApply={(next) => {
           setFilters(next);
-          if (!next.search.trim()) setSearchInput("");
+          updateSearchInput(next.search);
         }}
         priceBounds={priceBounds ?? undefined}
         facets={facets}

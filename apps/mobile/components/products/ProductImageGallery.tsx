@@ -6,9 +6,9 @@ import {
 } from "@ecommerce/shared";
 import { Image } from "expo-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ProductImageViewer } from "@/components/products/ProductImageViewer";
 
-import { spacing } from "@/constants/theme";
 import { useLayoutMetrics } from "@/hooks/useLayoutMetrics";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
@@ -32,9 +32,10 @@ export function ProductImageGallery({
   const { contentWidth } = useLayoutMetrics();
   const [measuredWidth, setMeasuredWidth] = useState(0);
   const galleryWidth = measuredWidth > 0 ? measuredWidth : contentWidth;
-  const galleryHeight = galleryWidth * 0.85;
+  const galleryHeight = Math.min(galleryWidth * 0.72, 360);
 
   const [scrollIndex, setScrollIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const isProgrammaticScrollRef = useRef(false);
 
@@ -154,6 +155,11 @@ export function ProductImageGallery({
           ))}
         </ScrollView>
 
+        <Pressable accessibilityRole="button" accessibilityLabel={`Enlarge product photo ${displayIndex + 1} of ${images.length}`} onPress={() => setViewerOpen(true)}
+          style={{ position: "absolute", top: 8, right: 8, minHeight: 48, paddingHorizontal: 12, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }}>
+          <Text style={{ color: colors.textSecondary }}>{displayIndex + 1} / {images.length} · Tap to enlarge</Text>
+        </Pressable>
+        {viewerOpen ? <ProductImageViewer images={images} initialIndex={displayIndex} onClose={() => setViewerOpen(false)} /> : null}
         {images.length > 1 ? (
           <View style={styles.dots}>
             {images.map((_, index) => {
@@ -168,9 +174,10 @@ export function ProductImageGallery({
                     scrollToIndex(index);
                     commitIndex(index);
                   }}
-                  hitSlop={12}
-                  style={[styles.dot, active && styles.dotActive]}
-                />
+                  style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
+                >
+                  <View style={[styles.dot, active && styles.dotActive]} />
+                </Pressable>
               );
             })}
           </View>
@@ -197,10 +204,11 @@ function createProductImageGalleryStyles({ colors }: ThemeStyleTokens) {
     },
     dots: {
       flexDirection: "row" as const,
+      flexWrap: "wrap" as const,
       justifyContent: "center" as const,
       alignItems: "center" as const,
       gap: 6,
-      paddingVertical: spacing.md,
+      paddingVertical: 0,
     },
     dot: {
       width: 8,

@@ -45,6 +45,13 @@ export function SearchBar({
           fontSize: typography.base,
           color: colors.muted,
         },
+        searchAction: {
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.sm,
+          minHeight: sizes.search,
+        },
         visualBtn: {
           width: sizes.qtyControl,
           height: sizes.qtyControl,
@@ -54,20 +61,25 @@ export function SearchBar({
         },
         pressed: { opacity: 0.85 },
       }),
-    [colors]
+    [colors],
   );
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Search products"
-      onPress={onPress ?? (() => router.push("/search"))}
-      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
-    >
-      <Ionicons name="search" size={sizes.iconMd} color={colors.muted} />
-      <Text style={styles.placeholder} numberOfLines={1}>
-        {placeholder}
-      </Text>
+    <View style={styles.container}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Search products"
+        onPress={onPress ?? (() => router.push("/search"))}
+        style={({ pressed }) => [
+          styles.searchAction,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Ionicons name="search" size={sizes.iconMd} color={colors.muted} />
+        <Text style={styles.placeholder} numberOfLines={1}>
+          {placeholder}
+        </Text>
+      </Pressable>
       {showVisualSearch ? (
         <Pressable
           accessibilityRole="button"
@@ -79,10 +91,14 @@ export function SearchBar({
           }}
           style={({ pressed }) => [styles.visualBtn, pressed && styles.pressed]}
         >
-          <Ionicons name="camera-outline" size={sizes.iconMd} color={colors.textSecondary} />
+          <Ionicons
+            name="camera-outline"
+            size={sizes.iconMd}
+            color={colors.textSecondary}
+          />
         </Pressable>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -131,7 +147,7 @@ export function SearchBarInput({
           borderRadius: radius.sm,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (
@@ -156,7 +172,11 @@ export function SearchBarInput({
           onPress={onClear ?? (() => onChangeText(""))}
           style={styles.visualBtn}
         >
-          <Ionicons name="close-circle" size={sizes.iconMd} color={colors.muted} />
+          <Ionicons
+            name="close-circle"
+            size={sizes.iconMd}
+            color={colors.muted}
+          />
         </Pressable>
       ) : showVisualSearch ? (
         <Pressable
@@ -166,7 +186,11 @@ export function SearchBarInput({
           onPress={() => router.push("/visual-search")}
           style={styles.visualBtn}
         >
-          <Ionicons name="camera-outline" size={sizes.iconMd} color={colors.textSecondary} />
+          <Ionicons
+            name="camera-outline"
+            size={sizes.iconMd}
+            color={colors.textSecondary}
+          />
         </Pressable>
       ) : null}
     </View>

@@ -14,7 +14,7 @@ import {
 import { resolvePushEnrollmentCredentials } from "@/lib/push-enrollment";
 
 describe("resolvePushEnrollmentCredentials", () => {
-  it("prefers checkout customer email and enrollment access token", async () => {
+  it("does not pair a customer's email with another customer's order proof", async () => {
     vi.mocked(loadCheckoutCustomer).mockResolvedValue({
       fullName: "Test User",
       email: "Checkout@Example.com",
@@ -27,13 +27,13 @@ describe("resolvePushEnrollmentCredentials", () => {
     });
     vi.mocked(loadLastOrderInfo).mockResolvedValue({
       orderNumber: "ORD-1",
-      email: "last@example.com",
+      email: "proof@example.com",
       accessToken: "token-from-last-order",
     });
 
     await expect(resolvePushEnrollmentCredentials()).resolves.toEqual({
       customerEmail: "checkout@example.com",
-      accessToken: "token-from-proof",
+      accessToken: undefined,
     });
   });
 
@@ -45,7 +45,7 @@ describe("resolvePushEnrollmentCredentials", () => {
     });
     vi.mocked(loadLastOrderInfo).mockResolvedValue({
       orderNumber: "ORD-1",
-      email: "last@example.com",
+      email: "proof@example.com",
       accessToken: "token-from-last-order",
     });
 

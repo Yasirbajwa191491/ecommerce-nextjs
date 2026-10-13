@@ -108,6 +108,7 @@ export default function CheckoutScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const fieldPositions = useRef<Partial<Record<keyof CheckoutFormValues, number>>>({});
   const inputRefs = useRef<Partial<Record<keyof CheckoutFormValues, TextInput | null>>>({});
+  const phoneRef = useRef<TextInput>(null);
   const lastSubmissionRef = useRef<string | null>(null);
   const cardAvailable = Boolean(getStripePublishableKey());
 
@@ -133,6 +134,7 @@ export default function CheckoutScreen() {
   const giftItems = priced?.items?.filter((item) => item.isPromotionGift) ?? [];
 
   useEffect(() => {
+    if (customerLoaded) return;
     let cancelled = false;
     void (async () => {
       const saved = await loadCheckoutCustomer();
@@ -156,7 +158,7 @@ export default function CheckoutScreen() {
     return () => {
       cancelled = true;
     };
-  }, [defaultPhoneCountry]);
+  }, [defaultPhoneCountry, customerLoaded]);
 
   const errors = useMemo(() => validateCheckoutForm(form), [form]);
   const visibleErrors = useMemo(() => {
@@ -188,7 +190,7 @@ export default function CheckoutScreen() {
 
   const focusField = useCallback((field: keyof CheckoutFormValues) => {
     scrollRef.current?.scrollTo({ y: Math.max(0, (fieldPositions.current[field] ?? 0) - spacing.md), animated: true });
-    const input = inputRefs.current[field];
+    const input = field === "phone" ? phoneRef.current : inputRefs.current[field];
     if (input) input.focus();
     else Keyboard.dismiss();
   }, []);
@@ -314,9 +316,11 @@ export default function CheckoutScreen() {
         addMonitoringBreadcrumb("Order created", "checkout", {
           orderNumber: result.orderNumber,
         });
-        await persistCustomer();
-        await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
-        await savePushEnrollmentProof(customerPayload.email, result.accessToken);
+        await persistCustomer().catch((error: unknown) => logAppError(error, { segment: "checkout-customer-storage", expected: true }));
+        await Promise.all([
+          saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken),
+          savePushEnrollmentProof(customerPayload.email, result.accessToken),
+        ]).catch((error: unknown) => logAppError(error, { segment: "checkout-order-storage", expected: true }));
         clearCart();
         showSuccess("Order placed successfully!");
         router.replace({
@@ -369,15 +373,17 @@ export default function CheckoutScreen() {
         alreadyPaid: Boolean(result.alreadyPaid),
       });
 
-      await persistCustomer();
-      await saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken);
-      await savePushEnrollmentProof(customerPayload.email, result.accessToken);
-      await savePendingStripeOrder({
+      await persistCustomer().catch((error: unknown) => logAppError(error, { segment: "checkout-customer-storage", expected: true }));
+      await Promise.all([
+        saveLastOrderInfo(result.orderNumber, customerPayload.email, result.accessToken),
+        savePushEnrollmentProof(customerPayload.email, result.accessToken),
+        savePendingStripeOrder({
         orderNumber: result.orderNumber,
         email: customerPayload.email,
         accessToken: result.accessToken,
         cartFingerprint,
-      });
+        }),
+      ]).catch((error: unknown) => logAppError(error, { segment: "checkout-order-storage", expected: true }));
       if (result.alreadyPaid) {
         router.replace({
           pathname: "/checkout/success",
@@ -546,7 +552,6 @@ export default function CheckoutScreen() {
           ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           showsVerticalScrollIndicator={false}
         >
           <OrderSummarySection
@@ -584,11 +589,11 @@ export default function CheckoutScreen() {
               autoComplete="email"
               textContentType="emailAddress"
               returnKeyType="next"
-              onSubmitEditing={() => inputRefs.current.phone?.focus()}
+              onSubmitEditing={() => phoneRef.current?.focus()}
               editable={!submitting}
             />
             <PhoneInput
-              inputRef={(input) => { inputRefs.current.phone = input; }}
+              inputRef={phoneRef}
               label="Phone number *"
               value={form.phone}
               onChange={(value) => updateField("phone", value)}

@@ -24,7 +24,7 @@ type CatalogHybridSearchState = {
   resultProductIds: Id<"products">[];
 };
 
-export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refreshVersion = 0) {
+export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refreshVersion = 0, currency?: string) {
   const searchHybrid = useAction(api.productSearch.searchHybrid);
   const [state, setState] = useState<CatalogHybridSearchState>({
     products: [],
@@ -87,6 +87,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refre
         const sessionId = await getSearchSessionId();
         const result = await searchHybrid({
           query: trimmed,
+          currency,
           limit,
           cursor: 0,
           source: "catalog",
@@ -94,7 +95,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refre
           visitorId: getCachedVisitorId() || undefined,
         });
         if (requestId !== requestIdRef.current) return;
-        void cacheProducts(result.products.map(searchResultToProduct));
+        void cacheProducts(result.products.map(searchResultToProduct)).catch(() => undefined);
         setState({
           products: result.products,
           totalCount: result.totalCount,
@@ -119,7 +120,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refre
       }
     })();
     return () => { requestIdRef.current += 1; };
-  }, [debouncedQuery, limit, searchHybrid, refreshVersion]);
+  }, [debouncedQuery, limit, searchHybrid, refreshVersion, currency]);
 
   const loadMore = useCallback(async () => {
     const trimmed = debouncedQuery.trim();
@@ -138,6 +139,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refre
       const sessionId = await getSearchSessionId();
       const result = await searchHybrid({
         query: trimmed,
+        currency,
         limit,
         cursor: state.nextCursor,
         source: "catalog",
@@ -155,7 +157,7 @@ export function useCatalogHybridSearch(debouncedQuery: string, limit = 20, refre
       if (requestId !== requestIdRef.current) return;
       setState((prev) => ({ ...prev, loadingMore: false }));
     }
-  }, [debouncedQuery, limit, searchHybrid, state.loadingMore, state.nextCursor]);
+  }, [debouncedQuery, limit, searchHybrid, state.loadingMore, state.nextCursor, currency]);
 
   const trimmed = debouncedQuery.trim();
   const isActive = trimmed.length >= 1;

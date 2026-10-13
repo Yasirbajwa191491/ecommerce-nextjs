@@ -21,12 +21,12 @@ type AccordionProps = {
 };
 
 export function Accordion({ items }: AccordionProps) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const styles = useThemedStyles(createStyles);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const toggle = (id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpenId((current) => (current === id ? null : id));
   };
 

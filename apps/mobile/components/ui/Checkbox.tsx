@@ -1,9 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
-import { Pressable, Text, View, type ViewStyle, StyleSheet } from "react-native";
+import {
+  Pressable,
+  Text,
+  View,
+  type ViewStyle,
+  StyleSheet,
+} from "react-native";
 
 import { radius, spacing, typography } from "@/constants/theme";
-import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
+import {
+  useThemedStyles,
+  type ThemeStyleTokens,
+} from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
 
 type CheckboxProps = {
@@ -13,6 +22,7 @@ type CheckboxProps = {
   error?: string;
   disabled?: boolean;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 };
 
 export function Checkbox({
@@ -22,6 +32,7 @@ export function Checkbox({
   error,
   disabled = false,
   style,
+  accessibilityLabel,
 }: CheckboxProps) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createCheckboxStyles);
@@ -30,6 +41,9 @@ export function Checkbox({
     <View style={style}>
       <Pressable
         accessibilityRole="checkbox"
+        accessibilityLabel={
+          accessibilityLabel ?? (typeof label === "string" ? label : undefined)
+        }
         accessibilityState={{ checked, disabled }}
         disabled={disabled}
         onPress={() => onChange(!checked)}
@@ -39,12 +53,24 @@ export function Checkbox({
           disabled && styles.disabled,
         ]}
       >
-        <View style={[styles.box, checked && styles.boxChecked, error && styles.boxError]}>
+        <View
+          style={[
+            styles.box,
+            checked && styles.boxChecked,
+            error && styles.boxError,
+          ]}
+        >
           {checked ? (
             <Ionicons name="checkmark" size={14} color={colors.ctaForeground} />
           ) : null}
         </View>
-        <View style={styles.labelWrap}>{typeof label === "string" ? <Text style={styles.label}>{label}</Text> : label}</View>
+        <View style={styles.labelWrap}>
+          {typeof label === "string" ? (
+            <Text style={styles.label}>{label}</Text>
+          ) : (
+            label
+          )}
+        </View>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>

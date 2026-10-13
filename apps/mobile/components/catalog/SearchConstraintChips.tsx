@@ -4,10 +4,10 @@ import { radius, spacing, typography } from "@/constants/theme";
 import { useTheme } from "@/providers/theme-context";
 
 /** Readable interpretation; these constraints are enforced by the backend too. */
-export function SearchConstraintChips({ query }: { query: string }) {
+export function SearchConstraintChips({ query, currency: selectedCurrency }: { query: string; currency?: string }) {
   const { colors } = useTheme();
   const parsed = parseSearchQuery(query);
-  const currency = parsed.currency ?? ((parsed.minPrice !== undefined || parsed.maxPrice !== undefined) ? "USD" : undefined);
+  const currency = parsed.currency ?? selectedCurrency ?? ((parsed.minPrice !== undefined || parsed.maxPrice !== undefined) ? "USD" : undefined);
   const labels = [
     parsed.productTypeTerms ? parsed.productTypeTerms[0].replace(/^./, (letter) => letter.toUpperCase()) : undefined,
     parsed.minPrice !== undefined ? `From ${currency} ${parsed.minPrice.toLocaleString()}` : undefined,

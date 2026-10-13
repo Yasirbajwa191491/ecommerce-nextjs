@@ -4,27 +4,44 @@ import { useMemo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { radius, sizes, spacing, touchTarget, typography } from "@/constants/theme";
+import {
+  radius,
+  sizes,
+  spacing,
+  touchTarget,
+  typography,
+} from "@/constants/theme";
 import { useCart } from "@/providers/cart-context";
 import { useTheme } from "@/providers/theme-context";
 
 const HIDDEN_TAB_ROUTES = new Set(["orders"]);
 const TAB_CONFIG: Record<
   string,
-  { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }
+  {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    iconActive: keyof typeof Ionicons.glyphMap;
+  }
 > = {
   index: { label: "Home", icon: "home-outline", iconActive: "home" },
   shop: { label: "Shop", icon: "grid-outline", iconActive: "grid" },
-  ai: { label: "AI", icon: "sparkles-outline", iconActive: "sparkles" },
+  ai: { label: "Search", icon: "search-outline", iconActive: "search" },
   cart: { label: "Cart", icon: "cart-outline", iconActive: "cart" },
-  track: { label: "Track", icon: "locate-outline", iconActive: "locate" },
+  track: { label: "Orders", icon: "receipt-outline", iconActive: "receipt" },
 };
 
-export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function PremiumTabBar({
+  state,
+  descriptors,
+  navigation,
+}: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { itemCount } = useCart();
   const { colors, shadows } = useTheme();
-  const bottomInset = Platform.OS === "android" ? Math.max(insets.bottom, spacing.xs) : insets.bottom;
+  const bottomInset =
+    Platform.OS === "android"
+      ? Math.max(insets.bottom, spacing.xs)
+      : insets.bottom;
 
   const styles = useMemo(
     () =>
@@ -39,6 +56,9 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
           flexDirection: "row",
           paddingTop: spacing.xs + 2,
           paddingHorizontal: spacing.xs,
+          width: "100%",
+          maxWidth: 720,
+          alignSelf: "center",
         },
         tab: {
           flex: 1,
@@ -48,7 +68,6 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
           paddingVertical: spacing.xs,
           minHeight: touchTarget + 4,
         },
-        aiTab: { marginTop: -2 },
         pressed: { opacity: 0.8 },
         iconWrap: {
           position: "relative",
@@ -57,15 +76,6 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
           alignItems: "center",
           justifyContent: "center",
         },
-        aiIconWrap: {
-          width: 36,
-          height: 36,
-          borderRadius: radius.full,
-          backgroundColor: colors.ctaMuted,
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        aiIconWrapActive: { backgroundColor: colors.cta },
         badge: {
           position: "absolute",
           top: -5,
@@ -94,13 +104,8 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
           color: colors.foreground,
           fontWeight: "600",
         },
-        aiLabel: { fontWeight: "600" },
-        aiLabelActive: {
-          color: colors.foreground,
-          fontWeight: "600",
-        },
       }),
-    [colors, shadows]
+    [colors, shadows],
   );
 
   return (
@@ -116,7 +121,6 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
               icon: "ellipse-outline" as const,
               iconActive: "ellipse" as const,
             };
-            const isAi = route.name === "ai";
 
             const onPress = () => {
               const event = navigation.emit({
@@ -138,42 +142,32 @@ export function PremiumTabBar({ state, descriptors, navigation }: BottomTabBarPr
             return (
               <Pressable
                 key={route.key}
-                accessibilityRole="button"
+                accessibilityRole="tab"
                 accessibilityState={isFocused ? { selected: true } : {}}
-                accessibilityLabel={options.tabBarAccessibilityLabel ?? cartLabel}
+                accessibilityLabel={
+                  options.tabBarAccessibilityLabel ?? cartLabel
+                }
                 onPress={onPress}
-                style={({ pressed }) => [styles.tab, isAi && styles.aiTab, pressed && styles.pressed]}
+                onLongPress={() =>
+                  navigation.emit({ type: "tabLongPress", target: route.key })
+                }
+                style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
               >
-                {isAi ? (
-                  <View style={[styles.aiIconWrap, isFocused && styles.aiIconWrapActive]}>
-                    <Ionicons
-                      name={isFocused ? config.iconActive : config.icon}
-                      size={sizes.iconMd}
-                      color={isFocused ? colors.ctaForeground : colors.foreground}
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.iconWrap}>
-                    <Ionicons
-                      name={isFocused ? config.iconActive : config.icon}
-                      size={sizes.iconMd}
-                      color={color}
-                    />
-                    {route.name === "cart" && itemCount > 0 ? (
-                      <View style={styles.badge} accessibilityElementsHidden>
-                        <Text style={styles.badgeText}>{itemCount > 99 ? "99+" : itemCount}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                )}
-                <Text
-                  style={[
-                    styles.label,
-                    isFocused && !isAi && styles.labelActive,
-                    isFocused && isAi && styles.aiLabelActive,
-                    isAi && styles.aiLabel,
-                  ]}
-                >
+                <View style={styles.iconWrap}>
+                  <Ionicons
+                    name={isFocused ? config.iconActive : config.icon}
+                    size={sizes.iconMd}
+                    color={color}
+                  />
+                  {route.name === "cart" && itemCount > 0 ? (
+                    <View style={styles.badge} accessibilityElementsHidden>
+                      <Text style={styles.badgeText}>
+                        {itemCount > 99 ? "99+" : itemCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={[styles.label, isFocused && styles.labelActive]}>
                   {config.label}
                 </Text>
               </Pressable>

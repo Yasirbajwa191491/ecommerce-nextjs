@@ -28,8 +28,8 @@ export async function resolvePushEnrollmentCredentials(): Promise<PushEnrollment
   }
 
   const accessToken =
-    enrollmentProof?.accessToken?.trim() ??
-    lastOrder.accessToken?.trim() ??
+    (enrollmentProof?.email.trim().toLowerCase() === customerEmail ? enrollmentProof.accessToken?.trim() : undefined) ??
+    (lastOrder.email?.trim().toLowerCase() === customerEmail ? lastOrder.accessToken?.trim() : undefined) ??
     undefined;
 
   return {
