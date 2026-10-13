@@ -24,6 +24,7 @@ export const sendPushMessages = internalAction({
         data: v.optional(v.any()),
         sound: v.optional(v.string()),
         channelId: v.optional(v.string()),
+        priority: v.optional(v.union(v.literal("default"), v.literal("normal"), v.literal("high"))),
       })
     ),
   },

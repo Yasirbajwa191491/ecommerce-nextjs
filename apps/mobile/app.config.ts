@@ -3,12 +3,33 @@ import path from "node:path";
 
 import type { ExpoConfig } from "expo/config";
 import appLinkConfig from "../../packages/shared/src/app-link-config.json";
+import {
+  androidPackageNames,
+  resolveGoogleServicesFile,
+} from "./lib/google-services-file.js";
 
 // Keep build config independent of the runtime package's ESM/React Native graph.
 const { bundleId: APP_LINK_BUNDLE_ID, pathPrefixes: APP_LINK_PATH_PREFIXES } = appLinkConfig;
 
-const googleServicesPath = path.join(__dirname, "google-services.json");
-const hasGoogleServices = fs.existsSync(googleServicesPath);
+const googleServicesFile = resolveGoogleServicesFile({
+  appDir: __dirname,
+  envValue: process.env.GOOGLE_SERVICES_JSON,
+  exists: fs.existsSync,
+  writeFile: (filePath, contents) => {
+    fs.writeFileSync(filePath, contents);
+  },
+});
+
+if (googleServicesFile) {
+  const packageNames = androidPackageNames(fs.readFileSync(googleServicesFile, "utf8"));
+  if (!packageNames.includes(APP_LINK_BUNDLE_ID)) {
+    throw new Error(
+      `google-services.json must include Android package ${APP_LINK_BUNDLE_ID}. Found: ${packageNames.join(", ") || "none"}.`
+    );
+  }
+}
+
+const hasGoogleServices = googleServicesFile != null;
 
 const plugins: NonNullable<ExpoConfig["plugins"]> = [
   "expo-router",
@@ -109,7 +130,7 @@ const config: ExpoConfig = {
   android: {
     package: APP_LINK_BUNDLE_ID,
     softwareKeyboardLayoutMode: "resize",
-    ...(hasGoogleServices ? { googleServicesFile: "./google-services.json" } : {}),
+    ...(googleServicesFile ? { googleServicesFile } : {}),
     adaptiveIcon: {
       foregroundImage: "./assets/icon.png",
       backgroundColor: "#6254f3",

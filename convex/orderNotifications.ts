@@ -355,6 +355,7 @@ export const deliverPushForOrderEvent = internalAction({
       body: string;
       sound: string;
       channelId: string;
+      priority: "high";
       data: Record<string, string>;
     }> = deliveryTokens.map((token) => ({
       to: token.expoPushToken,
@@ -362,6 +363,7 @@ export const deliverPushForOrderEvent = internalAction({
       body: args.body,
       sound: "default",
       channelId: "order-updates",
+      priority: "high",
       data: {
         type: "order.notification",
         event: args.event,
