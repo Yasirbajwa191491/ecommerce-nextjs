@@ -1,4 +1,4 @@
-import { listPhoneCountries } from "@ecommerce/shared";
+import { listPhoneCountries, resolveCountryDisplayName } from "@ecommerce/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
@@ -18,12 +18,13 @@ export function CheckoutCountryPicker({ value, onChange, error, disabled }: {
   const [query, setQuery] = useState("");
   const countries = useMemo(() => listPhoneCountries(), []);
   const filtered = useMemo(() => countries.filter((country) => `${country.name} ${country.code}`.toLowerCase().includes(query.trim().toLowerCase())), [countries, query]);
+  const selectedName = value.trim() ? resolveCountryDisplayName(value) : "";
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.foreground }]}>Country *</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Delivery country, ${value || "select country"}`} disabled={disabled}
+      <Pressable accessibilityRole="button" accessibilityLabel={`Delivery country, ${selectedName || "select country"}`} disabled={disabled}
         onPress={() => setOpen(true)} style={[styles.select, { backgroundColor: colors.surface, borderColor: error ? colors.destructive : colors.border }]}>
-        <Text style={[styles.value, { color: value ? colors.foreground : colors.textSecondary }]}>{value || "Select country"}</Text>
+        <Text style={[styles.value, { color: selectedName ? colors.foreground : colors.textSecondary }]} numberOfLines={1}>{selectedName || "Select country"}</Text>
         <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
       </Pressable>
       {error ? <Text accessibilityRole="alert" style={{ color: colors.destructive }}>{error}</Text> : null}
@@ -38,7 +39,7 @@ export function CheckoutCountryPicker({ value, onChange, error, disabled }: {
             <Input value={query} onChangeText={setQuery} placeholder="Search countries" accessibilityLabel="Search delivery countries" autoCorrect={false} />
             <FlatList data={filtered} keyExtractor={(country) => country.code} keyboardShouldPersistTaps="handled"
               ListEmptyComponent={<Text style={[styles.empty, { color: colors.textSecondary }]}>No countries match your search.</Text>}
-              renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityState={{ selected: item.name === value }}
+              renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityState={{ selected: item.name === selectedName }}
                 onPress={() => { onChange(item.name); setOpen(false); setQuery(""); }} style={styles.country}>
                 <Text style={[styles.value, { color: colors.foreground }]}>{item.flag}  {item.name}</Text>
                 {item.name === value ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}

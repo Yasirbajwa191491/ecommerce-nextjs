@@ -170,11 +170,12 @@ export function ProductImageGallery({
                   accessibilityRole="button"
                   accessibilityLabel={`View image ${index + 1}`}
                   accessibilityState={{ selected: active }}
+                  hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
                   onPress={() => {
                     scrollToIndex(index);
                     commitIndex(index);
                   }}
-                  style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
+                  style={styles.dotButton}
                 >
                   <View style={[styles.dot, active && styles.dotActive]} />
                 </Pressable>
@@ -209,6 +210,11 @@ function createProductImageGalleryStyles({ colors }: ThemeStyleTokens) {
       alignItems: "center" as const,
       gap: 6,
       paddingVertical: 0,
+    },
+    dotButton: {
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      paddingVertical: 8,
     },
     dot: {
       width: 8,

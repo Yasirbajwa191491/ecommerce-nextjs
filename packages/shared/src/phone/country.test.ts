@@ -4,9 +4,11 @@ import {
   FALLBACK_PHONE_COUNTRY,
   countryFromLocale,
   countryFromTimeZone,
+  detectLocationCountry,
   getDefaultPhoneCountry,
   isValidE164Phone,
   normalizePhoneToE164,
+  resolveCountryDisplayName,
 } from "./country";
 
 describe("phone country detection", () => {
@@ -25,6 +27,25 @@ describe("phone country detection", () => {
 
   it("falls back when location cannot be inferred", () => {
     expect(getDefaultPhoneCountry({})).toBe(FALLBACK_PHONE_COUNTRY);
+    expect(detectLocationCountry({})).toBeUndefined();
+  });
+});
+
+describe("checkout country names", () => {
+  it("shows the full country name for a stored code", () => {
+    expect(resolveCountryDisplayName("PK")).toBe("Pakistan");
+    expect(resolveCountryDisplayName("pk")).toBe("Pakistan");
+    expect(resolveCountryDisplayName("US")).toBe("United States");
+  });
+
+  it("keeps an already selected country name", () => {
+    expect(resolveCountryDisplayName("Pakistan")).toBe("Pakistan");
+    expect(resolveCountryDisplayName(" united states ")).toBe("United States");
+  });
+
+  it("leaves an empty country blank", () => {
+    expect(resolveCountryDisplayName("")).toBe("");
+    expect(resolveCountryDisplayName("   ")).toBe("");
   });
 });
 

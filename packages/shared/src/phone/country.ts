@@ -180,14 +180,18 @@ export function getDefaultPhoneCountry(options?: {
   locale?: string;
   timeZone?: string;
 }): PhoneCountryCode {
-  return (
-    countryFromTimeZone(options?.timeZone) ??
-    countryFromLocale(options?.locale) ??
-    FALLBACK_PHONE_COUNTRY
-  );
+  return detectLocationCountry(options) ?? FALLBACK_PHONE_COUNTRY;
 }
 
-export function detectRuntimePhoneCountry(): PhoneCountryCode {
+/** Timezone, then locale. Undefined when neither maps to a country. */
+export function detectLocationCountry(options?: {
+  locale?: string;
+  timeZone?: string;
+}): PhoneCountryCode | undefined {
+  return countryFromTimeZone(options?.timeZone) ?? countryFromLocale(options?.locale);
+}
+
+function runtimeLocaleAndTimeZone(): { locale?: string; timeZone?: string } {
   const resolved =
     typeof Intl !== "undefined"
       ? Intl.DateTimeFormat().resolvedOptions()
@@ -199,10 +203,36 @@ export function detectRuntimePhoneCountry(): PhoneCountryCode {
         navigator.language
       : undefined;
 
-  return getDefaultPhoneCountry({
+  return {
     locale: nav ?? resolved?.locale,
     timeZone: resolved?.timeZone,
-  });
+  };
+}
+
+export function detectRuntimePhoneCountry(): PhoneCountryCode {
+  return detectLocationCountry(runtimeLocaleAndTimeZone()) ?? FALLBACK_PHONE_COUNTRY;
+}
+
+/** Full country name for a stored code or name. "PK" and "Pakistan" both become "Pakistan". */
+export function resolveCountryDisplayName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const upper = trimmed.toUpperCase();
+  if (isPhoneCountryCode(upper)) {
+    return countryName(upper);
+  }
+
+  const match = listPhoneCountries().find(
+    (country) => country.name.toLowerCase() === trimmed.toLowerCase()
+  );
+  return match?.name ?? trimmed;
+}
+
+/** Delivery country from the device timezone or locale, without the phone-number fallback. */
+export function detectCheckoutCountryName(): string | undefined {
+  const code = detectLocationCountry(runtimeLocaleAndTimeZone());
+  return code ? countryName(code) : undefined;
 }
 
 export function normalizePhoneToE164(

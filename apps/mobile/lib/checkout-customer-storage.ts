@@ -66,6 +66,32 @@ export async function saveCheckoutCustomer(customer: SavedCheckoutCustomer): Pro
   await setSecureItem(STORAGE_KEY, JSON.stringify(customer));
 }
 
+/** Store the chosen delivery country without clearing the rest of a saved checkout profile. */
+export async function rememberCheckoutCountry(country: string): Promise<void> {
+  const name = country.trim();
+  if (!name) return;
+
+  const existing = await loadCheckoutCustomer();
+  if (existing?.addressParts?.country === name) return;
+
+  const parts = existing?.addressParts;
+  await saveCheckoutCustomer({
+    fullName: existing?.fullName ?? "",
+    email: existing?.email ?? "",
+    phone: existing?.phone ?? "",
+    address: existing?.address ?? "",
+    notes: existing?.notes,
+    profileToken: existing?.profileToken,
+    addressParts: {
+      street: parts?.street || (!parts ? existing?.address ?? "" : ""),
+      city: parts?.city ?? "",
+      region: parts?.region ?? "",
+      postalCode: parts?.postalCode ?? "",
+      country: name,
+    },
+  });
+}
+
 const LAST_ORDER_NUMBER_KEY = "lastOrderNumber";
 const LAST_ORDER_EMAIL_KEY = "lastOrderEmail";
 const LAST_ORDER_ACCESS_TOKEN_KEY = "lastOrderAccessToken";

@@ -1,4 +1,9 @@
-import { formatCurrencyAmount, normalizePhoneToE164 } from "@ecommerce/shared";
+import {
+  detectCheckoutCountryName,
+  formatCurrencyAmount,
+  normalizePhoneToE164,
+  resolveCountryDisplayName,
+} from "@ecommerce/shared";
 import { useAction, useMutation } from "convex/react";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,6 +39,7 @@ import {
   createIdempotencyKey,
   loadCheckoutCustomer,
   loadPendingStripeOrder,
+  rememberCheckoutCountry,
   saveCheckoutCustomer,
   saveLastOrderInfo,
   savePendingStripeOrder,
@@ -138,7 +144,15 @@ export default function CheckoutScreen() {
     let cancelled = false;
     void (async () => {
       const saved = await loadCheckoutCustomer();
-      if (!cancelled && saved) {
+      if (cancelled) return;
+
+      const savedCountryRaw = saved?.addressParts?.country?.trim() ?? "";
+      const country =
+        (savedCountryRaw ? resolveCountryDisplayName(savedCountryRaw) : "") ||
+        detectCheckoutCountryName() ||
+        "";
+
+      if (saved) {
         setForm((current) => ({
           ...current,
           fullName: saved.fullName,
@@ -149,9 +163,15 @@ export default function CheckoutScreen() {
           city: saved.addressParts?.city ?? "",
           region: saved.addressParts?.region ?? "",
           postalCode: saved.addressParts?.postalCode ?? "",
-          country: saved.addressParts?.country ?? "",
+          country,
           notes: saved.notes ?? "",
         }));
+      } else if (country) {
+        setForm((current) => (current.country?.trim() ? current : { ...current, country }));
+      }
+
+      if (country && country !== savedCountryRaw) {
+        await rememberCheckoutCountry(country);
       }
       if (!cancelled) setCustomerLoaded(true);
     })();
@@ -203,7 +223,7 @@ export default function CheckoutScreen() {
       address: formatCheckoutAddress(form),
       addressParts: form.structuredAddress ? {
         street: form.address.trim(), city: form.city?.trim() ?? "", region: form.region?.trim() ?? "",
-        postalCode: form.postalCode?.trim() ?? "", country: form.country?.trim() ?? "",
+        postalCode: form.postalCode?.trim() ?? "", country: resolveCountryDisplayName(form.country ?? ""),
       } : undefined,
       notes: form.notes.trim() || undefined,
     };
@@ -635,7 +655,7 @@ export default function CheckoutScreen() {
               <Input ref={(input) => { inputRefs.current.postalCode = input; }} label="Postal code (optional)" value={form.postalCode ?? ""}
                 onChangeText={(value) => updateField("postalCode", value)} onBlur={() => touchField("postalCode")} error={visibleErrors.postalCode}
                 autoComplete="postal-code" textContentType="postalCode" autoCapitalize="characters" returnKeyType="done" editable={!submitting} />
-              <CheckoutCountryPicker value={form.country ?? ""} onChange={(value) => { updateField("country", value); touchField("country"); }} error={visibleErrors.country} disabled={submitting} />
+              <CheckoutCountryPicker value={form.country ?? ""} onChange={(value) => { const country = resolveCountryDisplayName(value); updateField("country", country); touchField("country"); void rememberCheckoutCountry(country); }} error={visibleErrors.country} disabled={submitting} />
             </> : <Button label="Enter separate address fields" variant="ghost" onPress={() => updateField("structuredAddress", true)} disabled={submitting} />}
             <Input
               ref={(input) => { inputRefs.current.notes = input; }}

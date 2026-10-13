@@ -4,7 +4,16 @@ import { useQuery } from "convex/react";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AddToCartSheet } from "@/components/cart/AddToCartSheet";
@@ -12,7 +21,7 @@ import { RatingStars } from "@/components/products/RatingStars";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
-import { layout, radius, spacing, typography } from "@/constants/theme";
+import { layout, radius, sizes, spacing, touchTarget, typography } from "@/constants/theme";
 import { useThemedStyles, type ThemeStyleTokens } from "@/hooks/useThemedStyles";
 import { useTheme } from "@/providers/theme-context";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -38,6 +47,12 @@ export function ProductQuickViewSheet({
   const { colors } = useTheme();
   const styles = useThemedStyles(createProductQuickViewSheetStyles);
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const bottomInset = Math.max(insets.bottom, spacing.lg);
+  const sheetMaxHeight = windowHeight - insets.top - spacing.md;
+  const headerBlock = spacing.md + 4 + spacing.md + touchTarget + spacing.md;
+  const footerBlock = spacing.md + sizes.buttonMd + bottomInset;
+  const scrollMaxHeight = Math.max(180, sheetMaxHeight - headerBlock - footerBlock);
   const { showError } = useToast();
   const { isWishlisted, toggle } = useWishlist();
   const [addSheetOpen, setAddSheetOpen] = useState(false);
@@ -67,7 +82,10 @@ export function ProductQuickViewSheet({
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
         <Pressable style={styles.overlay} onPress={onClose}>
           <Pressable
-            style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}
+            style={[
+              styles.sheet,
+              { maxHeight: sheetMaxHeight, paddingBottom: bottomInset },
+            ]}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.handle} />
@@ -85,83 +103,90 @@ export function ProductQuickViewSheet({
                 <ActivityIndicator color={colors.primary} />
               </View>
             ) : product ? (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.imageWrap}>
-                  {imageUrl ? (
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={styles.image}
-                      contentFit="cover"
-                      accessibilityLabel={imageAlt}
-                    />
-                  ) : (
-                    <View style={styles.imagePlaceholder}>
-                      <Ionicons name="image-outline" size={32} color={colors.muted} />
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.content}>
-                  <Text style={styles.company}>{product.company}</Text>
-                  <Text style={styles.name}>{product.name}</Text>
-                  {product.stars > 0 ? (
-                    <RatingStars rating={product.stars} reviewCount={product.reviews} size={14} />
-                  ) : (
-                    <Text style={styles.noReviews}>No reviews yet</Text>
-                  )}
-                  <PriceDisplay
-                    price={displayPrice}
-                    originalPrice={discountPercent > 0 ? product.price : undefined}
-                    currency={product.currency}
-                  />
-                  <Text style={styles.stock}>
-                    {outOfStock ? "Out of stock" : "In stock"}
-                  </Text>
-                  {product.description ? (
-                    <Text style={styles.description} numberOfLines={4}>
-                      {product.description}
-                    </Text>
-                  ) : null}
-
-                  <View style={styles.actions}>
-                    <Button
-                      label={outOfStock ? "Out of stock" : "Add to cart"}
-                      disabled={outOfStock}
-                      onPress={() => setAddSheetOpen(true)}
-                      style={styles.actionBtn}
-                    />
-                    <IconButton
-                      icon={wishlisted ? "heart" : "heart-outline"}
-                      accessibilityLabel={
-                        wishlisted ? "Remove from wishlist" : "Add to wishlist"
-                      }
-                      onPress={() => {
-                        void (async () => {
-                          try {
-                            await toggle(product._id as Id<"products">);
-                          } catch (error) {
-                            showError(
-                              getFriendlyErrorMessage(
-                                error,
-                                "Couldn't update wishlist."
-                              )
-                            );
-                          }
-                        })();
-                      }}
-                    />
-                    <Button
-                      label="View product"
-                      variant="outline"
-                      onPress={() => {
-                        onClose();
-                        router.push(`/product/${product._id}`);
-                      }}
-                      style={styles.actionBtn}
-                    />
+              <>
+                <ScrollView
+                  style={[styles.scroll, { maxHeight: scrollMaxHeight }]}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                >
+                  <View style={styles.imageWrap}>
+                    {imageUrl ? (
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={styles.image}
+                        contentFit="cover"
+                        accessibilityLabel={imageAlt}
+                      />
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="image-outline" size={32} color={colors.muted} />
+                      </View>
+                    )}
                   </View>
+
+                  <View style={styles.content}>
+                    <Text style={styles.company}>{product.company}</Text>
+                    <Text style={styles.name}>{product.name}</Text>
+                    {product.stars > 0 ? (
+                      <RatingStars rating={product.stars} reviewCount={product.reviews} size={14} />
+                    ) : (
+                      <Text style={styles.noReviews}>No reviews yet</Text>
+                    )}
+                    <PriceDisplay
+                      price={displayPrice}
+                      originalPrice={discountPercent > 0 ? product.price : undefined}
+                      currency={product.currency}
+                    />
+                    <Text style={styles.stock}>
+                      {outOfStock ? "Out of stock" : "In stock"}
+                    </Text>
+                    {product.description ? (
+                      <Text style={styles.description} numberOfLines={4}>
+                        {product.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                </ScrollView>
+
+                <View style={styles.actions}>
+                  <Button
+                    label={outOfStock ? "Out of stock" : "Add to cart"}
+                    disabled={outOfStock}
+                    onPress={() => setAddSheetOpen(true)}
+                    style={styles.actionBtn}
+                  />
+                  <IconButton
+                    icon={wishlisted ? "heart" : "heart-outline"}
+                    accessibilityLabel={
+                      wishlisted ? "Remove from wishlist" : "Add to wishlist"
+                    }
+                    onPress={() => {
+                      void (async () => {
+                        try {
+                          await toggle(product._id as Id<"products">);
+                        } catch (error) {
+                          showError(
+                            getFriendlyErrorMessage(
+                              error,
+                              "Couldn't update wishlist."
+                            )
+                          );
+                        }
+                      })();
+                    }}
+                  />
+                  <Button
+                    label="View product"
+                    variant="outline"
+                    onPress={() => {
+                      onClose();
+                      router.push(`/product/${product._id}`);
+                    }}
+                    style={styles.actionBtn}
+                  />
                 </View>
-              </ScrollView>
+              </>
             ) : null}
           </Pressable>
         </Pressable>
@@ -192,8 +217,15 @@ function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: Them
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    maxHeight: "88%",
+    overflow: "hidden",
     ...shadows.md,
+  },
+  scroll: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.sm,
   },
   handle: {
     width: 36,
@@ -238,7 +270,6 @@ function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: Them
   },
   content: {
     gap: spacing.sm,
-    paddingBottom: spacing.lg,
   },
   company: {
     fontSize: typography.xs,
@@ -270,7 +301,7 @@ function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: Them
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    marginTop: spacing.md,
+    paddingTop: spacing.md,
   },
   actionBtn: {
     flex: 1,

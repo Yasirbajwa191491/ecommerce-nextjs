@@ -22,7 +22,7 @@ import { ProductQuickViewSheet } from "@/components/products/ProductQuickViewShe
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
-import { radius, spacing, typography } from "@/constants/theme";
+import { radius, sizes, spacing, typography } from "@/constants/theme";
 import {
   useThemedStyles,
   type ThemeStyleTokens,
@@ -208,7 +208,7 @@ function ProductCardComponent({
             <View style={styles.actions}>
               <Button
                 label={outOfStock ? "Sold out" : "Add"}
-                size="sm"
+                size="md"
                 variant="secondary"
                 disabled={outOfStock}
                 accessibilityLabel={
@@ -221,9 +221,10 @@ function ProductCardComponent({
               />
               {isList ? wishlistControl : null}
               <IconButton
-                icon="ellipsis-horizontal"
+                icon="ellipsis-vertical"
                 accessibilityLabel={`More options for ${product.name}`}
                 onPress={() => setMenuOpen(true)}
+                style={styles.moreButton}
               />
             </View>
           </>
@@ -444,12 +445,17 @@ function createStyles({ colors, textStyles }: ThemeStyleTokens) {
     },
     actions: {
       flexDirection: "row",
-      gap: spacing.xs,
+      gap: spacing.sm,
       alignItems: "center",
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.md,
     },
     addButton: { flex: 1, minWidth: 0 },
+    moreButton: {
+      width: 36,
+      height: sizes.buttonMd,
+      borderRadius: radius.md,
+    },
     pressed: { opacity: 0.78 },
     menuOverlay: {
       flex: 1,
