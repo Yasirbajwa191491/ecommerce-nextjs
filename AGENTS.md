@@ -21,6 +21,7 @@ Next.js 16 (App Router) · Convex · shadcn/ui · Tailwind v4 · TypeScript stri
 | Mobile app (Expo) | `apps/mobile/` |
 | Shared packages | `packages/shared/` |
 | Convex schema & functions | `convex/` |
+| Python AI service foundation | `services/ai-service/` (not on the storefront request path) |
 | Rules (detail) | `.cursor/rules/*.mdc` |
 
 ## Monorepo

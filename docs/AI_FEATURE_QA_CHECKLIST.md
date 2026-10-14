@@ -5,6 +5,8 @@ Each feature should work in all five states: **Success**, **Empty**, **API failu
 
 Architecture note: several features chain **Gemini → Grok/OpenRouter/OpenAI → n8n**. Failures at any layer must degrade gracefully — the storefront must remain usable.
 
+The Python service in `services/ai-service` is not part of these checks. Current storefront and admin AI does not call it.
+
 ## How to use
 
 1. Run manual checks in **incognito** (no cached session/cart bias where noted).

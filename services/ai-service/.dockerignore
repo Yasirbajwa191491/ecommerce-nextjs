@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.git/
+.gitignore
+.env
+.env.*
+tests/
+artifacts/
+data/
+datasets/
+checkpoints/
+*.md
+Dockerfile
+.dockerignore

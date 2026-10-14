@@ -85,6 +85,7 @@ npm workspaces. The **website stays the same product** — it now lives in `apps
 | `apps/mobile/` | Expo + React Native storefront (`@ecommerce/mobile`) |
 | `packages/shared/` | Shared constants/helpers (web + mobile) |
 | `convex/` | Shared backend (one deployment for both apps) |
+| `services/ai-service/` | Optional Python AI foundation. Not started by `npm run dev`. See [docs/python-ai-service.md](docs/python-ai-service.md). |
 
 ```bash
 npm install                  # installs all workspaces
