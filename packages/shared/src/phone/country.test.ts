@@ -47,6 +47,22 @@ describe("checkout country names", () => {
     expect(resolveCountryDisplayName("")).toBe("");
     expect(resolveCountryDisplayName("   ")).toBe("");
   });
+
+  it("still shows the country name when the device only returns the code", () => {
+    const original = Intl.DisplayNames;
+    Intl.DisplayNames = class {
+      of(code: string) {
+        return String(code);
+      }
+    } as unknown as typeof Intl.DisplayNames;
+
+    try {
+      expect(resolveCountryDisplayName("PK")).toBe("Pakistan");
+      expect(resolveCountryDisplayName("AE")).toBe("United Arab Emirates");
+    } finally {
+      Intl.DisplayNames = original;
+    }
+  });
 });
 
 describe("phone E.164 normalization", () => {

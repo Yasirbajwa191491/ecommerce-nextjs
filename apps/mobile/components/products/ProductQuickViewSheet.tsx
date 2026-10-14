@@ -50,9 +50,18 @@ export function ProductQuickViewSheet({
   const { height: windowHeight } = useWindowDimensions();
   const bottomInset = Math.max(insets.bottom, spacing.lg);
   const sheetMaxHeight = windowHeight - insets.top - spacing.md;
-  const headerBlock = spacing.md + 4 + spacing.md + touchTarget + spacing.md;
-  const footerBlock = spacing.md + sizes.buttonMd + bottomInset;
-  const scrollMaxHeight = Math.max(180, sheetMaxHeight - headerBlock - footerBlock);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [footerHeight, setFooterHeight] = useState(0);
+  const estimatedHeader = 4 + spacing.md + touchTarget + spacing.md;
+  const estimatedFooter = spacing.md + sizes.buttonMd;
+  const scrollHeight = Math.max(
+    180,
+    sheetMaxHeight -
+      spacing.md -
+      bottomInset -
+      (headerHeight || estimatedHeader) -
+      (footerHeight || estimatedFooter)
+  );
   const { showError } = useToast();
   const { isWishlisted, toggle } = useWishlist();
   const [addSheetOpen, setAddSheetOpen] = useState(false);
@@ -80,22 +89,33 @@ export function ProductQuickViewSheet({
   return (
     <>
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-        <Pressable style={styles.overlay} onPress={onClose}>
+        <View style={styles.overlay}>
           <Pressable
+            style={styles.backdrop}
+            onPress={onClose}
+            accessibilityLabel="Close quick view"
+          />
+          <View
             style={[
               styles.sheet,
               { maxHeight: sheetMaxHeight, paddingBottom: bottomInset },
             ]}
-            onPress={(e) => e.stopPropagation()}
           >
-            <View style={styles.handle} />
-            <View style={styles.headerRow}>
-              <Text style={styles.title}>Quick view</Text>
-              <IconButton
-                icon="close"
-                accessibilityLabel="Close quick view"
-                onPress={onClose}
-              />
+            <View
+              onLayout={(event) => {
+                const next = event.nativeEvent.layout.height;
+                setHeaderHeight((current) => (current === next ? current : next));
+              }}
+            >
+              <View style={styles.handle} />
+              <View style={styles.headerRow}>
+                <Text style={styles.title}>Quick view</Text>
+                <IconButton
+                  icon="close"
+                  accessibilityLabel="Close quick view"
+                  onPress={onClose}
+                />
+              </View>
             </View>
 
             {isLoading ? (
@@ -105,9 +125,10 @@ export function ProductQuickViewSheet({
             ) : product ? (
               <>
                 <ScrollView
-                  style={[styles.scroll, { maxHeight: scrollMaxHeight }]}
+                  style={[styles.scroll, { height: scrollHeight }]}
                   contentContainerStyle={styles.scrollContent}
-                  showsVerticalScrollIndicator={false}
+                  showsVerticalScrollIndicator
+                  nestedScrollEnabled
                   bounces={false}
                 >
                   <View style={styles.imageWrap}>
@@ -142,14 +163,18 @@ export function ProductQuickViewSheet({
                       {outOfStock ? "Out of stock" : "In stock"}
                     </Text>
                     {product.description ? (
-                      <Text style={styles.description} numberOfLines={4}>
-                        {product.description}
-                      </Text>
+                      <Text style={styles.description}>{product.description}</Text>
                     ) : null}
                   </View>
                 </ScrollView>
 
-                <View style={styles.actions}>
+                <View
+                  style={styles.actions}
+                  onLayout={(event) => {
+                    const next = event.nativeEvent.layout.height;
+                    setFooterHeight((current) => (current === next ? current : next));
+                  }}
+                >
                   <Button
                     label={outOfStock ? "Out of stock" : "Add to cart"}
                     disabled={outOfStock}
@@ -188,8 +213,8 @@ export function ProductQuickViewSheet({
                 </View>
               </>
             ) : null}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {product ? (
@@ -211,6 +236,9 @@ function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: Them
     backgroundColor: colors.overlay,
     justifyContent: "flex-end",
   },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
@@ -225,7 +253,7 @@ function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: Them
     flexShrink: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
   },
   handle: {
     width: 36,
@@ -302,6 +330,9 @@ function createProductQuickViewSheetStyles({ colors, textStyles, shadows }: Them
     alignItems: "center",
     gap: spacing.sm,
     paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   actionBtn: {
     flex: 1,

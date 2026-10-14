@@ -5,6 +5,8 @@ import {
   type CountryCode,
 } from "libphonenumber-js";
 
+import { ENGLISH_COUNTRY_NAMES } from "./country-names";
+
 export type PhoneCountryCode = CountryCode;
 
 /** Used when locale/timezone cannot be mapped to a calling-code country. */
@@ -31,12 +33,23 @@ export function countryFlagEmoji(code: string): string {
   );
 }
 
-function countryName(code: PhoneCountryCode, locale = "en"): string {
+function intlRegionName(code: string, locale: string): string | undefined {
   try {
-    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
+    const display = new Intl.DisplayNames([locale], { type: "region" }).of(code);
+    if (!display || display.toUpperCase() === code.toUpperCase()) return undefined;
+    return display;
   } catch {
-    return code;
+    return undefined;
   }
+}
+
+function countryName(code: PhoneCountryCode, locale = "en"): string {
+  const language = locale.toLowerCase().split("-")[0] ?? "en";
+  if (language !== "en") {
+    const localized = intlRegionName(code, locale);
+    if (localized) return localized;
+  }
+  return ENGLISH_COUNTRY_NAMES[code] ?? intlRegionName(code, "en") ?? code;
 }
 
 let cachedCountries: PhoneCountryOption[] | null = null;

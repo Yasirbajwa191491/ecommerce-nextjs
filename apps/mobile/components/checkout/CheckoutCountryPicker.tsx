@@ -42,7 +42,7 @@ export function CheckoutCountryPicker({ value, onChange, error, disabled }: {
               renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityState={{ selected: item.name === selectedName }}
                 onPress={() => { onChange(item.name); setOpen(false); setQuery(""); }} style={styles.country}>
                 <Text style={[styles.value, { color: colors.foreground }]}>{item.flag}  {item.name}</Text>
-                {item.name === value ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
+                {item.name === selectedName ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
               </Pressable>} />
           </View>
         </View>
