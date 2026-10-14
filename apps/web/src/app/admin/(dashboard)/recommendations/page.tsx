@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -15,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toastSuccess } from "@/lib/app-toast";
+import { toastError, toastSuccess } from "@/lib/app-toast";
 import Link from "next/link";
 
 export default function AdminRecommendationsPage() {
@@ -30,6 +31,9 @@ export default function AdminRecommendationsPage() {
   const scheduleCoOccurrence = useMutation(
     api.adminRecommendations.scheduleCoOccurrenceRebuild
   );
+  const [now] = useState(() => Date.now());
+  const contentStatus = useQuery(api.adminContentRecommendations.getStatus, { now });
+  const setStrategy = useMutation(api.adminContentRecommendations.setRecommendationStrategy);
 
   const recommendationSettings =
     settings?.filter((row: Doc<"settings">) => row.key.startsWith("recommendation_")) ?? [];
@@ -83,6 +87,90 @@ export default function AdminRecommendationsPage() {
           </>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Content recommendation strategy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {contentStatus === undefined ? (
+            <Skeleton className="h-24 rounded-lg" />
+          ) : (
+            <>
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <p>
+                  Active strategy:{" "}
+                  <span className="font-medium">{contentStatus.recommendationStrategy}</span>
+                </p>
+                <p>
+                  Fallback: <span className="font-medium">{contentStatus.fallbackStrategy}</span>
+                </p>
+                <p>
+                  Model version:{" "}
+                  <span className="font-medium">{contentStatus.pythonModelVersion}</span>
+                </p>
+                <p>
+                  Published snapshot:{" "}
+                  <span className="font-medium">
+                    {contentStatus.publishedSnapshot?.snapshotId ?? "None"}
+                  </span>
+                </p>
+                <p>
+                  Generated:{" "}
+                  <span className="font-medium">
+                    {contentStatus.publishedSnapshot
+                      ? new Date(contentStatus.publishedSnapshot.generatedAt).toLocaleString()
+                      : "Not generated"}
+                  </span>
+                </p>
+                <p>
+                  Status:{" "}
+                  <span className="font-medium">
+                    {contentStatus.publishedSnapshot
+                      ? `${contentStatus.publishedSnapshot.status}${
+                          contentStatus.publishedSnapshot.stale ? ", stale" : ""
+                        }`
+                      : "No published snapshot"}
+                  </span>
+                </p>
+                <p>
+                  Products covered:{" "}
+                  <span className="font-medium">
+                    {contentStatus.publishedSnapshot
+                      ? `${contentStatus.publishedSnapshot.storedProductCount} / ${contentStatus.publishedSnapshot.expectedProductCount}`
+                      : "0"}
+                  </span>
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {contentStatus.availableStrategies.map((strategy) => (
+                  <Button
+                    key={strategy}
+                    variant={
+                      contentStatus.recommendationStrategy === strategy ? "default" : "outline"
+                    }
+                    disabled={strategy === "python_content" && !contentStatus.publishedSnapshot}
+                    onClick={async () => {
+                      try {
+                        await setStrategy({ recommendationStrategy: strategy });
+                        toastSuccess(
+                          strategy === "convex"
+                            ? "Store recommendations stay on Convex"
+                            : "Similar products will use the published Python snapshot"
+                        );
+                      } catch (error) {
+                        toastError(error);
+                      }
+                    }}
+                  >
+                    {strategy === "convex" ? "Use Convex" : "Use Python content"}
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

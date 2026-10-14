@@ -7,6 +7,8 @@ import { validateEmailFromValue } from "./lib/emailFrom";
 import { getCancellationRefundFeePercent, getEmailFromValue, getLowStockThresholdValue, getReviewReplyStoreContext, getSmsOrderConfirmationEnabledValue } from "./lib/settingsHelpers";
 import { slugify } from "./lib/products";
 import { RECOMMENDATION_SYSTEM_DEFAULTS } from "./lib/recommendations/constants";
+import { assertMlStrategySetting } from "./lib/recommendations/mlStrategy";
+import { assertPublishedSnapshotForStrategy } from "./lib/recommendations/contentRecommendationStore";
 
 export const SYSTEM_SETTING_KEYS = [
   "store_name",
@@ -263,6 +265,13 @@ function assertValidSettingValue(key: string, value: string) {
       } catch {
         throw new ConvexError("Recommendation setting must be valid JSON");
       }
+    }
+    try {
+      assertMlStrategySetting(key, value);
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error ? error.message : "Invalid recommendation strategy"
+      );
     }
   }
 }
@@ -546,6 +555,15 @@ export const update = mutation({
       value = value.toLowerCase();
     }
     assertValidSettingValue(row.key, value);
+    if (row.key === "recommendation_strategy" && value === "python_content") {
+      try {
+        await assertPublishedSnapshotForStrategy(ctx);
+      } catch (error) {
+        throw new ConvexError(
+          error instanceof Error ? error.message : "Snapshot required"
+        );
+      }
+    }
 
     if (row.isSystem) {
       await ctx.db.patch(args.id, {

@@ -5,7 +5,7 @@ Each feature should work in all five states: **Success**, **Empty**, **API failu
 
 Architecture note: several features chain **Gemini → Grok/OpenRouter/OpenAI → n8n**. Failures at any layer must degrade gracefully — the storefront must remain usable.
 
-The Python service in `services/ai-service` is not part of these checks. Current storefront and admin AI does not call it.
+The Python service in `services/ai-service` is not part of these checks. Current storefront and admin AI does not call it. Offline content-model training must not change recommendation sections, search, or visual search.
 
 ## How to use
 

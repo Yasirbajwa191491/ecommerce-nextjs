@@ -1,4 +1,4 @@
-"""Future data validation, cleaning, and feature preparation.
+"""Product validation, cleaning, and content features.
 
-No customer records are stored or transformed here in Phase 1.
+Importing this package does not read a dataset or fit a model.
 """

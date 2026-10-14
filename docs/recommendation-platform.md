@@ -134,3 +134,4 @@ Workflow templates: `n8n/workflows/09-recommendation-cron.json`, `10-recommendat
 - Collaborative filtering matrix
 - Image-embedding personalization
 - A/B testing for scoring weights
+- Phase 2B stores precomputed Python content recommendations in Convex. The default strategy is `convex`. `python_content` reads the published snapshot for similar products and falls back to this engine. See [python-ml-recommendations.md](python-ml-recommendations.md).

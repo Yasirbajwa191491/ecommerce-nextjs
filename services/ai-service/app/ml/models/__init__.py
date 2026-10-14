@@ -1,4 +1,4 @@
-"""Future model definitions and artifact loading.
+"""Content model and artifact storage.
 
-Phase 1 does not load weights or download pretrained models at import or startup.
+Importing this package does not load joblib files or download pretrained models.
 """

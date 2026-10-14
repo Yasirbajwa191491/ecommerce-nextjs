@@ -1,7 +1,8 @@
 """Authenticated internal status.
 
-Every route on this router requires the service bearer token. Phase 1 does not
-register inference operations.
+Every route on this router requires the service bearer token. Status does not
+load a recommendation artifact. Content inference lives on its own router and
+loads an artifact only for an authenticated request when inference is enabled.
 """
 
 from fastapi import APIRouter, Depends, Request

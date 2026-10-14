@@ -24,8 +24,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.app_env,
         settings.enable_model_inference,
     )
+    # Offline training is a CLI. Startup must not fit or load recommendation artifacts.
     if settings.enable_model_inference:
-        logger.warning("model_inference_requested_but_not_implemented")
+        logger.warning("model_inference_enabled_without_startup_load")
     yield
     logger.info("application_stop")
 

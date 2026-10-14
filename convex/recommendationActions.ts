@@ -1,7 +1,7 @@
 "use node";
 
 import { internalAction } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Infer } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -232,7 +232,7 @@ export const computeSectionRecommendations = internalAction({
     }
 
     if (args.productId && args.sectionType === "because_you_viewed") {
-      const similar = (await ctx.runAction(api.productSearch.getSimilarProducts, {
+      const similar = (await ctx.runAction(internal.productSearch.similarProducts, {
         productId: args.productId,
         limit,
       })) as SimilarProductResult[];

@@ -11,10 +11,20 @@ htmlcov/
 .env.*
 !.env.example
 
-artifacts/**
+artifacts/*
 !artifacts/.gitkeep
+!artifacts/recommendations/
+artifacts/recommendations/*
+!artifacts/recommendations/.gitkeep
+
+datasets/*
+!datasets/README.md
+!datasets/.gitkeep
+
+evaluation/reports/*
+!evaluation/reports/.gitkeep
+
 data/
-datasets/
 checkpoints/
 wandb/
 mlruns/
@@ -31,3 +41,5 @@ mlruns/
 *.pkl
 *.pickle
 *.joblib
+*.npy
+*.npz

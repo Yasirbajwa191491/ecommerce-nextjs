@@ -1,14 +1,18 @@
 [project]
 name = "ecommerce-ai-service"
 version = "0.1.0"
-description = "Independent Python AI/ML service foundation for the ecommerce platform"
+description = "Python AI service with an offline content recommendation model"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi>=0.115,<1",
   "httpx>=0.28,<1",
+  "joblib>=1.4,<2",
+  "numpy>=2.1,<3",
+  "pandas>=2.2,<3",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
+  "scikit-learn>=1.5,<1.9",
   "uvicorn>=0.34,<1",
 ]
 
@@ -32,13 +36,13 @@ addopts = "-q"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["app", "tests"]
+src = ["app", "evaluation", "tests", "training"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "tests"]
+known-first-party = ["app", "evaluation", "tests", "training"]
 
 [tool.ruff.format]
 quote-style = "double"

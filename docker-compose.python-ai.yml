@@ -1,0 +1,31 @@
+# Optional Python AI service. This file is not started by `npm run dev`.
+# Build and run it only for a staging host. Do not put real tokens in this file.
+
+services:
+  python-ai:
+    build:
+      context: ./services/ai-service
+    image: ecommerce-ai-service:staging
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      APP_ENV: production
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      LOG_LEVEL: INFO
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?set AI_SERVICE_API_KEY}
+      AI_SERVICE_API_KEY_PREVIOUS: ${AI_SERVICE_API_KEY_PREVIOUS:-}
+      ENABLE_MODEL_INFERENCE: ${ENABLE_MODEL_INFERENCE:-false}
+      CONTENT_MODEL_DIR: ${CONTENT_MODEL_DIR:-/models}
+      MODEL_ARTIFACTS_DIR: /models
+    volumes:
+      - ${CONTENT_MODEL_HOST_DIR:-./services/ai-service/artifacts/recommendations/content-v1}:/models:ro
+    mem_limit: 1g
+    cpus: 1.0
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app
+    security_opt:
+      - no-new-privileges:true

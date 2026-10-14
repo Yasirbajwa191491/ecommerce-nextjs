@@ -1,7 +1,19 @@
 # Evaluation
 
-Offline evaluation and model comparison will live here in a later phase. The API process does not import this directory and does not score traffic.
+Offline comparison of the content model against a same-category baseline. The API process does not import this package and does not score live traffic.
 
-Phase 1 has no evaluation job, no metric endpoint, and no fixture built from customer orders or reviews. Future comparisons should use reviewed offline datasets and should not change the recommendations, search ranking, or embeddings the store serves today.
+```bash
+uv run python -m evaluation.evaluate_recommendations
+```
 
-Nothing in this folder is a product feature yet.
+The command reads:
+
+- `datasets/synthetic/products.jsonl`
+- `datasets/synthetic/relevance.jsonl` (labels only; not model features)
+- `artifacts/recommendations/content-v1/`
+
+It writes `evaluation/reports/content-v1-report.json` and `evaluation/reports/content-v1-summary.md`. Those reports are gitignored.
+
+Precision@K, Recall@K, and HitRate@K skip queries with an empty relevance set. Coverage uses the eligible catalog as the denominator. The synthetic labels were written alongside similar product text, so the report is a pipeline check, not a claim about store conversion.
+
+See [docs/python-ml-recommendations.md](../../../docs/python-ml-recommendations.md).

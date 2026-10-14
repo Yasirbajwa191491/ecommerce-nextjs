@@ -8,6 +8,7 @@ import {
   recommendationSectionTypeValidator,
   recommendationSourceValidator,
 } from "./lib/recommendations/validators";
+import { sectionUsesContentModel } from "./lib/recommendations/mlStrategy";
 
 type RecommendationSource = Infer<typeof recommendationSourceValidator>;
 
@@ -23,6 +24,21 @@ export const getRecommendations = action({
   },
   returns: recommendationResultValidator,
   handler: async (ctx, args): Promise<Infer<typeof recommendationResultValidator>> => {
+    if (args.productId && sectionUsesContentModel(args.sectionType, args.productId)) {
+      const resolved = await ctx.runQuery(internal.contentRecommendations.resolveForProduct, {
+        productId: args.productId,
+        limit: args.limit,
+      });
+      if (resolved.applied) {
+        return {
+          products: resolved.products,
+          sectionType: args.sectionType,
+          source: "similar",
+          cached: false,
+        };
+      }
+    }
+
     const result = await ctx.runAction(
       internal.recommendationActions.computeSectionRecommendations,
       {

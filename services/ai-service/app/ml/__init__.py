@@ -1,4 +1,4 @@
-"""Future machine-learning packages.
+"""Offline content recommendations and future model packages.
 
-Phase 1 does not train, download, or run models. Importing this package must stay cheap.
+Importing this package does not train, download weights, or read artifacts.
 """

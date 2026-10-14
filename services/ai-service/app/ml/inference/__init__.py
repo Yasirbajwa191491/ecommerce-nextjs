@@ -1,4 +1,5 @@
-"""Future prediction and ranking operations.
+"""Offline recommendation loading and ranking.
 
-Phase 1 does not expose inference and does not return placeholder scores.
+Importing this package does not load a model. The HTTP service imports it only
+while handling an authenticated inference request.
 """

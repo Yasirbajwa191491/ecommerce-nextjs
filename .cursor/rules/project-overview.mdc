@@ -7,7 +7,7 @@ alwaysApply: true
 
 - **Path:** `ecommerce-nextjs/` (lowercase folder at repo root)
 - **Stack:** Next.js 16 App Router, Convex (realtime), shadcn/ui + Tailwind v4, TypeScript strict
-- **Monorepo:** Web `apps/web` · Mobile `apps/mobile` · Shared `packages/shared` · Backend `convex/` · Optional Python AI foundation `services/ai-service` (not started by `npm run dev`, not on the storefront path)
+- **Monorepo:** Web `apps/web` · Mobile `apps/mobile` · Shared `packages/shared` · Backend `convex/` · Python AI service `services/ai-service` (offline content recommendations; not started by `npm run dev`; shoppers do not call it; default recommendation strategy is `convex`)
 - **Legacy reference:** React app in `../client/` — port behavior, do not break Convex patterns
 
 ## Commands

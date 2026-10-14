@@ -39,6 +39,14 @@ import {
   n8nRecommendationSaveProfile,
   n8nRecommendationExportAudiences,
 } from "./n8nRecommendationHttp";
+import {
+  appendSnapshot,
+  createSnapshot,
+  exportCatalog,
+  failSnapshot,
+  publishSnapshot,
+  snapshotStatus,
+} from "./mlCatalogHttp";
 
 const http = httpRouter();
 
@@ -228,6 +236,42 @@ http.route({
   path: "/n8n/recommendations/export-audiences",
   method: "POST",
   handler: n8nRecommendationExportAudiences,
+});
+
+http.route({
+  path: "/ml/catalog/export",
+  method: "GET",
+  handler: exportCatalog,
+});
+
+http.route({
+  path: "/ml/recommendations/snapshots",
+  method: "POST",
+  handler: createSnapshot,
+});
+
+http.route({
+  path: "/ml/recommendations/snapshots/append",
+  method: "POST",
+  handler: appendSnapshot,
+});
+
+http.route({
+  path: "/ml/recommendations/snapshots/publish",
+  method: "POST",
+  handler: publishSnapshot,
+});
+
+http.route({
+  path: "/ml/recommendations/snapshots/fail",
+  method: "POST",
+  handler: failSnapshot,
+});
+
+http.route({
+  path: "/ml/recommendations/status",
+  method: "GET",
+  handler: snapshotStatus,
 });
 
 export default http;

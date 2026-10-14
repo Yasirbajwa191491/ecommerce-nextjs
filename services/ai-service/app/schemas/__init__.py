@@ -50,5 +50,5 @@ class InternalStatusResponse(BaseModel):
 
     status: Literal["ok"]
     inference_enabled: bool = Field(
-        description="Reflects ENABLE_MODEL_INFERENCE. Phase 1 does not load a model."
+        description="Reflects ENABLE_MODEL_INFERENCE. The API does not load a model artifact."
     )

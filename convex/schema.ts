@@ -1307,4 +1307,38 @@ export default defineSchema({
     browserSessionToken: v.string(),
     createdAt: v.number(),
   }).index("by_call_id", ["vapiCallId"]),
+
+  contentRecommendationSnapshots: defineTable({
+    snapshotId: v.string(),
+    status: v.union(
+      v.literal("staging"),
+      v.literal("published"),
+      v.literal("failed"),
+      v.literal("archived")
+    ),
+    modelVersion: v.string(),
+    artifactVersion: v.string(),
+    datasetFingerprint: v.string(),
+    datasetSource: v.union(v.literal("synthetic"), v.literal("real_catalog")),
+    expectedProductCount: v.number(),
+    storedProductCount: v.number(),
+    topK: v.number(),
+    generatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+  })
+    .index("by_snapshot_id", ["snapshotId"])
+    .index("by_status", ["status"]),
+
+  contentRecommendationItems: defineTable({
+    snapshotId: v.string(),
+    productId: v.id("products"),
+    recommendedProductIds: v.array(v.id("products")),
+    scores: v.array(v.number()),
+    modelVersion: v.string(),
+    artifactVersion: v.string(),
+    generatedAt: v.number(),
+  })
+    .index("by_snapshot_and_product", ["snapshotId", "productId"])
+    .index("by_snapshot", ["snapshotId"]),
 });

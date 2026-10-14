@@ -1,6 +1,6 @@
 "use node";
 
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { embedProductText } from "./lib/ai/productIntelligence";
@@ -307,7 +307,7 @@ export const searchHybrid = action({
   },
 });
 
-export const getSimilarProducts = action({
+export const similarProducts = internalAction({
   args: {
     productId: v.id("products"),
     limit: v.optional(v.number()),
@@ -373,5 +373,30 @@ export const getSimilarProducts = action({
       internal.productSearchQueries.enrichProductsByIds,
       { productIds: ranked.map((p) => p._id as Id<"products">) }
     )) as SearchResultItem[];
+  },
+});
+
+export const getSimilarProducts = action({
+  args: {
+    productId: v.id("products"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(searchResultItemValidator),
+  handler: async (ctx, args): Promise<SearchResultItem[]> => {
+    const limit = Math.min(Math.max(args.limit ?? 8, 1), 16);
+    const resolved = await ctx.runQuery(internal.contentRecommendations.resolveForProduct, {
+      productId: args.productId,
+      limit,
+    });
+    if (resolved.applied && resolved.productIds.length > 0) {
+      const products = (await ctx.runQuery(internal.productSearchQueries.enrichProductsByIds, {
+        productIds: resolved.productIds,
+      })) as SearchResultItem[];
+      if (products.length > 0) return products;
+    }
+    return await ctx.runAction(internal.productSearch.similarProducts, {
+      productId: args.productId,
+      limit,
+    });
   },
 });

@@ -1,6 +1,6 @@
 # Python AI service
 
-Phase 1 adds an independent Python service beside the existing ecommerce platform. It is infrastructure for later machine-learning work. It is not wired into the storefront, admin dashboard, mobile app, checkout, or the current AI provider chain.
+Phase 1 adds an independent Python service beside the existing ecommerce platform. Phase 2A adds an offline content-based product recommender in that same service. It is not wired into the storefront, admin dashboard, mobile app, checkout, or the current AI provider chain.
 
 ## Current ecommerce architecture
 
@@ -42,17 +42,27 @@ Code lives in `services/ai-service`. It is a FastAPI application on Python 3.12,
 
 ```text
 services/ai-service/
-├── app/main.py                 # application factory
-├── app/api/                    # /health/* and /api/v1
+├── app/main.py                 # application factory; does not train or load models
+├── app/api/                    # /health/* and /api/v1 (no recommendation route)
 ├── app/core/                   # settings, logging, bearer auth
-├── app/integrations/convex.py  # future Convex HTTP client
-├── app/ml/                     # empty packages for later preprocessing, models, inference
-├── training/                   # offline training notes only
-├── evaluation/                 # offline evaluation notes only
-└── artifacts/                  # gitignored model files, empty in Phase 1
+├── app/integrations/convex.py  # future Convex HTTP client; data paths still refused
+├── app/ml/                     # preprocessing, TF-IDF content model, offline inference
+├── training/                   # sample data, validation, and explicit training CLI
+├── evaluation/                 # offline metrics and the category baseline
+├── datasets/                   # generated synthetic JSONL (gitignored)
+└── artifacts/                  # gitignored joblib bundles
 ```
 
 Startup does not load a model, train, or call Convex. Public docs exist only when `APP_ENV=development`.
+
+The offline model is documented in [python-ml-recommendations.md](python-ml-recommendations.md). Commands, from `services/ai-service`:
+
+```bash
+uv run python -m training.generate_sample_data
+uv run python -m training.train_recommendations
+uv run python -m evaluation.evaluate_recommendations
+uv run python -m app.ml.inference.cli --product-id sample-a-01 --top-k 5
+```
 
 | Method | Path | Who can call it |
 | --- | --- | --- |
@@ -60,7 +70,7 @@ Startup does not load a model, train, or call Convex. Public docs exist only whe
 | GET | `/health/ready` | Process probe. Does not claim Convex or a model is healthy. |
 | GET | `/api/v1/internal/status` | Caller that presents `Authorization: Bearer <AI_SERVICE_API_KEY>`. |
 
-`ENABLE_MODEL_INFERENCE=true` makes readiness return HTTP 503. Phase 1 has no loader, so the process must not look ready to serve predictions.
+`ENABLE_MODEL_INFERENCE=true` makes readiness return HTTP 503. The HTTP process still has no model loader, so it must not look ready to serve predictions. The offline CLI does not read that flag.
 
 ## Convex and Python
 
@@ -92,19 +102,20 @@ This check does not decide whether a shopper or an admin may perform an action. 
 
 ## Training and inference
 
-| Concern | Where it runs | Phase 1 |
+| Concern | Where it runs | Status |
 | --- | --- | --- |
-| API process | `uvicorn app.main:app` | Health and authenticated status only |
-| Inference | `app/ml/inference/` | Package only. No route and no scores. |
-| Training | `training/` | Documentation only. Not started on API boot. |
-| Evaluation | `evaluation/` | Documentation only. |
-| Weights | `artifacts/` | Gitignored. Nothing is downloaded. |
+| API process | `uvicorn app.main:app` | Health, authenticated status, and optional content inference. Startup does not load artifacts. |
+| Offline inference | `python -m app.ml.inference.cli` and `python -m app.ml.inference.batch` | Ranks products from a local artifact. |
+| HTTP inference | `POST /api/v1/recommendations/content` | Bearer token and `ENABLE_MODEL_INFERENCE=true`. Disabled by default. |
+| Training | `training/` | Explicit CLI for `synthetic` or `real_catalog`. Not started on API boot. |
+| Evaluation | `evaluation/` | Synthetic metrics, plus real-catalog diagnostics that omit quality metrics unless labels are provided. |
+| Weights | `artifacts/recommendations/content-v1/` and `artifacts/recommendations/runs/` | Gitignored joblib bundles. Load only trusted files. Real catalog runs do not replace `content-v1`. |
 
-Large frameworks (PyTorch, TensorFlow, Transformers, LangChain) are not dependencies yet.
+Large frameworks (PyTorch, TensorFlow, Transformers, LangChain) are not dependencies. Runtime ML libraries are NumPy, pandas, scikit-learn, and joblib.
 
 ## Future web and mobile integration
 
-A later feature should be called from a Convex action, behind a feature flag that defaults off, with a fallback to the current Convex implementation. The browser and the Expo app should keep calling Convex. They should not learn the Python base URL or the service key. If the Python process is down, existing search, recommendations, checkout, and payments keep working because they do not depend on it.
+Shoppers keep calling Convex. They never receive the Python base URL or the service key. Similar products can read a published content snapshot when an administrator sets `recommendation_strategy` to `python_content`. The default is `convex`. If the snapshot is missing, Convex uses the existing ranker. If the Python process is down, search, recommendations, checkout, and payments keep working because shopper requests do not call it.
 
 ## Deployment
 
@@ -124,4 +135,4 @@ Failure stays local to this process. The storefront does not wait on it. Readine
 
 ## What is not implemented
 
-Recommendation training, deep learning, fine-tuning, RAG, a new embedding model, demand forecasting, customer clustering, new AI pages, and any change to current search or recommendation results.
+Live switching of every recommendation section, deep learning, fine-tuning, RAG, a new embedding model, demand forecasting, customer clustering, and a hybrid of the Python scores with the Convex ranker. The content strategy is opt-in, defaults to `convex`, and applies to item-to-item similar products. See [python-ml-recommendations.md](python-ml-recommendations.md).

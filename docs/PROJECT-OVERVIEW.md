@@ -46,7 +46,7 @@ The repository `ecommerce-nextjs/` is an **npm workspaces monorepo**. One Convex
 - **Mobile storefront** — Expo / React Native (`apps/mobile`)
 - **Shared helpers** — currency, images, cart line types (`packages/shared`)
 - **Optional AI worker** — local review-AI HTTP service (`services/review-ai-worker`)
-- **Python AI service** — FastAPI foundation (`services/ai-service`). Not started by `npm run dev` and not called by the storefront, admin, or mobile app.
+- **Python AI service** — FastAPI process (`services/ai-service`) with an offline content recommendation model. Not started by `npm run dev` and not called by the storefront, admin, or mobile app.
 
 ```text
 ecommerce-nextjs/
@@ -58,7 +58,7 @@ ecommerce-nextjs/
 ├── convex/                  # Schema, queries, mutations, actions, HTTP
 ├── services/
 │   ├── review-ai-worker/    # Optional local Transformers/Ollama worker
-│   └── ai-service/          # Python FastAPI foundation (not on the store path)
+│   └── ai-service/          # Python FastAPI service (offline ML; not on the store path)
 ├── docs/                    # Architecture and product docs
 └── package.json             # Workspace scripts
 ```
@@ -87,7 +87,7 @@ ecommerce-nextjs/
 | `packages/shared` | `APP_NAME` / brand, `formatCurrencyAmount`, product image helpers, `CART_STORAGE_KEY` / `CheckoutCartLine`. |
 | `convex` | Single backend: schema, public storefront functions, admin functions, Stripe/Vapi/n8n HTTP, AI actions. |
 | `services/review-ai-worker` | Optional Node worker (`@xenova/transformers`, optional Ollama). Selected when `AI_PROVIDER=remote` and `AI_WORKER_URL` is set. |
-| `services/ai-service` | Python 3.12 FastAPI foundation for later ML work. Health and service auth only. Not selected by `AI_PROVIDER` or `AI_WORKER_URL`. |
+| `services/ai-service` | Python 3.12 FastAPI service. Health, service auth, and an offline TF-IDF recommendation model. Not selected by `AI_PROVIDER` or `AI_WORKER_URL`. Not called by the store. |
 | `docs` | This overview plus focused architecture notes (visual search, recommendations, review AI, AI QA). |
 | `n8n/workflows` | Optional automation. Core catalog, checkout, and search work without n8n. |
 
@@ -111,6 +111,7 @@ ecommerce-nextjs/
 | `npm run dev:python-ai` | Python AI service on `127.0.0.1:8000` (not part of `npm run dev`) |
 | `npm run test:python-ai` | Pytest for `services/ai-service` |
 | `npm run lint:python-ai` | Ruff check for `services/ai-service` |
+| `npm run ml:python-train` | Train the offline Python content model (not part of `npm run dev`) |
 
 ---
 
@@ -328,13 +329,13 @@ Provider selection is **environment-driven**, not hardcoded to one vendor.
 
 **Not LLM:** visual embeddings use SigLIP/CLIP on Next.js. Gemini Vision is a visual-search fallback.
 
-### Python AI service (foundation only)
+### Python AI service
 
-**Implemented infrastructure. Not called by web, mobile, admin, or the provider chain.**
+**Offline content model is implemented. It is not called by web, mobile, admin, or the provider chain.**
 
-`services/ai-service` is a separate FastAPI process (Python 3.12, port 8000). It exposes liveness, readiness, and one authenticated internal status route. It does not rank products, embed text, or call Gemini, Groq, OpenRouter, OpenAI, Anthropic, or `services/review-ai-worker`.
+`services/ai-service` is a separate FastAPI process (Python 3.12, port 8000). HTTP still exposes liveness, readiness, and one authenticated internal status route. Those routes do not rank products. A local CLI can train a TF-IDF item-to-item model on a synthetic catalog and score it offline. It does not call Gemini, Groq, OpenRouter, OpenAI, Anthropic, or `services/review-ai-worker`.
 
-`AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` are unchanged. Detail: [python-ai-service.md](python-ai-service.md).
+`AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` are unchanged. Detail: [python-ai-service.md](python-ai-service.md) and [python-ml-recommendations.md](python-ml-recommendations.md).
 
 ### Implemented AI capabilities
 
@@ -811,7 +812,7 @@ Legend: **Yes** = implemented on that surface · **Partial** = limited or differ
 | Email marketing | Admin | No | Yes |
 | Review calls | Admin | No | Yes |
 | Business copilot | Admin | No | Yes |
-| Python AI/ML service | No | No | Foundation only (not in the request path) |
+| Python AI/ML service | No | No | Offline content model only (not in the request path) |
 
 Wishlist **lists are not shared** between web localStorage and mobile Convex.
 
@@ -821,7 +822,7 @@ Wishlist **lists are not shared** between web localStorage and mobile Convex.
 
 These are **not implemented** or not finished. Do not treat them as shipped.
 
-The Python service in `services/ai-service` is implemented infrastructure (health, auth, empty ML packages). It does not add the ML features in the table below.
+The Python service in `services/ai-service` can train and evaluate an offline content recommender. That model is not on the storefront path and does not add the unfinished items in the table below.
 
 | Item | Notes |
 |------|--------|
@@ -844,7 +845,7 @@ The Python service in `services/ai-service` is implemented infrastructure (healt
 | Play Store production | Preview APK profile exists; store listing not documented |
 | Second locale / RTL | i18n file is English-only |
 | SMS marketing / SMS OTP | Transactional order SMS only; admin OTP is email |
-| Python ML recommendations, RAG, fine-tuning, forecasting, clustering | Service foundation only. No model, no new storefront results, no provider migration. |
+| Live Python recommendation switching, RAG, fine-tuning, forecasting, clustering | Content snapshots can be published and selected by an admin. The default strategy is `convex`, so the store does not use them until that choice is made. RAG, fine-tuning, forecasting, and clustering are not implemented. |
 
 Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push credentials, n8n, `AI_WORKER_URL`, image-embed secret, matching Convex URL on web vs mobile, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`, Face ID native rebuild for App Lock.
 
@@ -866,7 +867,8 @@ Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push cre
 | [docs/recommendation-platform.md](recommendation-platform.md) | Recommendation engine |
 | [docs/review-ai-architecture.md](review-ai-architecture.md) | Review AI pipeline |
 | [docs/AI_FEATURE_QA_CHECKLIST.md](AI_FEATURE_QA_CHECKLIST.md) | AI QA before release |
-| [docs/python-ai-service.md](python-ai-service.md) | Python AI service foundation (not on the store path) |
+| [docs/python-ai-service.md](python-ai-service.md) | Python AI service (not on the store path) |
+| [docs/python-ml-recommendations.md](python-ml-recommendations.md) | Offline TF-IDF recommendations (not live) |
 | [convex/vapi/VOICE_ASSISTANT_GUIDE.md](../convex/vapi/VOICE_ASSISTANT_GUIDE.md) | Vapi tools |
 
 ---

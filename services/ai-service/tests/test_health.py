@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from fastapi import Request
 from fastapi.testclient import TestClient
@@ -65,6 +66,21 @@ def test_readiness_does_not_claim_a_model_when_inference_is_enabled(api_key: str
     assert ready.json()["status"] == "not_ready"
     assert ready.json()["checks"]["model_inference"] == "unavailable"
     assert "artifact" not in ready.text.lower()
+
+
+def test_startup_does_not_train_or_require_a_model_artifact(api_key: str, tmp_path: Path) -> None:
+    artifacts = tmp_path / "artifacts"
+    settings = Settings(
+        _env_file=None,
+        app_env="test",
+        ai_service_api_key=api_key,
+        artifacts_dir=str(artifacts),
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/health/ready")
+    assert response.status_code == 200
+    assert response.json()["checks"]["model_inference"] == "disabled"
+    assert not artifacts.exists()
 
 
 def test_health_does_not_enable_cors(client: TestClient) -> None:

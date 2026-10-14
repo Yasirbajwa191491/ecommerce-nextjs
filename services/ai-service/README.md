@@ -1,8 +1,8 @@
 # Python AI service
 
-Independent FastAPI service for future machine-learning work in this ecommerce monorepo. Phase 1 is the foundation: configuration, health checks, service authentication, and a Convex client that does not read store data.
+Independent FastAPI service for machine-learning work in this ecommerce monorepo. Phase 1 is the foundation: configuration, health checks, service authentication, and a Convex client that does not read store data. Phase 2A adds an offline content-based recommendation model. The HTTP API still does not serve recommendations.
 
-The Next.js storefront, Expo app, and Convex AI features do not call this service. `npm run dev` does not start it. Gemini, Groq, OpenRouter, OpenAI, Anthropic, the review AI worker, SigLIP/CLIP embeddings, recommendations, and the Business Copilot keep their current behavior.
+The Next.js storefront, Expo app, and Convex AI features do not call this service. `npm run dev` does not start it. Gemini, Groq, OpenRouter, OpenAI, Anthropic, the review AI worker, SigLIP/CLIP embeddings, the live recommendation engine, and the Business Copilot keep their current behavior.
 
 ## How it fits
 
@@ -79,7 +79,25 @@ npm run lint:python-ai
 npm run format:python-ai
 ```
 
-Tests use FastAPI's test client and mocked HTTP. They do not call Convex, Stripe, or an LLM.
+Tests use FastAPI's test client, local synthetic products, and scikit-learn. They do not call Convex, Stripe, or an LLM, and they do not download pretrained models.
+
+## Offline content recommendations (Phase 2A)
+
+Train and score a TF-IDF cosine model on a synthetic catalog. This does not change storefront ranking.
+
+```bash
+uv run python -m training.generate_sample_data
+uv run python -m training.validate_dataset
+uv run python -m training.train_recommendations
+uv run python -m evaluation.evaluate_recommendations
+uv run python -m app.ml.inference.cli --product-id sample-a-01 --top-k 5
+```
+
+The same training and evaluation commands are `npm run ml:python-sample`, `ml:python-validate`, `ml:python-train`, and `ml:python-eval` from the repository root.
+
+Generated JSONL, evaluation reports, and `artifacts/recommendations/content-v1/*.joblib` are gitignored. Load joblib artifacts only from this project: unpickling an untrusted file can execute code.
+
+Learning notes: [docs/python-ml-recommendations.md](../../docs/python-ml-recommendations.md).
 
 ## Docker
 
@@ -140,26 +158,29 @@ See `.env.example`.
 | `CONVEX_URL` | Future deployment URL (`.convex.cloud` or local). Not called in Phase 1. |
 | `CONVEX_INTERNAL_URL` | Future HTTP actions origin (`.convex.site` or local). The client can probe this URL. |
 | `CONVEX_SERVICE_TOKEN` | Future shared secret for a least-privilege Convex HTTP action. Not a Convex admin key. |
-| `MODEL_ARTIFACTS_DIR` | Directory reserved for later model files. Nothing is downloaded into it. |
-| `ENABLE_MODEL_INFERENCE` | Must stay `false` until a real model loader exists. `true` fails readiness. |
+| `MODEL_ARTIFACTS_DIR` | Directory for local model files. The API does not load them. |
+| `ENABLE_MODEL_INFERENCE` | Must stay `false` until an HTTP loader exists. `true` fails readiness. Offline CLI training does not flip this flag. |
 
 Deployed environments should use `APP_ENV=production`. JSON logs are used in production; development and test use plain text.
 
-## Future ML layout
+## ML layout
 
-| Path | Later responsibility |
+| Path | Responsibility |
 | --- | --- |
-| `app/ml/preprocessing/` | Validation, cleaning, and features. |
-| `app/ml/models/` | Definitions and loading from `artifacts/`. |
-| `app/ml/inference/` | Prediction and ranking. |
-| `training/` | Offline training. Not imported by the API. |
-| `evaluation/` | Offline evaluation. Not imported by the API. |
-| `artifacts/` | Local weights and checkpoints. Git ignores generated files. |
+| `app/ml/preprocessing/` | Validation, cleaning, and features. Not used by HTTP routes. |
+| `app/ml/models/` | TF-IDF content model and artifact load/save. |
+| `app/ml/inference/` | `RecommendationModel.recommend` and the local CLI. No HTTP route. |
+| `training/` | Sample data, validation, and fitting. Not imported by the API. |
+| `evaluation/` | Precision@K, Recall@K, HitRate@K, coverage, and the category baseline. |
+| `datasets/` | Generated synthetic JSONL. Gitignored except this folder's README. |
+| `artifacts/` | Local joblib bundles. Gitignored except `.gitkeep`. |
 
 ## Current limitations
 
-- No recommendation training, embeddings, RAG, fine-tuning, forecasting, or clustering.
-- No inference route and no placeholder model output.
+- The API still has no recommendation route. Startup does not train or load artifacts.
+- No live Convex product export, no storefront feature flag, and no change to current recommendation ranking.
 - No Convex HTTP action accepts `CONVEX_SERVICE_TOKEN` yet. The Python client refuses every data path.
+- No collaborative filtering, deep learning, RAG, fine-tuning, forecasting, or clustering.
 - `convex/lib/ai/pythonAiServiceClient.ts` can probe this service, and nothing in the running store calls it.
 - Existing `AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` behavior is unchanged.
+- The Docker image installs the ML libraries because they are runtime dependencies, and it still only copies `app/`. Train on the host with `uv`, not inside the current API container.

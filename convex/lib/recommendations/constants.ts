@@ -40,6 +40,9 @@ export const RECOMMENDATION_SYSTEM_SETTING_KEYS = [
   "recommendation_max_per_section",
   "recommendation_scoring_weights",
   "recommendation_fallback_strategy",
+  "recommendation_strategy",
+  "recommendation_strategy_fallback",
+  "recommendation_python_model_version",
 ] as const;
 
 export type RecommendationSystemSettingKey =
@@ -105,5 +108,20 @@ export const RECOMMENDATION_SYSTEM_DEFAULTS: {
     key: "recommendation_fallback_strategy",
     name: "Recommendation Fallback Strategy",
     value: "personalized_then_similar_then_popular",
+  },
+  {
+    key: "recommendation_strategy",
+    name: "Recommendation Strategy",
+    value: "convex",
+  },
+  {
+    key: "recommendation_strategy_fallback",
+    name: "Recommendation Strategy Fallback",
+    value: "convex",
+  },
+  {
+    key: "recommendation_python_model_version",
+    name: "Python Content Model Version",
+    value: "content-v1",
   },
 ];
