@@ -15,3 +15,14 @@ uv run python -m training.train_recommendations
 `train_recommendations` fits TF-IDF and one-hot features, then publishes `artifacts/recommendations/content-v1/`. Re-run it after you change the dataset. Do not point it at production credentials.
 
 See [docs/python-ml-recommendations.md](../../../docs/python-ml-recommendations.md).
+
+Phase 3 behavioral commands are separate and do not overwrite `content-v1`:
+
+```bash
+uv run python -m training.generate_behavioral_data
+uv run python -m training.validate_behavioral_dataset --dataset datasets/synthetic/behavioral_events.jsonl
+uv run python -m training.aggregate_interactions --dataset datasets/synthetic/behavioral_events.jsonl --catalog datasets/synthetic/behavioral_products.jsonl --output datasets/synthetic/behavioral_interactions.jsonl
+uv run python -m training.train_collaborative --events datasets/synthetic/behavioral_events.jsonl --catalog datasets/synthetic/behavioral_products.jsonl --min-product-interactions 1
+uv run python -m training.configure_hybrid
+uv run python -m evaluation.evaluate_behavioral --events datasets/synthetic/behavioral_events.jsonl --catalog datasets/synthetic/behavioral_products.jsonl
+```

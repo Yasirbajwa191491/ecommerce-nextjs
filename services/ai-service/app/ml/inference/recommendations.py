@@ -3,6 +3,7 @@
 This module does not start FastAPI and does not connect to Convex.
 """
 
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,8 @@ from app.ml.models.content_recommender import (
     ContentRecommender,
     RecommendationResult,
 )
+
+_CONTENT_LOAD_LOCK = threading.Lock()
 
 
 class RecommendationModel:
@@ -80,14 +83,22 @@ def open_cached_content_model(state: Any, directory: str) -> RecommendationModel
     stamp = (path / "manifest.json").stat().st_mtime_ns
     identity = str(path.resolve())
     cached = getattr(state, "content_recommendation_model", None)
-    if (
+    if _content_cache_hit(cached, stamp, identity):
+        return cached[2]
+    with _CONTENT_LOAD_LOCK:
+        cached = getattr(state, "content_recommendation_model", None)
+        if _content_cache_hit(cached, stamp, identity):
+            return cached[2]
+        model = RecommendationModel.load(path, trusted=True)
+        state.content_recommendation_model = (stamp, identity, model)
+        return model
+
+
+def _content_cache_hit(cached: object, stamp: int, identity: str) -> bool:
+    return (
         isinstance(cached, tuple)
         and len(cached) == 3
         and cached[0] == stamp
         and cached[1] == identity
         and isinstance(cached[2], RecommendationModel)
-    ):
-        return cached[2]
-    model = RecommendationModel.load(path, trusted=True)
-    state.content_recommendation_model = (stamp, identity, model)
-    return model
+    )

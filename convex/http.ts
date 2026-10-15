@@ -47,6 +47,7 @@ import {
   publishSnapshot,
   snapshotStatus,
 } from "./mlCatalogHttp";
+import { exportBehavioralEvents } from "./mlBehavioralHttp";
 
 const http = httpRouter();
 
@@ -242,6 +243,12 @@ http.route({
   path: "/ml/catalog/export",
   method: "GET",
   handler: exportCatalog,
+});
+
+http.route({
+  path: "/ml/behavioral/events",
+  method: "GET",
+  handler: exportBehavioralEvents,
 });
 
 http.route({

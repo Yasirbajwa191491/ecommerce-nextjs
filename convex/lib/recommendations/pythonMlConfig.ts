@@ -9,9 +9,13 @@ import { isAdminRole } from "../authRoles";
 export const ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY = "enable_python_ml_recommendations";
 export const PYTHON_ML_RECOMMENDATION_MODE_KEY = "python_ml_recommendation_mode";
 export const PYTHON_ML_REQUEST_TIMEOUT_MS_KEY = "python_ml_request_timeout_ms";
+export const PYTHON_ML_RECOMMENDATION_STRATEGY_KEY = "python_ml_recommendation_strategy";
 
 export const PYTHON_ML_MODES = ["off", "shadow", "serve"] as const;
 export type PythonMlMode = (typeof PYTHON_ML_MODES)[number];
+
+export const PYTHON_ML_STRATEGIES = ["content", "collaborative", "hybrid"] as const;
+export type PythonMlStrategy = (typeof PYTHON_ML_STRATEGIES)[number];
 
 /** Inclusive bounds for `python_ml_request_timeout_ms`. */
 export const PYTHON_ML_TIMEOUT_MIN_MS = 250;
@@ -25,7 +29,8 @@ export const PYTHON_ML_SYSTEM_DEFAULTS: {
   key:
     | typeof ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY
     | typeof PYTHON_ML_RECOMMENDATION_MODE_KEY
-    | typeof PYTHON_ML_REQUEST_TIMEOUT_MS_KEY;
+    | typeof PYTHON_ML_REQUEST_TIMEOUT_MS_KEY
+    | typeof PYTHON_ML_RECOMMENDATION_STRATEGY_KEY;
   name: string;
   value: string;
 }[] = [
@@ -43,6 +48,11 @@ export const PYTHON_ML_SYSTEM_DEFAULTS: {
     key: PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
     name: "Python ML Request Timeout (ms)",
     value: String(PYTHON_ML_TIMEOUT_DEFAULT_MS),
+  },
+  {
+    key: PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
+    name: "Python ML Recommendation Strategy",
+    value: "content",
   },
 ];
 
@@ -65,6 +75,7 @@ export type PythonMlStoredInput = {
   enabledRaw?: string | null;
   modeRaw?: string | null;
   timeoutRaw?: string | null;
+  strategyRaw?: string | null;
   modelAvailable?: boolean;
   modelCompatible?: boolean;
 } | null;
@@ -80,6 +91,7 @@ export type PythonMlEffectiveConfig = {
   storedMode: PythonMlMode;
   effectiveMode: PythonMlMode;
   timeoutMs: number;
+  strategy: PythonMlStrategy;
   mayRun: boolean;
   mayAffectCustomers: boolean;
   customerVisibleSource: "existing" | "python_ml";
@@ -89,7 +101,8 @@ export function isPythonMlSettingKey(key: string): boolean {
   return (
     key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY ||
     key === PYTHON_ML_RECOMMENDATION_MODE_KEY ||
-    key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY
+    key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY ||
+    key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY
   );
 }
 
@@ -142,6 +155,14 @@ export function parsePythonMlMode(value: string | null | undefined): PythonMlMod
   return "off";
 }
 
+export function parsePythonMlStrategy(value: string | null | undefined): PythonMlStrategy {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "content" || normalized === "collaborative" || normalized === "hybrid") {
+    return normalized;
+  }
+  return "content";
+}
+
 export function parsePythonMlTimeoutMs(value: string | null | undefined): number {
   const raw = value?.trim() ?? "";
   if (!/^\d+$/.test(raw)) return PYTHON_ML_TIMEOUT_DEFAULT_MS;
@@ -163,6 +184,12 @@ export function assertPythonMlSettingValue(key: string, value: string): void {
     const normalized = value.trim().toLowerCase();
     if (normalized !== "off" && normalized !== "shadow" && normalized !== "serve") {
       throw new Error("Python ML recommendation mode must be off, shadow, or serve");
+    }
+  }
+  if (key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY) {
+    const normalized = value.trim().toLowerCase();
+    if (normalized !== "content" && normalized !== "collaborative" && normalized !== "hybrid") {
+      throw new Error("Python ML recommendation strategy must be content, collaborative, or hybrid");
     }
   }
   if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) {
@@ -232,6 +259,7 @@ export function resolvePythonMlEffectiveConfig(
   const storedMode = parsePythonMlMode(stored?.modeRaw);
   const effectiveMode: PythonMlMode = enabled ? storedMode : "off";
   const timeoutMs = parsePythonMlTimeoutMs(stored?.timeoutRaw);
+  const strategy = parsePythonMlStrategy(stored?.strategyRaw);
   const modelReady = stored?.modelAvailable === true && stored?.modelCompatible === true;
   const runtimeReady = signals.serviceConfigured && signals.credentialsPresent && modelReady;
   const mayRun =
@@ -243,6 +271,7 @@ export function resolvePythonMlEffectiveConfig(
     storedMode,
     effectiveMode,
     timeoutMs,
+    strategy,
     mayRun,
     mayAffectCustomers,
     customerVisibleSource: mayAffectCustomers ? "python_ml" : "existing",

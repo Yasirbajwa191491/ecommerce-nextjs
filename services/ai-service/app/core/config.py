@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     convex_service_token: SecretStr = SecretStr("")
     artifacts_dir: str = Field(default="./artifacts", validation_alias="MODEL_ARTIFACTS_DIR")
     content_model_dir: str = Field(default="", validation_alias="CONTENT_MODEL_DIR")
+    collaborative_model_dir: str = Field(default="", validation_alias="COLLABORATIVE_MODEL_DIR")
+    hybrid_model_dir: str = Field(default="", validation_alias="HYBRID_MODEL_DIR")
     enable_model_inference: bool = False
 
     @field_validator("log_level", mode="before")
@@ -116,12 +118,12 @@ class Settings(BaseSettings):
             raise ValueError("MODEL_ARTIFACTS_DIR is invalid")
         return cleaned
 
-    @field_validator("content_model_dir")
+    @field_validator("content_model_dir", "collaborative_model_dir", "hybrid_model_dir")
     @classmethod
-    def validate_content_model_dir(cls, value: str) -> str:
+    def validate_model_dir(cls, value: str) -> str:
         cleaned = value.strip()
         if len(cleaned) > 260 or any(char in cleaned for char in "\r\n"):
-            raise ValueError("CONTENT_MODEL_DIR is invalid")
+            raise ValueError("Model artifact directory is invalid")
         return cleaned
 
     @model_validator(mode="after")

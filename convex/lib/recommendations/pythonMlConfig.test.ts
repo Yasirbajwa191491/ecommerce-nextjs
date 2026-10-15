@@ -7,6 +7,7 @@ import {
   ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
   PYTHON_ML_RECOMMENDATION_MODE_KEY,
   PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
+  PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
   PYTHON_ML_SYSTEM_DEFAULTS,
   PYTHON_ML_TIMEOUT_DEFAULT_MS,
   REDACTED_SETTING_VALUE,
@@ -42,6 +43,7 @@ function resolve(
     enabledRaw?: string | null;
     modeRaw?: string | null;
     timeoutRaw?: string | null;
+    strategyRaw?: string | null;
     modelAvailable?: boolean;
     modelCompatible?: boolean;
   } | null,
@@ -69,11 +71,17 @@ describe("python ML admin settings", () => {
         name: "Python ML Request Timeout (ms)",
         value: "1500",
       },
+      {
+        key: PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
+        name: "Python ML Recommendation Strategy",
+        value: "content",
+      },
     ]);
     const config = resolve(null);
     expect(config.enabled).toBe(false);
     expect(config.effectiveMode).toBe("off");
     expect(config.timeoutMs).toBe(PYTHON_ML_TIMEOUT_DEFAULT_MS);
+    expect(config.strategy).toBe("content");
     expect(config.mayRun).toBe(false);
     expect(config.customerVisibleSource).toBe("existing");
   });
@@ -131,6 +139,22 @@ describe("python ML admin settings", () => {
     );
   });
 
+  it("keeps the python model strategy on content unless an admin selects another", () => {
+    expect(resolve(null).strategy).toBe("content");
+    expect(resolve({ strategyRaw: "hybrid" }).strategy).toBe("hybrid");
+    expect(resolve({ strategyRaw: " Collaborative " }).strategy).toBe("collaborative");
+    expect(resolve({ strategyRaw: "python_content" }).strategy).toBe("content");
+    expect(() =>
+      assertPythonMlSettingValue(PYTHON_ML_RECOMMENDATION_STRATEGY_KEY, "collaborative")
+    ).not.toThrow();
+    expect(() =>
+      assertPythonMlSettingValue(PYTHON_ML_RECOMMENDATION_STRATEGY_KEY, "python_content")
+    ).toThrow(/content, collaborative, or hybrid/);
+    expect(resolve({ enabledRaw: "false", modeRaw: "serve", strategyRaw: "hybrid" }).mayAffectCustomers).toBe(
+      false
+    );
+  });
+
   it("rejects invalid timeout and boolean values", () => {
     expect(() => assertPythonMlSettingValue(PYTHON_ML_REQUEST_TIMEOUT_MS_KEY, "0")).toThrow(
       /250 and 5000/
@@ -172,6 +196,7 @@ describe("python ML admin settings", () => {
     expect(keys).not.toContain(ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY);
     expect(keys).not.toContain(PYTHON_ML_RECOMMENDATION_MODE_KEY);
     expect(keys).not.toContain(PYTHON_ML_REQUEST_TIMEOUT_MS_KEY);
+    expect(keys).not.toContain(PYTHON_ML_RECOMMENDATION_STRATEGY_KEY);
     expect(RECOMMENDATION_SYSTEM_DEFAULTS).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: "recommendation_ai_enabled", value: "true" }),
@@ -360,6 +385,7 @@ describe("python ML admin settings", () => {
     );
     expect(publicBlock).not.toContain("enable_python_ml_recommendations");
     expect(publicBlock).not.toContain("python_ml_recommendation_mode");
+    expect(publicBlock).not.toContain("python_ml_recommendation_strategy");
     expect(publicBlock).not.toContain("PYTHON_AI_SERVICE");
     expect(publicBlock).not.toContain("api_key");
 

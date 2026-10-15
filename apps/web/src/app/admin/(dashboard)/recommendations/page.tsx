@@ -176,6 +176,8 @@ export default function AdminRecommendationsPage() {
         </CardContent>
       </Card>
 
+      <PythonMlMonitoringCard />
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Operations</CardTitle>
@@ -261,5 +263,108 @@ export default function AdminRecommendationsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function PythonMlMonitoringCard() {
+  const status = useQuery(api.pythonMlShadow.getPythonMlAdminStatus, {});
+  const scheduleShadow = useMutation(api.adminRecommendations.schedulePythonMlShadowComparison);
+  const latest = status?.latest;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Python ML models</CardTitle>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              const result = await scheduleShadow({});
+              if (result.scheduled) {
+                toastSuccess("Shadow comparison queued");
+              } else {
+                toastSuccess("A shadow comparison is already running");
+              }
+            } catch (error) {
+              toastError(error);
+            }
+          }}
+        >
+          Run shadow comparison
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {status === undefined ? (
+          <Skeleton className="h-24 rounded-lg" />
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-2">
+              <p>
+                Python strategy: <span className="font-medium">{status.strategy}</span>
+              </p>
+              <p>
+                Model readiness:{" "}
+                <span className="font-medium">
+                  {latest?.modelAvailable ? "Recorded from the last shadow call" : "Not recorded"}
+                </span>
+              </p>
+              <p>
+                Last shadow status:{" "}
+                <span className="font-medium">{latest?.status ?? "No shadow run"}</span>
+              </p>
+              <p>
+                Last shadow completion:{" "}
+                <span className="font-medium">
+                  {latest?.completedAt
+                    ? new Date(latest.completedAt).toLocaleString()
+                    : "Not recorded"}
+                </span>
+              </p>
+              <p>
+                Overlap@8:{" "}
+                <span className="font-medium">
+                  {latest?.overlapAtK === undefined ? "Not recorded" : latest.overlapAtK.toFixed(3)}
+                </span>
+              </p>
+              <p>
+                Rank agreement:{" "}
+                <span className="font-medium">
+                  {latest?.rankAgreement === undefined ? "Not recorded" : latest.rankAgreement.toFixed(3)}
+                </span>
+              </p>
+              <p>
+                Candidate coverage:{" "}
+                <span className="font-medium">
+                  {latest?.candidateCoverage === undefined
+                    ? "Not recorded"
+                    : latest.candidateCoverage.toFixed(3)}
+                </span>
+              </p>
+              <p>
+                Valid candidate rate:{" "}
+                <span className="font-medium">
+                  {latest?.validCandidateRate === undefined
+                    ? "Not recorded"
+                    : latest.validCandidateRate.toFixed(3)}
+                </span>
+              </p>
+              <p>
+                Inference latency:{" "}
+                <span className="font-medium">
+                  {latest?.latencyMs === undefined ? "Not recorded" : `${latest.latencyMs} ms`}
+                </span>
+              </p>
+              <p>
+                Fallbacks: <span className="font-medium">{latest?.fallbackCount ?? "Not recorded"}</span>
+              </p>
+            </div>
+            <p className="text-muted-foreground">{status.note}</p>
+            {latest?.errorCode ? (
+              <p className="text-muted-foreground">Last error code: {latest.errorCode}</p>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

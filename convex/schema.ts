@@ -1082,11 +1082,13 @@ export default defineSchema({
     metadata: v.optional(v.string()),
     weight: v.number(),
     occurredAt: v.number(),
+    sourceKey: v.optional(v.string()),
   })
     .index("by_visitor_time", ["visitorId", "occurredAt"])
     .index("by_customer_time", ["customerKey", "occurredAt"])
     .index("by_product_time", ["productId", "occurredAt"])
-    .index("by_type_time", ["eventType", "occurredAt"]),
+    .index("by_type_time", ["eventType", "occurredAt"])
+    .index("by_source_key", ["sourceKey"]),
 
   wishlistItems: defineTable({
     identityType: recommendationIdentityTypeValidator,
@@ -1341,4 +1343,30 @@ export default defineSchema({
   })
     .index("by_snapshot_and_product", ["snapshotId", "productId"])
     .index("by_snapshot", ["snapshotId"]),
+
+  pythonMlShadowRuns: defineTable({
+    status: v.union(
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("skipped"),
+      v.literal("failed")
+    ),
+    requestedStrategy: v.union(
+      v.literal("content"),
+      v.literal("collaborative"),
+      v.literal("hybrid")
+    ),
+    modelAvailable: v.boolean(),
+    comparedCount: v.number(),
+    fallbackCount: v.number(),
+    overlapAtK: v.optional(v.number()),
+    rankAgreement: v.optional(v.number()),
+    candidateCoverage: v.optional(v.number()),
+    validCandidateRate: v.optional(v.number()),
+    latencyMs: v.optional(v.number()),
+    errorCode: v.optional(v.string()),
+    summaryJson: v.string(),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_created", ["createdAt"]),
 });

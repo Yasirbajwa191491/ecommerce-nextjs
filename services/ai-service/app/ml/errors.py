@@ -27,3 +27,7 @@ class ArtifactError(MachineLearningError):
 
 class IncompatibleArtifactError(ArtifactError):
     """The artifact was produced by a different model or library generation."""
+
+
+class ModelUnavailableError(MachineLearningError):
+    """The requested model artifact is not configured or could not be loaded."""

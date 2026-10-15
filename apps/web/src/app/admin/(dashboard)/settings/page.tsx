@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import {
   ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
   PYTHON_ML_RECOMMENDATION_MODE_KEY,
+  PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
   PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
   PYTHON_ML_TIMEOUT_MAX_MS,
   PYTHON_ML_TIMEOUT_MIN_MS,
@@ -125,6 +126,7 @@ function settingValueLabel(key: string | undefined, richText: boolean) {
   if (key === "review_call_auto_delay_days") return "Days after delivery before auto call";
   if (key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY) return "Enable Python ML Recommendations";
   if (key === PYTHON_ML_RECOMMENDATION_MODE_KEY) return "Python ML Recommendation Mode";
+  if (key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY) return "Python ML Recommendation Strategy";
   if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) return "Python ML Request Timeout (ms)";
   if (richText) return "Page content";
   return "Setting value";
@@ -160,6 +162,9 @@ function settingValueDescription(key: string | undefined) {
   }
   if (key === PYTHON_ML_RECOMMENDATION_MODE_KEY) {
     return "Off skips Python ML. Shadow can run a comparison without changing what customers see. Serve does not change customer recommendations unless PYTHON_ML_SERVE_ENABLED is true on the deployment.";
+  }
+  if (key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY) {
+    return "Which Python model a shadow or future serve call asks for. Content is the default. This does not change the storefront recommendation strategy.";
   }
   if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) {
     return `Whole number of milliseconds from ${PYTHON_ML_TIMEOUT_MIN_MS} to ${PYTHON_ML_TIMEOUT_MAX_MS}. The default is 1500.`;
@@ -544,6 +549,30 @@ export default function AdminSettingsPage() {
                     <SelectItem value="off">Off</SelectItem>
                     <SelectItem value="shadow">Shadow</SelectItem>
                     <SelectItem value="serve">Serve</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : editing?.key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY ? (
+                <Select
+                  value={
+                    form.value.trim().toLowerCase() === "collaborative" ||
+                    form.value.trim().toLowerCase() === "hybrid"
+                      ? form.value.trim().toLowerCase()
+                      : "content"
+                  }
+                  onValueChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      value: value ?? "content",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="content">Content</SelectItem>
+                    <SelectItem value="collaborative">Collaborative</SelectItem>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
                   </SelectContent>
                 </Select>
               ) : editing?.key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY ? (

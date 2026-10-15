@@ -18,6 +18,7 @@ import {
   ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
   PYTHON_ML_RECOMMENDATION_MODE_KEY,
   PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
+  PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
 } from "./lib/recommendations/pythonMlConfig";
 import {
   getCandidateProductIds,
@@ -339,6 +340,7 @@ export const getPythonMlJobConfig = internalQuery({
     enabledRaw: v.union(v.string(), v.null()),
     modeRaw: v.union(v.string(), v.null()),
     timeoutRaw: v.union(v.string(), v.null()),
+    strategyRaw: v.union(v.string(), v.null()),
     modelAvailable: v.boolean(),
     modelCompatible: v.boolean(),
   }),
@@ -348,6 +350,7 @@ export const getPythonMlJobConfig = internalQuery({
       enabledRaw: await readSettingRaw(ctx, ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY),
       modeRaw: await readSettingRaw(ctx, PYTHON_ML_RECOMMENDATION_MODE_KEY),
       timeoutRaw: await readSettingRaw(ctx, PYTHON_ML_REQUEST_TIMEOUT_MS_KEY),
+      strategyRaw: await readSettingRaw(ctx, PYTHON_ML_RECOMMENDATION_STRATEGY_KEY),
       modelAvailable: published !== null,
       modelCompatible: published?.modelVersion === DEFAULT_PYTHON_MODEL_VERSION,
     };

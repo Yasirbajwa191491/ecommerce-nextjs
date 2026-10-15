@@ -111,13 +111,13 @@ This check does not decide whether a shopper or an admin may perform an action. 
 | Evaluation | `evaluation/` | Synthetic metrics, plus real-catalog diagnostics that omit quality metrics unless labels are provided. |
 | Weights | `artifacts/recommendations/content-v1/` and `artifacts/recommendations/runs/` | Gitignored joblib bundles. Load only trusted files. Real catalog runs do not replace `content-v1`. |
 
-Large frameworks (PyTorch, TensorFlow, Transformers, LangChain) are not dependencies. Runtime ML libraries are NumPy, pandas, scikit-learn, and joblib.
+Large frameworks (PyTorch, TensorFlow, Transformers, LangChain) are not dependencies. Runtime ML libraries are NumPy, pandas, SciPy, scikit-learn, and joblib. Phase 3 collaborative artifacts live beside the content model and are documented in [python-behavioral-collaborative-recommendations.md](python-behavioral-collaborative-recommendations.md).
 
 ## Future web and mobile integration
 
 Shoppers keep calling Convex. They never receive the Python base URL or the service key. Similar products can read a published content snapshot when an administrator sets `recommendation_strategy` to `python_content`. The default is `convex`. If the snapshot is missing, Convex uses the existing ranker. If the Python process is down, search, recommendations, checkout, and payments keep working because shopper requests do not call it.
 
-Admin Settings on `/admin/settings` can store `enable_python_ml_recommendations`, `python_ml_recommendation_mode` (`off`, `shadow`, `serve`), and `python_ml_request_timeout_ms` (250–5000, default 1500). Those rows do not contain `PYTHON_AI_SERVICE_URL` or `PYTHON_AI_SERVICE_API_KEY`. The enable flag defaults to false, which forces the effective mode to `off`. `shadow` does not replace customer recommendations. `serve` cannot take effect unless `PYTHON_ML_SERVE_ENABLED=true` is set on the deployment; that gate defaults to off. Background jobs read this effective configuration. Shopper pages do not add a settings request to render recommendations.
+Admin Settings on `/admin/settings` can store `enable_python_ml_recommendations`, `python_ml_recommendation_mode` (`off`, `shadow`, `serve`), `python_ml_recommendation_strategy` (`content`, `collaborative`, or `hybrid`, default `content`), and `python_ml_request_timeout_ms` (250–5000, default 1500). Those rows do not contain `PYTHON_AI_SERVICE_URL` or `PYTHON_AI_SERVICE_API_KEY`. The enable flag defaults to false, which forces the effective mode to `off`. `shadow` does not replace customer recommendations. `serve` cannot take effect unless `PYTHON_ML_SERVE_ENABLED=true` is set on the deployment; that gate defaults to off. The strategy setting chooses which Python model a shadow call requests. It does not change `recommendation_strategy`. Background jobs read this effective configuration. Shopper pages do not add a settings request to render recommendations.
 
 ## Deployment
 

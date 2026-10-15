@@ -121,8 +121,9 @@ Python ML flags on the same settings page:
 - `enable_python_ml_recommendations` (default `false`)
 - `python_ml_recommendation_mode` (`off`, `shadow`, `serve`; default `off`)
 - `python_ml_request_timeout_ms` (250–5000, default `1500`)
+- `python_ml_recommendation_strategy` (`content`, `collaborative`, `hybrid`; default `content`)
 
-When the enable flag is off, the effective mode is `off`. `shadow` does not change customer-visible recommendations. `serve` also requires the deployment variable `PYTHON_ML_SERVE_ENABLED=true`, which defaults to off. Service URL and API key stay in `PYTHON_AI_SERVICE_URL` and `PYTHON_AI_SERVICE_API_KEY`, not in settings. See [python-ml-recommendations.md](python-ml-recommendations.md).
+When the enable flag is off, the effective mode is `off`. `shadow` does not change customer-visible recommendations. `serve` also requires the deployment variable `PYTHON_ML_SERVE_ENABLED=true`, which defaults to off. The strategy setting does not change `recommendation_strategy`. Service URL and API key stay in `PYTHON_AI_SERVICE_URL` and `PYTHON_AI_SERVICE_API_KEY`, not in settings. See [python-ml-recommendations.md](python-ml-recommendations.md) and [python-behavioral-collaborative-recommendations.md](python-behavioral-collaborative-recommendations.md).
 
 ## Key files
 
@@ -143,3 +144,4 @@ When the enable flag is off, the effective mode is `off`. `shadow` does not chan
 - Image-embedding personalization
 - A/B testing for scoring weights
 - Phase 2B stores precomputed Python content recommendations in Convex. The default strategy is `convex`. `python_content` reads the published snapshot for similar products and falls back to this engine. See [python-ml-recommendations.md](python-ml-recommendations.md).
+- Phase 3 adds item-item collaborative filtering and a hybrid Python strategy. Customer-facing recommendations stay on the existing engine unless an administrator changes the older strategy setting. See [python-behavioral-collaborative-recommendations.md](python-behavioral-collaborative-recommendations.md).

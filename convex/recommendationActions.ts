@@ -19,6 +19,14 @@ import {
   recommendationJobProcessor,
   resolvePythonMlEffectiveConfig,
 } from "./lib/recommendations/pythonMlConfig";
+import { probePythonStrategy } from "./lib/recommendations/pythonMlShadowFetch";
+import {
+  candidateCoverage,
+  mean,
+  overlapAtK,
+  rankAgreement,
+  validCandidateRate,
+} from "./lib/recommendations/shadowComparison";
 
 type SectionType = Infer<typeof recommendationSectionTypeValidator>;
 
@@ -362,5 +370,87 @@ export const rankForVoice = internalAction({
     }
 
     return [];
+  },
+});
+
+export const runPythonMlShadowComparison = internalAction({
+  args: { runId: v.id("pythonMlShadowRuns") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      const decision = await readPythonMlJobDecision(ctx);
+      const anchors = await ctx.runQuery(internal.pythonMlShadow.listShadowAnchors, {});
+      if (!decision.mayRun || anchors.length === 0) {
+        await ctx.runMutation(internal.pythonMlShadow.finishShadowRun, {
+          runId: args.runId,
+          status: "skipped",
+          modelAvailable: false,
+          comparedCount: 0,
+          fallbackCount: 0,
+          errorCode: decision.mayRun ? "no_anchor_products" : "python_ml_not_runnable",
+          summaryJson: JSON.stringify({
+            note: "Shadow comparison did not call Python. No metrics were invented.",
+          }),
+        });
+        return null;
+      }
+      const catalog = new Set(anchors.flatMap((anchor) => [anchor.productId, ...anchor.convexProductIds]));
+      const strategies = ["content", "collaborative", "hybrid"] as const;
+      const overlaps: number[] = [];
+      const agreements: number[] = [];
+      const validRates: number[] = [];
+      const lists: string[][] = [];
+      let fallbackCount = 0;
+      let latencyMs = 0;
+      let anyOk = false;
+      for (const strategy of strategies) {
+        const probe = await probePythonStrategy({
+          productIds: anchors.map((anchor) => anchor.productId),
+          strategy,
+          timeoutMs: decision.timeoutMs,
+        });
+        latencyMs += probe.latencyMs;
+        fallbackCount += probe.fallbackCount;
+        if (probe.ok) anyOk = true;
+        for (const anchor of anchors) {
+          const recommended = probe.idsByProduct[anchor.productId] ?? [];
+          lists.push(recommended);
+          overlaps.push(overlapAtK(recommended, anchor.convexProductIds, 8));
+          agreements.push(rankAgreement(recommended, anchor.convexProductIds, 8));
+          validRates.push(validCandidateRate(recommended, catalog));
+        }
+      }
+      await ctx.runMutation(internal.pythonMlShadow.finishShadowRun, {
+        runId: args.runId,
+        status: anyOk ? "complete" : "failed",
+        modelAvailable: anyOk,
+        comparedCount: anchors.length,
+        fallbackCount,
+        overlapAtK: mean(overlaps),
+        rankAgreement: mean(agreements),
+        candidateCoverage: candidateCoverage(lists, catalog.size),
+        validCandidateRate: mean(validRates),
+        latencyMs,
+        errorCode: anyOk ? undefined : "python_unavailable",
+        summaryJson: JSON.stringify({
+          convexSource: "co_occurrence",
+          requestedStrategy: decision.strategy,
+          note: "Overlap with co-occurrence is not recommendation quality or revenue.",
+        }),
+      });
+    } catch (error) {
+      await ctx.runMutation(internal.pythonMlShadow.finishShadowRun, {
+        runId: args.runId,
+        status: "failed",
+        modelAvailable: false,
+        comparedCount: 0,
+        fallbackCount: 0,
+        errorCode: "shadow_failed",
+        summaryJson: JSON.stringify({
+          note: error instanceof Error ? error.message.slice(0, 180) : "Shadow comparison failed",
+        }),
+      });
+    }
+    return null;
   },
 });

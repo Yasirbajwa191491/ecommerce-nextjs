@@ -38,3 +38,5 @@ There is no `brand`, tag, specification, or color-family column on `products`. D
 `relevance.jsonl` is evaluation-only. Each line has `product_id` and `relevant_product_ids`. Training does not read it.
 
 A future real export should use this same JSONL shape. The authenticated export is `python -m training.export_catalog`. It writes `datasets/exports/products.jsonl`, which is gitignored. Do not commit a real catalog export.
+
+Behavioral events are a different file. `python -m training.generate_behavioral_data` writes `behavioral_events.jsonl`, `behavioral_products.jsonl`, and `behavioral_manifest.json` in `datasets/synthetic/`. Those rows are synthetic. `python -m training.export_behavioral` stays disabled until `BEHAVIORAL_EXPORT_ENABLED=true`.

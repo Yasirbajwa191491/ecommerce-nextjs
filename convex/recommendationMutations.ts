@@ -21,6 +21,14 @@ import { resolveCustomerKey } from "./lib/recommendations/identity";
 import { PROFILE_REFRESH_DEBOUNCE_MS } from "./lib/recommendations/constants";
 import { scheduleRecommendationRefresh } from "./lib/recommendations/scheduleRecommendationJob";
 import { adjustRecommendationCounts } from "./lib/maintainedAggregates";
+import {
+  MAX_BEHAVIOR_BATCH,
+  MAX_METADATA_LENGTH,
+  assertClientBehaviorEventType,
+  assertVisitorId,
+  isDuplicateBehaviorEvent,
+  purchaseSourceKey,
+} from "./lib/recommendations/behaviorEventPolicy";
 
 export const recordBehaviorEvent = mutation({
   args: {
@@ -36,11 +44,28 @@ export const recordBehaviorEvent = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertClientBehaviorEventType(args.eventType);
+    assertVisitorId(args.visitorId);
+    if (args.metadata && args.metadata.length > MAX_METADATA_LENGTH) {
+      throw new Error("Behavior event metadata is too large");
+    }
+    if (args.productId) {
+      const product = await ctx.db.get(args.productId);
+      if (!product) return null;
+    }
     const customerKey = resolveCustomerKey(
       args.customerEmail,
       args.customerPhone
     );
     const now = Date.now();
+    const recent = await ctx.db
+      .query("customerBehaviorEvents")
+      .withIndex("by_visitor_time", (q) => q.eq("visitorId", args.visitorId))
+      .order("desc")
+      .take(20);
+    if (isDuplicateBehaviorEvent(recent, args.eventType, args.productId, now)) {
+      return null;
+    }
 
     const weightMap: Record<string, number> = {
       purchase: 1.0,
@@ -129,10 +154,29 @@ export const recordBehaviorEventsBatch = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertVisitorId(args.visitorId);
+    if (args.events.length > MAX_BEHAVIOR_BATCH) {
+      throw new Error("Too many behavior events");
+    }
+    for (const event of args.events) {
+      assertClientBehaviorEventType(event.eventType);
+    }
     const customerKey = resolveCustomerKey(args.customerEmail);
     const now = Date.now();
 
     for (const event of args.events) {
+      if (event.productId) {
+        const product = await ctx.db.get(event.productId);
+        if (!product) continue;
+      }
+      const recent = await ctx.db
+        .query("customerBehaviorEvents")
+        .withIndex("by_visitor_time", (q) => q.eq("visitorId", args.visitorId))
+        .order("desc")
+        .take(20);
+      if (isDuplicateBehaviorEvent(recent, event.eventType, event.productId, now)) {
+        continue;
+      }
       await ctx.db.insert("customerBehaviorEvents", {
         eventType: event.eventType,
         visitorId: args.visitorId,
@@ -482,6 +526,12 @@ export const recordPurchaseBehaviorForOrder = internalMutation({
 
     const now = Date.now();
     for (const item of items) {
+      const sourceKey = purchaseSourceKey(args.orderId, item.productId);
+      const existing = await ctx.db
+        .query("customerBehaviorEvents")
+        .withIndex("by_source_key", (q) => q.eq("sourceKey", sourceKey))
+        .unique();
+      if (existing) continue;
       await ctx.db.insert("customerBehaviorEvents", {
         eventType: "purchase",
         visitorId: args.visitorId ?? `order:${args.orderId}`,
@@ -489,6 +539,7 @@ export const recordPurchaseBehaviorForOrder = internalMutation({
         productId: item.productId,
         weight: 1.0,
         occurredAt: now,
+        sourceKey,
       });
     }
 
