@@ -63,3 +63,31 @@ class RecommendationModel:
 
     def pairwise_content_diversity(self, product_ids: list[str]) -> float | None:
         return self._recommender.pairwise_content_diversity(product_ids)
+
+
+def open_cached_content_model(state: Any, directory: str) -> RecommendationModel:
+    """Load a trusted artifact, reusing a cache when the manifest is unchanged.
+
+    Callers decide whether a failure is an HTTP error. This does not run at import.
+    """
+
+    from app.ml.errors import ArtifactError
+
+    cleaned = directory.strip()
+    if not cleaned:
+        raise ArtifactError("Model artifact directory was not found")
+    path = Path(cleaned)
+    stamp = (path / "manifest.json").stat().st_mtime_ns
+    identity = str(path.resolve())
+    cached = getattr(state, "content_recommendation_model", None)
+    if (
+        isinstance(cached, tuple)
+        and len(cached) == 3
+        and cached[0] == stamp
+        and cached[1] == identity
+        and isinstance(cached[2], RecommendationModel)
+    ):
+        return cached[2]
+    model = RecommendationModel.load(path, trusted=True)
+    state.content_recommendation_model = (stamp, identity, model)
+    return model

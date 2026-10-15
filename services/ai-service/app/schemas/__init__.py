@@ -35,7 +35,7 @@ class ReadyChecks(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     application: Literal["ok"]
-    model_inference: Literal["disabled", "unavailable"]
+    model_inference: Literal["disabled", "unavailable", "ready"]
 
 
 class HealthReadyResponse(BaseModel):
@@ -50,5 +50,5 @@ class InternalStatusResponse(BaseModel):
 
     status: Literal["ok"]
     inference_enabled: bool = Field(
-        description="Reflects ENABLE_MODEL_INFERENCE. The API does not load a model artifact."
+        description="Reflects ENABLE_MODEL_INFERENCE. Startup does not load an artifact."
     )

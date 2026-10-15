@@ -78,7 +78,7 @@ Fitting here does not mean gradient descent on a neural network. It means:
 
 On the synthetic catalog this produces a vocabulary of 624 terms and a vector width of 668 (text plus the one-hot columns).
 
-Fitting is a command. The FastAPI process does not fit or load a model on startup. `ENABLE_MODEL_INFERENCE` still defaults to false. If you set it to true, `/health/ready` stays HTTP 503, because the HTTP service still has no model loader.
+Fitting is a command. The FastAPI process does not fit or load a model on startup. `ENABLE_MODEL_INFERENCE` still defaults to false. If you set it to true, `/health/ready` loads `CONTENT_MODEL_DIR` and returns HTTP 200 only after that trusted artifact verifies. A missing or invalid artifact returns HTTP 503.
 
 ## 7. How recommendations are ranked
 
@@ -224,6 +224,36 @@ Missing rows mean `convex` and `content-v1`. `hybrid` is rejected. The existing 
 
 Administrators change the strategy on the Recommendations admin page or with `api.adminContentRecommendations.setRecommendationStrategy`. `python_content` is rejected until a published snapshot exists. Changing it does not require a redeploy. The default remains `convex`, and this phase does not switch a deployment to `python_content` on its own.
 
+### Admin Settings for Python ML flags
+
+Live Python ML is a separate control from `recommendation_strategy`. It uses the existing `/admin/settings` page and the existing `settings` table. There is no second feature-flag screen.
+
+| Key | Name | Type | Default |
+| --- | --- | --- | --- |
+| `enable_python_ml_recommendations` | Enable Python ML Recommendations | Boolean (`true` / `false`) | `false` |
+| `python_ml_recommendation_mode` | Python ML Recommendation Mode | `off`, `shadow`, or `serve` | `off` |
+| `python_ml_request_timeout_ms` | Python ML Request Timeout (ms) | Integer | `1500` |
+
+The timeout must be a whole number from 250 through 5000 milliseconds. Values outside that range are rejected on save. A missing or invalid stored timeout is read as 1500.
+
+Effective mode is `off` when the enable flag is false, when the mode is missing or not one of the three allowed values, or when the settings cannot be loaded. A stored mode of `shadow` or `serve` does not run by itself.
+
+Python ML may run only when all of these are true:
+
+- `enable_python_ml_recommendations` is `true`
+- the effective mode is `shadow` or `serve`
+- `PYTHON_AI_SERVICE_URL` is a valid HTTP(S) URL with no embedded credentials
+- `PYTHON_AI_SERVICE_API_KEY` is set
+- a published content snapshot exists and its model version is `content-v1`
+
+`shadow` may run that check without changing the products a customer sees. `serve` still does not change customer-visible recommendations unless the deployment variable `PYTHON_ML_SERVE_ENABLED` is exactly `true`. That variable defaults to unset, which is off. Saving `serve` in Admin Settings is not enough.
+
+`PYTHON_AI_SERVICE_URL` and `PYTHON_AI_SERVICE_API_KEY` stay in the Convex environment. They are not settings rows. Public settings queries do not return them, and admin settings responses redact credential-shaped keys and values. Only an admin can update the three ML rows.
+
+Shopper recommendation requests do not load these flags. Background recommendation jobs read the effective configuration and keep writing Convex results. If the Python service is unconfigured, the model is incompatible, or a Python call fails, the customer-visible source stays the existing ranker.
+
+The older recommendation toggles (`recommendation_ai_enabled`, `recommendation_strategy`, and the rest of the `recommendation_*` keys) keep their current meaning.
+
 ### Freshness and rollback
 
 Inactive and deleted targets are dropped when the snapshot is read. Price, category, and description changes do not retrain the model. The admin status marks a published snapshot stale when it is older than `recommendation_refresh_hours`. Regenerate by exporting, training, and publishing a new snapshot.
@@ -251,7 +281,7 @@ Without a relevance file the report has coverage, diversity, inactive-target cou
 
 `POST /api/v1/recommendations/content` and `POST /api/v1/recommendations/content/batch` require `Authorization: Bearer` with `AI_SERVICE_API_KEY`. They load `CONTENT_MODEL_DIR` only when `ENABLE_MODEL_INFERENCE=true`. Otherwise they return `model_inference_disabled`. `top_k` is 1 through 100. The batch route accepts at most 25 ids. Unknown ids return `unknown_product`. Paths and stack traces are not included.
 
-`/health/ready` is unchanged: disabled inference is ready, and enabled inference still reports `model_inference: unavailable` with status 503. The store does not use that probe to decide whether to show products.
+`/health/ready` returns HTTP 200 with `model_inference: disabled` when inference is off. When inference is on, it returns HTTP 200 with `model_inference: ready` only after a trusted artifact loads, and HTTP 503 with `model_inference: unavailable` when the artifact is missing, corrupt, or incompatible. `/health/live` stays HTTP 200 either way. The store does not use that probe to decide whether to show products.
 
 ### Local development and production
 

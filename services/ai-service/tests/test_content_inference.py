@@ -80,8 +80,8 @@ def test_enabled_inference_requires_auth_and_a_known_product(tmp_path: Path) -> 
             headers=auth_header(TEST_API_KEY),
             json={"product_id": "alpha", "top_k": 101},
         )
-    assert ready.status_code == 503
-    assert ready.json()["checks"]["model_inference"] == "unavailable"
+    assert ready.status_code == 200
+    assert ready.json()["checks"]["model_inference"] == "ready"
     assert anonymous.status_code == 401
     assert missing.status_code == 404
     assert missing.json()["detail"] == "unknown_product"

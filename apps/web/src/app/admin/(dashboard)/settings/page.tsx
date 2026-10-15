@@ -49,6 +49,13 @@ import {
   settingValuePreview,
 } from "@/lib/legal-content";
 import { cn } from "@/lib/utils";
+import {
+  ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
+  PYTHON_ML_RECOMMENDATION_MODE_KEY,
+  PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
+  PYTHON_ML_TIMEOUT_MAX_MS,
+  PYTHON_ML_TIMEOUT_MIN_MS,
+} from "@convex/lib/recommendations/pythonMlConfig";
 import { Pencil, Trash2 } from "lucide-react";
 
 type SettingRow = Doc<"settings">;
@@ -102,6 +109,62 @@ function normalizeRichTextValue(key: string, value: string) {
   if (key === "terms_conditions") return DEFAULT_TERMS_TIPTAP;
   if (key === "privacy_policy") return DEFAULT_PRIVACY_TIPTAP;
   return EMPTY_TIPTAP_DOC;
+}
+
+function isBooleanSettingKey(key: string | undefined) {
+  return (
+    key === "sms_order_confirmation_enabled" ||
+    key === "review_call_auto_enabled" ||
+    key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY
+  );
+}
+
+function settingValueLabel(key: string | undefined, richText: boolean) {
+  if (key === "sms_order_confirmation_enabled") return "Send order SMS via Twilio";
+  if (key === "review_call_auto_enabled") return "Automatic review collection calls";
+  if (key === "review_call_auto_delay_days") return "Days after delivery before auto call";
+  if (key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY) return "Enable Python ML Recommendations";
+  if (key === PYTHON_ML_RECOMMENDATION_MODE_KEY) return "Python ML Recommendation Mode";
+  if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) return "Python ML Request Timeout (ms)";
+  if (richText) return "Page content";
+  return "Setting value";
+}
+
+function settingValueDescription(key: string | undefined) {
+  if (key === "email_from") {
+    return "Saved to Convex as RESEND_FROM_EMAIL. Example: Ecommerce Store <you@yourdomain.com>";
+  }
+  if (key === "shipping_policy" || key === "return_policy") {
+    return "Used by the AI assistant and storefront FAQ. Plain text or markdown.";
+  }
+  if (key === "terms_conditions") {
+    return "Displayed on the Terms & Conditions page. Use headings, lists, and links as needed.";
+  }
+  if (key === "privacy_policy") {
+    return "Displayed on the Privacy Policy page. Use headings, lists, and links as needed.";
+  }
+  if (key === "sms_order_confirmation_enabled") {
+    return "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. When enabled, customers get SMS for confirmation, confirmed, processing, shipped, delivered, cancelled, and refunded updates on web and mobile (COD and Stripe). Off by default.";
+  }
+  if (key === "review_call_auto_enabled") {
+    return "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup.";
+  }
+  if (key === "review_call_auto_delay_days") {
+    return "Must be 3, 5, or 7 days. Used when automatic review calls are enabled.";
+  }
+  if (key === "cancellation_refund_fee_percent") {
+    return "Percent deducted from the order total when a paid order is cancelled or refunded (0–100). Shown on admin and shop cancel/refund screens, terms, return policy, and order emails. Card refunds return the remainder to the original Stripe payment. COD refunds stay manual.";
+  }
+  if (key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY) {
+    return "Off by default. When this is off, Python ML mode is treated as off even if a mode is saved. The service URL and API key are not stored in settings.";
+  }
+  if (key === PYTHON_ML_RECOMMENDATION_MODE_KEY) {
+    return "Off skips Python ML. Shadow can run a comparison without changing what customers see. Serve does not change customer recommendations unless PYTHON_ML_SERVE_ENABLED is true on the deployment.";
+  }
+  if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) {
+    return `Whole number of milliseconds from ${PYTHON_ML_TIMEOUT_MIN_MS} to ${PYTHON_ML_TIMEOUT_MAX_MS}. The default is 1500.`;
+  }
+  return undefined;
 }
 
 async function syncResendFromToConvex(value: string) {
@@ -261,7 +324,7 @@ export default function AdminSettingsPage() {
     <>
       <AdminPageHeader
         title="Settings"
-        description="Manage store contact details and custom site settings."
+        description="Manage store contact details, recommendation controls, and custom site settings."
       />
 
       <AdminListToolbar
@@ -393,43 +456,11 @@ export default function AdminSettingsPage() {
               />
             </AdminFormField>
             <AdminFormField
-              label={
-                editing?.key === "sms_order_confirmation_enabled"
-                  ? "Send order SMS via Twilio"
-                  : editing?.key === "review_call_auto_enabled"
-                    ? "Automatic review collection calls"
-                    : editing?.key === "review_call_auto_delay_days"
-                      ? "Days after delivery before auto call"
-                      : editingRichText
-                        ? "Page content"
-                        : "Setting value"
-              }
+              label={settingValueLabel(editing?.key, editingRichText)}
               htmlFor="setting-value"
               error={validation.fieldError("value")}
-              description={
-                editing?.key === "email_from"
-                  ? 'Saved to Convex as RESEND_FROM_EMAIL. Example: Ecommerce Store <you@yourdomain.com>'
-                  : editing?.key === "shipping_policy" ||
-                      editing?.key === "return_policy"
-                    ? "Used by the AI assistant and storefront FAQ. Plain text or markdown."
-                    : editing?.key === "terms_conditions"
-                      ? "Displayed on the Terms & Conditions page. Use headings, lists, and links as needed."
-                      : editing?.key === "privacy_policy"
-                        ? "Displayed on the Privacy Policy page. Use headings, lists, and links as needed."
-                        : editing?.key === "sms_order_confirmation_enabled"
-                      ? "Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in Convex env. When enabled, customers get SMS for confirmation, confirmed, processing, shipped, delivered, cancelled, and refunded updates on web and mobile (COD and Stripe). Off by default."
-                      : editing?.key === "review_call_auto_enabled"
-                        ? "When enabled, an AI review call is scheduled automatically after an order is marked delivered. Requires Vapi outbound setup."
-                          : editing?.key === "review_call_auto_delay_days"
-                          ? "Must be 3, 5, or 7 days. Used when automatic review calls are enabled."
-                          : editing?.key === "cancellation_refund_fee_percent"
-                            ? "Percent deducted from the order total when a paid order is cancelled or refunded (0–100). Shown on admin and shop cancel/refund screens, terms, return policy, and order emails. Card refunds return the remainder to the original Stripe payment. COD refunds stay manual."
-                          : undefined
-              }
-              required={
-                editing?.key !== "sms_order_confirmation_enabled" &&
-                editing?.key !== "review_call_auto_enabled"
-              }
+              description={settingValueDescription(editing?.key)}
+              required={!isBooleanSettingKey(editing?.key)}
             >
               {editing?.key === "sms_order_confirmation_enabled" ||
               editing?.key === "review_call_auto_enabled" ? (
@@ -473,6 +504,66 @@ export default function AdminSettingsPage() {
                     <SelectItem value="7">7 days</SelectItem>
                   </SelectContent>
                 </Select>
+              ) : editing?.key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                  <Switch
+                    id="setting-value"
+                    checked={form.value.trim().toLowerCase() === "true"}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        value: checked ? "true" : "false",
+                      }))
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {form.value.trim().toLowerCase() === "true"
+                      ? "Enabled — Python ML can run only in shadow or serve mode"
+                      : "Disabled — Python ML stays off"}
+                  </span>
+                </div>
+              ) : editing?.key === PYTHON_ML_RECOMMENDATION_MODE_KEY ? (
+                <Select
+                  value={
+                    form.value.trim().toLowerCase() === "shadow" ||
+                    form.value.trim().toLowerCase() === "serve"
+                      ? form.value.trim().toLowerCase()
+                      : "off"
+                  }
+                  onValueChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      value: value ?? "off",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="off">Off</SelectItem>
+                    <SelectItem value="shadow">Shadow</SelectItem>
+                    <SelectItem value="serve">Serve</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : editing?.key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY ? (
+                <Input
+                  id="setting-value"
+                  type="number"
+                  min={PYTHON_ML_TIMEOUT_MIN_MS}
+                  max={PYTHON_ML_TIMEOUT_MAX_MS}
+                  step={1}
+                  value={form.value}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      value: event.target.value,
+                    }))
+                  }
+                  onBlur={() => validation.touch("value")}
+                  aria-invalid={!!validation.fieldError("value")}
+                  className={invalidInputClass(validation.fieldError("value"))}
+                />
               ) : editingRichText ? (
                 <EmailRichTextEditor
                   contentJson={form.value || EMPTY_TIPTAP_DOC}

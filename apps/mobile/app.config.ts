@@ -15,7 +15,7 @@ const googleServicesFile = resolveGoogleServicesFile({
   appDir: __dirname,
   envValue: process.env.GOOGLE_SERVICES_JSON,
   exists: fs.existsSync,
-  writeFile: (filePath, contents) => {
+  writeFile: (filePath: string, contents: string) => {
     fs.writeFileSync(filePath, contents);
   },
 });

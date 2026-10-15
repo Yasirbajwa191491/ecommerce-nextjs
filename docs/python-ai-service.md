@@ -70,7 +70,7 @@ uv run python -m app.ml.inference.cli --product-id sample-a-01 --top-k 5
 | GET | `/health/ready` | Process probe. Does not claim Convex or a model is healthy. |
 | GET | `/api/v1/internal/status` | Caller that presents `Authorization: Bearer <AI_SERVICE_API_KEY>`. |
 
-`ENABLE_MODEL_INFERENCE=true` makes readiness return HTTP 503. The HTTP process still has no model loader, so it must not look ready to serve predictions. The offline CLI does not read that flag.
+`ENABLE_MODEL_INFERENCE=false` makes `/health/ready` return HTTP 200 with `model_inference: disabled`. `true` makes that probe load `CONTENT_MODEL_DIR`. A verified artifact returns HTTP 200 with `model_inference: ready`. A missing, corrupt, or incompatible artifact returns HTTP 503. Startup still does not load an artifact, and `/health/live` does not check the model. The offline CLI does not read that flag.
 
 ## Convex and Python
 
@@ -116,6 +116,8 @@ Large frameworks (PyTorch, TensorFlow, Transformers, LangChain) are not dependen
 ## Future web and mobile integration
 
 Shoppers keep calling Convex. They never receive the Python base URL or the service key. Similar products can read a published content snapshot when an administrator sets `recommendation_strategy` to `python_content`. The default is `convex`. If the snapshot is missing, Convex uses the existing ranker. If the Python process is down, search, recommendations, checkout, and payments keep working because shopper requests do not call it.
+
+Admin Settings on `/admin/settings` can store `enable_python_ml_recommendations`, `python_ml_recommendation_mode` (`off`, `shadow`, `serve`), and `python_ml_request_timeout_ms` (250–5000, default 1500). Those rows do not contain `PYTHON_AI_SERVICE_URL` or `PYTHON_AI_SERVICE_API_KEY`. The enable flag defaults to false, which forces the effective mode to `off`. `shadow` does not replace customer recommendations. `serve` cannot take effect unless `PYTHON_ML_SERVE_ENABLED=true` is set on the deployment; that gate defaults to off. Background jobs read this effective configuration. Shopper pages do not add a settings request to render recommendations.
 
 ## Deployment
 

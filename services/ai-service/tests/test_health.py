@@ -51,21 +51,93 @@ def test_readiness_when_inference_is_disabled(client: TestClient, api_key: str) 
     assert api_key not in response.text
 
 
-def test_readiness_does_not_claim_a_model_when_inference_is_enabled(api_key: str) -> None:
-    settings = Settings(
+def _enabled(api_key: str, content_model_dir: str = "") -> Settings:
+    return Settings(
         _env_file=None,
         app_env="test",
         ai_service_api_key=api_key,
         enable_model_inference=True,
+        content_model_dir=content_model_dir,
     )
-    with TestClient(create_app(settings)) as client:
+
+
+def test_readiness_is_unavailable_when_inference_is_enabled_without_an_artifact(
+    api_key: str,
+) -> None:
+    with TestClient(create_app(_enabled(api_key))) as client:
         ready = client.get("/health/ready")
         live = client.get("/health/live")
     assert live.status_code == 200
+    assert live.json() == {"status": "live"}
     assert ready.status_code == 503
     assert ready.json()["status"] == "not_ready"
     assert ready.json()["checks"]["model_inference"] == "unavailable"
     assert "artifact" not in ready.text.lower()
+
+
+def test_readiness_is_unavailable_when_the_artifact_directory_is_missing(
+    api_key: str, tmp_path: Path
+) -> None:
+    missing = tmp_path / "missing-model"
+    with TestClient(create_app(_enabled(api_key, str(missing)))) as client:
+        ready = client.get("/health/ready")
+        live = client.get("/health/live")
+    assert live.status_code == 200
+    assert ready.status_code == 503
+    assert ready.json()["checks"]["model_inference"] == "unavailable"
+    assert str(missing) not in ready.text
+
+
+def test_readiness_is_ready_when_a_trusted_artifact_loads(api_key: str, tmp_path: Path) -> None:
+    from tests.test_content_inference import _model_dir
+
+    directory = _model_dir(tmp_path)
+    service = create_app(_enabled(api_key, str(directory)))
+    with TestClient(service) as client:
+        assert getattr(service.state, "content_recommendation_model", None) is None
+        ready = client.get("/health/ready")
+        again = client.get("/health/ready")
+        live = client.get("/health/live")
+    assert live.status_code == 200
+    assert ready.status_code == 200
+    assert ready.json() == {
+        "status": "ready",
+        "checks": {"application": "ok", "model_inference": "ready"},
+    }
+    assert again.status_code == 200
+    assert str(directory) not in ready.text
+
+
+def test_readiness_rejects_a_corrupt_artifact(api_key: str, tmp_path: Path) -> None:
+    from tests.test_content_inference import _model_dir
+
+    directory = _model_dir(tmp_path)
+    (directory / "model.joblib").write_bytes(b"not-a-model")
+    with TestClient(create_app(_enabled(api_key, str(directory)))) as client:
+        ready = client.get("/health/ready")
+        live = client.get("/health/live")
+    assert live.status_code == 200
+    assert ready.status_code == 503
+    assert ready.json()["checks"]["model_inference"] == "unavailable"
+    assert str(directory) not in ready.text
+
+
+def test_readiness_rejects_an_incompatible_artifact(api_key: str, tmp_path: Path) -> None:
+    import json
+
+    from tests.test_content_inference import _model_dir
+
+    directory = _model_dir(tmp_path)
+    manifest_path = directory / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["model_version"] = "content-v2"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with TestClient(create_app(_enabled(api_key, str(directory)))) as client:
+        ready = client.get("/health/ready")
+        live = client.get("/health/live")
+    assert live.status_code == 200
+    assert ready.status_code == 503
+    assert ready.json()["checks"]["model_inference"] == "unavailable"
 
 
 def test_startup_does_not_train_or_require_a_model_artifact(api_key: str, tmp_path: Path) -> None:

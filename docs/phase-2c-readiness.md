@@ -2,6 +2,8 @@
 
 This note records the code review, the fixes applied, the commands that actually ran, and the checks that are still pending. It does not authorize a production strategy change.
 
+Phase 2D follow-up is in `docs/phase-2d-staging-validation.md`. That pass fixed `/health/ready` and the mobile type-check errors recorded below. It did not export a live catalog or deploy.
+
 The default recommendation strategy remains `convex`. Shopper requests do not call the Python service. Rollback is an admin setting change, not a redeploy.
 
 ## Architecture
@@ -42,7 +44,7 @@ Personalized sections stay on the Convex engine. `python_content` applies to sim
 
 ### Accepted behavior, not changed
 
-- `/health/ready` returns 200 with `model_inference: disabled` when inference is off, and 503 with `model_inference: unavailable` when `ENABLE_MODEL_INFERENCE=true`. That remains true even if `CONTENT_MODEL_DIR` points at a valid artifact. The container health check uses `/health/live`, so enabling inference does not restart the container. Shoppers do not use this probe.
+- Phase 2D changed `/health/ready`. Inference off stays HTTP 200 with `model_inference: disabled`. Inference on returns HTTP 200 with `model_inference: ready` only after a trusted artifact loads, and HTTP 503 when that artifact is missing or invalid. The container health check still uses `/health/live`. Shoppers do not use this probe.
 - A published snapshot older than `recommendation_refresh_hours` is marked `stale` on the admin page and is still served. Regenerate it by exporting, training, and publishing. It does not fall back by itself.
 - If the publisher process is killed after creating a snapshot and before the fail request, a staging row can remain. It is not read by the storefront. An admin can call `api.adminContentRecommendations.failSnapshot`, then `cleanupOldSnapshots`.
 - `getContentSimilarProducts` is a public query. It returns product ids and scores for the active strategy. It does not return customer profiles, orders, or embeddings.
@@ -155,7 +157,7 @@ This was not deployed. Do not deploy it to a shared host until you explicitly ap
 | --- | --- | --- |
 | `AI_SERVICE_API_KEY` | Python service | Bearer token for `/api/v1/**`. Required in production, at least 32 characters. Never `NEXT_PUBLIC_` or `EXPO_PUBLIC_` |
 | `AI_SERVICE_API_KEY_PREVIOUS` | Python service | Optional previous key during rotation |
-| `ENABLE_MODEL_INFERENCE` | Python service | Default `false`. `true` enables the content routes and makes `/health/ready` return 503 |
+| `ENABLE_MODEL_INFERENCE` | Python service | Default `false`. `true` enables content routes and makes `/health/ready` verify `CONTENT_MODEL_DIR` |
 | `CONTENT_MODEL_DIR` | Python service | Trusted artifact directory (`manifest.json` and `model.joblib`). Loaded per request, not at startup |
 | `MODEL_ARTIFACTS_DIR` | Python service | Reserved artifact root. Startup does not load it |
 | `CATALOG_EXPORT_URL` | Operator shell for the training CLIs | Convex HTTP origin (`.convex.site`), not `.convex.cloud` |
@@ -169,7 +171,7 @@ The web app stays on its existing `NEXT_PUBLIC_CONVEX_URL`. It does not need the
 | Probe | Inference disabled | Inference enabled |
 | --- | --- | --- |
 | `GET /health/live` | 200 `{"status":"live"}` | 200 `{"status":"live"}` |
-| `GET /health/ready` | 200, `model_inference: disabled` | 503, `model_inference: unavailable` |
+| `GET /health/ready` | 200, `model_inference: disabled` | 200 `ready` when the artifact verifies, otherwise 503 `unavailable` |
 
 Both behaviors were covered by `services/ai-service/tests/test_health.py`.
 
@@ -241,7 +243,7 @@ Do not mark these passed until someone performs them. Expected behavior is from 
 | Publish says the file does not match | Regenerate the batch. Do not hand-edit the JSONL |
 | Publish says the snapshot id already exists | Omit `--snapshot-id`, or pass a new one |
 | Similar products did not change | Strategy is still `convex`, the source is inactive, or that product has no snapshot row |
-| `/health/ready` is 503 | `ENABLE_MODEL_INFERENCE=true`. Use `/health/live` for the container probe |
+| `/health/ready` is 503 | Inference is enabled and `CONTENT_MODEL_DIR` is missing, corrupt, or incompatible. Use `/health/live` for the container probe |
 | Storefront is down while Python is down | This should not happen. Shoppers do not call Python. Look at Convex and the web host |
 
 ## Model artifacts

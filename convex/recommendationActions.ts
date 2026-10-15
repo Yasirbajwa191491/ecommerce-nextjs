@@ -1,6 +1,6 @@
 "use node";
 
-import { internalAction } from "./_generated/server";
+import { internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Infer } from "convex/values";
@@ -14,12 +14,34 @@ import {
   recommendationSectionTypeValidator,
   sectionRecommendationReturnValidator,
 } from "./lib/recommendations/validators";
+import {
+  readPythonServiceSignals,
+  recommendationJobProcessor,
+  resolvePythonMlEffectiveConfig,
+} from "./lib/recommendations/pythonMlConfig";
 
 type SectionType = Infer<typeof recommendationSectionTypeValidator>;
 
 type SimilarProductResult = {
   _id: Id<"products">;
 };
+
+async function readPythonMlJobDecision(ctx: Pick<ActionCtx, "runQuery">) {
+  try {
+    const stored = await ctx.runQuery(internal.recommendationQueries.getPythonMlJobConfig, {});
+    return resolvePythonMlEffectiveConfig(stored, readPythonServiceSignals(process.env), null);
+  } catch (error) {
+    console.error(
+      "Python ML settings could not be loaded; defaulting to off",
+      error instanceof Error ? error.message : "unknown"
+    );
+    return resolvePythonMlEffectiveConfig(
+      null,
+      { serviceConfigured: false, credentialsPresent: false, serveGateEnabled: false },
+      null
+    );
+  }
+}
 
 export const processRecommendationJob = internalAction({
   args: { jobId: v.id("recommendationJobs") },
@@ -32,9 +54,12 @@ export const processRecommendationJob = internalAction({
       return null;
     }
 
+    const mlDecision = await readPythonMlJobDecision(ctx);
+    const processedBy = recommendationJobProcessor(mlDecision);
+
     await ctx.runMutation(internal.recommendationMutations.markJobProcessing, {
       jobId: args.jobId,
-      processedBy: "convex",
+      processedBy,
     });
 
     try {
@@ -95,7 +120,7 @@ export const processRecommendationJob = internalAction({
 
       await ctx.runMutation(internal.recommendationMutations.markJobComplete, {
         jobId: args.jobId,
-        processedBy: "convex",
+        processedBy,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Job failed";

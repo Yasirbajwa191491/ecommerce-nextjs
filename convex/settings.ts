@@ -9,6 +9,19 @@ import { slugify } from "./lib/products";
 import { RECOMMENDATION_SYSTEM_DEFAULTS } from "./lib/recommendations/constants";
 import { assertMlStrategySetting } from "./lib/recommendations/mlStrategy";
 import { assertPublishedSnapshotForStrategy } from "./lib/recommendations/contentRecommendationStore";
+import {
+  ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
+  PYTHON_ML_RECOMMENDATION_MODE_KEY,
+  PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
+  PYTHON_ML_SYSTEM_DEFAULTS,
+  assertCanModifyPythonMlSettings,
+  assertPythonMlSettingValue,
+  assertSettingHasNoCredentials,
+  isCredentialSettingKey,
+  isPythonMlSettingKey,
+  redactAdminSettings,
+  valueContainsServiceCredential,
+} from "./lib/recommendations/pythonMlConfig";
 
 export const SYSTEM_SETTING_KEYS = [
   "store_name",
@@ -29,6 +42,9 @@ export const SYSTEM_SETTING_KEYS = [
   "stripe_pending_order_expiry_minutes",
   "cancellation_refund_fee_percent",
   ...RECOMMENDATION_SYSTEM_DEFAULTS.map((item) => item.key),
+  ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
+  PYTHON_ML_RECOMMENDATION_MODE_KEY,
+  PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -184,9 +200,26 @@ export const SYSTEM_DEFAULTS: {
     value: "10",
   },
   ...RECOMMENDATION_SYSTEM_DEFAULTS,
+  ...PYTHON_ML_SYSTEM_DEFAULTS,
 ];
 
 function assertValidSettingValue(key: string, value: string) {
+  try {
+    assertSettingHasNoCredentials(key, value);
+  } catch (error) {
+    throw new ConvexError(
+      error instanceof Error ? error.message : "Settings cannot store service credentials"
+    );
+  }
+  if (isPythonMlSettingKey(key)) {
+    try {
+      assertPythonMlSettingValue(key, value);
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error ? error.message : "Invalid Python ML setting"
+      );
+    }
+  }
   if (key === "email_from") {
     const error = validateEmailFromValue(value);
     if (error) throw new ConvexError(error);
@@ -274,6 +307,16 @@ function assertValidSettingValue(key: string, value: string) {
       );
     }
   }
+}
+
+function includePublicSetting(key: string, value: string) {
+  if (!PUBLIC_SETTING_KEYS.includes(key as (typeof PUBLIC_SETTING_KEYS)[number])) {
+    return false;
+  }
+  if (isCredentialSettingKey(key) || valueContainsServiceCredential(value)) {
+    return false;
+  }
+  return true;
 }
 
 function normalizeSettingName(name: string) {
@@ -364,16 +407,12 @@ export const listPublic = query({
     const map: Record<string, string> = {};
 
     for (const setting of SYSTEM_DEFAULTS) {
-      if (!PUBLIC_SETTING_KEYS.includes(setting.key as (typeof PUBLIC_SETTING_KEYS)[number])) {
-        continue;
-      }
+      if (!includePublicSetting(setting.key, setting.value)) continue;
       map[setting.key] = setting.value;
     }
 
     for (const row of rows) {
-      if (!PUBLIC_SETTING_KEYS.includes(row.key as (typeof PUBLIC_SETTING_KEYS)[number])) {
-        continue;
-      }
+      if (!includePublicSetting(row.key, row.value)) continue;
       map[row.key] = row.value;
     }
 
@@ -385,7 +424,7 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const rows = await ctx.db.query("settings").collect();
+    const rows = redactAdminSettings(await ctx.db.query("settings").collect());
     return rows.sort((a, b) => {
       if (a.isSystem !== b.isSystem) return a.isSystem ? -1 : 1;
       return a.name.localeCompare(b.name);
@@ -447,16 +486,12 @@ export const getPublicBranding = internalQuery({
     const map: Record<string, string> = {};
 
     for (const setting of SYSTEM_DEFAULTS) {
-      if (!PUBLIC_SETTING_KEYS.includes(setting.key as (typeof PUBLIC_SETTING_KEYS)[number])) {
-        continue;
-      }
+      if (!includePublicSetting(setting.key, setting.value)) continue;
       map[setting.key] = setting.value;
     }
 
     for (const row of rows) {
-      if (!PUBLIC_SETTING_KEYS.includes(row.key as (typeof PUBLIC_SETTING_KEYS)[number])) {
-        continue;
-      }
+      if (!includePublicSetting(row.key, row.value)) continue;
       map[row.key] = row.value;
     }
 
@@ -511,6 +546,16 @@ export const create = mutation({
     }
 
     const key = settingKeyFromName(name);
+    if (isPythonMlSettingKey(key)) {
+      throw new ConvexError("Python ML settings are system settings");
+    }
+    try {
+      assertSettingHasNoCredentials(key, value);
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error ? error.message : "Settings cannot store service credentials"
+      );
+    }
     await assertUniqueSettingName(ctx, name);
     await assertUniqueSettingKey(ctx, key);
 
@@ -531,7 +576,7 @@ export const update = mutation({
     value: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const row = await ctx.db.get(args.id);
     if (!row) {
       throw new ConvexError("Setting not found");
@@ -553,6 +598,21 @@ export const update = mutation({
     }
     if (row.key === "review_call_auto_enabled") {
       value = value.toLowerCase();
+    }
+    if (
+      row.key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY ||
+      row.key === PYTHON_ML_RECOMMENDATION_MODE_KEY
+    ) {
+      value = value.toLowerCase();
+    }
+    if (isPythonMlSettingKey(row.key)) {
+      try {
+        assertCanModifyPythonMlSettings(admin.role);
+      } catch (error) {
+        throw new ConvexError(
+          error instanceof Error ? error.message : "Admin access required to update Python ML settings"
+        );
+      }
     }
     assertValidSettingValue(row.key, value);
     if (row.key === "recommendation_strategy" && value === "python_content") {

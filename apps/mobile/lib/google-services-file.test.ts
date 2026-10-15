@@ -34,7 +34,7 @@ describe("google services file resolution", () => {
       resolveGoogleServicesFile({
         appDir,
         envValue: undefined,
-        exists: (filePath) => filePath === localPath,
+        exists: (filePath: string) => filePath === localPath,
         writeFile: () => {
           throw new Error("should not write");
         },
@@ -50,7 +50,7 @@ describe("google services file resolution", () => {
       appDir,
       envValue: sampleJson,
       exists: () => false,
-      writeFile: (filePath, contents) => {
+      writeFile: (filePath: string, contents: string) => {
         written.filePath = filePath;
         written.contents = contents;
       },
@@ -68,7 +68,7 @@ describe("google services file resolution", () => {
       resolveGoogleServicesFile({
         appDir,
         envValue: secretPath,
-        exists: (filePath) => filePath === secretPath,
+        exists: (filePath: string) => filePath === secretPath,
         writeFile: () => {
           throw new Error("should not write");
         },

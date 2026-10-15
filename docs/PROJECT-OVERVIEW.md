@@ -307,7 +307,7 @@ Nav (`apps/web/src/components/admin/admin-shell.tsx`):
 | AI Assistant | `/admin/ai-assistant` | Vapi conversation analytics, transcripts, leads, support tickets, setup checklist |
 | AI Business Copilot | `/admin/ai-copilot` | Natural-language Q&A over store data, conversation history, saved insights, structured cards |
 | Recommendations | `/admin/recommendations` | Settings snapshot, rebuild frequently-bought-together, impressions/clicks, jobs |
-| Settings | `/admin/settings` | Store contact, hours, legal HTML, `email_from` (Resend sync), SMS toggle, review-call auto schedule, recommendation flags, low-stock threshold |
+| Settings | `/admin/settings` | Store contact, hours, legal HTML, `email_from` (Resend sync), SMS toggle, review-call auto schedule, recommendation flags, Python ML enable/mode/timeout, low-stock threshold |
 | Users | `/admin/users` | **Staff accounts** (not shoppers): create, role, ban, delete |
 | Profile | `/admin/profile` | Name, avatar, password, revoke sessions (account menu, not sidebar) |
 

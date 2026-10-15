@@ -4,8 +4,6 @@ Startup does not load an artifact. A request loads one only when
 ENABLE_MODEL_INFERENCE is true and CONTENT_MODEL_DIR points at a trusted run.
 """
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -58,33 +56,14 @@ def _require_inference(settings: Settings) -> None:
 
 def _load_model(request: Request, settings: Settings):
     from app.ml.errors import ArtifactError, IncompatibleArtifactError, MachineLearningError
-    from app.ml.inference.recommendations import RecommendationModel
+    from app.ml.inference.recommendations import open_cached_content_model
 
-    directory = settings.content_model_dir.strip()
-    if not directory:
-        raise HTTPException(status_code=503, detail="model_unavailable")
-    path = Path(directory)
     try:
-        stamp = (path / "manifest.json").stat().st_mtime_ns
-    except OSError as exc:
-        raise HTTPException(status_code=503, detail="model_unavailable") from exc
-    cached = getattr(request.app.state, "content_recommendation_model", None)
-    identity = str(path.resolve())
-    if (
-        isinstance(cached, tuple)
-        and len(cached) == 3
-        and cached[0] == stamp
-        and cached[1] == identity
-    ):
-        return cached[2]
-    try:
-        model = RecommendationModel.load(path, trusted=True)
+        return open_cached_content_model(request.app.state, settings.content_model_dir)
     except IncompatibleArtifactError as exc:
         raise HTTPException(status_code=503, detail="invalid_model_version") from exc
-    except (ArtifactError, MachineLearningError) as exc:
+    except (ArtifactError, MachineLearningError, OSError) as exc:
         raise HTTPException(status_code=503, detail="model_unavailable") from exc
-    request.app.state.content_recommendation_model = (stamp, identity, model)
-    return model
 
 
 def _one(model, product_id: str, top_k: int) -> ContentRecommendationResponse:

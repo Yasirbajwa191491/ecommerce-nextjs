@@ -4,6 +4,10 @@ import {
 } from "@/lib/setting-key";
 import { isRichTextSettingKey } from "@/lib/legal-content";
 import {
+  isPythonMlSettingKey,
+  pythonMlSettingFormError,
+} from "@convex/lib/recommendations/pythonMlConfig";
+import {
   validateMaxLength,
   validateMinLength,
   validateRequired,
@@ -63,7 +67,10 @@ export function validateSettingForm(
     }
   }
 
-  if (options?.settingKey === "email_from") {
+  if (isPythonMlSettingKey(options?.settingKey ?? "")) {
+    const mlError = pythonMlSettingFormError(options?.settingKey, values.value);
+    if (mlError) errors.value = mlError;
+  } else if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;
   } else if (options?.settingKey === "cancellation_refund_fee_percent") {

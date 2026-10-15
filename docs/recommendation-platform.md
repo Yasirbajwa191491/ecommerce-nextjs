@@ -113,8 +113,16 @@ Workflow templates: `n8n/workflows/09-recommendation-cron.json`, `10-recommendat
 ## Admin
 
 - Page: `/admin/recommendations`
-- Settings: `/admin/settings` (recommendation_* keys)
+- Settings: `/admin/settings` (`recommendation_*` keys, plus Python ML flags)
 - Operations: co-occurrence rebuild, profile refresh jobs
+
+Python ML flags on the same settings page:
+
+- `enable_python_ml_recommendations` (default `false`)
+- `python_ml_recommendation_mode` (`off`, `shadow`, `serve`; default `off`)
+- `python_ml_request_timeout_ms` (250–5000, default `1500`)
+
+When the enable flag is off, the effective mode is `off`. `shadow` does not change customer-visible recommendations. `serve` also requires the deployment variable `PYTHON_ML_SERVE_ENABLED=true`, which defaults to off. Service URL and API key stay in `PYTHON_AI_SERVICE_URL` and `PYTHON_AI_SERVICE_API_KEY`, not in settings. See [python-ml-recommendations.md](python-ml-recommendations.md).
 
 ## Key files
 

@@ -142,6 +142,10 @@ export default function AdminRecommendationsPage() {
                   </span>
                 </p>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Python ML enable, mode, and timeout are on Settings. Shadow does not change
+                what customers see. Serve stays inactive unless the deployment gate is enabled.
+              </p>
               <div className="flex flex-wrap gap-2">
                 {contentStatus.availableStrategies.map((strategy) => (
                   <Button

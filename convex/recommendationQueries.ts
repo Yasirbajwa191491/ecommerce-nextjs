@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalQuery, query } from "./_generated/server";
+import { internalQuery, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
   recommendationIdentityTypeValidator,
@@ -12,6 +12,13 @@ import {
 } from "./lib/recommendations/validators";
 import { buildCacheKey } from "./lib/recommendations/identity";
 import { getRecommendationSettings } from "./lib/recommendations/settings";
+import { publishedContentSnapshot } from "./lib/recommendations/contentRecommendationStore";
+import { DEFAULT_PYTHON_MODEL_VERSION } from "./lib/recommendations/mlStrategy";
+import {
+  ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY,
+  PYTHON_ML_RECOMMENDATION_MODE_KEY,
+  PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
+} from "./lib/recommendations/pythonMlConfig";
 import {
   getCandidateProductIds,
   loadCandidateProducts,
@@ -315,6 +322,35 @@ export const getRecommendationSettingsInternal = internalQuery({
   returns: recommendationSettingsReturnValidator,
   handler: async (ctx) => {
     return await getRecommendationSettings(ctx);
+  },
+});
+
+async function readSettingRaw(ctx: QueryCtx, key: string): Promise<string | null> {
+  const row = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+  return row?.value ?? null;
+}
+
+export const getPythonMlJobConfig = internalQuery({
+  args: {},
+  returns: v.object({
+    enabledRaw: v.union(v.string(), v.null()),
+    modeRaw: v.union(v.string(), v.null()),
+    timeoutRaw: v.union(v.string(), v.null()),
+    modelAvailable: v.boolean(),
+    modelCompatible: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const published = await publishedContentSnapshot(ctx);
+    return {
+      enabledRaw: await readSettingRaw(ctx, ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY),
+      modeRaw: await readSettingRaw(ctx, PYTHON_ML_RECOMMENDATION_MODE_KEY),
+      timeoutRaw: await readSettingRaw(ctx, PYTHON_ML_REQUEST_TIMEOUT_MS_KEY),
+      modelAvailable: published !== null,
+      modelCompatible: published?.modelVersion === DEFAULT_PYTHON_MODEL_VERSION,
+    };
   },
 });
 
