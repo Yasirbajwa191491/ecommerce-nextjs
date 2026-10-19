@@ -41,6 +41,12 @@ import {
   assertMlopsSettingValue,
   isMlopsSettingKey,
 } from "./lib/mlops/config";
+import {
+  AGENT_SYSTEM_DEFAULTS,
+  assertAgentSettingValue,
+  assertCanModifyAgentSettings,
+  isAgentSettingKey,
+} from "./lib/agents/config";
 import { scheduleRagPolicyReindex } from "./lib/rag/schedule";
 
 export const SYSTEM_SETTING_KEYS = [
@@ -69,6 +75,7 @@ export const SYSTEM_SETTING_KEYS = [
   ...RAG_SYSTEM_DEFAULTS.map((item) => item.key),
   ...FORECAST_SYSTEM_DEFAULTS.map((item) => item.key),
   ...MLOPS_SYSTEM_DEFAULTS.map((item) => item.key),
+  ...AGENT_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -228,6 +235,7 @@ export const SYSTEM_DEFAULTS: {
   ...RAG_SYSTEM_DEFAULTS,
   ...FORECAST_SYSTEM_DEFAULTS,
   ...MLOPS_SYSTEM_DEFAULTS,
+  ...AGENT_SYSTEM_DEFAULTS,
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -268,6 +276,13 @@ function assertValidSettingValue(key: string, value: string) {
       assertMlopsSettingValue(key, value);
     } catch (error) {
       throw new ConvexError(error instanceof Error ? error.message : "Invalid MLOps setting");
+    }
+  }
+  if (isAgentSettingKey(key)) {
+    try {
+      assertAgentSettingValue(key, value);
+    } catch (error) {
+      throw new ConvexError(error instanceof Error ? error.message : "Invalid Agentic AI setting");
     }
   }
   if (key === "email_from") {
@@ -694,6 +709,16 @@ export const update = mutation({
       } catch (error) {
         throw new ConvexError(
           error instanceof Error ? error.message : "Admin access required to update MLOps settings"
+        );
+      }
+    }
+    if (isAgentSettingKey(row.key)) {
+      if (row.key !== "agent_max_tool_calls") value = value.toLowerCase();
+      try {
+        assertCanModifyAgentSettings(admin.role);
+      } catch (error) {
+        throw new ConvexError(
+          error instanceof Error ? error.message : "Admin access required to update Agentic AI settings"
         );
       }
     }

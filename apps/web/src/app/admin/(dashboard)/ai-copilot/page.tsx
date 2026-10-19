@@ -8,6 +8,10 @@ import { api } from "@convex/_generated/api";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AiCopilotLayout } from "@/components/admin/ai-copilot/ai-copilot-layout";
 import { CopilotChatWindow } from "@/components/admin/ai-copilot/copilot-chat-window";
+import { AgentModePanel } from "@/components/admin/ai-copilot/agent-mode-panel";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { shouldUseAgentMode } from "@convex/lib/agents/panel";
 import type { CopilotResponseView } from "@/lib/ai-copilot-content";
 import { toastError, toastSuccess } from "@/lib/app-toast";
 
@@ -21,6 +25,9 @@ export default function AdminAiCopilotPage() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingInsightId, setSavingInsightId] = useState<string | null>(null);
+  const [agentMode, setAgentMode] = useState(false);
+  const [agentPrefill, setAgentPrefill] = useState<string | null>(null);
+  const [agentPrefillKey, setAgentPrefillKey] = useState(0);
   const [pendingMessages, setPendingMessages] = useState<
     Array<{
       _id: string;
@@ -38,6 +45,9 @@ export default function AdminAiCopilotPage() {
   );
 
   const askCopilot = useAction(api.aiBusinessCopilot.askCopilot);
+  const availability = useQuery(api.agents.availability);
+  const agentEnabled = availability?.enabled === true;
+  const submitMode = shouldUseAgentMode({ agentMode, agentEnabled });
   const createConversation = useMutation(api.aiCopilotStore.createConversation);
   const deleteConversation = useMutation(api.aiCopilotStore.deleteConversation);
   const saveInsight = useMutation(api.aiCopilotStore.saveInsight);
@@ -172,8 +182,23 @@ export default function AdminAiCopilotPage() {
     <>
       <AdminPageHeader
         title="AI Business Copilot"
-        description="Ask natural language questions about your store and get intelligent explanations, insights, and recommendations based on real business data."
+        description={
+          agentEnabled
+            ? "Ask store questions as usual, or turn on Agent mode for multi-step tool use with approval before any campaign draft is saved."
+            : "Ask natural language questions about your store and get intelligent explanations, insights, and recommendations based on real business data."
+        }
       />
+
+      {agentEnabled ? (
+        <div className="mb-4 flex items-center gap-3">
+          <Switch
+            id="agent-mode"
+            checked={agentMode}
+            onCheckedChange={(checked) => setAgentMode(checked)}
+          />
+          <Label htmlFor="agent-mode">Agent mode</Label>
+        </div>
+      ) : null}
 
       <AiCopilotLayout
         conversations={conversations}
@@ -186,9 +211,19 @@ export default function AdminAiCopilotPage() {
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
         onDeleteSavedInsight={handleDeleteSavedInsight}
-        onSuggestedQuestion={submitQuestion}
+        onSuggestedQuestion={(question) => {
+          if (submitMode === "agent") {
+            setAgentPrefill(question);
+            setAgentPrefillKey((value) => value + 1);
+            return;
+          }
+          void submitQuestion(question);
+        }}
         chatDisabled={loading}
       >
+        {submitMode === "agent" ? (
+          <AgentModePanel prefill={agentPrefill} prefillKey={agentPrefillKey} />
+        ) : (
         <CopilotChatWindow
           messages={messages}
           draft={draft}
@@ -199,6 +234,7 @@ export default function AdminAiCopilotPage() {
           loading={loading}
           savingInsightId={savingInsightId}
         />
+        )}
       </AiCopilotLayout>
     </>
   );

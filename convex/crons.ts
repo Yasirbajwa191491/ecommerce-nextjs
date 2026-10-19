@@ -45,4 +45,11 @@ crons.daily(
   {}
 );
 
+crons.interval(
+  "resume and prune agent runs",
+  { minutes: 5 },
+  internal.agentInternal.resumeDueRuns,
+  {}
+);
+
 export default crons;

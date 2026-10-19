@@ -54,6 +54,8 @@ The retriever keeps at most the configured number of chunks (1–10, default 5) 
 
 Python returns a system prompt and a user message. Convex calls `completeText` on the existing provider chain (`AI_PROVIDER_CHAIN`, default `gemini,groq,openrouter,openai`). Python does not receive provider API keys. The review worker cannot complete these answers and the chain continues to the next configured provider.
 
+The admin agent can call the same chunk index through an internal query. That path is not available to a shopper RAG session, and a shopper session cannot read admin agent runs. Indexing and citation rules are unchanged.
+
 ## 11. How citations are validated
 
 The model must return JSON `citation_ids`. Ids that were not in the retrieved set are dropped. Product links are `/product/{id}`. Policy links are `/shipping`, `/return`, `/privacy`, and `/terms`. Other URLs are discarded.

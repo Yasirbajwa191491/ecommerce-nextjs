@@ -13,6 +13,7 @@ import {
   isForecastSettingKey,
 } from "@convex/lib/forecasting/config";
 import { isMlopsSettingKey, mlopsSettingFormError } from "@convex/lib/mlops/config";
+import { agentSettingFormError, isAgentSettingKey } from "@convex/lib/agents/config";
 import {
   validateMaxLength,
   validateMinLength,
@@ -85,6 +86,9 @@ export function validateSettingForm(
   } else if (isMlopsSettingKey(options?.settingKey ?? "")) {
     const mlopsError = mlopsSettingFormError(options?.settingKey, values.value);
     if (mlopsError) errors.value = mlopsError;
+  } else if (isAgentSettingKey(options?.settingKey ?? "")) {
+    const agentError = agentSettingFormError(options?.settingKey, values.value);
+    if (agentError) errors.value = agentError;
   } else if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;

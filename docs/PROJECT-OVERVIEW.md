@@ -305,9 +305,9 @@ Nav (`apps/web/src/components/admin/admin-shell.tsx`):
 | Email marketing | `/admin/email-marketing/*` | Overview KPIs; TipTap templates; campaigns (segments, send, stats); subscribers (search, export CSV, refresh interests); **AI campaign assistant** and subject-line optimizer |
 | Contact | `/admin/contact-messages` | Inbox, read/unread, delete, mailto |
 | AI Assistant | `/admin/ai-assistant` | Vapi conversation analytics, transcripts, leads, support tickets, setup checklist |
-| AI Business Copilot | `/admin/ai-copilot` | Natural-language Q&A over store data, conversation history, saved insights, structured cards |
+| AI Business Copilot | `/admin/ai-copilot` | Natural-language Q&A over store data, conversation history, saved insights, structured cards. Optional Agent mode when Agentic AI gates are open |
 | Recommendations | `/admin/recommendations` | Settings snapshot, rebuild frequently-bought-together, impressions/clicks, jobs |
-| Settings | `/admin/settings` | Store contact, hours, legal HTML, `email_from` (Resend sync), SMS toggle, review-call auto schedule, recommendation flags, Python ML enable/mode/timeout, low-stock threshold |
+| Settings | `/admin/settings` | Store contact, hours, legal HTML, `email_from` (Resend sync), SMS toggle, review-call auto schedule, recommendation flags, Python ML enable/mode/timeout, low-stock threshold, Agentic AI gates |
 | Users | `/admin/users` | **Staff accounts** (not shoppers): create, role, ban, delete |
 | Profile | `/admin/profile` | Name, avatar, password, revoke sessions (account menu, not sidebar) |
 
@@ -344,6 +344,8 @@ Phase 5 adds a RAG shopping assistant. It retrieves catalog and policy chunks, t
 Phase 6 adds admin demand forecasting at `/admin/forecasting`. It estimates unit sales from paid orders and stays off unless `enable_demand_forecasting`, `DEMAND_FORECASTING_ENABLED`, and `DEMAND_FORECAST_EXPORT_ENABLED` are true. Detail: [python-demand-forecasting-predictive-analytics.md](python-demand-forecasting-predictive-analytics.md).
 
 Phase 7 adds an admin MLOps page at `/admin/mlops`. It registers model metadata, records evaluations, and can request activation or rollback. Monitoring, drift detection, and retraining each require an admin setting and a deployment flag, all defaulting to false. Registry approval does not load model weights or change shopper-facing AI. Detail: [python-mlops-model-lifecycle.md](python-mlops-model-lifecycle.md).
+
+Phase 8 adds admin Agent mode on the existing AI Business Copilot. It selects allowlisted tools, pauses for approval before saving an email draft, and stays off unless `enable_agentic_ai` and `AGENTIC_AI_ENABLED` are both true. It does not send email or change prices. Detail: [agentic-ai-tool-orchestration.md](agentic-ai-tool-orchestration.md).
 
 ### Implemented AI capabilities
 
@@ -682,6 +684,7 @@ One deployment serves web admin, web shop, and mobile.
 | Admin analytics | `adminDashboard.ts`, `adminOrders.ts`, … | Admin |
 | Review AI | `reviewAi*.ts`, n8n HTTP | Admin + pipelines |
 | Copilot | `aiBusinessCopilot.ts` | Admin |
+| Agentic AI | `agents.ts`, `agentActions.ts` | Admin, off by default |
 | Email campaigns | `emailCampaigns.ts`, `emailCampaignAi.ts` | Admin |
 | Vapi | `convex/vapi/` | Web widget + review calls |
 | Storage | Product images, review photos, visual-search uploads, avatars | All |

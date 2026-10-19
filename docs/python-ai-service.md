@@ -32,6 +32,7 @@ These stay in place and are not redirected to Python:
 | Visual search | Next.js SigLIP/CLIP route plus Convex |
 | Recommendations | Convex recommendation modules |
 | Product content, review summaries, email AI, Business Copilot | Convex actions and admin UI |
+| Admin agent tool loop | Convex `agents.ts` and the existing provider chain. Off by default. Python is not an agent runtime |
 | Vapi | Convex HTTP webhooks and the web widget |
 
 `npm run dev` still starts Next.js and Convex only.

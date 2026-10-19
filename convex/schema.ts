@@ -71,6 +71,10 @@ import {
   qrStatusValidator,
   qrTypeValidator,
 } from "./lib/qrValidators";
+import {
+  agentApprovalStatusValidator,
+  agentStateValidator,
+} from "./lib/agents/validators";
 
 export const productImageValidator = v.object({
   url: v.string(),
@@ -331,7 +335,8 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_sent_at", ["sentAt"])
-    .index("by_created_at", ["createdAt"]),
+    .index("by_created_at", ["createdAt"])
+    .index("by_idempotency", ["idempotencyKey"]),
 
   emailCampaignRecipients: defineTable({
     campaignId: v.id("emailCampaigns"),
@@ -1710,4 +1715,121 @@ export default defineSchema({
     startedAt: v.number(),
     updatedAt: v.number(),
   }).index("by_date", ["snapshotDate"]),
+
+  agentRuns: defineTable({
+    adminUserId: v.string(),
+    adminName: v.string(),
+    request: v.string(),
+    requestSummary: v.string(),
+    status: agentStateValidator,
+    planSummary: v.string(),
+    stepIndex: v.number(),
+    toolCallCount: v.number(),
+    plannerCalls: v.number(),
+    replanCount: v.number(),
+    approvalStatus: agentApprovalStatusValidator,
+    recommendationsJson: v.string(),
+    reportJson: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    errorCategory: v.optional(v.string()),
+    version: v.number(),
+    leaseOwner: v.optional(v.string()),
+    leaseUntil: v.optional(v.number()),
+    idempotencyKey: v.string(),
+    maxToolCalls: v.number(),
+    requireDraftApproval: v.boolean(),
+    draftWritesEnabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    expiresAt: v.number(),
+  })
+    .index("by_admin_created", ["adminUserId", "createdAt"])
+    .index("by_admin_status", ["adminUserId", "status"])
+    .index("by_status", ["status"])
+    .index("by_idempotency", ["idempotencyKey"])
+    .index("by_expires", ["expiresAt"]),
+
+  agentSteps: defineTable({
+    runId: v.id("agentRuns"),
+    stepIndex: v.number(),
+    kind: v.union(v.literal("tool"), v.literal("plan"), v.literal("approval")),
+    toolName: v.optional(v.string()),
+    argumentsJson: v.optional(v.string()),
+    resultJson: v.optional(v.string()),
+    status: v.union(
+      v.literal("succeeded"),
+      v.literal("failed"),
+      v.literal("skipped"),
+      v.literal("pending")
+    ),
+    summary: v.string(),
+    risk: v.optional(v.string()),
+    durationMs: v.optional(v.number()),
+    errorCategory: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    factType: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_run", ["runId", "stepIndex"])
+    .index("by_idempotency", ["idempotencyKey"]),
+
+  agentApprovals: defineTable({
+    runId: v.id("agentRuns"),
+    approvalKey: v.string(),
+    stepIndex: v.number(),
+    toolName: v.string(),
+    argumentsHash: v.string(),
+    argumentsJson: v.string(),
+    summary: v.string(),
+    risk: v.literal("draft_writing"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("expired"),
+      v.literal("cancelled")
+    ),
+    requestedBy: v.string(),
+    decidedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    decidedAt: v.optional(v.number()),
+    idempotencyKey: v.string(),
+    executionStatus: v.union(v.literal("pending"), v.literal("executed"), v.literal("skipped")),
+    draftId: v.optional(v.string()),
+    draftUrl: v.optional(v.string()),
+  })
+    .index("by_run", ["runId"])
+    .index("by_key", ["approvalKey"])
+    .index("by_idempotency", ["idempotencyKey"]),
+
+  agentAuditLogs: defineTable({
+    runId: v.id("agentRuns"),
+    adminUserId: v.string(),
+    action: v.string(),
+    toolName: v.optional(v.string()),
+    summary: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_run", ["runId", "createdAt"])
+    .index("by_created", ["createdAt"]),
+
+  agentMetrics: defineTable({
+    day: v.string(),
+    runsStarted: v.number(),
+    runsCompleted: v.number(),
+    runsFailed: v.number(),
+    runsCancelled: v.number(),
+    runsExpired: v.number(),
+    toolSuccess: v.number(),
+    toolFailure: v.number(),
+    approvalRequests: v.number(),
+    approvalDecisions: v.number(),
+    providerFailures: v.number(),
+    fallbackUsage: v.number(),
+    totalSteps: v.number(),
+    totalLatencyMs: v.number(),
+    updatedAt: v.number(),
+  }).index("by_day", ["day"]),
 });
