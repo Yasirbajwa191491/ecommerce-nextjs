@@ -56,6 +56,24 @@ export async function postRag<T>(
   env: RagPythonEnv,
   fetchImpl: typeof fetch = fetch
 ): Promise<T> {
+  return requestService<T>("POST", path, env, fetchImpl, body);
+}
+
+export async function getService<T>(
+  path: string,
+  env: RagPythonEnv,
+  fetchImpl: typeof fetch = fetch
+): Promise<T> {
+  return requestService<T>("GET", path, env, fetchImpl);
+}
+
+async function requestService<T>(
+  method: "GET" | "POST",
+  path: string,
+  env: RagPythonEnv,
+  fetchImpl: typeof fetch,
+  body?: unknown
+): Promise<T> {
   const base = assertSafeServiceUrl(env.PYTHON_AI_SERVICE_URL?.trim() ?? "", env);
   const apiKey = env.PYTHON_AI_SERVICE_API_KEY?.trim() ?? "";
   if (!apiKey) throw new Error("PYTHON_AI_SERVICE_API_KEY is not configured");
@@ -63,7 +81,7 @@ export async function postRag<T>(
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const response = await fetchImpl(endpoint(base, path), {
-      method: "POST",
+      method,
       redirect: "manual",
       cache: "no-store",
       signal: controller.signal,
@@ -72,13 +90,13 @@ export async function postRag<T>(
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (response.status >= 300 && response.status < 400) {
-      throw new Error("RAG service redirected the request");
+      throw new Error("Python service redirected the request");
     }
     if (!response.ok) {
-      throw new Error(`RAG service returned ${response.status}`);
+      throw new Error(`Python service returned ${response.status}`);
     }
     return (await response.json()) as T;
   } finally {

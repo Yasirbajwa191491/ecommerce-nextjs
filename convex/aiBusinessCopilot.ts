@@ -1,7 +1,7 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { routeCopilotQuestion } from "./lib/ai/copilotRouter";
@@ -81,21 +81,26 @@ export const askCopilot = action({
       internal.aiBusinessIntelligence.getBusinessContext,
       { intents, referenceNow, question }
     );
+    const publishedDemandForecast = await ctx.runQuery(api.forecasting.copilotSnapshot, {});
+    const businessDataWithForecast = {
+      ...businessData,
+      publishedDemandForecast,
+    };
 
     await ctx.runMutation(internal.aiCopilotRateLimit.setAnalyticsCache, {
       cacheKey: `context:${intents.sort().join(",")}`,
-      payload: JSON.stringify(businessData),
+      payload: JSON.stringify(businessDataWithForecast),
       referenceNow,
     });
 
     const response = await generateCopilotInsight({
       question,
       intents,
-      businessData,
+      businessData: businessDataWithForecast,
     });
     const insightCards = buildInsightCards({
       intents,
-      businessData,
+      businessData: businessDataWithForecast,
       question,
     }).map((card) => ({
       ...card,

@@ -36,6 +36,8 @@ import type * as emailCampaigns from "../emailCampaigns.js";
 import type * as emailHelpers from "../emailHelpers.js";
 import type * as emailMarketingDashboard from "../emailMarketingDashboard.js";
 import type * as emailTemplates from "../emailTemplates.js";
+import type * as forecastData from "../forecastData.js";
+import type * as forecasting from "../forecasting.js";
 import type * as http from "../http.js";
 import type * as imageEmbeddingActions from "../imageEmbeddingActions.js";
 import type * as imageEmbeddingMutations from "../imageEmbeddingMutations.js";
@@ -326,6 +328,8 @@ declare const fullApi: ApiFromModules<{
   emailHelpers: typeof emailHelpers;
   emailMarketingDashboard: typeof emailMarketingDashboard;
   emailTemplates: typeof emailTemplates;
+  forecastData: typeof forecastData;
+  forecasting: typeof forecasting;
   http: typeof http;
   imageEmbeddingActions: typeof imageEmbeddingActions;
   imageEmbeddingMutations: typeof imageEmbeddingMutations;

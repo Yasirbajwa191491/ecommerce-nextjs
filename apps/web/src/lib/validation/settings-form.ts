@@ -9,6 +9,10 @@ import {
 } from "@convex/lib/recommendations/pythonMlConfig";
 import { isRagSettingKey, ragSettingFormError } from "@convex/lib/rag/config";
 import {
+  forecastSettingFormError,
+  isForecastSettingKey,
+} from "@convex/lib/forecasting/config";
+import {
   validateMaxLength,
   validateMinLength,
   validateRequired,
@@ -74,6 +78,9 @@ export function validateSettingForm(
   } else if (isRagSettingKey(options?.settingKey ?? "")) {
     const ragError = ragSettingFormError(options?.settingKey, values.value);
     if (ragError) errors.value = ragError;
+  } else if (isForecastSettingKey(options?.settingKey ?? "")) {
+    const forecastError = forecastSettingFormError(options?.settingKey, values.value);
+    if (forecastError) errors.value = forecastError;
   } else if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;

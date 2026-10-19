@@ -65,6 +65,12 @@ import {
   RAG_MAX_RETRIEVED_DOCUMENTS_KEY,
   RAG_RETRIEVAL_STRATEGY_KEY,
 } from "@convex/lib/rag/config";
+import {
+  DEMAND_FORECAST_HORIZON_DAYS_KEY,
+  DEMAND_FORECAST_MODEL_STRATEGY_KEY,
+  DEMAND_FORECAST_SHOW_UNCERTAINTY_KEY,
+  ENABLE_DEMAND_FORECASTING_KEY,
+} from "@convex/lib/forecasting/config";
 import { Pencil, Trash2 } from "lucide-react";
 
 type SettingRow = Doc<"settings">;
@@ -125,7 +131,9 @@ function isBooleanSettingKey(key: string | undefined) {
     key === "sms_order_confirmation_enabled" ||
     key === "review_call_auto_enabled" ||
     key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY ||
-    key === ENABLE_RAG_SHOPPING_ASSISTANT_KEY
+    key === ENABLE_RAG_SHOPPING_ASSISTANT_KEY ||
+    key === ENABLE_DEMAND_FORECASTING_KEY ||
+    key === DEMAND_FORECAST_SHOW_UNCERTAINTY_KEY
   );
 }
 
@@ -141,6 +149,10 @@ function settingValueLabel(key: string | undefined, richText: boolean) {
   if (key === RAG_RETRIEVAL_STRATEGY_KEY) return "RAG Retrieval Strategy";
   if (key === RAG_MAX_RETRIEVED_DOCUMENTS_KEY) return "RAG Maximum Retrieved Documents";
   if (key === RAG_GROUNDING_ENFORCEMENT_KEY) return "RAG Grounding Enforcement";
+  if (key === ENABLE_DEMAND_FORECASTING_KEY) return "Enable Demand Forecasting";
+  if (key === DEMAND_FORECAST_HORIZON_DAYS_KEY) return "Forecast Horizon";
+  if (key === DEMAND_FORECAST_MODEL_STRATEGY_KEY) return "Forecast Model Strategy";
+  if (key === DEMAND_FORECAST_SHOW_UNCERTAINTY_KEY) return "Forecast Confidence Display";
   if (richText) return "Page content";
   return "Setting value";
 }
@@ -193,6 +205,18 @@ function settingValueDescription(key: string | undefined) {
   }
   if (key === RAG_GROUNDING_ENFORCEMENT_KEY) {
     return "Strict replaces the whole answer when a citation, price, or stock check fails. Standard drops invalid citations and still replaces unsafe or contradicted price and stock claims.";
+  }
+  if (key === ENABLE_DEMAND_FORECASTING_KEY) {
+    return "Off by default. The admin forecast page stays hidden until this is on and DEMAND_FORECASTING_ENABLED=true. Sales export also requires DEMAND_FORECAST_EXPORT_ENABLED=true. Credentials are not stored here.";
+  }
+  if (key === DEMAND_FORECAST_HORIZON_DAYS_KEY) {
+    return "How many days ahead to publish. Choose 7, 14, or 30. The default is 14.";
+  }
+  if (key === DEMAND_FORECAST_MODEL_STRATEGY_KEY) {
+    return "Auto compares simple forecasts and uses machine learning only when backtests improve error by at least 5 percent. A short history stays on a naive or moving-average forecast.";
+  }
+  if (key === DEMAND_FORECAST_SHOW_UNCERTAINTY_KEY) {
+    return "Shows the empirical residual band on the forecast chart. The band is not a guaranteed sales range.";
   }
   return undefined;
 }
@@ -687,6 +711,59 @@ export default function AdminSettingsPage() {
                   <SelectContent>
                     <SelectItem value="strict">Strict</SelectItem>
                     <SelectItem value="standard">Standard</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : editing?.key === ENABLE_DEMAND_FORECASTING_KEY ||
+                editing?.key === DEMAND_FORECAST_SHOW_UNCERTAINTY_KEY ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                  <Switch
+                    id="setting-value"
+                    checked={form.value.trim().toLowerCase() === "true"}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        value: checked ? "true" : "false",
+                      }))
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {form.value.trim().toLowerCase() === "true" ? "On" : "Off"}
+                  </span>
+                </div>
+              ) : editing?.key === DEMAND_FORECAST_HORIZON_DAYS_KEY ? (
+                <Select
+                  value={["7", "14", "30"].includes(form.value.trim()) ? form.value.trim() : "14"}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, value: value ?? "14" }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 days</SelectItem>
+                    <SelectItem value="14">14 days</SelectItem>
+                    <SelectItem value="30">30 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : editing?.key === DEMAND_FORECAST_MODEL_STRATEGY_KEY ? (
+                <Select
+                  value={form.value.trim().toLowerCase() || "auto"}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, value: value ?? "auto" }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto</SelectItem>
+                    <SelectItem value="naive">Naive</SelectItem>
+                    <SelectItem value="seasonal_naive">Seasonal naive</SelectItem>
+                    <SelectItem value="moving_average">Moving average</SelectItem>
+                    <SelectItem value="exponential_smoothing">Exponential smoothing</SelectItem>
+                    <SelectItem value="ml_regression">ML regression</SelectItem>
+                    <SelectItem value="intermittent">Intermittent</SelectItem>
                   </SelectContent>
                 </Select>
               ) : editingRichText ? (

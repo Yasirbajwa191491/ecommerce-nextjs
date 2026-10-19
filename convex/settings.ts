@@ -29,6 +29,12 @@ import {
   assertRagSettingValue,
   isRagSettingKey,
 } from "./lib/rag/config";
+import {
+  FORECAST_SYSTEM_DEFAULTS,
+  assertCanModifyForecastSettings,
+  assertForecastSettingValue,
+  isForecastSettingKey,
+} from "./lib/forecasting/config";
 import { scheduleRagPolicyReindex } from "./lib/rag/schedule";
 
 export const SYSTEM_SETTING_KEYS = [
@@ -55,6 +61,7 @@ export const SYSTEM_SETTING_KEYS = [
   PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
   PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
   ...RAG_SYSTEM_DEFAULTS.map((item) => item.key),
+  ...FORECAST_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -212,6 +219,7 @@ export const SYSTEM_DEFAULTS: {
   ...RECOMMENDATION_SYSTEM_DEFAULTS,
   ...PYTHON_ML_SYSTEM_DEFAULTS,
   ...RAG_SYSTEM_DEFAULTS,
+  ...FORECAST_SYSTEM_DEFAULTS,
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -236,6 +244,15 @@ function assertValidSettingValue(key: string, value: string) {
       assertRagSettingValue(key, value);
     } catch (error) {
       throw new ConvexError(error instanceof Error ? error.message : "Invalid RAG setting");
+    }
+  }
+  if (isForecastSettingKey(key)) {
+    try {
+      assertForecastSettingValue(key, value);
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error ? error.message : "Invalid demand forecasting setting"
+      );
     }
   }
   if (key === "email_from") {
@@ -640,6 +657,18 @@ export const update = mutation({
       } catch (error) {
         throw new ConvexError(
           error instanceof Error ? error.message : "Admin access required to update RAG settings"
+        );
+      }
+    }
+    if (isForecastSettingKey(row.key)) {
+      value = value.toLowerCase();
+      try {
+        assertCanModifyForecastSettings(admin.role);
+      } catch (error) {
+        throw new ConvexError(
+          error instanceof Error
+            ? error.message
+            : "Admin access required to update demand forecasting settings"
         );
       }
     }

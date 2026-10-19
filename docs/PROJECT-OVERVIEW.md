@@ -341,6 +341,8 @@ Phase 4 adds an offline PyTorch neural recommender (`neural-v1`) inside the same
 
 Phase 5 adds a RAG shopping assistant. It retrieves catalog and policy chunks, then uses the existing LLM provider chain in Convex. It stays off unless `enable_rag_shopping_assistant` and `RAG_SHOPPING_ASSISTANT_ENABLED` are both true. Detail: [python-rag-shopping-assistant.md](python-rag-shopping-assistant.md).
 
+Phase 6 adds admin demand forecasting at `/admin/forecasting`. It estimates unit sales from paid orders and stays off unless `enable_demand_forecasting`, `DEMAND_FORECASTING_ENABLED`, and `DEMAND_FORECAST_EXPORT_ENABLED` are true. Detail: [python-demand-forecasting-predictive-analytics.md](python-demand-forecasting-predictive-analytics.md).
+
 ### Implemented AI capabilities
 
 | Capability | Where | Behavior |
@@ -843,7 +845,7 @@ The Python service in `services/ai-service` can train and evaluate an offline co
 | Web checkout explicit Stripe resume button | Mobile has dedicated resume; web relies on idempotent create + payment QR |
 | Dedicated inventory / CRM admin | Stock on products; customers via orders only |
 | Automatic dynamic pricing | Admin suggestions only |
-| Full forecasting / cohort analytics | Copilot heuristic cards ≠ dedicated BI product |
+| Full forecasting / cohort analytics | Admin forecasting page is implemented and off by default. Cohort analytics are still not a separate product. See [python-demand-forecasting-predictive-analytics.md](python-demand-forecasting-predictive-analytics.md). |
 | iOS physical-device QA matrix | App Lock / push / PaymentSheet need real-device sign-off |
 | App Store / TestFlight | EAS submit config empty of store metadata |
 | Play Store production | Preview APK profile exists; store listing not documented |

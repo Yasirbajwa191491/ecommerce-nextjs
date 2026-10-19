@@ -226,6 +226,17 @@ const INTENT_RULES: IntentRule[] = [
       /show pricing/,
     ],
   },
+  {
+    intent: "demand_forecast",
+    patterns: [
+      /run out of stock/,
+      /expected to sell/,
+      /declining demand/,
+      /demand forecast/,
+      /inventory should i review/,
+      /next two weeks/,
+    ],
+  },
 ];
 
 const INTENT_DATA_SOURCES: Record<CopilotIntent, string[]> = {
@@ -271,6 +282,7 @@ const INTENT_DATA_SOURCES: Record<CopilotIntent, string[]> = {
     "Inventory",
     "Pricing Analytics",
   ],
+  demand_forecast: ["Demand Forecast", "Inventory", "Products"],
 };
 
 export function routeCopilotQuestion(question: string): CopilotIntent[] {

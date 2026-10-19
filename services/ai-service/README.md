@@ -6,6 +6,8 @@ The Next.js storefront, Expo app, and Convex AI features do not call this servic
 
 Phase 5 adds authenticated `/api/v1/internal/rag/*` routes for retrieval and indexing. Convex calls them only when the RAG deployment gate is on. The service still does not hold LLM API keys. See `docs/python-rag-shopping-assistant.md`.
 
+Phase 6 adds authenticated `/api/v1/internal/forecast/*` routes. Training stays on the CLI. The artifact id is `demand-forecast-v1`. See `docs/python-demand-forecasting-predictive-analytics.md`.
+
 ## How it fits
 
 ```text

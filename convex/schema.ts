@@ -1438,5 +1438,53 @@ export default defineSchema({
     windowStartedAt: v.number(),
     expiresAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_session_key", ["sessionKey"]),
+  })    .index("by_session_key", ["sessionKey"]),
+
+  forecastPublications: defineTable({
+    publicationId: v.string(),
+    status: v.union(v.literal("published"), v.literal("archived")),
+    modelVersion: v.string(),
+    strategy: v.string(),
+    horizonDays: v.number(),
+    generatedAt: v.number(),
+    dataCutoff: v.string(),
+    trainedAt: v.string(),
+    datasetLabel: v.string(),
+    statisticallyWeak: v.boolean(),
+    uncertaintyLabel: v.string(),
+  })
+    .index("by_status", ["status"])
+    .index("by_publication", ["publicationId"]),
+
+  forecastPoints: defineTable({
+    publicationId: v.string(),
+    entityType: v.union(v.literal("product"), v.literal("category"), v.literal("store")),
+    entityId: v.string(),
+    forecastDate: v.string(),
+    predictedUnits: v.number(),
+    lowerUnits: v.number(),
+    upperUnits: v.number(),
+    modelName: v.string(),
+    confidence: v.string(),
+  })
+    .index("by_publication", ["publicationId"])
+    .index("by_publication_entity", ["publicationId", "entityType", "entityId"]),
+
+  forecastInsights: defineTable({
+    publicationId: v.string(),
+    entityId: v.string(),
+    productName: v.string(),
+    categoryId: v.string(),
+    currentStock: v.optional(v.number()),
+    forecastUnits: v.number(),
+    daysRemaining: v.optional(v.number()),
+    stockoutRisk: v.string(),
+    trend: v.string(),
+    slowMoving: v.boolean(),
+    highDemand: v.boolean(),
+    reorderQuantity: v.optional(v.number()),
+    reorderNote: v.string(),
+    modelName: v.string(),
+    confidence: v.string(),
+  }).index("by_publication", ["publicationId"]),
 });

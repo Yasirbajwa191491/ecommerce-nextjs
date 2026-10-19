@@ -17,7 +17,8 @@ export const copilotIntentValidator = v.union(
   v.literal("product_opportunities"),
   v.literal("products"),
   v.literal("orders"),
-  v.literal("pricing")
+  v.literal("pricing"),
+  v.literal("demand_forecast")
 );
 
 export type CopilotIntent =
@@ -36,7 +37,8 @@ export type CopilotIntent =
   | "product_opportunities"
   | "products"
   | "orders"
-  | "pricing";
+  | "pricing"
+  | "demand_forecast";
 
 export const copilotResponseValidator = v.object({
   summary: v.string(),
