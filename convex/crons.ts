@@ -31,4 +31,18 @@ crons.interval(
   {}
 );
 
+crons.daily(
+  "collect inventory snapshots",
+  { hourUTC: 2, minuteUTC: 20 },
+  internal.forecastQuality.collectStockSnapshots,
+  {}
+);
+
+crons.daily(
+  "prune mlops monitoring",
+  { hourUTC: 2, minuteUTC: 40 },
+  internal.mlops.pruneOperationalRows,
+  {}
+);
+
 export default crons;

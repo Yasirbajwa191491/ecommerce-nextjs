@@ -187,6 +187,97 @@ export const hashesForDocument = internalQuery({
   },
 });
 
+const reindexStatusValidator = v.union(
+  v.literal("idle"),
+  v.literal("running"),
+  v.literal("unchanged"),
+  v.literal("complete"),
+  v.literal("partial"),
+  v.literal("failed")
+);
+
+export const markReindexStatus = internalMutation({
+  args: {
+    embeddingVersion: v.string(),
+    reindexStatus: reindexStatusValidator,
+  },
+  handler: async (ctx, args) => {
+    const state = await ctx.db
+      .query("ragIndexState")
+      .withIndex("by_version", (q) => q.eq("indexVersion", RAG_INDEX_VERSION))
+      .unique();
+    if (!state) return;
+    await ctx.db.patch(state._id, {
+      reindexStatus: args.reindexStatus,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const reconcileChunks = internalMutation({
+  args: {
+    documentIds: v.array(v.string()),
+    retainChunkIds: v.array(v.string()),
+    chunks: v.array(chunkValidator),
+    embeddingVersion: v.string(),
+    reindexStatus: reindexStatusValidator,
+  },
+  handler: async (ctx, args) => {
+    const retain = new Set(args.retainChunkIds);
+    for (const documentId of args.documentIds.slice(0, 40)) {
+      const existing = await ctx.db
+        .query("ragChunks")
+        .withIndex("by_document", (q) => q.eq("documentId", documentId))
+        .take(40);
+      for (const row of existing) {
+        if (!retain.has(row.chunkId)) await ctx.db.delete(row._id);
+      }
+    }
+    const now = Date.now();
+    let skipped = 0;
+    for (const chunk of args.chunks.slice(0, 80)) {
+      if (chunk.embedding.length !== 384) {
+        skipped += 1;
+        continue;
+      }
+      const existing = await ctx.db
+        .query("ragChunks")
+        .withIndex("by_chunk_id", (q) => q.eq("chunkId", chunk.chunkId))
+        .unique();
+      if (existing) await ctx.db.delete(existing._id);
+      await ctx.db.insert("ragChunks", {
+        ...chunk,
+        visibility: "public",
+        indexVersion: RAG_INDEX_VERSION,
+        active: true,
+        updatedAt: now,
+      });
+    }
+    const state = await ctx.db
+      .query("ragIndexState")
+      .withIndex("by_version", (q) => q.eq("indexVersion", RAG_INDEX_VERSION))
+      .unique();
+    const status = skipped > 0 ? "partial" : args.reindexStatus;
+    if (state) {
+      await ctx.db.patch(state._id, {
+        embeddingVersion: args.embeddingVersion,
+        reindexStatus: status,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("ragIndexState", {
+        indexVersion: RAG_INDEX_VERSION,
+        embeddingVersion: args.embeddingVersion,
+        documentCount: args.documentIds.length,
+        chunkCount: args.chunks.length,
+        failedCount: skipped,
+        reindexStatus: status,
+        updatedAt: now,
+      });
+    }
+  },
+});
+
 export const replaceChunks = internalMutation({
   args: {
     documentIds: v.array(v.string()),

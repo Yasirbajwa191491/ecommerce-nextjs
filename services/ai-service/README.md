@@ -8,6 +8,8 @@ Phase 5 adds authenticated `/api/v1/internal/rag/*` routes for retrieval and ind
 
 Phase 6 adds authenticated `/api/v1/internal/forecast/*` routes. Training stays on the CLI. The artifact id is `demand-forecast-v1`. See `docs/python-demand-forecasting-predictive-analytics.md`.
 
+Phase 7 adds authenticated `/api/v1/internal/mlops/*` routes for artifact validation, diagnostic activation, drift math, and retraining plans. Registry state lives in Convex. These routes do not hot-swap serving caches and default to disabled. See `docs/python-mlops-model-lifecycle.md`.
+
 ## How it fits
 
 ```text

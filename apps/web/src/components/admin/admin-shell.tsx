@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  Activity,
   Bot,
   FolderTree,
   Image,
@@ -60,6 +61,7 @@ const NAV = [
   { href: "/admin/ai-copilot", label: "AI Business Copilot", icon: Sparkles },
   { href: "/admin/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/admin/forecasting", label: "Forecasting", icon: TrendingUp },
+  { href: "/admin/mlops", label: "MLOps", icon: Activity },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/users", label: "Users", icon: Users },
 ];

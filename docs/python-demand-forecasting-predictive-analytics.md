@@ -106,6 +106,8 @@ Shoppers and the mobile app do not see these numbers.
 - There is no historical inventory ledger, so censored demand cannot be recovered.
 - Refunds remove the whole order. Partial line refunds are not represented.
 - Publish reads a bounded number of recent orders (8 pages of 25), not the full history.
+- A separate quality walk (`forecastQuality`) can page through older paid orders when `DEMAND_FORECAST_EXPORT_ENABLED` is true. Until that walk completes, its summary is partial and is not a published forecast. It does not fill missing days with zero sales and does not change orders.
+- Optional daily stock snapshots start only when `INVENTORY_SNAPSHOTS_ENABLED=true`. They record today's stock. They do not reconstruct past stockouts and they do not change inventory.
 - A model trained on the synthetic file can score live series, and its accuracy label remains synthetic until someone trains on an authorized aggregate file.
 - The Business Copilot may quote `publishedDemandForecast` only. The older heuristic forecast cards are unchanged.
 - Vapi and mobile are unchanged.

@@ -35,6 +35,12 @@ import {
   assertForecastSettingValue,
   isForecastSettingKey,
 } from "./lib/forecasting/config";
+import {
+  MLOPS_SYSTEM_DEFAULTS,
+  assertCanModifyMlopsSettings,
+  assertMlopsSettingValue,
+  isMlopsSettingKey,
+} from "./lib/mlops/config";
 import { scheduleRagPolicyReindex } from "./lib/rag/schedule";
 
 export const SYSTEM_SETTING_KEYS = [
@@ -62,6 +68,7 @@ export const SYSTEM_SETTING_KEYS = [
   PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
   ...RAG_SYSTEM_DEFAULTS.map((item) => item.key),
   ...FORECAST_SYSTEM_DEFAULTS.map((item) => item.key),
+  ...MLOPS_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -220,6 +227,7 @@ export const SYSTEM_DEFAULTS: {
   ...PYTHON_ML_SYSTEM_DEFAULTS,
   ...RAG_SYSTEM_DEFAULTS,
   ...FORECAST_SYSTEM_DEFAULTS,
+  ...MLOPS_SYSTEM_DEFAULTS,
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -253,6 +261,13 @@ function assertValidSettingValue(key: string, value: string) {
       throw new ConvexError(
         error instanceof Error ? error.message : "Invalid demand forecasting setting"
       );
+    }
+  }
+  if (isMlopsSettingKey(key)) {
+    try {
+      assertMlopsSettingValue(key, value);
+    } catch (error) {
+      throw new ConvexError(error instanceof Error ? error.message : "Invalid MLOps setting");
     }
   }
   if (key === "email_from") {
@@ -669,6 +684,16 @@ export const update = mutation({
           error instanceof Error
             ? error.message
             : "Admin access required to update demand forecasting settings"
+        );
+      }
+    }
+    if (isMlopsSettingKey(row.key)) {
+      if (row.key !== "ml_monitoring_retention_days") value = value.toLowerCase();
+      try {
+        assertCanModifyMlopsSettings(admin.role);
+      } catch (error) {
+        throw new ConvexError(
+          error instanceof Error ? error.message : "Admin access required to update MLOps settings"
         );
       }
     }

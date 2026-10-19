@@ -343,6 +343,8 @@ Phase 5 adds a RAG shopping assistant. It retrieves catalog and policy chunks, t
 
 Phase 6 adds admin demand forecasting at `/admin/forecasting`. It estimates unit sales from paid orders and stays off unless `enable_demand_forecasting`, `DEMAND_FORECASTING_ENABLED`, and `DEMAND_FORECAST_EXPORT_ENABLED` are true. Detail: [python-demand-forecasting-predictive-analytics.md](python-demand-forecasting-predictive-analytics.md).
 
+Phase 7 adds an admin MLOps page at `/admin/mlops`. It registers model metadata, records evaluations, and can request activation or rollback. Monitoring, drift detection, and retraining each require an admin setting and a deployment flag, all defaulting to false. Registry approval does not load model weights or change shopper-facing AI. Detail: [python-mlops-model-lifecycle.md](python-mlops-model-lifecycle.md).
+
 ### Implemented AI capabilities
 
 | Capability | Where | Behavior |
@@ -877,6 +879,8 @@ Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push cre
 | [docs/python-ml-recommendations.md](python-ml-recommendations.md) | Offline TF-IDF recommendations (not live) |
 | [docs/python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md) | Offline PyTorch neural recommendations (not live by default) |
 | [docs/python-rag-shopping-assistant.md](python-rag-shopping-assistant.md) | Gated RAG shopping assistant (off by default) |
+| [docs/python-demand-forecasting-predictive-analytics.md](python-demand-forecasting-predictive-analytics.md) | Gated demand forecasting (off by default) |
+| [docs/python-mlops-model-lifecycle.md](python-mlops-model-lifecycle.md) | Model registry, drift, and retraining (off by default) |
 | [convex/vapi/VOICE_ASSISTANT_GUIDE.md](../convex/vapi/VOICE_ASSISTANT_GUIDE.md) | Vapi tools |
 
 ---

@@ -12,6 +12,7 @@ import {
   forecastSettingFormError,
   isForecastSettingKey,
 } from "@convex/lib/forecasting/config";
+import { isMlopsSettingKey, mlopsSettingFormError } from "@convex/lib/mlops/config";
 import {
   validateMaxLength,
   validateMinLength,
@@ -81,6 +82,9 @@ export function validateSettingForm(
   } else if (isForecastSettingKey(options?.settingKey ?? "")) {
     const forecastError = forecastSettingFormError(options?.settingKey, values.value);
     if (forecastError) errors.value = forecastError;
+  } else if (isMlopsSettingKey(options?.settingKey ?? "")) {
+    const mlopsError = mlopsSettingFormError(options?.settingKey, values.value);
+    if (mlopsError) errors.value = mlopsError;
   } else if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;

@@ -27,6 +27,18 @@ import {
   paymentStatusValidator,
 } from "./lib/orderValidators";
 import {
+  alertSeverityValidator,
+  alertStatusValidator,
+  artifactAvailabilityValidator,
+  datasetTypeValidator,
+  evaluationStatusValidator,
+  lifecycleValidator,
+  mlFamilyValidator,
+  retrainJobValidator,
+  retrainStateValidator,
+  runtimeStatusValidator,
+} from "./lib/mlops/validators";
+import {
   orderNotificationEventValidator,
   pushPlatformValidator,
 } from "./lib/notificationTypes";
@@ -1422,6 +1434,16 @@ export default defineSchema({
     chunkCount: v.number(),
     failedCount: v.number(),
     updatedAt: v.number(),
+    reindexStatus: v.optional(
+      v.union(
+        v.literal("idle"),
+        v.literal("running"),
+        v.literal("unchanged"),
+        v.literal("complete"),
+        v.literal("partial"),
+        v.literal("failed")
+      )
+    ),
   }).index("by_version", ["indexVersion"]),
 
   ragIndexFailures: defineTable({
@@ -1487,4 +1509,205 @@ export default defineSchema({
     modelName: v.string(),
     confidence: v.string(),
   }).index("by_publication", ["publicationId"]),
+
+  mlModelRegistry: defineTable({
+    modelId: v.string(),
+    modelFamily: mlFamilyValidator,
+    modelVersion: v.string(),
+    artifactVersion: v.string(),
+    featureSchemaVersion: v.string(),
+    datasetFingerprint: v.string(),
+    datasetType: datasetTypeValidator,
+    artifactChecksum: v.string(),
+    trainingTimestamp: v.string(),
+    registeredAt: v.number(),
+    registeredBy: v.string(),
+    evaluationStatus: evaluationStatusValidator,
+    lifecycleStatus: lifecycleValidator,
+    artifactAvailability: artifactAvailabilityValidator,
+    runtimeStatus: runtimeStatusValidator,
+    promotionInflight: v.boolean(),
+    modelMetadataJson: v.string(),
+    evaluationSummaryJson: v.string(),
+  })
+    .index("by_model_id", ["modelId"])
+    .index("by_family_version", ["modelFamily", "modelVersion"])
+    .index("by_family_lifecycle", ["modelFamily", "lifecycleStatus"])
+    .index("by_registered", ["registeredAt"]),
+
+  mlModelEvaluations: defineTable({
+    modelId: v.string(),
+    datasetFingerprint: v.string(),
+    datasetType: datasetTypeValidator,
+    evaluatedAt: v.number(),
+    protocol: v.string(),
+    sampleCount: v.number(),
+    metricKind: v.union(v.literal("ranking"), v.literal("forecast"), v.literal("retrieval")),
+    metricsJson: v.string(),
+    limitations: v.string(),
+    horizonOrK: v.union(v.number(), v.null()),
+  })
+    .index("by_model", ["modelId", "evaluatedAt"])
+    .index("by_fingerprint", ["datasetFingerprint"]),
+
+  mlModelPromotions: defineTable({
+    modelFamily: mlFamilyValidator,
+    previousModelId: v.optional(v.string()),
+    nextModelId: v.string(),
+    actor: v.string(),
+    createdAt: v.number(),
+    reason: v.string(),
+    evaluationSummaryJson: v.string(),
+    outcome: v.string(),
+  })
+    .index("by_family", ["modelFamily", "createdAt"])
+    .index("by_created", ["createdAt"]),
+
+  mlModelMonitoring: defineTable({
+    modelFamily: mlFamilyValidator,
+    modelVersion: v.string(),
+    timeBucket: v.string(),
+    requestCount: v.number(),
+    successCount: v.number(),
+    failureCount: v.number(),
+    timeoutCount: v.number(),
+    fallbackCount: v.number(),
+    latencyCount: v.number(),
+    latencySumMs: v.number(),
+    latencyMaxMs: v.number(),
+    lastErrorCategory: v.string(),
+    lastSuccessAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_family_bucket", ["modelFamily", "timeBucket"])
+    .index("by_bucket", ["timeBucket"]),
+
+  mlDriftAlerts: defineTable({
+    modelFamily: mlFamilyValidator,
+    featureName: v.string(),
+    metric: v.string(),
+    referencePeriod: v.string(),
+    currentPeriod: v.string(),
+    driftScore: v.union(v.number(), v.null()),
+    severity: alertSeverityValidator,
+    sampleSize: v.number(),
+    datasetVersion: v.string(),
+    detectedAt: v.number(),
+    status: alertStatusValidator,
+    fingerprint: v.string(),
+    acknowledgedBy: v.optional(v.string()),
+    reason: v.string(),
+  })
+    .index("by_fingerprint", ["fingerprint"])
+    .index("by_status", ["status", "detectedAt"])
+    .index("by_family", ["modelFamily", "detectedAt"]),
+
+  mlRetrainingJobs: defineTable({
+    jobId: v.string(),
+    modelFamily: mlFamilyValidator,
+    jobType: retrainJobValidator,
+    state: retrainStateValidator,
+    datasetLabel: v.string(),
+    datasetReadiness: v.string(),
+    requestedBy: v.string(),
+    authorizedBy: v.optional(v.string()),
+    claimedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    reason: v.string(),
+    failureReason: v.optional(v.string()),
+    candidateModelId: v.optional(v.string()),
+    evaluationSummaryJson: v.string(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_state", ["state", "updatedAt"])
+    .index("by_family_state", ["modelFamily", "state"]),
+
+  mlModelAuditLogs: defineTable({
+    actor: v.string(),
+    action: v.string(),
+    modelId: v.string(),
+    createdAt: v.number(),
+    outcome: v.string(),
+    reason: v.string(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_model", ["modelId", "createdAt"]),
+
+  forecastDemandDays: defineTable({
+    cutoff: v.string(),
+    productId: v.string(),
+    snapshotDate: v.string(),
+    units: v.number(),
+    categoryId: v.string(),
+  })
+    .index("by_cutoff_product_date", ["cutoff", "productId", "snapshotDate"])
+    .index("by_cutoff", ["cutoff"]),
+
+  forecastDemandClaims: defineTable({
+    lineKey: v.string(),
+    cutoff: v.string(),
+    productId: v.string(),
+    snapshotDate: v.string(),
+    units: v.number(),
+  }).index("by_line", ["lineKey"]),
+
+  forecastOrderClaims: defineTable({
+    orderKey: v.string(),
+    cutoff: v.string(),
+    kind: v.union(v.literal("eligible"), v.literal("refund"), v.literal("ineligible")),
+  }).index("by_order", ["orderKey", "cutoff"]),
+
+  forecastProductCoverage: defineTable({
+    cutoff: v.string(),
+    productId: v.string(),
+    observedDays: v.number(),
+    units: v.number(),
+    firstDate: v.string(),
+    lastDate: v.string(),
+    datesJson: v.string(),
+    scanned: v.boolean(),
+  })
+    .index("by_cutoff_product", ["cutoff", "productId"])
+    .index("by_cutoff_scanned", ["cutoff", "scanned"]),
+
+  forecastQualityRuns: defineTable({
+    cutoff: v.string(),
+    status: v.union(v.literal("building"), v.literal("complete"), v.literal("failed")),
+    cursor: v.optional(v.union(v.string(), v.null())),
+    eligibleOrderCount: v.number(),
+    excludedRefundCount: v.number(),
+    skippedIneligibleCount: v.number(),
+    observationCount: v.number(),
+    productCount: v.number(),
+    missingDateRate: v.number(),
+    insufficientHistoryCount: v.number(),
+    duplicateLineCount: v.number(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    note: v.string(),
+  })
+    .index("by_cutoff", ["cutoff"])
+    .index("by_status", ["status"])
+    .index("by_updated", ["updatedAt"]),
+
+  inventorySnapshots: defineTable({
+    productId: v.string(),
+    snapshotDate: v.string(),
+    availableStock: v.number(),
+    productStatus: v.union(v.literal("active"), v.literal("inactive")),
+    recordedAt: v.number(),
+  })
+    .index("by_product_date", ["productId", "snapshotDate"])
+    .index("by_date", ["snapshotDate"]),
+
+  inventorySnapshotRuns: defineTable({
+    snapshotDate: v.string(),
+    status: v.union(v.literal("building"), v.literal("complete")),
+    cursor: v.optional(v.union(v.string(), v.null())),
+    recordedCount: v.number(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_date", ["snapshotDate"]),
 });

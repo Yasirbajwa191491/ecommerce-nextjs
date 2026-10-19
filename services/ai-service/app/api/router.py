@@ -6,11 +6,13 @@ from app.api.routes.behavioral_recommendations import router as behavioral_recom
 from app.api.routes.forecast import router as forecast_router
 from app.api.routes.health import router as health_router
 from app.api.routes.internal import router as internal_router
+from app.api.routes.mlops import router as mlops_router
 from app.api.routes.rag import router as rag_router
 from app.api.routes.recommendations import router as recommendations_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(internal_router)
+api_router.include_router(mlops_router)
 api_router.include_router(forecast_router)
 api_router.include_router(rag_router)
 api_router.include_router(recommendations_router)

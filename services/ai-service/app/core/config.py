@@ -75,6 +75,15 @@ class Settings(BaseSettings):
     hybrid_model_dir: str = Field(default="", validation_alias="HYBRID_MODEL_DIR")
     neural_model_dir: str = Field(default="", validation_alias="NEURAL_MODEL_DIR")
     enable_model_inference: bool = False
+    mlops_monitoring_enabled: bool = Field(
+        default=False, validation_alias="MLOPS_MONITORING_ENABLED"
+    )
+    mlops_drift_detection_enabled: bool = Field(
+        default=False, validation_alias="MLOPS_DRIFT_DETECTION_ENABLED"
+    )
+    mlops_retraining_enabled: bool = Field(
+        default=False, validation_alias="MLOPS_RETRAINING_ENABLED"
+    )
 
     @field_validator("log_level", mode="before")
     @classmethod

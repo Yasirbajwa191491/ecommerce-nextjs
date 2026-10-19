@@ -136,6 +136,11 @@ The same command scores citation validity, product references, price, stock, uns
 - Conversation memory is a bounded guest session. It is not an account and it is not linked across devices.
 - Vapi tools are unchanged. `getProductDetails` remains the voice product tool. Grounded retrieval is text-only until a future tool is registered explicitly.
 - Index counts stored in Convex record whether chunks exist. They are not a full catalog census.
+- Reindexing skips a chunk only when both the content hash and the embedding provider version match. Changing the embedding provider re-embeds RAG chunks and leaves catalog search embeddings in place. A failed embed does not delete the previous chunks.
+
+## Embedding version
+
+`probeRagEmbeddingVersion` asks the configured provider for one vector and uses that version label (`provider:384`). `chunkNeedsReembedding` returns true when the chunk is new, the hash differs, or the stored version differs. Mixed vector lengths are rejected before write.
 
 ## Practical example
 

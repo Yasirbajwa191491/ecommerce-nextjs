@@ -65,3 +65,12 @@ export async function embedRagTexts(texts: string[]): Promise<{
   });
   return { vectors: result, version: `${provider.name}:${EMBEDDING_DIMENSIONS}` };
 }
+
+export async function probeRagEmbeddingVersion(): Promise<string> {
+  const probed = await embedRagTexts(["."]);
+  const vector = probed.vectors[0];
+  if (!vector || vector.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error("Embedding dimension mismatch");
+  }
+  return probed.version;
+}

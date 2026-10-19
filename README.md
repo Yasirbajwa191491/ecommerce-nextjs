@@ -85,7 +85,7 @@ npm workspaces. The **website stays the same product** — it now lives in `apps
 | `apps/mobile/` | Expo + React Native storefront (`@ecommerce/mobile`) |
 | `packages/shared/` | Shared constants/helpers (web + mobile) |
 | `convex/` | Shared backend (one deployment for both apps) |
-| `services/ai-service/` | Python AI service. Offline content recommendations only. Not started by `npm run dev`. See [docs/python-ml-recommendations.md](docs/python-ml-recommendations.md). |
+| `services/ai-service/` | Python AI service. Offline content, collaborative, hybrid, neural, and forecast models, plus a disabled-by-default MLOps control plane. Not started by `npm run dev`. See [docs/python-mlops-model-lifecycle.md](docs/python-mlops-model-lifecycle.md). |
 
 ```bash
 npm install                  # installs all workspaces
