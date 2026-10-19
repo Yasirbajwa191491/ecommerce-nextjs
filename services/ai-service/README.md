@@ -1,8 +1,8 @@
 # Python AI service
 
-Independent FastAPI service for machine-learning work in this ecommerce monorepo. Phase 1 is the foundation: configuration, health checks, service authentication, and a Convex client that does not read store data. Phase 2A adds an offline content-based recommendation model. The HTTP API still does not serve recommendations.
+Independent FastAPI service for machine-learning work in this ecommerce monorepo. Phase 2 serves an authenticated content model. Phase 3 adds collaborative and hybrid strategies. Phase 4 adds a CPU PyTorch neural model (`neural-v1`) on the same behavioral endpoint. The storefront does not call this service unless an administrator enables the existing Python serve gate. The default Python strategy remains `content`.
 
-The Next.js storefront, Expo app, and Convex AI features do not call this service. `npm run dev` does not start it. Gemini, Groq, OpenRouter, OpenAI, Anthropic, the review AI worker, SigLIP/CLIP embeddings, the live recommendation engine, and the Business Copilot keep their current behavior.
+The Next.js storefront, Expo app, and Convex AI features do not call this service during `npm run dev`. Gemini, Groq, OpenRouter, OpenAI, Anthropic, the review AI worker, SigLIP/CLIP embeddings, the live recommendation engine, and the Business Copilot keep their current behavior.
 
 ## How it fits
 
@@ -108,7 +108,7 @@ docker build -t ecommerce-ai-service services/ai-service
 docker run --rm -p 8000:8000 -e AI_SERVICE_API_KEY="<32+ character secret>" ecommerce-ai-service
 ```
 
-Inside the container the server listens on `0.0.0.0:8000`. The image health check calls `http://127.0.0.1:8000/health/live` and does not leave the container. Production callers should use HTTPS on the platform in front of this process. The image has no GPU or CUDA packages.
+The image has no CUDA packages. The lockfile does install the CPU PyTorch wheel, so the image is larger than a scikit-learn-only build. `CUDA_VISIBLE_DEVICES` is empty in the image. Neural inference still needs `NEURAL_MODEL_DIR` mounted at runtime and more than the 1g staging memory limit.
 
 Uvicorn receives `SIGTERM` directly (`STOPSIGNAL SIGTERM`), so `docker stop` can shut the process down without an extra shell.
 
@@ -168,19 +168,20 @@ Deployed environments should use `APP_ENV=production`. JSON logs are used in pro
 | Path | Responsibility |
 | --- | --- |
 | `app/ml/preprocessing/` | Validation, cleaning, and features. Not used by HTTP routes. |
-| `app/ml/models/` | TF-IDF content model and artifact load/save. |
-| `app/ml/inference/` | `RecommendationModel.recommend` and the local CLI. No HTTP route. |
-| `training/` | Sample data, validation, and fitting. Not imported by the API. |
-| `evaluation/` | Precision@K, Recall@K, HitRate@K, coverage, and the category baseline. |
+| `app/ml/models/` | Content, collaborative, hybrid, and neural models, plus artifact load/save. |
+| `app/ml/neural/` | PyTorch module, negative sampling, and the training loop. Imported only when training or serving `neural`. |
+| `app/ml/inference/` | Cached recommenders and local CLIs. |
+| `training/` | Sample data, validation, and fitting. Not imported by API startup. |
+| `evaluation/` | Ranking metrics for the content model and the behavioral comparison, including `neural-v1`. |
 | `datasets/` | Generated synthetic JSONL. Gitignored except this folder's README. |
 | `artifacts/` | Local joblib bundles. Gitignored except `.gitkeep`. |
 
 ## Current limitations
 
-- The API still has no recommendation route. Startup does not train or load artifacts.
-- No live Convex product export, no storefront feature flag, and no change to current recommendation ranking.
-- No Convex HTTP action accepts `CONVEX_SERVICE_TOKEN` yet. The Python client refuses every data path.
-- No collaborative filtering, deep learning, RAG, fine-tuning, forecasting, or clustering.
-- `convex/lib/ai/pythonAiServiceClient.ts` can probe this service, and nothing in the running store calls it.
-- Existing `AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` behavior is unchanged.
-- The Docker image installs the ML libraries because they are runtime dependencies, and it still only copies `app/`. Train on the host with `uv`, not inside the current API container.
+- Startup does not train or load recommendation artifacts. PyTorch is imported only for a `neural` request or a training command.
+- Customer-visible recommendations stay on the existing engine. `neural` does not become the storefront strategy by default.
+- `AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` are unchanged.
+- No automatic production retraining, no new shopper accounts, and no cross-device identity.
+- The Docker image installs CPU PyTorch because `neural-v1` inference needs it. Train on the host with `uv`. The image does not copy datasets or generated weights.
+
+Learning notes: [docs/python-pytorch-neural-recommendations.md](../../docs/python-pytorch-neural-recommendations.md).

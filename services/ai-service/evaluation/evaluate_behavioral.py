@@ -32,6 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--events", type=Path, required=True)
     parser.add_argument("--catalog", type=Path, default=None)
     parser.add_argument("--content-artifact", type=Path, default=None)
+    parser.add_argument("--neural-dir", type=Path, default=None)
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--source", choices=("synthetic", "convex_export"), default="synthetic")
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
             args.events,
             catalog_path=args.catalog,
             content_artifact=args.content_artifact,
+            neural_dir=args.neural_dir,
             k=args.k,
             source=args.source,
         )
@@ -62,6 +64,7 @@ def evaluate(
     *,
     catalog_path: Path | None = None,
     content_artifact: Path | None = None,
+    neural_dir: Path | None = None,
     k: int = 5,
     source: str = "synthetic",
 ) -> dict[str, object]:
@@ -111,6 +114,16 @@ def evaluate(
             k=k,
             catalog_ids=catalog_ids,
         ),
+        "neural": _neural_metrics(
+            split.train_events,
+            queries,
+            catalog_ids=catalog_ids,
+            k=k,
+            held_out_events=len(split.test_events),
+            outer_cutoff=split.cutoff,
+            neural_dir=neural_dir,
+            source=source,
+        ),
     }
     if content is None:
         models["content"] = {"available": False, "reason": "content_artifact_not_loaded"}
@@ -158,6 +171,11 @@ def evaluate(
         "evaluated_queries": len(queries),
         "insufficient_data": len(queries) == 0,
         "confidence": confidence,
+        "comparison_note": (
+            "Every model is scored on the same temporal queries and relevance labels. "
+            "Neural scores are product-embedding cosine similarity, not purchase probabilities. "
+            "A lower neural score than a simpler baseline is a valid result."
+        ),
         "models": models,
         "weight_schemes": schemes,
     }
@@ -185,6 +203,72 @@ def _hybrid_ids(model: HybridRecommender, product_id: str, limit: int) -> list[s
     except (UnknownProductError, MachineLearningError):
         return []
     return [item.product_id for item in result.recommendations]
+
+
+def _neural_metrics(
+    train_events: list,
+    queries: list,
+    *,
+    catalog_ids: list[str],
+    k: int,
+    held_out_events: int,
+    outer_cutoff: object,
+    neural_dir: Path | None,
+    source: str,
+) -> dict[str, object]:
+    from datetime import datetime
+
+    from app.ml.errors import TrainingError
+    from app.ml.models.neural_artifacts import attach_neural_evaluation
+    from app.ml.neural.config import evaluation_config
+    from app.ml.neural.pipeline import fit_neural_model
+
+    cutoff = outer_cutoff if isinstance(outer_cutoff, datetime) else None
+    try:
+        model, report = fit_neural_model(
+            train_events,
+            catalog_ids=catalog_ids,
+            config=evaluation_config(),
+            held_out_events=held_out_events,
+            outer_cutoff=cutoff,
+        )
+    except TrainingError as exc:
+        return {"available": False, "reason": str(exc)}
+
+    def recommend(product_id: str, limit: int) -> list[str]:
+        try:
+            result = model.recommend(product_id, limit)
+        except UnknownProductError:
+            return []
+        if result.cold_start:
+            return []
+        return [item.product_id for item in result.recommendations]
+
+    metrics = score_ranker(queries, recommend, k=k, catalog_ids=catalog_ids)
+    metrics["score_kind"] = "product_embedding_cosine"
+    metrics["training_seconds"] = report.get("training_seconds")
+    metrics["note"] = (
+        "Scores are cosine similarity of learned product embeddings, "
+        "not predicted purchase probabilities."
+    )
+    if neural_dir is not None:
+        summary = {
+            "warning": (
+                "Offline metrics on this dataset are not customer performance, "
+                "conversion, or revenue uplift."
+            ),
+            "synthetic": source == "synthetic",
+            "precision_at_k": metrics.get("precision_at_k"),
+            "recall_at_k": metrics.get("recall_at_k"),
+            "hit_rate_at_k": metrics.get("hit_rate_at_k"),
+            "ndcg_at_k": metrics.get("ndcg_at_k"),
+            "k": k,
+        }
+        try:
+            attach_neural_evaluation(neural_dir, summary)
+        except MachineLearningError:
+            metrics["evaluation_attach_error"] = "neural_artifact_not_updated"
+    return metrics
 
 
 def _load_content(path: Path | None) -> ContentRecommender | None:

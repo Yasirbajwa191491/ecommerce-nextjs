@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     content_model_dir: str = Field(default="", validation_alias="CONTENT_MODEL_DIR")
     collaborative_model_dir: str = Field(default="", validation_alias="COLLABORATIVE_MODEL_DIR")
     hybrid_model_dir: str = Field(default="", validation_alias="HYBRID_MODEL_DIR")
+    neural_model_dir: str = Field(default="", validation_alias="NEURAL_MODEL_DIR")
     enable_model_inference: bool = False
 
     @field_validator("log_level", mode="before")
@@ -118,7 +119,12 @@ class Settings(BaseSettings):
             raise ValueError("MODEL_ARTIFACTS_DIR is invalid")
         return cleaned
 
-    @field_validator("content_model_dir", "collaborative_model_dir", "hybrid_model_dir")
+    @field_validator(
+        "content_model_dir",
+        "collaborative_model_dir",
+        "hybrid_model_dir",
+        "neural_model_dir",
+    )
     @classmethod
     def validate_model_dir(cls, value: str) -> str:
         cleaned = value.strip()

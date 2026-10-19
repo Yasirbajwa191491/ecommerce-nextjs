@@ -341,4 +341,6 @@ uv run pytest
 
 Phase 3 adds a separate collaborative and hybrid pipeline. It does not change `content-v1`. See [python-behavioral-collaborative-recommendations.md](python-behavioral-collaborative-recommendations.md).
 
+Phase 4 adds `neural-v1` with CPU PyTorch. It does not replace the content, collaborative, or hybrid models. See [python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md).
+
 From the repository root, `npm run ml:python-sample`, `ml:python-validate`, `ml:python-train`, and `ml:python-eval` run the same commands. `npm run dev` does not.

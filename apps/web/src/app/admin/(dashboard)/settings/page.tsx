@@ -555,7 +555,8 @@ export default function AdminSettingsPage() {
                 <Select
                   value={
                     form.value.trim().toLowerCase() === "collaborative" ||
-                    form.value.trim().toLowerCase() === "hybrid"
+                    form.value.trim().toLowerCase() === "hybrid" ||
+                    form.value.trim().toLowerCase() === "neural"
                       ? form.value.trim().toLowerCase()
                       : "content"
                   }
@@ -573,6 +574,7 @@ export default function AdminSettingsPage() {
                     <SelectItem value="content">Content</SelectItem>
                     <SelectItem value="collaborative">Collaborative</SelectItem>
                     <SelectItem value="hybrid">Hybrid</SelectItem>
+                    <SelectItem value="neural">Neural</SelectItem>
                   </SelectContent>
                 </Select>
               ) : editing?.key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY ? (

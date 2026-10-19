@@ -125,7 +125,7 @@ def test_repr_and_dump_hide_the_api_key() -> None:
     assert secret not in settings.model_dump_json()
 
 
-def test_runtime_dependencies_omit_large_ml_frameworks() -> None:
+def test_runtime_dependencies_include_cpu_torch_and_omit_other_frameworks() -> None:
     data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     names: set[str] = set()
     for dep in data["project"]["dependencies"]:
@@ -133,17 +133,20 @@ def test_runtime_dependencies_omit_large_ml_frameworks() -> None:
     for group in data.get("dependency-groups", {}).values():
         for dep in group:
             names.add(_package_name(dep))
-    forbidden = {"torch", "tensorflow", "transformers", "langchain", "sentence-transformers"}
+    forbidden = {"tensorflow", "transformers", "langchain", "sentence-transformers"}
+    assert "torch" in names
     assert forbidden.isdisjoint(names)
 
 
 def test_import_does_not_load_ml_frameworks() -> None:
     import sys
 
+    before = set(sys.modules)
     import app.main
 
-    forbidden = ("torch", "tensorflow", "transformers", "langchain")
-    assert [name for name in forbidden if name in sys.modules] == []
+    loaded = set(sys.modules) - before
+    forbidden = {"torch", "tensorflow", "transformers", "langchain"}
+    assert forbidden.isdisjoint(loaded)
     assert app.main.app is not None
 
 

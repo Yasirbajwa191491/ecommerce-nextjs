@@ -18,6 +18,8 @@ services:
       ENABLE_MODEL_INFERENCE: ${ENABLE_MODEL_INFERENCE:-false}
       CONTENT_MODEL_DIR: ${CONTENT_MODEL_DIR:-/models}
       MODEL_ARTIFACTS_DIR: /models
+      # Neural inference is off here. Mount NEURAL_MODEL_DIR separately and raise
+      # mem_limit above 1g before enabling it. This file does not do that.
     volumes:
       - ${CONTENT_MODEL_HOST_DIR:-./services/ai-service/artifacts/recommendations/content-v1}:/models:ro
     mem_limit: 1g

@@ -14,7 +14,7 @@ export const PYTHON_ML_RECOMMENDATION_STRATEGY_KEY = "python_ml_recommendation_s
 export const PYTHON_ML_MODES = ["off", "shadow", "serve"] as const;
 export type PythonMlMode = (typeof PYTHON_ML_MODES)[number];
 
-export const PYTHON_ML_STRATEGIES = ["content", "collaborative", "hybrid"] as const;
+export const PYTHON_ML_STRATEGIES = ["content", "collaborative", "hybrid", "neural"] as const;
 export type PythonMlStrategy = (typeof PYTHON_ML_STRATEGIES)[number];
 
 /** Inclusive bounds for `python_ml_request_timeout_ms`. */
@@ -157,7 +157,12 @@ export function parsePythonMlMode(value: string | null | undefined): PythonMlMod
 
 export function parsePythonMlStrategy(value: string | null | undefined): PythonMlStrategy {
   const normalized = value?.trim().toLowerCase();
-  if (normalized === "content" || normalized === "collaborative" || normalized === "hybrid") {
+  if (
+    normalized === "content" ||
+    normalized === "collaborative" ||
+    normalized === "hybrid" ||
+    normalized === "neural"
+  ) {
     return normalized;
   }
   return "content";
@@ -188,8 +193,15 @@ export function assertPythonMlSettingValue(key: string, value: string): void {
   }
   if (key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY) {
     const normalized = value.trim().toLowerCase();
-    if (normalized !== "content" && normalized !== "collaborative" && normalized !== "hybrid") {
-      throw new Error("Python ML recommendation strategy must be content, collaborative, or hybrid");
+    if (
+      normalized !== "content" &&
+      normalized !== "collaborative" &&
+      normalized !== "hybrid" &&
+      normalized !== "neural"
+    ) {
+      throw new Error(
+        "Python ML recommendation strategy must be content, collaborative, hybrid, or neural"
+      );
     }
   }
   if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) {

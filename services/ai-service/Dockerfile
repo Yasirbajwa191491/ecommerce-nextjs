@@ -12,6 +12,8 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 
 COPY pyproject.toml uv.lock ./
+# The lockfile installs the CPU PyTorch wheel. Expect a larger image than the
+# scikit-learn-only service. CUDA packages are not included.
 RUN uv sync --frozen --no-dev --no-install-project
 
 FROM python:3.12-slim-bookworm AS runtime
@@ -33,7 +35,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     APP_ENV=production \
     APP_HOST=0.0.0.0 \
     APP_PORT=8000 \
-    ENABLE_MODEL_INFERENCE=false
+    ENABLE_MODEL_INFERENCE=false \
+    CUDA_VISIBLE_DEVICES=""
 
 USER app
 

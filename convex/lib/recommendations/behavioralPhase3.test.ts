@@ -72,6 +72,9 @@ describe("behavioral event policy", () => {
       strategy: "collaborative",
       productIds: ["a"],
     });
+    expect(parseProbePayload({ strategy: "neural", recommendations: [{ product_id: "a" }] })?.strategy).toBe(
+      "neural"
+    );
     expect(parseProbePayload({ recommendations: [{ product_id: "a" }] })).toBeNull();
   });
 });

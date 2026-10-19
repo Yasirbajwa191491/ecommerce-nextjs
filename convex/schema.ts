@@ -1354,7 +1354,8 @@ export default defineSchema({
     requestedStrategy: v.union(
       v.literal("content"),
       v.literal("collaborative"),
-      v.literal("hybrid")
+      v.literal("hybrid"),
+      v.literal("neural")
     ),
     modelAvailable: v.boolean(),
     comparedCount: v.number(),

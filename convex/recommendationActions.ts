@@ -420,6 +420,18 @@ export const runPythonMlShadowComparison = internalAction({
           validRates.push(validCandidateRate(recommended, catalog));
         }
       }
+      const neuralProbe = await probePythonStrategy({
+        productIds: anchors.map((anchor) => anchor.productId),
+        strategy: "neural",
+        timeoutMs: decision.timeoutMs,
+      });
+      const neuralOverlaps: number[] = [];
+      const neuralAgreements: number[] = [];
+      for (const anchor of anchors) {
+        const recommended = neuralProbe.idsByProduct[anchor.productId] ?? [];
+        neuralOverlaps.push(overlapAtK(recommended, anchor.convexProductIds, 8));
+        neuralAgreements.push(rankAgreement(recommended, anchor.convexProductIds, 8));
+      }
       await ctx.runMutation(internal.pythonMlShadow.finishShadowRun, {
         runId: args.runId,
         status: anyOk ? "complete" : "failed",
@@ -436,6 +448,25 @@ export const runPythonMlShadowComparison = internalAction({
           convexSource: "co_occurrence",
           requestedStrategy: decision.strategy,
           note: "Overlap with co-occurrence is not recommendation quality or revenue.",
+          strategies: {
+            neural: {
+              modelAvailable: neuralProbe.ok,
+              modelVersion: neuralProbe.modelVersion ?? null,
+              trainedAt: neuralProbe.trainedAt ?? null,
+              datasetFingerprint: neuralProbe.datasetFingerprint ?? null,
+              scoreKind: neuralProbe.scoreKind ?? null,
+              validationLoss: neuralProbe.validationLoss ?? null,
+              evaluationWarning:
+                neuralProbe.evaluationWarning ??
+                "Offline neural metrics are not customer, conversion, or revenue performance.",
+              errorCode: neuralProbe.errorCode ?? null,
+              fallbackCount: neuralProbe.fallbackCount,
+              latencyMs: neuralProbe.latencyMs,
+              validCandidateCount: neuralProbe.validCandidateCount,
+              overlapAtK: mean(neuralOverlaps),
+              rankAgreement: mean(neuralAgreements),
+            },
+          },
         }),
       });
     } catch (error) {

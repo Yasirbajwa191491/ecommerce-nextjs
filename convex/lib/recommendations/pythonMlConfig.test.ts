@@ -143,13 +143,14 @@ describe("python ML admin settings", () => {
     expect(resolve(null).strategy).toBe("content");
     expect(resolve({ strategyRaw: "hybrid" }).strategy).toBe("hybrid");
     expect(resolve({ strategyRaw: " Collaborative " }).strategy).toBe("collaborative");
+    expect(resolve({ strategyRaw: " neural " }).strategy).toBe("neural");
     expect(resolve({ strategyRaw: "python_content" }).strategy).toBe("content");
     expect(() =>
       assertPythonMlSettingValue(PYTHON_ML_RECOMMENDATION_STRATEGY_KEY, "collaborative")
     ).not.toThrow();
     expect(() =>
       assertPythonMlSettingValue(PYTHON_ML_RECOMMENDATION_STRATEGY_KEY, "python_content")
-    ).toThrow(/content, collaborative, or hybrid/);
+    ).toThrow(/content, collaborative, hybrid, or neural/);
     expect(resolve({ enabledRaw: "false", modeRaw: "serve", strategyRaw: "hybrid" }).mayAffectCustomers).toBe(
       false
     );

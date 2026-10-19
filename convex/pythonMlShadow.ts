@@ -5,15 +5,34 @@ import {
   PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
   parsePythonMlStrategy,
 } from "./lib/recommendations/pythonMlConfig";
+import { parseNeuralShadowSummary } from "./lib/recommendations/pythonMlShadowSummary";
 import {
   isAuthoritativePurchase,
   mapBehaviorEventType,
 } from "./lib/recommendations/behavioralExport";
 
+const neuralShadowValidator = v.object({
+  recorded: v.boolean(),
+  modelAvailable: v.boolean(),
+  modelVersion: v.union(v.string(), v.null()),
+  trainedAt: v.union(v.string(), v.null()),
+  datasetFingerprint: v.union(v.string(), v.null()),
+  scoreKind: v.union(v.string(), v.null()),
+  validationLoss: v.union(v.number(), v.null()),
+  evaluationWarning: v.union(v.string(), v.null()),
+  errorCode: v.union(v.string(), v.null()),
+  fallbackCount: v.union(v.number(), v.null()),
+  latencyMs: v.union(v.number(), v.null()),
+  validCandidateCount: v.union(v.number(), v.null()),
+  overlapAtK: v.union(v.number(), v.null()),
+  rankAgreement: v.union(v.number(), v.null()),
+});
+
 const strategyValidator = v.union(
   v.literal("content"),
   v.literal("collaborative"),
-  v.literal("hybrid")
+  v.literal("hybrid"),
+  v.literal("neural")
 );
 
 const shadowRunValidator = v.object({
@@ -43,6 +62,7 @@ export const getPythonMlAdminStatus = query({
     recorded: v.boolean(),
     strategy: strategyValidator,
     latest: v.union(shadowRunValidator, v.null()),
+    neural: neuralShadowValidator,
     note: v.string(),
   }),
   handler: async (ctx) => {
@@ -74,6 +94,7 @@ export const getPythonMlAdminStatus = query({
           }
         : null,
       note: "Overlap with the current engine is not a quality or revenue result. No shadow run is fabricated when Python has not been called.",
+      neural: parseNeuralShadowSummary(row?.summaryJson),
     };
   },
 });

@@ -122,7 +122,7 @@ Public behavior mutations reject `purchase`. Paid orders record a purchase once 
 
 Shoppers still call Convex. Convex calls Python only from the admin shadow action, and only when Python ML is enabled, the mode is `shadow` or gated `serve`, the service URL and key exist, and a compatible content snapshot is already the readiness signal used by Phase 2B. The shadow action compares Python lists with co-occurrence neighbors for at most five products. It does not change the products a customer sees.
 
-`python_ml_recommendation_strategy` selects `content`, `collaborative`, or `hybrid` for that Python call. Default `content`. It does not change `recommendation_strategy`.
+`python_ml_recommendation_strategy` selects `content`, `collaborative`, `hybrid`, or `neural` for that Python call. Default `content`. It does not change `recommendation_strategy`. `neural` is the Phase 4 model in [python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md).
 
 ## 14. How model versions and artifacts are managed
 
@@ -131,6 +131,7 @@ Shoppers still call Convex. Convex calls Python only from the admin shadow actio
 | Content | `content-v1` | `artifacts/recommendations/content-v1/` |
 | Collaborative | `collaborative-v1` | `artifacts/recommendations/collaborative-v1/` |
 | Hybrid weights | `hybrid-v1` | `artifacts/recommendations/hybrid-v1/hybrid.json` |
+| Neural weights | `neural-v1` | `artifacts/recommendations/neural-v1/weights.pt` |
 
 Each collaborative manifest records the dataset fingerprint, feature version `behavioral-implicit-v1`, weighting config, product, visitor, and interaction counts, matrix sparsity, training duration, and library versions. Files are written to a staging directory and moved into place after the checksum is stored. Loaders refuse an untrusted joblib file, a bad checksum, and a mismatched model or scikit-learn major.minor version.
 
@@ -151,7 +152,7 @@ uv run python -m app.ml.inference.behavioral_cli --collaborative-dir artifacts/r
 
 `training.export_behavioral` is the authorized Convex pull. It exits unless `BEHAVIORAL_EXPORT_ENABLED=true`. Local training does not need Convex credentials.
 
-The authenticated inference route is `POST /api/v1/recommendations/behavioral` with `strategy` set to `content`, `collaborative`, or `hybrid`. `POST /api/v1/recommendations/content` is unchanged and does not grow a strategy field.
+The authenticated inference route is `POST /api/v1/recommendations/behavioral` with `strategy` set to `content`, `collaborative`, `hybrid`, or `neural`. `POST /api/v1/recommendations/content` is unchanged and does not grow a strategy field. A neural request does not change how content, collaborative, or hybrid scoring works.
 
 ## Aggregation rules
 
@@ -180,5 +181,7 @@ Default weights, which evaluation also compares with a uniform scheme and a purc
 ## What is implemented and what is not
 
 Implemented: synthetic dataset, validation, aggregation, sparse item-item model, hybrid fusion, temporal evaluation, versioned artifacts, authenticated strategy inference, the `python_ml_recommendation_strategy` setting, a disabled-by-default export route, and an admin shadow comparison that records real call results or an explicit skipped state.
+
+Phase 4 adds `neural` beside those models. It does not replace this collaborative pipeline. See [python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md).
 
 Not implemented: production deployment, automatic retraining, customer-visible serve replacement, a new shopper account system, and cross-device identity.

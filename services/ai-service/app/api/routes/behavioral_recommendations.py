@@ -21,7 +21,7 @@ router = APIRouter(
     dependencies=[Depends(service_auth)],
 )
 
-StrategyName = Literal["content", "collaborative", "hybrid"]
+StrategyName = Literal["content", "collaborative", "hybrid", "neural"]
 
 
 class BehavioralRecommendationRequest(BaseModel):
@@ -44,12 +44,26 @@ class BehavioralRecommendationItem(BaseModel):
     strategy: StrategyName
 
 
+class OfflineEvaluationSummary(BaseModel):
+    warning: str
+    synthetic: bool = True
+    precision_at_k: float | None = None
+    recall_at_k: float | None = None
+    hit_rate_at_k: float | None = None
+    ndcg_at_k: float | None = None
+
+
 class BehavioralRecommendationResponse(BaseModel):
     product_id: str
     requested_strategy: StrategyName
     strategy: StrategyName
     model_version: str
     fallback_reason: str | None = None
+    score_kind: str | None = None
+    trained_at: str | None = None
+    dataset_fingerprint: str | None = None
+    validation_loss: float | None = None
+    evaluation_summary: OfflineEvaluationSummary | None = None
     recommendations: list[BehavioralRecommendationItem]
 
 
@@ -141,6 +155,8 @@ async def recommend_behavioral(
 ) -> BehavioralRecommendationResponse:
     settings: Settings = request.app.state.settings
     _require_inference(settings)
+    if body.strategy == "neural":
+        return _serve_neural(request, settings, body.product_id, body.top_k)
     recommender = _build(request, settings, body.strategy)
     return _one(recommender, body.product_id, body.top_k, body.strategy)
 
@@ -152,6 +168,14 @@ async def recommend_behavioral_batch(
 ) -> BehavioralRecommendationBatchResponse:
     settings: Settings = request.app.state.settings
     _require_inference(settings)
+    if body.strategy == "neural":
+        return BehavioralRecommendationBatchResponse(
+            requested_strategy=body.strategy,
+            results=[
+                _serve_neural(request, settings, product_id, body.top_k)
+                for product_id in body.product_ids
+            ],
+        )
     recommender = _build(request, settings, body.strategy)
     return BehavioralRecommendationBatchResponse(
         requested_strategy=body.strategy,
@@ -160,3 +184,137 @@ async def recommend_behavioral_batch(
             for product_id in body.product_ids
         ],
     )
+
+
+def _serve_neural(
+    request: Request,
+    settings: Settings,
+    product_id: str,
+    top_k: int,
+) -> BehavioralRecommendationResponse:
+    from app.ml.errors import (
+        ArtifactError,
+        IncompatibleArtifactError,
+        MachineLearningError,
+        TrainingError,
+        UnknownProductError,
+    )
+    from app.ml.inference.neural import open_cached_neural_model
+
+    if not settings.neural_model_dir:
+        raise HTTPException(status_code=503, detail="model_unavailable")
+    try:
+        model = open_cached_neural_model(request.app.state, settings.neural_model_dir)
+    except IncompatibleArtifactError as exc:
+        raise HTTPException(status_code=503, detail="invalid_model_version") from exc
+    except (ArtifactError, MachineLearningError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="model_unavailable") from exc
+    try:
+        result = model.recommend(product_id, top_k)
+    except UnknownProductError:
+        return _content_fallback(
+            request,
+            settings,
+            product_id,
+            top_k,
+            "unknown_to_neural_model",
+        )
+    except TrainingError as exc:
+        raise HTTPException(status_code=503, detail="model_unavailable") from exc
+    if result.cold_start or not result.recommendations:
+        reason = "neural_cold_start" if result.cold_start else "insufficient_neural_evidence"
+        return _content_fallback(request, settings, product_id, top_k, reason)
+    return BehavioralRecommendationResponse(
+        product_id=result.query_product_id,
+        requested_strategy="neural",
+        strategy="neural",
+        model_version=result.model_version,
+        fallback_reason=None,
+        score_kind=result.score_kind,
+        trained_at=result.trained_at or None,
+        dataset_fingerprint=result.dataset_fingerprint or None,
+        validation_loss=result.validation_loss,
+        evaluation_summary=_evaluation_summary(result.evaluation_summary),
+        recommendations=[
+            BehavioralRecommendationItem(
+                product_id=item.product_id,
+                score=item.score,
+                rank=item.rank,
+                model_version=item.model_version,
+                strategy="neural",
+            )
+            for item in result.recommendations
+        ],
+    )
+
+
+def _content_fallback(
+    request: Request,
+    settings: Settings,
+    product_id: str,
+    top_k: int,
+    reason: str,
+) -> BehavioralRecommendationResponse:
+    from app.ml.errors import (
+        ArtifactError,
+        IncompatibleArtifactError,
+        MachineLearningError,
+        UnknownProductError,
+    )
+    from app.ml.inference.recommendations import open_cached_content_model
+
+    if not settings.content_model_dir:
+        if reason == "unknown_to_neural_model":
+            raise HTTPException(status_code=404, detail="unknown_product")
+        raise HTTPException(status_code=503, detail="model_unavailable")
+    try:
+        content = open_cached_content_model(request.app.state, settings.content_model_dir)
+    except IncompatibleArtifactError as exc:
+        raise HTTPException(status_code=503, detail="invalid_model_version") from exc
+    except (ArtifactError, MachineLearningError, OSError) as exc:
+        if reason == "unknown_to_neural_model":
+            raise HTTPException(status_code=404, detail="unknown_product") from exc
+        raise HTTPException(status_code=503, detail="model_unavailable") from exc
+    try:
+        result = content.recommend(product_id, top_k)
+    except UnknownProductError as exc:
+        raise HTTPException(status_code=404, detail="unknown_product") from exc
+    return BehavioralRecommendationResponse(
+        product_id=result.query_product_id,
+        requested_strategy="neural",
+        strategy="content",
+        model_version=result.model_version,
+        fallback_reason=reason,
+        recommendations=[
+            BehavioralRecommendationItem(
+                product_id=item.product_id,
+                score=item.score,
+                rank=item.rank,
+                model_version=item.model_version,
+                strategy="content",
+            )
+            for item in result.recommendations
+        ],
+    )
+
+
+def _evaluation_summary(payload: dict[str, object] | None) -> OfflineEvaluationSummary | None:
+    if not payload:
+        return None
+    warning = payload.get("warning")
+    if not isinstance(warning, str) or not warning:
+        return None
+    return OfflineEvaluationSummary(
+        warning=warning,
+        synthetic=payload.get("synthetic") is not False,
+        precision_at_k=_optional_float(payload.get("precision_at_k")),
+        recall_at_k=_optional_float(payload.get("recall_at_k")),
+        hit_rate_at_k=_optional_float(payload.get("hit_rate_at_k")),
+        ndcg_at_k=_optional_float(payload.get("ndcg_at_k")),
+    )
+
+
+def _optional_float(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)

@@ -359,6 +359,70 @@ function PythonMlMonitoringCard() {
               </p>
             </div>
             <p className="text-muted-foreground">{status.note}</p>
+            <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-2">
+              <p>
+                Neural model:{" "}
+                <span className="font-medium">
+                  {status.neural.recorded
+                    ? status.neural.modelAvailable
+                      ? "Available on the last shadow call"
+                      : "Unavailable on the last shadow call"
+                    : "Unavailable"}
+                </span>
+              </p>
+              <p>
+                Neural version:{" "}
+                <span className="font-medium">{status.neural.modelVersion ?? "Not recorded"}</span>
+              </p>
+              <p>
+                Neural trained at:{" "}
+                <span className="font-medium">{status.neural.trainedAt ?? "Not recorded"}</span>
+              </p>
+              <p>
+                Dataset fingerprint:{" "}
+                <span className="font-medium">
+                  {status.neural.datasetFingerprint ?? "Not recorded"}
+                </span>
+              </p>
+              <p>
+                Training validation loss:{" "}
+                <span className="font-medium">
+                  {status.neural.validationLoss === null
+                    ? "Not recorded"
+                    : status.neural.validationLoss.toFixed(4)}
+                </span>
+              </p>
+              <p>
+                Neural fallbacks:{" "}
+                <span className="font-medium">
+                  {status.neural.fallbackCount === null ? "Not recorded" : status.neural.fallbackCount}
+                </span>
+              </p>
+              <p>
+                Neural latency:{" "}
+                <span className="font-medium">
+                  {status.neural.latencyMs === null ? "Not recorded" : `${status.neural.latencyMs} ms`}
+                </span>
+              </p>
+              <p>
+                Neural candidates:{" "}
+                <span className="font-medium">
+                  {status.neural.validCandidateCount === null
+                    ? "Not recorded"
+                    : status.neural.validCandidateCount}
+                </span>
+              </p>
+            </div>
+            <p className="text-muted-foreground">
+              Evaluation summary:{" "}
+              {status.neural.recorded
+                ? "Numeric offline scores stay in the Python evaluation report. They are not live performance."
+                : "Not recorded."}{" "}
+              {status.neural.evaluationWarning}
+            </p>
+            {status.neural.errorCode ? (
+              <p className="text-muted-foreground">Neural error code: {status.neural.errorCode}</p>
+            ) : null}
             {latest?.errorCode ? (
               <p className="text-muted-foreground">Last error code: {latest.errorCode}</p>
             ) : null}

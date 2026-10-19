@@ -335,7 +335,9 @@ Provider selection is **environment-driven**, not hardcoded to one vendor.
 
 `services/ai-service` is a separate FastAPI process (Python 3.12, port 8000). HTTP still exposes liveness, readiness, and one authenticated internal status route. Those routes do not rank products. A local CLI can train a TF-IDF item-to-item model on a synthetic catalog and score it offline. It does not call Gemini, Groq, OpenRouter, OpenAI, Anthropic, or `services/review-ai-worker`.
 
-`AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` are unchanged. Detail: [python-ai-service.md](python-ai-service.md) and [python-ml-recommendations.md](python-ml-recommendations.md).
+`AI_PROVIDER`, `AI_PROVIDER_CHAIN`, and `AI_WORKER_URL` are unchanged. Detail: [python-ai-service.md](python-ai-service.md), [python-ml-recommendations.md](python-ml-recommendations.md), and [python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md).
+
+Phase 4 adds an offline PyTorch neural recommender (`neural-v1`) inside the same Python service. Shoppers do not see it unless an administrator later enables the existing Python serve gate and selects the `neural` strategy. The default strategy remains `content`.
 
 ### Implemented AI capabilities
 
@@ -869,6 +871,7 @@ Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push cre
 | [docs/AI_FEATURE_QA_CHECKLIST.md](AI_FEATURE_QA_CHECKLIST.md) | AI QA before release |
 | [docs/python-ai-service.md](python-ai-service.md) | Python AI service (not on the store path) |
 | [docs/python-ml-recommendations.md](python-ml-recommendations.md) | Offline TF-IDF recommendations (not live) |
+| [docs/python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md) | Offline PyTorch neural recommendations (not live by default) |
 | [convex/vapi/VOICE_ASSISTANT_GUIDE.md](../convex/vapi/VOICE_ASSISTANT_GUIDE.md) | Vapi tools |
 
 ---
