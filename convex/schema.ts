@@ -1370,4 +1370,73 @@ export default defineSchema({
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   }).index("by_created", ["createdAt"]),
+
+  /**
+   * RAG chunks. Separate from products.by_embedding so policy and FAQ chunks
+   * do not overwrite catalog search embeddings. Dimensions stay 384 to reuse
+   * the existing embedding providers.
+   */
+  ragChunks: defineTable({
+    chunkId: v.string(),
+    documentId: v.string(),
+    sourceType: v.union(
+      v.literal("product"),
+      v.literal("shipping_policy"),
+      v.literal("return_policy"),
+      v.literal("privacy_policy"),
+      v.literal("terms"),
+      v.literal("faq")
+    ),
+    sourceId: v.string(),
+    productId: v.optional(v.string()),
+    title: v.string(),
+    section: v.string(),
+    content: v.string(),
+    contentHash: v.string(),
+    metadataJson: v.string(),
+    visibility: v.literal("public"),
+    embedding: v.array(v.float64()),
+    embeddingVersion: v.string(),
+    indexVersion: v.string(),
+    active: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_chunk_id", ["chunkId"])
+    .index("by_document", ["documentId"])
+    .index("by_source", ["sourceType", "sourceId"])
+    .index("by_active", ["active"])
+    .searchIndex("search_content", {
+      searchField: "content",
+      filterFields: ["active", "sourceType"],
+    })
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 384,
+      filterFields: ["active"],
+    }),
+
+  ragIndexState: defineTable({
+    indexVersion: v.string(),
+    embeddingVersion: v.string(),
+    documentCount: v.number(),
+    chunkCount: v.number(),
+    failedCount: v.number(),
+    updatedAt: v.number(),
+  }).index("by_version", ["indexVersion"]),
+
+  ragIndexFailures: defineTable({
+    documentId: v.string(),
+    error: v.string(),
+    attempts: v.number(),
+    updatedAt: v.number(),
+  }).index("by_document", ["documentId"]),
+
+  ragSessions: defineTable({
+    sessionKey: v.string(),
+    turnsJson: v.string(),
+    askCount: v.number(),
+    windowStartedAt: v.number(),
+    expiresAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_session_key", ["sessionKey"]),
 });

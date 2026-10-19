@@ -174,5 +174,9 @@ export function createAnthropicProvider(
         buildReviewReplyUserPrompt(review)
       );
     },
+
+    async completeText(system: string, user: string): Promise<string> {
+      return await anthropicMessage(resolved, system, user);
+    },
   };
 }

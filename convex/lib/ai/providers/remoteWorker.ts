@@ -82,5 +82,9 @@ export function createRemoteWorkerProvider(config: WorkerConfig): ReviewAIProvid
       });
       return result.reply;
     },
+
+    async completeText(): Promise<string> {
+      throw new Error("Review worker does not generate shopping answers");
+    },
   };
 }

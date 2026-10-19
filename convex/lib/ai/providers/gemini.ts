@@ -220,5 +220,9 @@ export function createGeminiProvider(
         buildReviewReplyUserPrompt(review)
       );
     },
+
+    async completeText(system: string, user: string): Promise<string> {
+      return await geminiGenerateWithConfig(resolved, system, user, 0.2);
+    },
   };
 }

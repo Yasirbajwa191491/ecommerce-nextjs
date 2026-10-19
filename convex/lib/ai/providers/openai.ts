@@ -226,5 +226,9 @@ export function createOpenAIProvider(
         buildReviewReplyUserPrompt(review)
       );
     },
+
+    async completeText(system: string, user: string): Promise<string> {
+      return await openaiChat(resolved, system, user);
+    },
   };
 }

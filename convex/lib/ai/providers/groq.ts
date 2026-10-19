@@ -170,5 +170,9 @@ export function createGroqProvider(config?: Partial<GroqConfig>): ReviewAIProvid
         buildReviewReplyUserPrompt(review)
       );
     },
+
+    async completeText(system: string, user: string): Promise<string> {
+      return await groqChat(resolved, system, user);
+    },
   };
 }

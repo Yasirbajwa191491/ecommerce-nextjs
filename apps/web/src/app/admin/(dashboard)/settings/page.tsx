@@ -57,6 +57,14 @@ import {
   PYTHON_ML_TIMEOUT_MAX_MS,
   PYTHON_ML_TIMEOUT_MIN_MS,
 } from "@convex/lib/recommendations/pythonMlConfig";
+import {
+  ENABLE_RAG_SHOPPING_ASSISTANT_KEY,
+  RAG_GROUNDING_ENFORCEMENT_KEY,
+  RAG_MAX_DOCUMENTS_MAX,
+  RAG_MAX_DOCUMENTS_MIN,
+  RAG_MAX_RETRIEVED_DOCUMENTS_KEY,
+  RAG_RETRIEVAL_STRATEGY_KEY,
+} from "@convex/lib/rag/config";
 import { Pencil, Trash2 } from "lucide-react";
 
 type SettingRow = Doc<"settings">;
@@ -116,7 +124,8 @@ function isBooleanSettingKey(key: string | undefined) {
   return (
     key === "sms_order_confirmation_enabled" ||
     key === "review_call_auto_enabled" ||
-    key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY
+    key === ENABLE_PYTHON_ML_RECOMMENDATIONS_KEY ||
+    key === ENABLE_RAG_SHOPPING_ASSISTANT_KEY
   );
 }
 
@@ -128,6 +137,10 @@ function settingValueLabel(key: string | undefined, richText: boolean) {
   if (key === PYTHON_ML_RECOMMENDATION_MODE_KEY) return "Python ML Recommendation Mode";
   if (key === PYTHON_ML_RECOMMENDATION_STRATEGY_KEY) return "Python ML Recommendation Strategy";
   if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) return "Python ML Request Timeout (ms)";
+  if (key === ENABLE_RAG_SHOPPING_ASSISTANT_KEY) return "Enable RAG Shopping Assistant";
+  if (key === RAG_RETRIEVAL_STRATEGY_KEY) return "RAG Retrieval Strategy";
+  if (key === RAG_MAX_RETRIEVED_DOCUMENTS_KEY) return "RAG Maximum Retrieved Documents";
+  if (key === RAG_GROUNDING_ENFORCEMENT_KEY) return "RAG Grounding Enforcement";
   if (richText) return "Page content";
   return "Setting value";
 }
@@ -168,6 +181,18 @@ function settingValueDescription(key: string | undefined) {
   }
   if (key === PYTHON_ML_REQUEST_TIMEOUT_MS_KEY) {
     return `Whole number of milliseconds from ${PYTHON_ML_TIMEOUT_MIN_MS} to ${PYTHON_ML_TIMEOUT_MAX_MS}. The default is 1500.`;
+  }
+  if (key === ENABLE_RAG_SHOPPING_ASSISTANT_KEY) {
+    return "Off by default. Shoppers see the catalog assistant only when this is on and RAG_SHOPPING_ASSISTANT_ENABLED=true on the deployment. The service URL and API key are not stored here.";
+  }
+  if (key === RAG_RETRIEVAL_STRATEGY_KEY) {
+    return "Hybrid combines keyword and semantic retrieval with reciprocal rank fusion. Semantic and keyword use only that signal.";
+  }
+  if (key === RAG_MAX_RETRIEVED_DOCUMENTS_KEY) {
+    return "How many retrieved records can be sent to the answer step. Use an integer from 1 to 10. The default is 5.";
+  }
+  if (key === RAG_GROUNDING_ENFORCEMENT_KEY) {
+    return "Strict replaces the whole answer when a citation, price, or stock check fails. Standard drops invalid citations and still replaces unsafe or contradicted price and stock claims.";
   }
   return undefined;
 }
@@ -595,6 +620,75 @@ export default function AdminSettingsPage() {
                   aria-invalid={!!validation.fieldError("value")}
                   className={invalidInputClass(validation.fieldError("value"))}
                 />
+              ) : editing?.key === ENABLE_RAG_SHOPPING_ASSISTANT_KEY ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                  <Switch
+                    id="setting-value"
+                    checked={form.value.trim().toLowerCase() === "true"}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        value: checked ? "true" : "false",
+                      }))
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {form.value.trim().toLowerCase() === "true"
+                      ? "Enabled — still requires the deployment gate"
+                      : "Disabled — shoppers keep the current assistant"}
+                  </span>
+                </div>
+              ) : editing?.key === RAG_RETRIEVAL_STRATEGY_KEY ? (
+                <Select
+                  value={
+                    form.value.trim().toLowerCase() === "semantic" ||
+                    form.value.trim().toLowerCase() === "keyword"
+                      ? form.value.trim().toLowerCase()
+                      : "hybrid"
+                  }
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, value: value ?? "hybrid" }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                    <SelectItem value="semantic">Semantic</SelectItem>
+                    <SelectItem value="keyword">Keyword</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : editing?.key === RAG_MAX_RETRIEVED_DOCUMENTS_KEY ? (
+                <Input
+                  id="setting-value"
+                  type="number"
+                  min={RAG_MAX_DOCUMENTS_MIN}
+                  max={RAG_MAX_DOCUMENTS_MAX}
+                  step={1}
+                  value={form.value}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, value: event.target.value }))
+                  }
+                  onBlur={() => validation.touch("value")}
+                  aria-invalid={!!validation.fieldError("value")}
+                  className={invalidInputClass(validation.fieldError("value"))}
+                />
+              ) : editing?.key === RAG_GROUNDING_ENFORCEMENT_KEY ? (
+                <Select
+                  value={form.value.trim().toLowerCase() === "standard" ? "standard" : "strict"}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, value: value ?? "strict" }))
+                  }
+                >
+                  <SelectTrigger id="setting-value" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strict">Strict</SelectItem>
+                    <SelectItem value="standard">Standard</SelectItem>
+                  </SelectContent>
+                </Select>
               ) : editingRichText ? (
                 <EmailRichTextEditor
                   contentJson={form.value || EMPTY_TIPTAP_DOC}

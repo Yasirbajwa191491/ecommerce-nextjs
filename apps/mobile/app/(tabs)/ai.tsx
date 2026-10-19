@@ -30,6 +30,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OfflineNotice } from "@/components/feedback/OfflineNotice";
 import { refreshNetworkSnapshot } from "@/lib/network";
 import { useTheme } from "@/providers/theme-context";
+import { RagShoppingAssistant } from "@/components/ai/RagShoppingAssistant";
 
 const PROMPTS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { label: "Find wireless headphones", icon: "headset-outline" },
@@ -146,6 +147,8 @@ export default function AiScreen() {
               </Text>
             </View>
           ) : null}
+
+          <RagShoppingAssistant />
 
           <Text style={styles.promptLabel}>Try asking</Text>
           <View style={styles.prompts}>

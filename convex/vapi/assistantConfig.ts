@@ -166,6 +166,7 @@ export const VAPI_TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      // RAG retrieval is not registered here. See docs/python-rag-shopping-assistant.md.
       name: "getProductDetails",
       description:
         "Full product info: colors, stock count, price, description, highlight points, warranty, delivery options, active promotions, how to buy, and product URL. Requires product ID from searchProducts.",

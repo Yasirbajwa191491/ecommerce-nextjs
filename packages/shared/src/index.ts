@@ -38,3 +38,13 @@ export {
 } from "./phone/country";
 export { createSearchLifecycle, type SearchPage, type SearchSnapshot } from "./search/lifecycle";
 export { createCatalogPriceSelection, type CatalogPriceRange } from "./search/priceSelection";
+export {
+  ragAssistantState,
+  ragAssistantVisible,
+  safeCitationHref,
+  visibleCitations,
+  type RagAskView,
+  type RagAssistantState,
+  type RagCitationView,
+  type RagProductView,
+} from "./rag/assistant";

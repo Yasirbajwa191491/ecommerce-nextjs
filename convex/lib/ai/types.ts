@@ -65,6 +65,8 @@ export interface ReviewAIProvider {
   summarizeReviews(reviews: string[]): Promise<string>;
   extractTopics(reviews: string[]): Promise<ReviewTopic[]>;
   generateReply(review: ReviewForReply): Promise<string>;
+  /** Shopper RAG answers. Review methods keep their own prompts. */
+  completeText?(system: string, user: string): Promise<string>;
   /** Alias for analyzeSentiment — normalized provider interface */
   generateSentiment?(text: string): Promise<SentimentResult>;
   /** Alias for detectSpam */

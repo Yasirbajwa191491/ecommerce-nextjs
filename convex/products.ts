@@ -27,6 +27,7 @@ import {
 } from "./lib/pricing";
 import { scheduleProductIntelligenceIfNeeded } from "./lib/ai/scheduleProductIntelligence";
 import { scheduleImageEmbeddingIfNeeded } from "./lib/ai/scheduleImageEmbedding";
+import { scheduleRagProductReindex } from "./lib/rag/schedule";
 import {
   deliveryOptionValidator,
   getDefaultDeliveryOptions,
@@ -835,6 +836,7 @@ export const create = mutation({
     });
 
     await scheduleImageEmbeddingIfNeeded(ctx, productId);
+    await scheduleRagProductReindex(ctx, productId);
     await adjustCatalogCounts(ctx, active ? { active: 1 } : { inactive: 1 });
 
     return productId;
@@ -898,6 +900,7 @@ export const update = mutation({
     });
 
     await scheduleImageEmbeddingIfNeeded(ctx, id);
+    await scheduleRagProductReindex(ctx, id);
 
     return id;
   },
@@ -934,6 +937,7 @@ export const remove = mutation({
     if (!isProductActive(product)) return;
     await ctx.db.patch(args.id, { active: false });
     await adjustCatalogCounts(ctx, { active: -1, inactive: 1 });
+    await scheduleRagProductReindex(ctx, args.id);
   },
 });
 
@@ -957,6 +961,7 @@ export const restore = mutation({
       sortOrder: maxSortOrder + 1,
     });
     await adjustCatalogCounts(ctx, { active: 1, inactive: -1 });
+    await scheduleRagProductReindex(ctx, args.id);
   },
 });
 

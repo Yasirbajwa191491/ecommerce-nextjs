@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { AiShoppingFeatureCard } from "@/components/ai-shopping/ai-shopping-feature-card";
 import { AiShoppingHero } from "@/components/ai-shopping/ai-shopping-hero";
+import { RagShoppingAssistant } from "@/components/ai-shopping/rag-shopping-assistant";
 import { AI_SHOPPING_CAPABILITIES, AI_SHOPPING_FAQ } from "@/lib/ai-shopping-content";
 import {
   AI_SHOPPING_WIDE_WIDTH,
@@ -49,6 +50,7 @@ export function AiShoppingPageView() {
               />
             ))}
           </div>
+          <RagShoppingAssistant />
         </section>
       </div>
 

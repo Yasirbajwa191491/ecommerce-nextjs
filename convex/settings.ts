@@ -23,6 +23,13 @@ import {
   redactAdminSettings,
   valueContainsServiceCredential,
 } from "./lib/recommendations/pythonMlConfig";
+import {
+  RAG_SYSTEM_DEFAULTS,
+  assertCanModifyRagSettings,
+  assertRagSettingValue,
+  isRagSettingKey,
+} from "./lib/rag/config";
+import { scheduleRagPolicyReindex } from "./lib/rag/schedule";
 
 export const SYSTEM_SETTING_KEYS = [
   "store_name",
@@ -47,6 +54,7 @@ export const SYSTEM_SETTING_KEYS = [
   PYTHON_ML_RECOMMENDATION_MODE_KEY,
   PYTHON_ML_REQUEST_TIMEOUT_MS_KEY,
   PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
+  ...RAG_SYSTEM_DEFAULTS.map((item) => item.key),
 ] as const;
 
 export const PUBLIC_SETTING_KEYS = [
@@ -203,6 +211,7 @@ export const SYSTEM_DEFAULTS: {
   },
   ...RECOMMENDATION_SYSTEM_DEFAULTS,
   ...PYTHON_ML_SYSTEM_DEFAULTS,
+  ...RAG_SYSTEM_DEFAULTS,
 ];
 
 function assertValidSettingValue(key: string, value: string) {
@@ -220,6 +229,13 @@ function assertValidSettingValue(key: string, value: string) {
       throw new ConvexError(
         error instanceof Error ? error.message : "Invalid Python ML setting"
       );
+    }
+  }
+  if (isRagSettingKey(key)) {
+    try {
+      assertRagSettingValue(key, value);
+    } catch (error) {
+      throw new ConvexError(error instanceof Error ? error.message : "Invalid RAG setting");
     }
   }
   if (key === "email_from") {
@@ -617,6 +633,16 @@ export const update = mutation({
         );
       }
     }
+    if (isRagSettingKey(row.key)) {
+      value = value.toLowerCase();
+      try {
+        assertCanModifyRagSettings(admin.role);
+      } catch (error) {
+        throw new ConvexError(
+          error instanceof Error ? error.message : "Admin access required to update RAG settings"
+        );
+      }
+    }
     assertValidSettingValue(row.key, value);
     if (row.key === "recommendation_strategy" && value === "python_content") {
       try {
@@ -634,6 +660,14 @@ export const update = mutation({
         value,
         updatedAt: Date.now(),
       });
+      if (
+        row.key === "shipping_policy" ||
+        row.key === "return_policy" ||
+        row.key === "privacy_policy" ||
+        row.key === "terms_conditions"
+      ) {
+        await scheduleRagPolicyReindex(ctx);
+      }
       return args.id;
     }
 

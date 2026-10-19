@@ -339,6 +339,8 @@ Provider selection is **environment-driven**, not hardcoded to one vendor.
 
 Phase 4 adds an offline PyTorch neural recommender (`neural-v1`) inside the same Python service. Shoppers do not see it unless an administrator later enables the existing Python serve gate and selects the `neural` strategy. The default strategy remains `content`.
 
+Phase 5 adds a RAG shopping assistant. It retrieves catalog and policy chunks, then uses the existing LLM provider chain in Convex. It stays off unless `enable_rag_shopping_assistant` and `RAG_SHOPPING_ASSISTANT_ENABLED` are both true. Detail: [python-rag-shopping-assistant.md](python-rag-shopping-assistant.md).
+
 ### Implemented AI capabilities
 
 | Capability | Where | Behavior |
@@ -847,7 +849,7 @@ The Python service in `services/ai-service` can train and evaluate an offline co
 | Play Store production | Preview APK profile exists; store listing not documented |
 | Second locale / RTL | i18n file is English-only |
 | SMS marketing / SMS OTP | Transactional order SMS only; admin OTP is email |
-| Live Python recommendation switching, RAG, fine-tuning, forecasting, clustering | Content snapshots can be published and selected by an admin. The default strategy is `convex`, so the store does not use them until that choice is made. RAG, fine-tuning, forecasting, and clustering are not implemented. |
+| Live Python recommendation switching, fine-tuning, forecasting, clustering | Content snapshots can be published and selected by an admin. The default strategy is `convex`. RAG exists as a gated assistant and is off by default. Fine-tuning, forecasting, and clustering are not implemented. |
 
 Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push credentials, n8n, `AI_WORKER_URL`, image-embed secret, matching Convex URL on web vs mobile, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`, Face ID native rebuild for App Lock.
 
@@ -872,6 +874,7 @@ Optional ops (already coded, need env): Vapi keys, Twilio, Resend, Expo push cre
 | [docs/python-ai-service.md](python-ai-service.md) | Python AI service (not on the store path) |
 | [docs/python-ml-recommendations.md](python-ml-recommendations.md) | Offline TF-IDF recommendations (not live) |
 | [docs/python-pytorch-neural-recommendations.md](python-pytorch-neural-recommendations.md) | Offline PyTorch neural recommendations (not live by default) |
+| [docs/python-rag-shopping-assistant.md](python-rag-shopping-assistant.md) | Gated RAG shopping assistant (off by default) |
 | [convex/vapi/VOICE_ASSISTANT_GUIDE.md](../convex/vapi/VOICE_ASSISTANT_GUIDE.md) | Vapi tools |
 
 ---

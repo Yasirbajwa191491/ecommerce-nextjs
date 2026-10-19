@@ -4,6 +4,8 @@ Independent FastAPI service for machine-learning work in this ecommerce monorepo
 
 The Next.js storefront, Expo app, and Convex AI features do not call this service during `npm run dev`. Gemini, Groq, OpenRouter, OpenAI, Anthropic, the review AI worker, SigLIP/CLIP embeddings, the live recommendation engine, and the Business Copilot keep their current behavior.
 
+Phase 5 adds authenticated `/api/v1/internal/rag/*` routes for retrieval and indexing. Convex calls them only when the RAG deployment gate is on. The service still does not hold LLM API keys. See `docs/python-rag-shopping-assistant.md`.
+
 ## How it fits
 
 ```text

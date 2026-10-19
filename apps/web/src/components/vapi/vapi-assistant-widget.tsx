@@ -25,6 +25,7 @@ import { useVapiStorefrontController } from "@/providers/vapi-storefront-control
 import { useCartContext } from "@/context/cart_context";
 import { cartItemsToCheckoutLines } from "@/lib/cart-lines";
 import { VapiChatPanel } from "@/components/vapi/vapi-chat-panel";
+import { RagShoppingAssistant } from "@/components/ai-shopping/rag-shopping-assistant";
 import { VapiActivityPanel } from "@/components/vapi/vapi-activity-panel";
 import { VapiLiveShoppingBanner } from "@/components/vapi/vapi-live-shopping-banner";
 import { VapiAssistantStatus } from "@/components/vapi/vapi-assistant-status";
@@ -308,6 +309,7 @@ export function VapiAssistantWidget() {
               </div>
             ) : null}
 
+            <RagShoppingAssistant />
             <VapiChatPanel
               transcript={transcript}
               state={state}

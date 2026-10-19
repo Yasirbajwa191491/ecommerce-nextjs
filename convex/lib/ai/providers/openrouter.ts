@@ -181,5 +181,9 @@ export function createOpenRouterProvider(
         buildReviewReplyUserPrompt(review)
       );
     },
+
+    async completeText(system: string, user: string): Promise<string> {
+      return await openRouterChat(resolved, system, user);
+    },
   };
 }

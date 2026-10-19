@@ -7,6 +7,7 @@ import {
   isPythonMlSettingKey,
   pythonMlSettingFormError,
 } from "@convex/lib/recommendations/pythonMlConfig";
+import { isRagSettingKey, ragSettingFormError } from "@convex/lib/rag/config";
 import {
   validateMaxLength,
   validateMinLength,
@@ -70,6 +71,9 @@ export function validateSettingForm(
   if (isPythonMlSettingKey(options?.settingKey ?? "")) {
     const mlError = pythonMlSettingFormError(options?.settingKey, values.value);
     if (mlError) errors.value = mlError;
+  } else if (isRagSettingKey(options?.settingKey ?? "")) {
+    const ragError = ragSettingFormError(options?.settingKey, values.value);
+    if (ragError) errors.value = ragError;
   } else if (options?.settingKey === "email_from") {
     const emailFromError = validateEmailFrom(values.value);
     if (emailFromError) errors.value = emailFromError;
