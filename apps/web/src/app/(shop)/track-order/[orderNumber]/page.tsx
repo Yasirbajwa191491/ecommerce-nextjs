@@ -1,4 +1,5 @@
 "use client";
+import { OrderAccessRecovery } from "@/components/orders/order-access-recovery";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -26,7 +27,7 @@ function TrackOrderDetailContent() {
   const orderNumber = decodeURIComponent(params.orderNumber as string);
   const highlightProductId = searchParams.get("review") ?? undefined;
   const customerEmail = searchParams.get("email") ?? undefined;
-  const accessToken = searchParams.get("accessToken") ?? undefined;
+  const accessToken = searchParams.get("accessToken") ?? (typeof window !== "undefined" ? new URLSearchParams(window.location.hash.slice(1)).get("accessToken") ?? sessionStorage.getItem(`order-access:${orderNumber}`) : null) ?? undefined;
 
   const getPublicOrderDetail = useAction(api.orderTracking.getPublicOrderDetail);
 
@@ -72,7 +73,8 @@ function TrackOrderDetailContent() {
         className={cn("mx-auto max-w-lg text-center", CONTENT_SECTION_PADDING_Y)}
         style={PAGE_GUTTER}
       >
-        <h1 className={SHOP_PAGE_TITLE}>Order not found</h1>
+        <h1 className={SHOP_PAGE_TITLE}>Verify order access</h1>
+        <OrderAccessRecovery initialOrderNumber={orderNumber} />
         <p className={cn("mt-2", SHOP_BODY)}>
           {result?.message ??
             "We couldn't find an order with that number. Please check and try again."}
@@ -126,7 +128,7 @@ function TrackOrderDetailContent() {
           <OrderDeliveredReviews
             orderNumber={order.orderNumber}
             customerEmail={order.customerEmail}
-            accessToken={order.accessToken}
+            accessToken={order.accessToken ?? accessToken}
             items={order.items}
             highlightProductId={highlightProductId}
           />

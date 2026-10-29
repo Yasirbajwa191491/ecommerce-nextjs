@@ -11,6 +11,7 @@ function json(data: unknown, status = 200) {
 }
 
 function authorize(request: Request): { salt: string } | Response {
+  if (process.env.BEHAVIORAL_EXPORT_ENABLED !== "true") return json({ error: "Export disabled" }, 503);
   const expected = process.env.BEHAVIORAL_EXPORT_TOKEN;
   const salt = process.env.BEHAVIORAL_EXPORT_SALT;
   if (!expected || !salt) {

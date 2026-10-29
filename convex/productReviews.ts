@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
@@ -90,7 +90,7 @@ function assertReviewProof(
   if (!emailsMatch(order.customerEmail, customerEmail)) {
     throw new ConvexError("Customer email does not match this order");
   }
-  if (order.accessToken && order.accessToken !== (accessToken ?? "").trim()) {
+  if (!order.accessToken || order.accessToken !== (accessToken ?? "").trim()) {
     throw new ConvexError("A valid review token is required");
   }
 }

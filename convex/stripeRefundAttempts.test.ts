@@ -1,3 +1,4 @@
+vi.mock("./server", async () => vi.importActual("./_generated/server"));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getFunctionName } from "convex/server";
 import type { FunctionReference } from "convex/server";

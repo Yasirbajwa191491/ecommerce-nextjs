@@ -1,5 +1,5 @@
 import { APPROVAL_TTL_MS } from "./config";
-import { stableHash } from "./security";
+import { canonicalJson, stableHash } from "./security";
 import type { ApprovalRecord, ApprovalState } from "./types";
 
 export function approvalHash(args: Record<string, unknown>): string {
@@ -40,7 +40,8 @@ export function argumentsMatchApproval(
   return (
     approval.toolName === toolName &&
     approval.argumentsHash === approvalHash(approval.arguments) &&
-    approval.argumentsHash === approvalHash(args)
+    approval.argumentsHash === approvalHash(args) &&
+    canonicalJson(approval.arguments) === canonicalJson(args)
   );
 }
 

@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import type { MutationCtx } from "./_generated/server";

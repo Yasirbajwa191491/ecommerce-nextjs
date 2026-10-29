@@ -3,7 +3,7 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
-} from "./_generated/server";
+} from "./server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { getChannelsForEvent, shouldSendPushForEvent } from "./lib/notificationChannels";

@@ -19,7 +19,6 @@ import {
   appendSessionTurns,
   citationUrl,
   readSessionTurns,
-  sanitizeSessionKey,
   sessionAllowsAsk,
   nextAskCount,
 } from "./lib/rag/content";
@@ -117,7 +116,9 @@ export const ask = action({
     });
     if (!availability.enabled) return { ...EMPTY, status: "disabled" };
 
-    const sessionKey = sanitizeSessionKey(args.sessionKey);
+    let sessionKey: string;
+    try { sessionKey = await ctx.runMutation(internal.aiUsage.reserveRag, { guest: args.sessionKey ?? "" }); }
+    catch { return { ...EMPTY, status: "unavailable", answer: "Please refresh your session or try again later." }; }
     const now = Date.now();
     let turns: { role: "user" | "assistant"; text: string; productIds: string[] }[] = [];
     let askCount = 0;
@@ -224,6 +225,8 @@ export const ask = action({
       chunks,
       facts: facts.map((fact) => ({
         productId: fact.product_id,
+        name: fact.name,
+        currency: fact.currency,
         price: fact.price,
         finalPrice: fact.final_price,
         stock: fact.stock,

@@ -26,7 +26,7 @@ export const advance = internalAction({
       const snapshot = await ctx.runQuery(internal.agentInternal.loadRun, { runId: args.runId });
       if (!snapshot) return;
       const started = Date.now();
-      const handlers = toolHandlers(ctx, args.runId);
+      const handlers = toolHandlers(ctx, args.runId, claim.version, owner);
       const outcome = await advanceAgent(snapshot as AgentRunRecord, {
         now: Date.now(),
         actorRole: "admin",
@@ -85,7 +85,7 @@ export const advance = internalAction({
   },
 });
 
-function toolHandlers(ctx: ActionCtx, runId: Id<"agentRuns">): Partial<Record<string, ToolHandler>> {
+function toolHandlers(ctx: ActionCtx, runId: Id<"agentRuns">, expectedVersion: number, leaseOwner: string): Partial<Record<string, ToolHandler>> {
   const now = Date.now();
   return {
     get_sales_analytics: async (args) =>
@@ -129,7 +129,7 @@ function toolHandlers(ctx: ActionCtx, runId: Id<"agentRuns">): Partial<Record<st
       const productIds = Array.isArray(args.productIds) ? args.productIds.map(String) : [];
       try {
         return await ctx.runMutation(internal.agentInternal.createApprovedDraft, {
-          runId,
+          runId, expectedVersion, leaseOwner,
           idempotencyKey: context.idempotencyKey,
           title: String(args.title ?? ""),
           subject: String(args.subject ?? ""),

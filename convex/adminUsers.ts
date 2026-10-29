@@ -1,10 +1,10 @@
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { components } from "./_generated/api";
 import { authComponent, createAuth } from "./betterAuth/auth";
-import { requireAdmin } from "./lib/requireAdmin";
+import { requireAdmin, requireSuperAdmin } from "./lib/requireAdmin";
 
 export const listPaginated = query({
   args: {
@@ -43,7 +43,7 @@ export const createUser = mutation({
     role: v.union(v.literal("user"), v.literal("admin"), v.literal("superAdmin")),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireSuperAdmin(ctx);
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
     await auth.api.createUser({
       body: {
@@ -64,7 +64,7 @@ export const setRole = mutation({
     role: v.union(v.literal("user"), v.literal("admin"), v.literal("superAdmin")),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireSuperAdmin(ctx);
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
     await auth.api.setRole({
       body: { userId: args.userId, role: args.role },
@@ -79,7 +79,7 @@ export const banUser = mutation({
     banReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const current = await requireAdmin(ctx);
+    const current = await requireSuperAdmin(ctx);
     if (current._id === args.userId) {
       throw new ConvexError("You cannot ban yourself");
     }
@@ -94,7 +94,7 @@ export const banUser = mutation({
 export const unbanUser = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireSuperAdmin(ctx);
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
     await auth.api.unbanUser({
       body: { userId: args.userId },
@@ -106,7 +106,7 @@ export const unbanUser = mutation({
 export const removeUser = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const current = await requireAdmin(ctx);
+    const current = await requireSuperAdmin(ctx);
     if (current._id === args.userId) {
       throw new ConvexError("You cannot delete yourself");
     }

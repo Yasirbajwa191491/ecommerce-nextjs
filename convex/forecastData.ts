@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery } from "./server";
 import { saleIsEligible, utcDateFromMillis } from "./lib/forecasting/eligibility";
 import {
   DEMAND_FORECAST_HORIZON_DAYS_KEY,
@@ -10,7 +10,6 @@ import {
 } from "./lib/forecasting/config";
 
 const PAGE_LIMIT = 25;
-const ITEM_LIMIT = 40;
 
 export const forecastSettings = internalQuery({
   args: {},
@@ -34,45 +33,21 @@ export const forecastSettings = internalQuery({
 });
 
 export const pageSalesLines = internalQuery({
-  args: { cursor: v.union(v.string(), v.null()) },
+  args: { cursor: v.union(v.string(), v.null()), cutoff: v.optional(v.number()) },
   handler: async (ctx, args) => {
     if (process.env.DEMAND_FORECAST_EXPORT_ENABLED?.trim() !== "true") {
       return { blocked: true as const, lines: [], isDone: true, continueCursor: null };
     }
-    const page = await ctx.db
-      .query("orders")
-      .withIndex("by_created_at")
-      .order("desc")
-      .paginate({ numItems: PAGE_LIMIT, cursor: args.cursor });
+    const page = await ctx.db.query("orderItems").filter(q => q.lte(q.field("_creationTime"), args.cutoff ?? Date.now())).paginate({ numItems: PAGE_LIMIT, cursor: args.cursor });
     const lines = [];
-    for (const order of page.page) {
-      if (
-        !saleIsEligible({
-          status: order.status,
-          paymentStatus: order.paymentStatus,
-          paymentMethod: order.paymentMethod,
-        })
-      ) {
-        continue;
-      }
-      const items = await ctx.db
-        .query("orderItems")
-        .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-        .take(ITEM_LIMIT);
-      for (const item of items) {
-        if (item.isPromotionGift) continue;
-        const product = await ctx.db.get(item.productId);
-        lines.push({
-          productId: item.productId,
-          productName: product?.name ?? item.productName,
-          categoryId: product?.categoryId ?? "",
-          active: product?.active !== false,
-          stock: product?.stock ?? null,
-          quantity: item.quantity,
-          date: utcDateFromMillis(order.paidAt ?? order.createdAt),
-          orderId: order._id,
-        });
-      }
+    for (const item of page.page) {
+      if (item.isPromotionGift) continue;
+      const order = await ctx.db.get(item.orderId);
+      if (!order || !saleIsEligible(order) || (order.paidAt ?? order.createdAt) > (args.cutoff ?? Date.now())) continue;
+      const product = await ctx.db.get(item.productId);
+      lines.push({ productId: item.productId, productName: product?.name ?? item.productName,
+        categoryId: product?.categoryId ?? "", active: product?.active !== false, stock: product?.stock ?? null,
+        quantity: item.quantity, date: utcDateFromMillis(order.paidAt ?? order.createdAt), orderId: order._id });
     }
     return {
       blocked: false as const,
@@ -107,19 +82,11 @@ export const beginPublication = internalMutation({
     uncertaintyLabel: v.string(),
   },
   handler: async (ctx, args) => {
-    const current = await ctx.db
-      .query("forecastPublications")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .take(5);
-    for (const row of current) {
-      await ctx.db.patch(row._id, { status: "archived" });
-    }
     await ctx.db.insert("forecastPublications", {
       ...args,
-      status: "published",
+      status: "staging",
       generatedAt: Date.now(),
     });
-    await ctx.scheduler.runAfter(0, internal.forecastData.retainForecasts, {});
   },
 });
 
@@ -154,6 +121,7 @@ const insightValidator = v.object({
 export const addForecastRows = internalMutation({
   args: {
     publicationId: v.string(),
+    batchKey: v.string(),
     points: v.array(pointValidator),
     insights: v.array(insightValidator),
   },
@@ -161,6 +129,11 @@ export const addForecastRows = internalMutation({
     if (args.points.length > 80 || args.insights.length > 40) {
       throw new Error("Forecast write batch is too large");
     }
+    const candidate = await ctx.db.query("forecastPublications").withIndex("by_publication", q => q.eq("publicationId", args.publicationId)).unique();
+    if (!candidate || candidate.status !== "staging") throw new Error("Forecast is not staging");
+    if (candidate.batches?.includes(args.batchKey)) return;
+    await ctx.db.patch(candidate._id, { pointCount: (candidate.pointCount ?? 0) + args.points.length,
+      insightCount: (candidate.insightCount ?? 0) + args.insights.length, batches: [...(candidate.batches ?? []), args.batchKey] });
     for (const point of args.points) {
       await ctx.db.insert("forecastPoints", { publicationId: args.publicationId, ...point });
     }
@@ -194,4 +167,16 @@ export const retainForecasts = internalMutation({
     }
     await ctx.db.delete(old._id);
   },
+});
+
+export const finishPublication = internalMutation({
+ args: { publicationId: v.string(), pointCount: v.number(), insightCount: v.number() },
+ handler: async (ctx, args) => {
+  const candidate = await ctx.db.query("forecastPublications").withIndex("by_publication", q => q.eq("publicationId", args.publicationId)).unique();
+  if (!candidate || candidate.status !== "staging" || candidate.pointCount !== args.pointCount || candidate.insightCount !== args.insightCount) throw new Error("Forecast candidate is incomplete");
+  const current = await ctx.db.query("forecastPublications").withIndex("by_status", q => q.eq("status", "published")).take(2);
+  for (const row of current) await ctx.db.patch(row._id, { status: "archived" });
+  await ctx.db.patch(candidate._id, { status: "published" });
+  await ctx.scheduler.runAfter(0, internal.forecastData.retainForecasts, {});
+ },
 });

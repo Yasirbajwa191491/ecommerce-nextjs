@@ -4,6 +4,7 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2";
 async function ollamaChat(prompt, system) {
   const response = await fetch(`${OLLAMA_HOST}/api/chat`, {
     method: "POST",
+    signal: AbortSignal.timeout(20000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: OLLAMA_MODEL,

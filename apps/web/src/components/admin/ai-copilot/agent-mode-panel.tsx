@@ -31,7 +31,10 @@ export function AgentModePanel({ prefill, prefillKey = 0 }: AgentModePanelProps)
   const history = usePaginatedQuery(api.agents.listRuns, {}, { initialNumItems: 8 });
 
   useEffect(() => {
-    if (prefill) setDraft(prefill);
+    if (prefill) {
+      const timer = setTimeout(() => setDraft(prefill), 0);
+      return () => clearTimeout(timer);
+    }
   }, [prefill, prefillKey]);
 
   async function submit() {
@@ -130,6 +133,11 @@ export function AgentModePanel({ prefill, prefillKey = 0 }: AgentModePanelProps)
                   <AlertTitle>Approval required</AlertTitle>
                   <AlertDescription className="space-y-3">
                     <p>{approval.summary}</p>
+                    <dl className="space-y-2">
+                      {Object.entries(approval.arguments).map(([key, value]) => (
+                        <div key={key}><dt className="font-medium">{key}</dt><dd className="whitespace-pre-wrap break-words">{Array.isArray(value) ? value.join(", ") : String(value)}</dd></div>
+                      ))}
+                    </dl>
                     <p>Risk: {approval.risk}. Expires {new Date(approval.expiresAt).toLocaleString()}.</p>
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" size="sm" onClick={() => decide("approve")} disabled={busy}>

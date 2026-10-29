@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./server";
 import type { MutationCtx } from "./_generated/server";
 import { pushPlatformValidator } from "./lib/notificationTypes";
 import { emailsMatch } from "./lib/orderAccess";

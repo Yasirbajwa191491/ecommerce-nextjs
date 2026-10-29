@@ -52,4 +52,5 @@ crons.interval(
   {}
 );
 
+crons.interval("initialize security analytics", { minutes: 5 }, internal.securityAnalytics.backfill, {});
 export default crons;

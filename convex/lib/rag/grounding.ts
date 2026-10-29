@@ -3,7 +3,7 @@ import type { RagGroundingMode } from "./config";
 export const RAG_SAFE_FALLBACK =
   "I don't have enough verified store information to answer that. Please check the product page or the shipping and return policies.";
 
-const MONEY = /(?:\$|USD\s*)(\d+(?:\.\d{1,2})?)/g;
+const MONEY = /(?:\$|€|£|(?:USD|EUR|GBP|PKR)\s*)\s*(\d+(?:\.\d{1,2})?)/g;
 const LEAK =
   /ignore previous instructions|api[_ ]?key|sk-[A-Za-z0-9]{8,}|BEGIN SYSTEM|system prompt/i;
 const ORDER_CLAIM =
@@ -15,6 +15,8 @@ const MARKDOWN_LINK = /\[[^\]]+\]\([^)]+\)/g;
 
 export type RagFact = {
   productId: string;
+  name?: string;
+  currency?: string;
   price: number | null;
   finalPrice: number | null;
   stock: number | null;
@@ -77,6 +79,9 @@ export function validateRagGrounding(input: {
     .filter((fact): fact is RagFact => fact !== undefined);
   const reasons: string[] = [];
   if (LEAK.test(cleaned) || ORDER_CLAIM.test(cleaned)) reasons.push("unsafe_output");
+  if (new Set(citedFacts.map(f => f.productId)).size > 1 && /\$|€|£|\b(?:USD|EUR|GBP|PKR|price|costs?|stock|available|availability)\b/i.test(cleaned)) reasons.push("ambiguous_product_claim");
+  const currency = cleaned.match(/\b(USD|EUR|GBP|PKR)\b/i)?.[1]?.toUpperCase() ?? (cleaned.includes("€") ? "EUR" : cleaned.includes("£") ? "GBP" : cleaned.includes("$") ? "USD" : undefined);
+  if (currency && citedFacts.some(fact => (fact.currency ?? "USD") !== currency)) reasons.push("currency_mismatch");
   const amounts = moneyValues(cleaned);
   const priceConflict =
     amounts.length > 0 &&
@@ -109,7 +114,7 @@ export function validateRagGrounding(input: {
   }
   if (
     input.mode === "standard" &&
-    (fatal.has("unsafe_output") ||
+    (fatal.has("ambiguous_product_claim") || fatal.has("currency_mismatch") || fatal.has("unsafe_output") ||
       fatal.has("unsupported") ||
       fatal.has("price_mismatch") ||
       fatal.has("stock_mismatch"))

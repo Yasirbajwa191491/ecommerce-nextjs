@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { requireAdmin } from "./lib/requireAdmin";
 import {
@@ -126,6 +126,7 @@ export const getRun = query({
       approvals: record.approvals.map((approval) => ({
         id: approval.id,
         summary: approval.summary,
+        arguments: approval.arguments,
         status: approval.status,
         risk: approval.risk,
         expiresAt: approval.expiresAt,
@@ -301,7 +302,7 @@ async function persistDecision(
     approvalStatus: run.approvalStatus,
     failureReason: run.failureReason,
     errorCategory: run.errorCategory,
-    reportJson: run.report ? JSON.stringify(run.report).slice(0, 12_000) : undefined,
+    reportJson: run.report ? JSON.stringify(run.report) : undefined,
     completedAt: run.completedAt,
     recommendationsJson: JSON.stringify(run.recommendations),
     version: current.version + 1,

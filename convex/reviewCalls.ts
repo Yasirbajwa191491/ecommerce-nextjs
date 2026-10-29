@@ -5,7 +5,7 @@ import {
   internalQuery,
   mutation,
   query,
-} from "./_generated/server";
+} from "./server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";

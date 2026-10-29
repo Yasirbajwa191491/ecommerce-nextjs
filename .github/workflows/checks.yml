@@ -1,39 +1,62 @@
 name: Checks
-
 on:
   pull_request:
   push:
-    branches: [main, master]
-
+    branches: [main, master, feature/agentic-ai-tool-orchestration-multi-step-workflows-and-human-approval]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:all
+      - run: npm run lint
+      - run: npm run lint:mobile
+      - run: npx --no-install vitest run --maxWorkers=2
+      - run: npx --no-install vitest run --config vitest.mobile.config.ts --maxWorkers=2
+      - run: python3 scripts/security-secret-scan.py
+      - run: node scripts/dependency-report.mjs .
+  review-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: services/review-ai-worker/package-lock.json
+      - run: npm ci --prefix services/review-ai-worker
+      - run: node --test services/review-ai-worker/src/server.test.js
+      - run: node scripts/dependency-report.mjs services/review-ai-worker
   python-ai:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: services/ai-service
+    env:
+      OMP_NUM_THREADS: 2
+      OPENBLAS_NUM_THREADS: 2
+      MKL_NUM_THREADS: 2
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
         with:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
-
-  recommendation-unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx vitest run convex/lib/catalogExportAuth.test.ts convex/lib/recommendations/catalogExport.test.ts convex/lib/recommendations/contentSnapshot.test.ts convex/lib/recommendations/mlStrategy.test.ts
-
   python-ai-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: docker build -t ecommerce-ai-service:ci services/ai-service

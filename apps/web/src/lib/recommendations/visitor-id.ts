@@ -1,13 +1,14 @@
-const VISITOR_ID_KEY = "shop-visitor-id";
+"use client";
+import { useSyncExternalStore } from "react";
+function subscribeGuest(listener: () => void) {
+  window.addEventListener("storefront:guest-ready", listener);
+  return () => window.removeEventListener("storefront:guest-ready", listener);
+}
+export function useVisitorId(): string { return useSyncExternalStore(subscribeGuest, getVisitorId, () => ""); }
 
 export function getVisitorId(): string {
   if (typeof window === "undefined") return "";
-  let id = localStorage.getItem(VISITOR_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(VISITOR_ID_KEY, id);
-  }
-  return id;
+  return localStorage.getItem("shop-guest-capability-v2") ?? "";
 }
 
 export function getCheckoutCustomerEmail(): string | undefined {

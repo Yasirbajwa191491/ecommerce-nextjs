@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api, type Id } from "@/lib/convex-api";
 import {
   getCheckoutCustomerEmail,
-  getVisitorId,
+  useVisitorId,
 } from "@/lib/recommendations/visitor-id";
 import type { RecommendationSectionType } from "@/lib/recommendations/section-copy";
 
@@ -25,6 +25,7 @@ export function useRecommendations({
   limit?: number;
   enabled?: boolean;
 }) {
+  const visitorId = useVisitorId();
   const getRecommendations = useAction(api.recommendations.getRecommendations);
   const [productIds, setProductIds] = useState<Id<"products">[]>([]);
   const [cacheKey, setCacheKey] = useState<string | undefined>();
@@ -41,7 +42,7 @@ export function useRecommendations({
     const timer = window.setTimeout(() => {
       if (!cancelled && !settled) setLoading(true);
     }, 0);
-    const visitorId = getVisitorId();
+    if (!visitorId) return;
 
     void getRecommendations({
       sectionType,
@@ -72,6 +73,7 @@ export function useRecommendations({
     };
   }, [
     getRecommendations,
+    visitorId,
     sectionType,
     productId,
     cartProductIds,

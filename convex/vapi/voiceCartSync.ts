@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { mutation } from "../server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { conversationForBrowser } from "./browserSession";

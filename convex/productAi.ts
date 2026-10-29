@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, mutation } from "./_generated/server";
+import { internalMutation, mutation } from "./server";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./lib/requireAdmin";
 import {

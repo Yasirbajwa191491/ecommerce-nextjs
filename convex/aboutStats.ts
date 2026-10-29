@@ -1,35 +1,8 @@
-import { query } from "./_generated/server";
-import { isProductActive } from "./lib/productActive";
-
-const EXCLUDED_ORDER_STATUSES = new Set(["expired", "failed"]);
-
-export const getPublicStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const products = await ctx.db.query("products").collect();
-    const productsAvailable = products.filter(isProductActive).length;
-
-    const categories = await ctx.db
-      .query("productCategories")
-      .withIndex("by_active_sort", (q) => q.eq("active", true))
-      .collect();
-    const productCategories = categories.length;
-
-    const orders = await ctx.db.query("orders").collect();
-    const processedOrders = orders.filter(
-      (order) => !EXCLUDED_ORDER_STATUSES.has(order.status)
-    );
-    const ordersProcessed = processedOrders.length;
-
-    const customerEmails = new Set(
-      processedOrders.map((order) => order.customerEmail.toLowerCase())
-    );
-
-    return {
-      productsAvailable,
-      ordersProcessed,
-      happyCustomers: customerEmails.size,
-      productCategories,
-    };
-  },
-});
+import { query } from "./server";
+export const getPublicStats = query({ args: {}, handler: async ctx => {
+ const row = await ctx.db.query("maintainedAggregates").withIndex("by_key", q => q.eq("key", "security-analytics")).unique();
+ if (!row?.ready) return null;
+ const counts = JSON.parse(row.countsJson) as Record<string, number>;
+ return { productsAvailable: counts.productsAvailable ?? 0, ordersProcessed: counts.ordersProcessed ?? 0,
+ happyCustomers: counts.happyCustomers ?? 0, productCategories: counts.productCategories ?? 0 };
+} });

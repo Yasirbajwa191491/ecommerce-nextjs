@@ -39,7 +39,7 @@ export function StoreStatsSection() {
                 )}
               >
                 <CardContent className="flex flex-col items-center p-5 sm:p-6">
-                  {stats === undefined ? (
+                  {stats == null ? (
                     <>
                       <MotionSkeleton shimmer className="h-9 w-16" />
                       <MotionSkeleton shimmer className="mt-3 h-4 w-24" />

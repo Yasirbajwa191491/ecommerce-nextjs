@@ -1,4 +1,6 @@
 "use client";
+import { getVisitorId } from "@/lib/recommendations/visitor-id";
+
 
 import { useState } from "react";
 import Link from "next/link";
@@ -15,14 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-function sessionKey(): string {
-  const storageKey = "rag-shopping-session";
-  const existing = window.sessionStorage.getItem(storageKey);
-  if (existing && /^[A-Za-z0-9-]{8,64}$/.test(existing)) return existing;
-  const created = `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  window.sessionStorage.setItem(storageKey, created);
-  return created;
-}
 
 export function RagShoppingAssistant() {
   const status = useQuery(api.rag.publicStatus, {});
@@ -48,7 +42,7 @@ export function RagShoppingAssistant() {
     setLoading(true);
     setError(false);
     try {
-      const response = await ask({ question: trimmed, sessionKey: sessionKey() });
+      const response = await ask({ question: trimmed, sessionKey: getVisitorId() });
       setResult(response);
     } catch {
       setError(true);

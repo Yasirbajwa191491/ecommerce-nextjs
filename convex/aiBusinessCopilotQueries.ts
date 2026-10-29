@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery } from "./server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { copilotResponseValidator } from "./lib/ai/copilotTypes";

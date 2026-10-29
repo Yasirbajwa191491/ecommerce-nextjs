@@ -1,4 +1,5 @@
 "use client";
+import { OrderAccessRecovery } from "./order-access-recovery";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -198,6 +199,7 @@ export function TrackOrderView() {
         const result = await trackByOrderNumber({
           orderNumber: trimmed,
           customerEmail: email || undefined,
+          accessToken: sessionStorage.getItem(`order-access:${trimmed}`) ?? undefined,
         });
         setOrderResult(result);
         if (!result.found) {
@@ -304,13 +306,14 @@ export function TrackOrderView() {
 
   return (
     <div className={cn("mx-auto max-w-3xl", CONTENT_SECTION_PADDING_Y)} style={PAGE_GUTTER}>
+      <OrderAccessRecovery />
       <div className="mb-8 text-center sm:mb-10">
         <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl bg-[#6254f3]/10 text-[#6254f3] shadow-sm ring-1 ring-[#6254f3]/15">
           <PackageSearch className="size-8" />
         </div>
         <h1 className={SHOP_PAGE_TITLE}>Track your order</h1>
         <p className={cn("mx-auto mt-3 max-w-xl", SHOP_PAGE_LEAD)}>
-          Enter your order number or the contact details used at checkout to
+          Verify your checkout email or use your saved access link to
           see real-time status and delivery progress.
         </p>
         <Button

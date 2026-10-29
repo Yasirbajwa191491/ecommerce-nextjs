@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery } from "./server";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./lib/requireAdmin";
 import {
@@ -16,7 +16,6 @@ import {
 import { utcDateFromMillis } from "./lib/forecasting/eligibility";
 
 const PAGE_LIMIT = 25;
-const ITEM_LIMIT = 40;
 
 export const pageOrderLines = internalQuery({
   args: { cursor: v.union(v.string(), v.null()), cutoff: v.string() },
@@ -24,48 +23,22 @@ export const pageOrderLines = internalQuery({
     if (process.env.DEMAND_FORECAST_EXPORT_ENABLED?.trim() !== "true") {
       return { blocked: true as const, orders: [], lines: [], isDone: true, continueCursor: null };
     }
-    const page = await ctx.db.query("orders").withIndex("by_created_at").order("asc").paginate({
-      numItems: PAGE_LIMIT,
-      cursor: args.cursor,
-    });
+    const cutoffMs = Date.parse(`${args.cutoff}T23:59:59.999Z`);
+    if (!Number.isFinite(cutoffMs)) throw new Error("Invalid cutoff");
+    const page = await ctx.db.query("orderItems").filter(q => q.lte(q.field("_creationTime"), cutoffMs)).paginate({ numItems: PAGE_LIMIT, cursor: args.cursor });
     const orders: { orderKey: string; kind: "eligible" | "refund" | "ineligible" }[] = [];
-    const lines: {
-      lineKey: string;
-      orderKey: string;
-      productId: string;
-      categoryId: string;
-      quantity: number;
-      date: string;
-    }[] = [];
-    for (const order of page.page) {
+    const lines: { lineKey: string; orderKey: string; productId: string; categoryId: string; quantity: number; date: string }[] = [];
+    const seen = new Set<string>();
+    for (const item of page.page) {
+      const order = await ctx.db.get(item.orderId); if (!order) continue;
       const date = utcDateFromMillis(order.paidAt ?? order.createdAt);
       if (!withinCutoff(date, args.cutoff)) continue;
-      const kind = classifyOrder({
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        paymentMethod: order.paymentMethod,
-      });
-      orders.push({ orderKey: order._id, kind });
-      if (kind !== "eligible") continue;
-      const items = await ctx.db
-        .query("orderItems")
-        .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-        .take(ITEM_LIMIT);
-      for (const item of items) {
-        if (!lineIncluded(kind, item.isPromotionGift === true)) continue;
-        const product = await ctx.db.get(item.productId);
-        lines.push(
-          toQualityLine({
-            lineKey: `${args.cutoff}:${item._id}`,
-            orderKey: order._id,
-            productId: item.productId,
-            categoryId: product?.categoryId ?? "",
-            quantity: item.quantity,
-            date,
-            customerEmail: order.customerEmail,
-          })
-        );
-      }
+      const kind = classifyOrder(order);
+      if (!seen.has(order._id)) { orders.push({ orderKey: order._id, kind }); seen.add(order._id); }
+      if (!lineIncluded(kind, item.isPromotionGift === true)) continue;
+      const product = await ctx.db.get(item.productId);
+      lines.push(toQualityLine({ lineKey: `${args.cutoff}:${item._id}`, orderKey: order._id, productId: item.productId,
+        categoryId: product?.categoryId ?? "", quantity: item.quantity, date }));
     }
     return {
       blocked: false as const,
@@ -130,6 +103,7 @@ export const applyQualityPage = internalMutation({
     isDone: v.boolean(),
   },
   handler: async (ctx, args) => {
+    if (args.orders.length > PAGE_LIMIT || args.lines.length > PAGE_LIMIT) throw new Error("Quality batch too large");
     const run = await ctx.db
       .query("forecastQualityRuns")
       .withIndex("by_cutoff", (q) => q.eq("cutoff", args.cutoff))
@@ -140,7 +114,7 @@ export const applyQualityPage = internalMutation({
     let ineligible = run.skippedIneligibleCount;
     let duplicates = run.duplicateLineCount;
     let observations = run.observationCount;
-    for (const order of args.orders.slice(0, PAGE_LIMIT)) {
+    for (const order of args.orders) {
       const claimed = await ctx.db
         .query("forecastOrderClaims")
         .withIndex("by_order", (q) => q.eq("orderKey", order.orderKey).eq("cutoff", args.cutoff))
@@ -155,7 +129,7 @@ export const applyQualityPage = internalMutation({
       if (order.kind === "refund") refunds += 1;
       if (order.kind === "ineligible") ineligible += 1;
     }
-    for (const line of args.lines.slice(0, PAGE_LIMIT * 4)) {
+    for (const line of args.lines) {
       if (!withinCutoff(line.date, args.cutoff)) continue;
       const claimed = await ctx.db
         .query("forecastDemandClaims")
@@ -214,7 +188,7 @@ export const applyQualityPage = internalMutation({
           units: next.units,
           firstDate: next.firstDate,
           lastDate: next.lastDate,
-          datesJson: JSON.stringify(next.dates.slice(0, 400)),
+          datesJson: JSON.stringify(next.dates),
         });
       } else {
         await ctx.db.insert("forecastProductCoverage", {

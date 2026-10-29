@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation } from "./server";
 import { internal } from "./_generated/api";
 import { releaseHeldStockIfNeeded } from "./lib/inventory";
 import { insertOrderStatusLog, insertPaymentLog } from "./lib/orderLogs";

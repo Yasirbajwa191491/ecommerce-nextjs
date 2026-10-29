@@ -53,7 +53,7 @@ function safeError(error: unknown): string {
 
 async function indexBody(ctx: ActionCtx, body: IndexBody, documentIds: string[]) {
   const env = defaultRagEnv();
-  const prepared = await postRag<{ chunks?: unknown[] }>("/api/v1/internal/rag/prepare", body, env);
+  const prepared = await postRag<{ chunks?: unknown[] }>("/api/v1/internal/rag/prepare", prepareRagPayload(body), env);
   const chunks = (prepared.chunks ?? []).filter(isChunk).slice(0, 40);
   const changed: PreparedChunk[] = [];
   let targetVersion: string | null = null;
@@ -235,3 +235,7 @@ export const syncBatch = internalAction({
     return { indexed: page.products.length, done: page.isDone };
   },
 });
+
+export function prepareRagPayload(body: IndexBody) {
+  return { products: body.products ?? [], policies: body.policies ?? [], faqs: body.faqs ?? [] };
+}

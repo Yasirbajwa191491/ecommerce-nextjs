@@ -1,3 +1,4 @@
+import { exactBoundedRead } from "../boundedRead";
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc } from "../../_generated/dataModel";
 import {
@@ -202,10 +203,9 @@ export async function getTrendingProducts(ctx: QueryCtx, referenceNow: number) {
       : topSelling.topProductsThisMonth;
 
   const since = referenceNow - SEARCH_PERIOD_MS;
-  const searchEvents = await ctx.db
+  const searchEvents = await exactBoundedRead(ctx.db
     .query("searchQueryEvents")
-    .withIndex("by_searched_at", (q) => q.gte("searchedAt", since))
-    .collect();
+    .withIndex("by_searched_at", (q) => q.gte("searchedAt", since)));
 
   const searchCounts = new Map<string, number>();
   for (const event of searchEvents) {
@@ -310,8 +310,8 @@ function mapStockProduct(
 
 async function loadActiveProductsWithCategories(ctx: QueryCtx) {
   const [products, categories] = await Promise.all([
-    ctx.db.query("products").collect(),
-    ctx.db.query("productCategories").collect(),
+    exactBoundedRead(ctx.db.query("products")),
+    exactBoundedRead(ctx.db.query("productCategories")),
   ]);
   const categoryMap = new Map(categories.map((c) => [c._id, c]));
   const activeProducts = products.filter(isProductActive);
@@ -696,12 +696,11 @@ export async function getReviewInsights(ctx: QueryCtx, referenceNow: number) {
 }
 
 export async function getSubscriberInsights(ctx: QueryCtx) {
-  const subscribers = await ctx.db
+  const subscribers = await exactBoundedRead(ctx.db
     .query("subscribers")
-    .withIndex("by_active_subscribed", (q) => q.eq("active", true))
-    .collect();
+    .withIndex("by_active_subscribed", (q) => q.eq("active", true)));
 
-  const profiles = await ctx.db.query("subscriberInterestProfiles").collect();
+  const profiles = await exactBoundedRead(ctx.db.query("subscriberInterestProfiles"));
 
   const countByTag = (tag: string) =>
     profiles.filter((s) => s.interestTags.includes(tag)).length;
@@ -727,9 +726,9 @@ export async function getSubscriberInsights(ctx: QueryCtx) {
 }
 
 export async function getCampaignInsights(ctx: QueryCtx) {
-  const campaigns = await ctx.db.query("emailCampaigns").collect();
+  const campaigns = await exactBoundedRead(ctx.db.query("emailCampaigns"));
   const sentCampaigns = campaigns.filter((c) => c.status === "sent");
-  const recipients = await ctx.db.query("emailCampaignRecipients").collect();
+  const recipients = await exactBoundedRead(ctx.db.query("emailCampaignRecipients"));
 
   const totalSent = recipients.filter(
     (r) => r.status === "sent" || r.status === "delivered"
@@ -807,7 +806,7 @@ export async function getDiscountPerformance(
   ctx: QueryCtx,
   referenceNow: number
 ) {
-  const products = await ctx.db.query("products").collect();
+  const products = await exactBoundedRead(ctx.db.query("products"));
   const discounted = products
     .filter((p) => isProductActive(p) && (p.discountPercent ?? 0) > 0)
     .map((p) => ({
@@ -848,10 +847,9 @@ export async function getDiscountPerformance(
 
 export async function getSearchInsights(ctx: QueryCtx, referenceNow: number) {
   const since = referenceNow - SEARCH_PERIOD_MS;
-  const events = await ctx.db
+  const events = await exactBoundedRead(ctx.db
     .query("searchQueryEvents")
-    .withIndex("by_searched_at", (q) => q.gte("searchedAt", since))
-    .collect();
+    .withIndex("by_searched_at", (q) => q.gte("searchedAt", since)));
 
   const counts = new Map<
     string,
@@ -900,7 +898,7 @@ export async function getSearchInsights(ctx: QueryCtx, referenceNow: number) {
 }
 
 export async function getConfiguredPromotionPerformance(ctx: QueryCtx) {
-  const promotions = await ctx.db.query("productPromotions").collect();
+  const promotions = await exactBoundedRead(ctx.db.query("productPromotions"));
   return {
     promotions: promotions
       .sort((a, b) => b.revenueGenerated - a.revenueGenerated)
@@ -930,7 +928,7 @@ export async function getPromotionCandidates(ctx: QueryCtx, referenceNow: number
   );
   const discounts = await getDiscountPerformance(ctx, referenceNow);
 
-  const products = await ctx.db.query("products").collect();
+  const products = await exactBoundedRead(ctx.db.query("products"));
   const productMap = new Map(products.map((p) => [p._id, p]));
 
   const candidates = sales.allCurrentProducts
@@ -1008,7 +1006,7 @@ export async function getProductOpportunities(
     resolvePreviousPeriod(weekRange(referenceNow)),
     30
   );
-  const products = await ctx.db.query("products").collect();
+  const products = await exactBoundedRead(ctx.db.query("products"));
   const active = products.filter(isProductActive);
   const salesMap = new Map(
     sales.allCurrentProducts.map((p) => [p.productId, p])

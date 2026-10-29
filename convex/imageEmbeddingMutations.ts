@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, query } from "./server";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./lib/requireAdmin";
 import { aiAnalysisStatusValidator } from "./lib/aiValidators";

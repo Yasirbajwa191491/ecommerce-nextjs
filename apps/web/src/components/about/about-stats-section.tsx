@@ -30,7 +30,7 @@ export function AboutStatsSection() {
               className="border-border/60 bg-card text-center shadow-sm"
             >
               <CardContent className="flex flex-col items-center p-5 sm:p-6">
-                {stats === undefined ? (
+                {stats == null ? (
                   <>
                     <Skeleton className="h-9 w-16" />
                     <Skeleton className="mt-3 h-4 w-24" />

@@ -43,9 +43,6 @@ export const sendOtpEmail = internalAction({
     const from = await ctx.runQuery(internal.settings.getEmailFrom, {});
 
     if (!apiKey) {
-      console.warn(
-        `[auth] RESEND_API_KEY not set — OTP for ${args.email}: ${args.otp} (type: ${args.type})`
-      );
       throw new ConvexError(
         "RESEND_API_KEY is not configured in Convex. Set it with: npx convex env set RESEND_API_KEY re_..."
       );

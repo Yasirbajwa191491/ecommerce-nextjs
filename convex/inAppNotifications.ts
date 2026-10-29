@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./server";
 import type { Id } from "./_generated/dataModel";
 import { assertNotificationCustomerAccess } from "./lib/notificationAccess";
 import {

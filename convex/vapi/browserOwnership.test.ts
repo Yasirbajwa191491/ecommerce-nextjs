@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+vi.mock("../server", async () => vi.importMock("../_generated/server"));
 
 vi.mock("../_generated/server", () => {
   const register = (definition: { handler: unknown }) => ({ _handler: definition.handler });
@@ -132,14 +133,14 @@ describe("administrator bootstrap fails closed", () => {
     let page = 0;
     const runMutation = vi.fn();
     const ctx = { runMutation, runQuery: vi.fn(async () => ({ page: [], isDone: false, continueCursor: `cursor-${++page}` })) };
-    await expect(invoke(bootstrapSuperAdmin, ctx, {})).rejects.toThrow("safe limit");
-    expect(ctx.runQuery).toHaveBeenCalledTimes(100);
+    await expect(invoke(bootstrapSuperAdmin, ctx, {})).rejects.toThrow("operator setup");
+    expect(ctx.runQuery).not.toHaveBeenCalled();
     expect(runMutation).not.toHaveBeenCalled();
   });
 
   it("does not promote a user when pagination returns malformed data", async () => {
     const ctx = { runMutation: vi.fn(), runQuery: vi.fn(async () => ({ page: [], isDone: false })) };
-    await expect(invoke(bootstrapSuperAdmin, ctx, {})).rejects.toThrow("verify administrator setup");
+    await expect(invoke(bootstrapSuperAdmin, ctx, {})).rejects.toThrow("operator setup");
     expect(ctx.runMutation).not.toHaveBeenCalled();
   });
 
@@ -150,7 +151,7 @@ describe("administrator bootstrap fails closed", () => {
         ? { page: [{ role: "superAdmin" }], isDone: true, continueCursor: "done" }
         : { page: [], isDone: false, continueCursor: `cursor-${page}` })),
     };
-    await expect(invoke(bootstrapSuperAdmin, ctx, {})).rejects.toThrow("Admin access required");
+    await expect(invoke(bootstrapSuperAdmin, ctx, {})).rejects.toThrow("operator setup");
     expect(ctx.runMutation).not.toHaveBeenCalled();
   });
 });

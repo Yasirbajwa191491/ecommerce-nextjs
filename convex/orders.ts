@@ -1,10 +1,12 @@
+import { getAuthUserOrNull } from "./lib/requireAdmin";
+import { requireGuest } from "./lib/guestIdentity";
 import { v, ConvexError } from "convex/values";
 import {
   internalMutation,
   internalQuery,
   mutation,
   query,
-} from "./_generated/server";
+} from "./server";
 import { internal } from "./_generated/api";
 import {
   cartLineValidator,
@@ -1389,8 +1391,9 @@ export const saveCustomerProfile = mutation({
       await ctx.db.patch(existing._id, profile);
     }
 
-    if (args.visitorId && (existing?.accessToken === args.profileToken || !existing)) {
-      await mergeVisitorIntoCustomer(ctx, args.visitorId, email, email);
+    const verifiedUser = await getAuthUserOrNull(ctx);
+    if (args.visitorId && verifiedUser?.emailVerified && !verifiedUser.banned && verifiedUser.email.toLowerCase() === email) {
+      await mergeVisitorIntoCustomer(ctx, await requireGuest(ctx, args.visitorId), email, email);
     }
 
     return { profileId, profileToken };

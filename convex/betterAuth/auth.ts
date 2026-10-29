@@ -9,7 +9,7 @@ import authConfig from "../auth.config";
 import { OTP_EXPIRES_SECONDS } from "../../apps/web/src/lib/otp-config";
 import schema from "./schema";
 
-const ac = createAccessControl({
+export const ac = createAccessControl({
   user: [
     "create",
     "list",
@@ -24,21 +24,9 @@ const ac = createAccessControl({
   session: ["list", "revoke", "delete"],
 });
 
-const adminRoles = {
+export const adminRoles = {
   user: ac.newRole({ user: [], session: [] }),
-  admin: ac.newRole({
-    user: [
-      "create",
-      "list",
-      "set-role",
-      "ban",
-      "delete",
-      "get",
-      "update",
-      "set-password",
-    ],
-    session: ["list", "revoke", "delete"],
-  }),
+  admin: ac.newRole({ user: ["list", "get"], session: [] }),
   superAdmin: ac.newRole({
     user: [
       "create",

@@ -1,4 +1,5 @@
-import { internalMutation, internalQuery } from "../_generated/server";
+import { hasOrderAccess } from "../lib/orderAccess";
+import { internalMutation, internalQuery } from "../server";
 import { api, internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -670,7 +671,7 @@ export const getCategories = internalQuery({
 });
 
 export const trackOrder = internalMutation({
-  args: { orderNumber: v.string() },
+  args: { orderNumber: v.string(), accessToken: v.optional(v.string()) },
   returns: v.object({
     found: v.boolean(),
     message: v.optional(v.string()),
@@ -694,7 +695,7 @@ export const trackOrder = internalMutation({
     }
 
     const result = await lookupOrderForTracking(ctx, orderNumber);
-    if (!result) {
+    if (!result || !hasOrderAccess(result.order, { accessToken: args.accessToken })) {
       return { found: false, message: TRACKING_NOT_FOUND };
     }
 
@@ -724,45 +725,10 @@ async function lookupCustomerOrdersForVapi(
   ctx: MutationCtx,
   args: { email?: string; phone?: string }
 ): Promise<VapiCustomerOrdersLookupResult> {
-  const email = args.email?.trim() ? normalizeEmail(args.email) : undefined;
-  const phone = args.phone?.trim() || undefined;
+  // A spoken email/phone is a lookup hint, never ownership proof. Recover through the verified email flow.
+  void ctx; void args;
+  return { found: false, message: "Use the secure tracking link or verify your email on the order recovery screen." };
 
-  if (!email && !phone) {
-    return { found: false as const, message: TRACKING_NOT_FOUND };
-  }
-
-  if (email && !isValidEmail(email)) {
-    return { found: false as const, message: TRACKING_NOT_FOUND };
-  }
-
-  const identifier = email ?? phone!;
-  const rateLimit = await checkAndIncrementRateLimit(
-    ctx,
-    buildTrackingBucketKey("customer", identifier)
-  );
-  if (!rateLimit.allowed) {
-    return {
-      found: false as const,
-      message: "Too many lookup attempts. Please try again later.",
-    };
-  }
-
-  const orders = await ctx.runQuery(internal.orders.lookupOrdersByCustomer, {
-    email,
-    phone,
-  });
-  if (!orders.length) {
-    return { found: false as const, message: TRACKING_NOT_FOUND };
-  }
-
-  await incrementDailyAnalytics(ctx, "orderTrackingRequests");
-
-  return {
-    found: true as const,
-    orders: orders.map((order: Doc<"orders">) =>
-      toVapiOrderSummary(toPublicOrderSummary(order))
-    ),
-  };
 }
 
 export const getOrdersByCustomer = internalMutation({
@@ -809,14 +775,16 @@ export const getStoreInfo = internalQuery({
         description: v.string(),
       })
     ),
-    stats: v.object({
+    stats: v.union(v.null(), v.object({
       productsAvailable: v.number(),
       ordersProcessed: v.number(),
       happyCustomers: v.number(),
       productCategories: v.number(),
-    }),
+    })),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ address: string; phone: string; email: string; businessHours: string;
+    pages: typeof STORE_PAGE_URLS; supportChannels: { channel: string; description: string }[];
+    stats: { productsAvailable: number; ordersProcessed: number; happyCustomers: number; productCategories: number } | null }> => {
     const [address, phone, email, businessHours] = await Promise.all([
       getSettingValue(ctx, "address"),
       getSettingValue(ctx, "phone"),
@@ -824,7 +792,7 @@ export const getStoreInfo = internalQuery({
       getSettingValue(ctx, "business_hours"),
     ]);
 
-    const stats: { productsAvailable: number; ordersProcessed: number; happyCustomers: number; productCategories: number } =
+    const stats: { productsAvailable: number; ordersProcessed: number; happyCustomers: number; productCategories: number } | null =
       await ctx.runQuery(api.aboutStats.getPublicStats, {});
 
     return {

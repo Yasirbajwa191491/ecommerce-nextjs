@@ -4,7 +4,7 @@ import {
   internalQuery,
   mutation,
   query,
-} from "./_generated/server";
+} from "./server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import { paginateArray } from "./lib/pagination";

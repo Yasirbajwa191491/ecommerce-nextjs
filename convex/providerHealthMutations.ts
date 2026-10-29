@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery } from "./server";
 import {
   PROVIDER_CIRCUIT_BREAKER_COOLDOWN_MS,
   PROVIDER_CIRCUIT_BREAKER_THRESHOLD,

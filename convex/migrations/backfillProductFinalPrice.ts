@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../server";
 import { calculateFinalPrice } from "../lib/pricing";
 
 /** Release preparation for legacy rows before enabling the currency/price indexes. */

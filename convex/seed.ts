@@ -1,7 +1,8 @@
+import { validateSeedCredentials } from "./lib/seedCredentials";
 import { internal } from "./_generated/api";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalAction, internalMutation } from "./_generated/server";
+import { internalAction, internalMutation } from "./server";
 import { authComponent, createAuth } from "./betterAuth/auth";
 import { slugify } from "./lib/products";
 import { getDefaultDeliveryOptions } from "./lib/productValidators";
@@ -169,14 +170,12 @@ export const seedCategoriesAndProducts = internalMutation({
 export const seedSuperAdmin = internalAction({
   args: {},
   handler: async (ctx) => {
-    const email = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
-    const password = process.env.ADMIN_SEED_PASSWORD;
-    if (!email || !password || password.length < 8) {
-      throw new Error(
-        "Set ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD (at least 8 characters) before seeding an administrator."
-      );
-    }
-
+    const { email, password } = validateSeedCredentials(process.env.ADMIN_SEED_EMAIL, process.env.ADMIN_SEED_PASSWORD);
+    const privileged = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "user", where: [{ field: "role", operator: "eq", value: "superAdmin" }],
+      paginationOpts: { numItems: 1, cursor: null },
+    });
+    if (privileged.page.length) return;
     const existing: unknown = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "user",
       where: [{ field: "email", operator: "eq", value: email }],

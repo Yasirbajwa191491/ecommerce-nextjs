@@ -1,4 +1,4 @@
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../server";
 import { v } from "convex/values";
 import {
   DELIVERY_METHOD_LABELS,

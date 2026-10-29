@@ -1,7 +1,7 @@
 import {
   internalMutation,
   internalQuery,
-} from "../_generated/server";
+} from "../server";
 import { internal } from "../_generated/api";
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";

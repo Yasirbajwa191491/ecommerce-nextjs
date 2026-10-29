@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./server";
 import { v } from "convex/values";
 import {
   productContentModeValidator,

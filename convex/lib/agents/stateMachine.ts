@@ -95,7 +95,7 @@ export function requestCancellation(run: AgentRunRecord, now: number): AgentRunR
     errorCategory: "cancelled",
     approvalStatus: run.approvalStatus === "pending" ? "cancelled" : run.approvalStatus,
     approvals: run.approvals.map((approval) =>
-      approval.status === "pending"
+      approval.executionStatus !== "executed"
         ? { ...approval, status: "cancelled", decidedAt: now, executionStatus: "skipped" }
         : approval
     ),

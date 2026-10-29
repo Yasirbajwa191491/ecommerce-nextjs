@@ -142,7 +142,7 @@ export const getLowStock = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const threshold = await getLowStockThresholdValue(ctx);
-    const products = await ctx.db.query("products").collect();
+    const products = await ctx.db.query("products").withIndex("by_stock", q => q.lte("stock", threshold)).filter(q => q.neq(q.field("active"), false)).take(20);
 
     const lowStock = products
       .filter((p) => isProductActive(p) && p.stock <= threshold)

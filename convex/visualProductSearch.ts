@@ -174,7 +174,8 @@ export const searchByImage = action({
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 50);
     const cursor = args.cursor ?? 0;
 
-    let imageUrl = args.imageUrl?.trim();
+    if (!args.storageId) throw new Error("Upload an image to search visually");
+    let imageUrl: string | undefined;
     let imageBase64: string | undefined;
     let mimeType = "image/jpeg";
 
@@ -201,19 +202,10 @@ export const searchByImage = action({
       };
     }
 
-    try {
-      const response = await fetch(imageUrl);
-      if (response.ok) {
-        const buffer = await response.arrayBuffer();
-        if (buffer.byteLength > 0 && buffer.byteLength <= 5 * 1024 * 1024) {
-          mimeType =
-            response.headers.get("content-type")?.split(";")[0] ?? mimeType;
-          imageBase64 = Buffer.from(buffer).toString("base64");
-        }
-      }
-    } catch {
-      // URL embed fallback
-    }
+    const blob = await ctx.storage.get(args.storageId);
+    if (!blob || blob.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(blob.type)) throw new Error("Unsupported image");
+    mimeType = blob.type;
+    imageBase64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
 
     const imageHash = simpleImageHash(imageBase64 ?? imageUrl);
     let provider: string | undefined;

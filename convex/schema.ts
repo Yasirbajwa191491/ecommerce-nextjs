@@ -82,6 +82,11 @@ export const productImageValidator = v.object({
 });
 
 export default defineSchema({
+  guestCapabilities: defineTable({ tokenHash: v.string(), createdAt: v.number() }).index("by_hash", ["tokenHash"]),
+  orderRecoveryChallenges: defineTable({
+    challengeHash: v.string(), email: v.string(), orderNumber: v.string(), otpHash: v.string(),
+    expiresAt: v.number(), attempts: v.number(), consumed: v.boolean(),
+  }).index("by_challenge", ["challengeHash"]),
   productCategories: defineTable({
     name: v.string(),
     description: v.string(),
@@ -136,6 +141,7 @@ export default defineSchema({
     /** Discounted price maintained for indexed price sorting. */
     finalPrice: v.optional(v.number()),
   })
+    .index("by_stock", ["stock"])
     .index("by_sort_order", ["sortOrder"])
     .index("by_category_id", ["categoryId"])
     .index("by_featured", ["featured"])
@@ -1179,6 +1185,8 @@ export default defineSchema({
     .index("by_date", ["date"]),
 
   recommendationEvents: defineTable({
+    orderId: v.optional(v.id("orders")),
+    sourceKey: v.optional(v.string()),
     eventType: recommendationInteractionTypeValidator,
     sectionType: recommendationSectionTypeValidator,
     productId: v.id("products"),
@@ -1189,6 +1197,9 @@ export default defineSchema({
     revenue: v.optional(v.number()),
     occurredAt: v.number(),
   })
+    .index("by_order", ["orderId"])
+    .index("by_source_key", ["sourceKey"])
+    .index("by_customer_product", ["customerKey", "productId", "eventType", "occurredAt"])
     .index("by_section_time", ["sectionType", "occurredAt"])
     .index("by_product_time", ["productId", "occurredAt"])
     .index("by_visitor_time", ["visitorId", "occurredAt"]),
@@ -1469,7 +1480,8 @@ export default defineSchema({
 
   forecastPublications: defineTable({
     publicationId: v.string(),
-    status: v.union(v.literal("published"), v.literal("archived")),
+    status: v.union(v.literal("published"), v.literal("archived"), v.literal("staging")),
+    pointCount: v.optional(v.number()), insightCount: v.optional(v.number()), batches: v.optional(v.array(v.string())),
     modelVersion: v.string(),
     strategy: v.string(),
     horizonDays: v.number(),

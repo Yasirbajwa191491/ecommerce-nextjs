@@ -1,8 +1,11 @@
+import { requireGuest } from "./lib/guestIdentity";
+import { checkAndIncrementRateLimit } from "./lib/rateLimit";
+import { verifiedRecommendationIdentity } from "./lib/recommendations/verifiedIdentity";
 import { v } from "convex/values";
 import {
   internalMutation,
   mutation,
-} from "./_generated/server";
+} from "./server";
 import type { Id } from "./_generated/dataModel";
 import {
   customerBehaviorEventTypeValidator,
@@ -17,7 +20,6 @@ import {
   mergeVisitorIntoCustomer,
   rebuildProfileFromSignals,
 } from "./lib/recommendations/profileBuilder";
-import { resolveCustomerKey } from "./lib/recommendations/identity";
 import { PROFILE_REFRESH_DEBOUNCE_MS } from "./lib/recommendations/constants";
 import { scheduleRecommendationRefresh } from "./lib/recommendations/scheduleRecommendationJob";
 import { adjustRecommendationCounts } from "./lib/maintainedAggregates";
@@ -53,10 +55,7 @@ export const recordBehaviorEvent = mutation({
       const product = await ctx.db.get(args.productId);
       if (!product) return null;
     }
-    const customerKey = resolveCustomerKey(
-      args.customerEmail,
-      args.customerPhone
-    );
+    const { customerKey, identityType, identityKey } = await verifiedRecommendationIdentity(ctx, args.visitorId, args.customerEmail);
     const now = Date.now();
     const recent = await ctx.db
       .query("customerBehaviorEvents")
@@ -82,7 +81,7 @@ export const recordBehaviorEvent = mutation({
 
     await ctx.db.insert("customerBehaviorEvents", {
       eventType: args.eventType,
-      visitorId: args.visitorId,
+      visitorId: await requireGuest(ctx, args.visitorId),
       sessionId: args.sessionId,
       customerKey,
       productId: args.productId,
@@ -93,8 +92,6 @@ export const recordBehaviorEvent = mutation({
       occurredAt: now,
     });
 
-    const identityType = customerKey ? ("customer" as const) : ("visitor" as const);
-    const identityKey = customerKey ?? args.visitorId;
 
     await getOrCreateProfile(
       ctx,
@@ -161,7 +158,7 @@ export const recordBehaviorEventsBatch = mutation({
     for (const event of args.events) {
       assertClientBehaviorEventType(event.eventType);
     }
-    const customerKey = resolveCustomerKey(args.customerEmail);
+    const { customerKey, identityType, identityKey } = await verifiedRecommendationIdentity(ctx, args.visitorId, args.customerEmail);
     const now = Date.now();
 
     for (const event of args.events) {
@@ -179,7 +176,7 @@ export const recordBehaviorEventsBatch = mutation({
       }
       await ctx.db.insert("customerBehaviorEvents", {
         eventType: event.eventType,
-        visitorId: args.visitorId,
+        visitorId: await requireGuest(ctx, args.visitorId),
         sessionId: args.sessionId,
         customerKey,
         productId: event.productId,
@@ -188,8 +185,6 @@ export const recordBehaviorEventsBatch = mutation({
       });
     }
 
-    const identityType = customerKey ? ("customer" as const) : ("visitor" as const);
-    const identityKey = customerKey ?? args.visitorId;
     await getOrCreateProfile(ctx, identityType, identityKey, customerKey);
 
     await scheduleRecommendationRefresh(ctx, {
@@ -212,12 +207,13 @@ export const linkVisitorToCustomer = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const customerKey = resolveCustomerKey(args.email, args.phone);
+    const { customerKey } = await verifiedRecommendationIdentity(ctx, args.visitorId, args.email);
+    if (!customerKey) throw new Error("Verified customer identity required");
     if (!customerKey) return null;
 
     await mergeVisitorIntoCustomer(
       ctx,
-      args.visitorId,
+      await requireGuest(ctx, args.visitorId),
       customerKey,
       args.email?.trim().toLowerCase()
     );
@@ -242,9 +238,7 @@ export const toggleWishlistItem = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const customerKey = resolveCustomerKey(args.customerEmail);
-    const identityType = customerKey ? ("customer" as const) : ("visitor" as const);
-    const identityKey = customerKey ?? args.visitorId;
+    const { customerKey, identityType, identityKey } = await verifiedRecommendationIdentity(ctx, args.visitorId, args.customerEmail);
 
     const existing = await ctx.db
       .query("wishlistItems")
@@ -267,7 +261,7 @@ export const toggleWishlistItem = mutation({
       }
       await ctx.db.insert("customerBehaviorEvents", {
         eventType: "wishlist_add",
-        visitorId: args.visitorId,
+        visitorId: await requireGuest(ctx, args.visitorId),
         customerKey,
         productId: args.productId,
         weight: 0.5,
@@ -281,7 +275,7 @@ export const toggleWishlistItem = mutation({
     }
     await ctx.db.insert("customerBehaviorEvents", {
       eventType: "wishlist_remove",
-      visitorId: args.visitorId,
+      visitorId: await requireGuest(ctx, args.visitorId),
       customerKey,
       productId: args.productId,
       weight: 0.1,
@@ -304,13 +298,19 @@ export const recordRecommendationInteraction = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (args.eventType === "conversion" || args.revenue !== undefined) {
+      throw new Error("Conversions are recorded from verified paid orders only");
+    }
+    const identity = await verifiedRecommendationIdentity(ctx, args.visitorId ?? "", args.customerKey);
+    const quota = await checkAndIncrementRateLimit(ctx, `interactions:${identity.identityKey}`, { maxAttempts: 120, windowMs: 60000 });
+    if (!quota.allowed) throw new Error("Too many interactions");
     const now = Date.now();
     await ctx.db.insert("recommendationEvents", {
       eventType: args.eventType,
       sectionType: args.sectionType,
       productId: args.productId,
-      visitorId: args.visitorId,
-      customerKey: args.customerKey,
+      visitorId: await requireGuest(ctx, args.visitorId ?? ""),
+      customerKey: identity.customerKey,
       cacheKey: args.cacheKey,
       source: args.source,
       revenue: args.revenue,
@@ -330,7 +330,7 @@ export const recordRecommendationInteraction = mutation({
       impressions: (existing?.impressions ?? 0) + (args.eventType === "impression" ? 1 : 0),
       clicks: (existing?.clicks ?? 0) + (args.eventType === "click" ? 1 : 0),
       conversions:
-        (existing?.conversions ?? 0) + (args.eventType === "conversion" ? 1 : 0),
+        (existing?.conversions ?? 0) + 0,
       revenue: (existing?.revenue ?? 0) + (args.revenue ?? 0),
       updatedAt: now,
     };
@@ -353,7 +353,7 @@ export const recordRecommendationInteraction = mutation({
     await adjustRecommendationCounts(ctx, {
       totalImpressions: args.eventType === "impression" ? 1 : 0,
       totalClicks: args.eventType === "click" ? 1 : 0,
-      totalConversions: args.eventType === "conversion" ? 1 : 0,
+      totalConversions: 0,
     });
 
     return null;

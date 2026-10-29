@@ -1,3 +1,4 @@
+import { requireGuest } from "./guestIdentity";
 import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { emailsMatch } from "./orderAccess";
@@ -27,6 +28,7 @@ export async function assertNotificationCustomerAccess(
   }
 
   if (visitorId) {
+    await requireGuest(ctx, visitorId);
     const activeTokens = await ctx.db
       .query("pushTokens")
       .withIndex("by_customer_email_active", (q) =>

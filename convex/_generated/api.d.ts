@@ -1,14 +1,15 @@
 /* eslint-disable */
-/**
- * Generated `api` utility.
- *
- * THIS CODE IS AUTOMATICALLY GENERATED.
- *
- * To regenerate, run `npx convex dev`.
- * @module
- */
+  /**
+   * Generated `api` utility.
+   *
+   * THIS CODE IS AUTOMATICALLY GENERATED.
+   *
+   * To regenerate, run `npx convex dev`.
+   * @module
+   */
 
-import type * as aboutStats from "../aboutStats.js";
+  import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
+  import type * as aboutStats from "../aboutStats.js";
 import type * as adminContentRecommendations from "../adminContentRecommendations.js";
 import type * as adminDashboard from "../adminDashboard.js";
 import type * as adminImageEmbeddings from "../adminImageEmbeddings.js";
@@ -29,6 +30,7 @@ import type * as aiBusinessCopilotQueries from "../aiBusinessCopilotQueries.js";
 import type * as aiBusinessIntelligence from "../aiBusinessIntelligence.js";
 import type * as aiCopilotRateLimit from "../aiCopilotRateLimit.js";
 import type * as aiCopilotStore from "../aiCopilotStore.js";
+import type * as aiUsage from "../aiUsage.js";
 import type * as auth from "../auth.js";
 import type * as contactMessages from "../contactMessages.js";
 import type * as contentRecommendations from "../contentRecommendations.js";
@@ -43,6 +45,7 @@ import type * as emailTemplates from "../emailTemplates.js";
 import type * as forecastData from "../forecastData.js";
 import type * as forecastQuality from "../forecastQuality.js";
 import type * as forecasting from "../forecasting.js";
+import type * as guestIdentity from "../guestIdentity.js";
 import type * as http from "../http.js";
 import type * as imageEmbeddingActions from "../imageEmbeddingActions.js";
 import type * as imageEmbeddingMutations from "../imageEmbeddingMutations.js";
@@ -52,7 +55,20 @@ import type * as lib_adminActivityLogs from "../lib/adminActivityLogs.js";
 import type * as lib_adminAuth from "../lib/adminAuth.js";
 import type * as lib_adminOrderSearch from "../lib/adminOrderSearch.js";
 import type * as lib_adminOrderTransitions from "../lib/adminOrderTransitions.js";
-import type * as lib_aiValidators from "../lib/aiValidators.js";
+import type * as lib_agents_approvals from "../lib/agents/approvals.js";
+import type * as lib_agents_config from "../lib/agents/config.js";
+import type * as lib_agents_evaluation from "../lib/agents/evaluation.js";
+import type * as lib_agents_llmDecision from "../lib/agents/llmDecision.js";
+import type * as lib_agents_monitoring from "../lib/agents/monitoring.js";
+import type * as lib_agents_nativeToolCall from "../lib/agents/nativeToolCall.js";
+import type * as lib_agents_orchestrator from "../lib/agents/orchestrator.js";
+import type * as lib_agents_panel from "../lib/agents/panel.js";
+import type * as lib_agents_security from "../lib/agents/security.js";
+import type * as lib_agents_serialization from "../lib/agents/serialization.js";
+import type * as lib_agents_stateMachine from "../lib/agents/stateMachine.js";
+import type * as lib_agents_tools from "../lib/agents/tools.js";
+import type * as lib_agents_types from "../lib/agents/types.js";
+import type * as lib_agents_validators from "../lib/agents/validators.js";
 import type * as lib_ai_businessIntelligence from "../lib/ai/businessIntelligence.js";
 import type * as lib_ai_constants from "../lib/ai/constants.js";
 import type * as lib_ai_copilotGeneration from "../lib/ai/copilotGeneration.js";
@@ -103,10 +119,13 @@ import type * as lib_ai_scheduleProductIntelligence from "../lib/ai/scheduleProd
 import type * as lib_ai_tagIndex from "../lib/ai/tagIndex.js";
 import type * as lib_ai_tagUtils from "../lib/ai/tagUtils.js";
 import type * as lib_ai_types from "../lib/ai/types.js";
+import type * as lib_aiValidators from "../lib/aiValidators.js";
 import type * as lib_authRoles from "../lib/authRoles.js";
 import type * as lib_backfillOrderLogs from "../lib/backfillOrderLogs.js";
+import type * as lib_boundedRead from "../lib/boundedRead.js";
 import type * as lib_campaignQueue from "../lib/campaignQueue.js";
 import type * as lib_cancellationFee from "../lib/cancellationFee.js";
+import type * as lib_capabilities from "../lib/capabilities.js";
 import type * as lib_cartLines from "../lib/cartLines.js";
 import type * as lib_catalogExportAuth from "../lib/catalogExportAuth.js";
 import type * as lib_catalogFilters from "../lib/catalogFilters.js";
@@ -124,6 +143,7 @@ import type * as lib_emailSegments from "../lib/emailSegments.js";
 import type * as lib_forecasting_config from "../lib/forecasting/config.js";
 import type * as lib_forecasting_dataQuality from "../lib/forecasting/dataQuality.js";
 import type * as lib_forecasting_eligibility from "../lib/forecasting/eligibility.js";
+import type * as lib_guestIdentity from "../lib/guestIdentity.js";
 import type * as lib_inAppNotificationPersistence from "../lib/inAppNotificationPersistence.js";
 import type * as lib_indexedScan from "../lib/indexedScan.js";
 import type * as lib_inventory from "../lib/inventory.js";
@@ -201,6 +221,7 @@ import type * as lib_recommendations_sections from "../lib/recommendations/secti
 import type * as lib_recommendations_settings from "../lib/recommendations/settings.js";
 import type * as lib_recommendations_shadowComparison from "../lib/recommendations/shadowComparison.js";
 import type * as lib_recommendations_validators from "../lib/recommendations/validators.js";
+import type * as lib_recommendations_verifiedIdentity from "../lib/recommendations/verifiedIdentity.js";
 import type * as lib_requireAdmin from "../lib/requireAdmin.js";
 import type * as lib_reviewAggregates from "../lib/reviewAggregates.js";
 import type * as lib_reviewAiQueue from "../lib/reviewAiQueue.js";
@@ -212,6 +233,8 @@ import type * as lib_reviews from "../lib/reviews.js";
 import type * as lib_search_hybridRank from "../lib/search/hybridRank.js";
 import type * as lib_search_productTextMatch from "../lib/search/productTextMatch.js";
 import type * as lib_search_queryParser from "../lib/search/queryParser.js";
+import type * as lib_securityAnalytics from "../lib/securityAnalytics.js";
+import type * as lib_seedCredentials from "../lib/seedCredentials.js";
 import type * as lib_settingsHelpers from "../lib/settingsHelpers.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
 import type * as lib_storeGuideContent from "../lib/storeGuideContent.js";
@@ -238,6 +261,7 @@ import type * as notifications from "../notifications.js";
 import type * as orderNotifications from "../orderNotifications.js";
 import type * as orderPaymentRecovery from "../orderPaymentRecovery.js";
 import type * as orderReceipt from "../orderReceipt.js";
+import type * as orderRecovery from "../orderRecovery.js";
 import type * as orderTracking from "../orderTracking.js";
 import type * as orders from "../orders.js";
 import type * as productAi from "../productAi.js";
@@ -265,6 +289,7 @@ import type * as ragData from "../ragData.js";
 import type * as ragIndexing from "../ragIndexing.js";
 import type * as recommendationActions from "../recommendationActions.js";
 import type * as recommendationAiActions from "../recommendationAiActions.js";
+import type * as recommendationAttribution from "../recommendationAttribution.js";
 import type * as recommendationMutations from "../recommendationMutations.js";
 import type * as recommendationQueries from "../recommendationQueries.js";
 import type * as recommendations from "../recommendations.js";
@@ -279,7 +304,9 @@ import type * as reviewAiQueueActions from "../reviewAiQueueActions.js";
 import type * as reviewAiQueueMutations from "../reviewAiQueueMutations.js";
 import type * as reviewCallActions from "../reviewCallActions.js";
 import type * as reviewCalls from "../reviewCalls.js";
+import type * as securityAnalytics from "../securityAnalytics.js";
 import type * as seed from "../seed.js";
+import type * as server from "../server.js";
 import type * as settings from "../settings.js";
 import type * as sms from "../sms.js";
 import type * as stripe from "../stripe.js";
@@ -311,342 +338,346 @@ import type * as vapi_webhook from "../vapi/webhook.js";
 import type * as visualProductSearch from "../visualProductSearch.js";
 import type * as visualProductSearchMutations from "../visualProductSearchMutations.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
-
-declare const fullApi: ApiFromModules<{
-  aboutStats: typeof aboutStats;
-  adminContentRecommendations: typeof adminContentRecommendations;
-  adminDashboard: typeof adminDashboard;
-  adminImageEmbeddings: typeof adminImageEmbeddings;
-  adminOrders: typeof adminOrders;
-  adminProductContent: typeof adminProductContent;
-  adminProductContentN8n: typeof adminProductContentN8n;
-  adminProductPricing: typeof adminProductPricing;
-  adminRecommendations: typeof adminRecommendations;
-  adminReviewAi: typeof adminReviewAi;
-  adminReviews: typeof adminReviews;
-  adminUsers: typeof adminUsers;
-  agentActions: typeof agentActions;
-  agentData: typeof agentData;
-  agentInternal: typeof agentInternal;
-  agents: typeof agents;
-  aiBusinessCopilot: typeof aiBusinessCopilot;
-  aiBusinessCopilotQueries: typeof aiBusinessCopilotQueries;
-  aiBusinessIntelligence: typeof aiBusinessIntelligence;
-  aiCopilotRateLimit: typeof aiCopilotRateLimit;
-  aiCopilotStore: typeof aiCopilotStore;
-  auth: typeof auth;
-  contactMessages: typeof contactMessages;
-  contentRecommendations: typeof contentRecommendations;
-  crons: typeof crons;
-  email: typeof email;
-  emailCampaignAi: typeof emailCampaignAi;
-  emailCampaignAiQueries: typeof emailCampaignAiQueries;
-  emailCampaigns: typeof emailCampaigns;
-  emailHelpers: typeof emailHelpers;
-  emailMarketingDashboard: typeof emailMarketingDashboard;
-  emailTemplates: typeof emailTemplates;
-  forecastData: typeof forecastData;
-  forecastQuality: typeof forecastQuality;
-  forecasting: typeof forecasting;
-  http: typeof http;
-  imageEmbeddingActions: typeof imageEmbeddingActions;
-  imageEmbeddingMutations: typeof imageEmbeddingMutations;
-  imageEmbeddingQueries: typeof imageEmbeddingQueries;
-  inAppNotifications: typeof inAppNotifications;
-  "lib/adminActivityLogs": typeof lib_adminActivityLogs;
-  "lib/adminAuth": typeof lib_adminAuth;
-  "lib/adminOrderSearch": typeof lib_adminOrderSearch;
-  "lib/adminOrderTransitions": typeof lib_adminOrderTransitions;
-  "lib/aiValidators": typeof lib_aiValidators;
-  "lib/ai/businessIntelligence": typeof lib_ai_businessIntelligence;
-  "lib/ai/constants": typeof lib_ai_constants;
-  "lib/ai/copilotGeneration": typeof lib_ai_copilotGeneration;
-  "lib/ai/copilotRouter": typeof lib_ai_copilotRouter;
-  "lib/ai/copilotTypes": typeof lib_ai_copilotTypes;
-  "lib/ai/emailCampaignGeneration": typeof lib_ai_emailCampaignGeneration;
-  "lib/ai/emailCampaignTypes": typeof lib_ai_emailCampaignTypes;
-  "lib/ai/featureFlags": typeof lib_ai_featureFlags;
-  "lib/ai/geminiVisionAttributes": typeof lib_ai_geminiVisionAttributes;
-  "lib/ai/generationHistory": typeof lib_ai_generationHistory;
-  "lib/ai/getProvider": typeof lib_ai_getProvider;
-  "lib/ai/imageEmbeddingClient": typeof lib_ai_imageEmbeddingClient;
-  "lib/ai/imageEmbeddingHelpers": typeof lib_ai_imageEmbeddingHelpers;
-  "lib/ai/insightServices/buildInsightCards": typeof lib_ai_insightServices_buildInsightCards;
-  "lib/ai/insightServices/businessSummary": typeof lib_ai_insightServices_businessSummary;
-  "lib/ai/insightServices/inventoryForecast": typeof lib_ai_insightServices_inventoryForecast;
-  "lib/ai/insightServices/marketingInsights": typeof lib_ai_insightServices_marketingInsights;
-  "lib/ai/insightServices/pricingInsights": typeof lib_ai_insightServices_pricingInsights;
-  "lib/ai/insightServices/promotionInsights": typeof lib_ai_insightServices_promotionInsights;
-  "lib/ai/insightServices/salesForecast": typeof lib_ai_insightServices_salesForecast;
-  "lib/ai/insightServices/searchDemand": typeof lib_ai_insightServices_searchDemand;
-  "lib/ai/insightServices/sentimentInsights": typeof lib_ai_insightServices_sentimentInsights;
-  "lib/ai/insightServices/types": typeof lib_ai_insightServices_types;
-  "lib/ai/pricingInsights": typeof lib_ai_pricingInsights;
-  "lib/ai/productContentGeneration": typeof lib_ai_productContentGeneration;
-  "lib/ai/productContentImages": typeof lib_ai_productContentImages;
-  "lib/ai/productContentTypes": typeof lib_ai_productContentTypes;
-  "lib/ai/productIntelligence": typeof lib_ai_productIntelligence;
-  "lib/ai/productIntelligenceHelpers": typeof lib_ai_productIntelligenceHelpers;
-  "lib/ai/productIntelligenceTypes": typeof lib_ai_productIntelligenceTypes;
-  "lib/ai/productPricingGeneration": typeof lib_ai_productPricingGeneration;
-  "lib/ai/productPricingTypes": typeof lib_ai_productPricingTypes;
-  "lib/ai/providerChain": typeof lib_ai_providerChain;
-  "lib/ai/providerHealth": typeof lib_ai_providerHealth;
-  "lib/ai/providers/anthropic": typeof lib_ai_providers_anthropic;
-  "lib/ai/providers/gemini": typeof lib_ai_providers_gemini;
-  "lib/ai/providers/groq": typeof lib_ai_providers_groq;
-  "lib/ai/providers/openai": typeof lib_ai_providers_openai;
-  "lib/ai/providers/openrouter": typeof lib_ai_providers_openrouter;
-  "lib/ai/providers/remoteWorker": typeof lib_ai_providers_remoteWorker;
-  "lib/ai/providers/shared": typeof lib_ai_providers_shared;
-  "lib/ai/pythonAiServiceClient": typeof lib_ai_pythonAiServiceClient;
-  "lib/ai/recommendationAiProvider": typeof lib_ai_recommendationAiProvider;
-  "lib/ai/reviewIntelligence": typeof lib_ai_reviewIntelligence;
-  "lib/ai/reviewReplyPrompt": typeof lib_ai_reviewReplyPrompt;
-  "lib/ai/scheduleImageEmbedding": typeof lib_ai_scheduleImageEmbedding;
-  "lib/ai/scheduleProductIntelligence": typeof lib_ai_scheduleProductIntelligence;
-  "lib/ai/tagIndex": typeof lib_ai_tagIndex;
-  "lib/ai/tagUtils": typeof lib_ai_tagUtils;
-  "lib/ai/types": typeof lib_ai_types;
-  "lib/authRoles": typeof lib_authRoles;
-  "lib/backfillOrderLogs": typeof lib_backfillOrderLogs;
-  "lib/campaignQueue": typeof lib_campaignQueue;
-  "lib/cancellationFee": typeof lib_cancellationFee;
-  "lib/cartLines": typeof lib_cartLines;
-  "lib/catalogExportAuth": typeof lib_catalogExportAuth;
-  "lib/catalogFilters": typeof lib_catalogFilters;
-  "lib/checkoutPricing": typeof lib_checkoutPricing;
-  "lib/checkoutValidation": typeof lib_checkoutValidation;
-  "lib/colorFamilies": typeof lib_colorFamilies;
-  "lib/customerProfileAccess": typeof lib_customerProfileAccess;
-  "lib/dashboardAggregates": typeof lib_dashboardAggregates;
-  "lib/dashboardRange": typeof lib_dashboardRange;
-  "lib/deliveryPricing": typeof lib_deliveryPricing;
-  "lib/emailFrom": typeof lib_emailFrom;
-  "lib/emailMarketingValidators": typeof lib_emailMarketingValidators;
-  "lib/emailPlaceholders": typeof lib_emailPlaceholders;
-  "lib/emailSegments": typeof lib_emailSegments;
-  "lib/forecasting/config": typeof lib_forecasting_config;
-  "lib/forecasting/dataQuality": typeof lib_forecasting_dataQuality;
-  "lib/forecasting/eligibility": typeof lib_forecasting_eligibility;
-  "lib/inAppNotificationPersistence": typeof lib_inAppNotificationPersistence;
-  "lib/indexedScan": typeof lib_indexedScan;
-  "lib/inventory": typeof lib_inventory;
-  "lib/maintainedAggregates": typeof lib_maintainedAggregates;
-  "lib/mlops/alerts": typeof lib_mlops_alerts;
-  "lib/mlops/config": typeof lib_mlops_config;
-  "lib/mlops/evaluation": typeof lib_mlops_evaluation;
-  "lib/mlops/lifecycle": typeof lib_mlops_lifecycle;
-  "lib/mlops/monitoring": typeof lib_mlops_monitoring;
-  "lib/mlops/retraining": typeof lib_mlops_retraining;
-  "lib/mlops/validators": typeof lib_mlops_validators;
-  "lib/n8nAuth": typeof lib_n8nAuth;
-  "lib/notificationAccess": typeof lib_notificationAccess;
-  "lib/notificationChannels": typeof lib_notificationChannels;
-  "lib/notificationPreferences": typeof lib_notificationPreferences;
-  "lib/notificationRetention": typeof lib_notificationRetention;
-  "lib/notificationTemplates": typeof lib_notificationTemplates;
-  "lib/notificationTypes": typeof lib_notificationTypes;
-  "lib/orderAccess": typeof lib_orderAccess;
-  "lib/orderCancellation": typeof lib_orderCancellation;
-  "lib/orderItemSnapshot": typeof lib_orderItemSnapshot;
-  "lib/orderLifecycle": typeof lib_orderLifecycle;
-  "lib/orderLogs": typeof lib_orderLogs;
-  "lib/orderNotificationLogic": typeof lib_orderNotificationLogic;
-  "lib/orderNumbers": typeof lib_orderNumbers;
-  "lib/orderPricing": typeof lib_orderPricing;
-  "lib/orderReceipt": typeof lib_orderReceipt;
-  "lib/orderReorder": typeof lib_orderReorder;
-  "lib/orderSms": typeof lib_orderSms;
-  "lib/orderValidators": typeof lib_orderValidators;
-  "lib/pagination": typeof lib_pagination;
-  "lib/pricing": typeof lib_pricing;
-  "lib/productActive": typeof lib_productActive;
-  "lib/productImages": typeof lib_productImages;
-  "lib/productSales": typeof lib_productSales;
-  "lib/productValidators": typeof lib_productValidators;
-  "lib/products": typeof lib_products;
-  "lib/promotions/apply": typeof lib_promotions_apply;
-  "lib/promotions/evaluate": typeof lib_promotions_evaluate;
-  "lib/promotions/giftColor": typeof lib_promotions_giftColor;
-  "lib/promotions/isActive": typeof lib_promotions_isActive;
-  "lib/promotions/offerCopy": typeof lib_promotions_offerCopy;
-  "lib/promotions/storefrontEnrich": typeof lib_promotions_storefrontEnrich;
-  "lib/promotions/types": typeof lib_promotions_types;
-  "lib/publicOrderDto": typeof lib_publicOrderDto;
-  "lib/pushTokenSelection": typeof lib_pushTokenSelection;
-  "lib/qrCodes": typeof lib_qrCodes;
-  "lib/qrTokens": typeof lib_qrTokens;
-  "lib/qrValidators": typeof lib_qrValidators;
-  "lib/rag/config": typeof lib_rag_config;
-  "lib/rag/content": typeof lib_rag_content;
-  "lib/rag/embeddingVersion": typeof lib_rag_embeddingVersion;
-  "lib/rag/generate": typeof lib_rag_generate;
-  "lib/rag/grounding": typeof lib_rag_grounding;
-  "lib/rag/pythonRagClient": typeof lib_rag_pythonRagClient;
-  "lib/rag/schedule": typeof lib_rag_schedule;
-  "lib/rag/sources": typeof lib_rag_sources;
-  "lib/rateLimit": typeof lib_rateLimit;
-  "lib/recommendations/behaviorEventPolicy": typeof lib_recommendations_behaviorEventPolicy;
-  "lib/recommendations/behavioralExport": typeof lib_recommendations_behavioralExport;
-  "lib/recommendations/catalogExport": typeof lib_recommendations_catalogExport;
-  "lib/recommendations/constants": typeof lib_recommendations_constants;
-  "lib/recommendations/contentRecommendationStore": typeof lib_recommendations_contentRecommendationStore;
-  "lib/recommendations/contentSnapshot": typeof lib_recommendations_contentSnapshot;
-  "lib/recommendations/identity": typeof lib_recommendations_identity;
-  "lib/recommendations/mlStrategy": typeof lib_recommendations_mlStrategy;
-  "lib/recommendations/profileBuilder": typeof lib_recommendations_profileBuilder;
-  "lib/recommendations/pythonMlConfig": typeof lib_recommendations_pythonMlConfig;
-  "lib/recommendations/pythonMlShadowFetch": typeof lib_recommendations_pythonMlShadowFetch;
-  "lib/recommendations/pythonMlShadowSummary": typeof lib_recommendations_pythonMlShadowSummary;
-  "lib/recommendations/recommendationIntelligence": typeof lib_recommendations_recommendationIntelligence;
-  "lib/recommendations/scheduleRecommendationJob": typeof lib_recommendations_scheduleRecommendationJob;
-  "lib/recommendations/scoring": typeof lib_recommendations_scoring;
-  "lib/recommendations/sections": typeof lib_recommendations_sections;
-  "lib/recommendations/settings": typeof lib_recommendations_settings;
-  "lib/recommendations/shadowComparison": typeof lib_recommendations_shadowComparison;
-  "lib/recommendations/validators": typeof lib_recommendations_validators;
-  "lib/requireAdmin": typeof lib_requireAdmin;
-  "lib/reviewAggregates": typeof lib_reviewAggregates;
-  "lib/reviewAiQueue": typeof lib_reviewAiQueue;
-  "lib/reviewAiQueueStats": typeof lib_reviewAiQueueStats;
-  "lib/reviewAiQueueTypes": typeof lib_reviewAiQueueTypes;
-  "lib/reviewCallErrors": typeof lib_reviewCallErrors;
-  "lib/reviewCallValidators": typeof lib_reviewCallValidators;
-  "lib/reviews": typeof lib_reviews;
-  "lib/search/hybridRank": typeof lib_search_hybridRank;
-  "lib/search/productTextMatch": typeof lib_search_productTextMatch;
-  "lib/search/queryParser": typeof lib_search_queryParser;
-  "lib/settingsHelpers": typeof lib_settingsHelpers;
-  "lib/siteUrl": typeof lib_siteUrl;
-  "lib/storeGuideContent": typeof lib_storeGuideContent;
-  "lib/stripePaymentIntent": typeof lib_stripePaymentIntent;
-  "lib/stripeRefund": typeof lib_stripeRefund;
-  "lib/stripeRefundRetry": typeof lib_stripeRefundRetry;
-  "lib/subscriberInterestDetection": typeof lib_subscriberInterestDetection;
-  "lib/subscriberTokens": typeof lib_subscriberTokens;
-  "lib/webhookEventClaim": typeof lib_webhookEventClaim;
-  migrations: typeof migrations;
-  "migrations/backfillProductDeliveryWarranty": typeof migrations_backfillProductDeliveryWarranty;
-  "migrations/backfillProductFinalPrice": typeof migrations_backfillProductFinalPrice;
-  mlBehavioralHttp: typeof mlBehavioralHttp;
-  mlCatalogHttp: typeof mlCatalogHttp;
-  mlops: typeof mlops;
-  mlopsActions: typeof mlopsActions;
-  n8nImageEmbeddingHttp: typeof n8nImageEmbeddingHttp;
-  n8nProductAiHttp: typeof n8nProductAiHttp;
-  n8nRecommendationHttp: typeof n8nRecommendationHttp;
-  n8nReviewAi: typeof n8nReviewAi;
-  n8nReviewAiHttp: typeof n8nReviewAiHttp;
-  n8nWebhooks: typeof n8nWebhooks;
-  notifications: typeof notifications;
-  orderNotifications: typeof orderNotifications;
-  orderPaymentRecovery: typeof orderPaymentRecovery;
-  orderReceipt: typeof orderReceipt;
-  orderTracking: typeof orderTracking;
-  orders: typeof orders;
-  productAi: typeof productAi;
-  productAiActions: typeof productAiActions;
-  productAiQueries: typeof productAiQueries;
-  productCategories: typeof productCategories;
-  productContentJobs: typeof productContentJobs;
-  productPricingQueries: typeof productPricingQueries;
-  productPricingRecommendations: typeof productPricingRecommendations;
-  productPromotions: typeof productPromotions;
-  productReviewInsights: typeof productReviewInsights;
-  productReviewSearch: typeof productReviewSearch;
-  productReviews: typeof productReviews;
-  productSearch: typeof productSearch;
-  productSearchQueries: typeof productSearchQueries;
-  products: typeof products;
-  providerHealthMutations: typeof providerHealthMutations;
-  pushNotifications: typeof pushNotifications;
-  pushNotificationsInternal: typeof pushNotificationsInternal;
-  pushTokens: typeof pushTokens;
-  pythonMlShadow: typeof pythonMlShadow;
-  qr: typeof qr;
-  rag: typeof rag;
-  ragData: typeof ragData;
-  ragIndexing: typeof ragIndexing;
-  recommendationActions: typeof recommendationActions;
-  recommendationAiActions: typeof recommendationAiActions;
-  recommendationMutations: typeof recommendationMutations;
-  recommendationQueries: typeof recommendationQueries;
-  recommendations: typeof recommendations;
-  reviewAi: typeof reviewAi;
-  reviewAiActions: typeof reviewAiActions;
-  reviewAiBackfill: typeof reviewAiBackfill;
-  reviewAiGenerations: typeof reviewAiGenerations;
-  reviewAiMetrics: typeof reviewAiMetrics;
-  reviewAiN8nActions: typeof reviewAiN8nActions;
-  reviewAiQueries: typeof reviewAiQueries;
-  reviewAiQueueActions: typeof reviewAiQueueActions;
-  reviewAiQueueMutations: typeof reviewAiQueueMutations;
-  reviewCallActions: typeof reviewCallActions;
-  reviewCalls: typeof reviewCalls;
-  seed: typeof seed;
-  settings: typeof settings;
-  sms: typeof sms;
-  stripe: typeof stripe;
-  stripeRefundAttempts: typeof stripeRefundAttempts;
-  stripeWebhookNode: typeof stripeWebhookNode;
-  stripeWebhooks: typeof stripeWebhooks;
-  subscriberInterests: typeof subscriberInterests;
-  subscribers: typeof subscribers;
-  "vapi/admin": typeof vapi_admin;
-  "vapi/analyticsHelpers": typeof vapi_analyticsHelpers;
-  "vapi/assistantConfig": typeof vapi_assistantConfig;
-  "vapi/browserSession": typeof vapi_browserSession;
-  "vapi/bundleBuilder": typeof vapi_bundleBuilder;
-  "vapi/dtos": typeof vapi_dtos;
-  "vapi/lib/resolveProductReference": typeof vapi_lib_resolveProductReference;
-  "vapi/lib/uiActions": typeof vapi_lib_uiActions;
-  "vapi/logging": typeof vapi_logging;
-  "vapi/promotionTools": typeof vapi_promotionTools;
-  "vapi/reviewCallTools": typeof vapi_reviewCallTools;
-  "vapi/shoppingCheckoutActions": typeof vapi_shoppingCheckoutActions;
-  "vapi/shoppingTools": typeof vapi_shoppingTools;
-  "vapi/tools": typeof vapi_tools;
-  "vapi/voiceCartSync": typeof vapi_voiceCartSync;
-  "vapi/voiceCheckout": typeof vapi_voiceCheckout;
-  "vapi/voiceDeliveryHelpers": typeof vapi_voiceDeliveryHelpers;
-  "vapi/voiceSearchActions": typeof vapi_voiceSearchActions;
-  "vapi/voiceStorefrontSync": typeof vapi_voiceStorefrontSync;
-  "vapi/webhook": typeof vapi_webhook;
-  visualProductSearch: typeof visualProductSearch;
-  visualProductSearchMutations: typeof visualProductSearchMutations;
-}>;
-
-/**
- * A utility for referencing Convex functions in your app's public API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
-export declare const api: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "public">
->;
-
-/**
- * A utility for referencing Convex functions in your app's internal API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = internal.myModule.myFunction;
- * ```
- */
-export declare const internal: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "internal">
->;
+  /**
+   * A utility for referencing Convex functions in your app's API.
+   *
+   * Usage:
+   * ```js
+   * const myFunctionReference = api.myModule.myFunction;
+   * ```
+   */
+  declare const fullApi: ApiFromModules<{
+    "aboutStats": typeof aboutStats,
+"adminContentRecommendations": typeof adminContentRecommendations,
+"adminDashboard": typeof adminDashboard,
+"adminImageEmbeddings": typeof adminImageEmbeddings,
+"adminOrders": typeof adminOrders,
+"adminProductContent": typeof adminProductContent,
+"adminProductContentN8n": typeof adminProductContentN8n,
+"adminProductPricing": typeof adminProductPricing,
+"adminRecommendations": typeof adminRecommendations,
+"adminReviewAi": typeof adminReviewAi,
+"adminReviews": typeof adminReviews,
+"adminUsers": typeof adminUsers,
+"agentActions": typeof agentActions,
+"agentData": typeof agentData,
+"agentInternal": typeof agentInternal,
+"agents": typeof agents,
+"aiBusinessCopilot": typeof aiBusinessCopilot,
+"aiBusinessCopilotQueries": typeof aiBusinessCopilotQueries,
+"aiBusinessIntelligence": typeof aiBusinessIntelligence,
+"aiCopilotRateLimit": typeof aiCopilotRateLimit,
+"aiCopilotStore": typeof aiCopilotStore,
+"aiUsage": typeof aiUsage,
+"auth": typeof auth,
+"contactMessages": typeof contactMessages,
+"contentRecommendations": typeof contentRecommendations,
+"crons": typeof crons,
+"email": typeof email,
+"emailCampaignAi": typeof emailCampaignAi,
+"emailCampaignAiQueries": typeof emailCampaignAiQueries,
+"emailCampaigns": typeof emailCampaigns,
+"emailHelpers": typeof emailHelpers,
+"emailMarketingDashboard": typeof emailMarketingDashboard,
+"emailTemplates": typeof emailTemplates,
+"forecastData": typeof forecastData,
+"forecastQuality": typeof forecastQuality,
+"forecasting": typeof forecasting,
+"guestIdentity": typeof guestIdentity,
+"http": typeof http,
+"imageEmbeddingActions": typeof imageEmbeddingActions,
+"imageEmbeddingMutations": typeof imageEmbeddingMutations,
+"imageEmbeddingQueries": typeof imageEmbeddingQueries,
+"inAppNotifications": typeof inAppNotifications,
+"lib/adminActivityLogs": typeof lib_adminActivityLogs,
+"lib/adminAuth": typeof lib_adminAuth,
+"lib/adminOrderSearch": typeof lib_adminOrderSearch,
+"lib/adminOrderTransitions": typeof lib_adminOrderTransitions,
+"lib/agents/approvals": typeof lib_agents_approvals,
+"lib/agents/config": typeof lib_agents_config,
+"lib/agents/evaluation": typeof lib_agents_evaluation,
+"lib/agents/llmDecision": typeof lib_agents_llmDecision,
+"lib/agents/monitoring": typeof lib_agents_monitoring,
+"lib/agents/nativeToolCall": typeof lib_agents_nativeToolCall,
+"lib/agents/orchestrator": typeof lib_agents_orchestrator,
+"lib/agents/panel": typeof lib_agents_panel,
+"lib/agents/security": typeof lib_agents_security,
+"lib/agents/serialization": typeof lib_agents_serialization,
+"lib/agents/stateMachine": typeof lib_agents_stateMachine,
+"lib/agents/tools": typeof lib_agents_tools,
+"lib/agents/types": typeof lib_agents_types,
+"lib/agents/validators": typeof lib_agents_validators,
+"lib/ai/businessIntelligence": typeof lib_ai_businessIntelligence,
+"lib/ai/constants": typeof lib_ai_constants,
+"lib/ai/copilotGeneration": typeof lib_ai_copilotGeneration,
+"lib/ai/copilotRouter": typeof lib_ai_copilotRouter,
+"lib/ai/copilotTypes": typeof lib_ai_copilotTypes,
+"lib/ai/emailCampaignGeneration": typeof lib_ai_emailCampaignGeneration,
+"lib/ai/emailCampaignTypes": typeof lib_ai_emailCampaignTypes,
+"lib/ai/featureFlags": typeof lib_ai_featureFlags,
+"lib/ai/geminiVisionAttributes": typeof lib_ai_geminiVisionAttributes,
+"lib/ai/generationHistory": typeof lib_ai_generationHistory,
+"lib/ai/getProvider": typeof lib_ai_getProvider,
+"lib/ai/imageEmbeddingClient": typeof lib_ai_imageEmbeddingClient,
+"lib/ai/imageEmbeddingHelpers": typeof lib_ai_imageEmbeddingHelpers,
+"lib/ai/insightServices/buildInsightCards": typeof lib_ai_insightServices_buildInsightCards,
+"lib/ai/insightServices/businessSummary": typeof lib_ai_insightServices_businessSummary,
+"lib/ai/insightServices/inventoryForecast": typeof lib_ai_insightServices_inventoryForecast,
+"lib/ai/insightServices/marketingInsights": typeof lib_ai_insightServices_marketingInsights,
+"lib/ai/insightServices/pricingInsights": typeof lib_ai_insightServices_pricingInsights,
+"lib/ai/insightServices/promotionInsights": typeof lib_ai_insightServices_promotionInsights,
+"lib/ai/insightServices/salesForecast": typeof lib_ai_insightServices_salesForecast,
+"lib/ai/insightServices/searchDemand": typeof lib_ai_insightServices_searchDemand,
+"lib/ai/insightServices/sentimentInsights": typeof lib_ai_insightServices_sentimentInsights,
+"lib/ai/insightServices/types": typeof lib_ai_insightServices_types,
+"lib/ai/pricingInsights": typeof lib_ai_pricingInsights,
+"lib/ai/productContentGeneration": typeof lib_ai_productContentGeneration,
+"lib/ai/productContentImages": typeof lib_ai_productContentImages,
+"lib/ai/productContentTypes": typeof lib_ai_productContentTypes,
+"lib/ai/productIntelligence": typeof lib_ai_productIntelligence,
+"lib/ai/productIntelligenceHelpers": typeof lib_ai_productIntelligenceHelpers,
+"lib/ai/productIntelligenceTypes": typeof lib_ai_productIntelligenceTypes,
+"lib/ai/productPricingGeneration": typeof lib_ai_productPricingGeneration,
+"lib/ai/productPricingTypes": typeof lib_ai_productPricingTypes,
+"lib/ai/providerChain": typeof lib_ai_providerChain,
+"lib/ai/providerHealth": typeof lib_ai_providerHealth,
+"lib/ai/providers/anthropic": typeof lib_ai_providers_anthropic,
+"lib/ai/providers/gemini": typeof lib_ai_providers_gemini,
+"lib/ai/providers/groq": typeof lib_ai_providers_groq,
+"lib/ai/providers/openai": typeof lib_ai_providers_openai,
+"lib/ai/providers/openrouter": typeof lib_ai_providers_openrouter,
+"lib/ai/providers/remoteWorker": typeof lib_ai_providers_remoteWorker,
+"lib/ai/providers/shared": typeof lib_ai_providers_shared,
+"lib/ai/pythonAiServiceClient": typeof lib_ai_pythonAiServiceClient,
+"lib/ai/recommendationAiProvider": typeof lib_ai_recommendationAiProvider,
+"lib/ai/reviewIntelligence": typeof lib_ai_reviewIntelligence,
+"lib/ai/reviewReplyPrompt": typeof lib_ai_reviewReplyPrompt,
+"lib/ai/scheduleImageEmbedding": typeof lib_ai_scheduleImageEmbedding,
+"lib/ai/scheduleProductIntelligence": typeof lib_ai_scheduleProductIntelligence,
+"lib/ai/tagIndex": typeof lib_ai_tagIndex,
+"lib/ai/tagUtils": typeof lib_ai_tagUtils,
+"lib/ai/types": typeof lib_ai_types,
+"lib/aiValidators": typeof lib_aiValidators,
+"lib/authRoles": typeof lib_authRoles,
+"lib/backfillOrderLogs": typeof lib_backfillOrderLogs,
+"lib/boundedRead": typeof lib_boundedRead,
+"lib/campaignQueue": typeof lib_campaignQueue,
+"lib/cancellationFee": typeof lib_cancellationFee,
+"lib/capabilities": typeof lib_capabilities,
+"lib/cartLines": typeof lib_cartLines,
+"lib/catalogExportAuth": typeof lib_catalogExportAuth,
+"lib/catalogFilters": typeof lib_catalogFilters,
+"lib/checkoutPricing": typeof lib_checkoutPricing,
+"lib/checkoutValidation": typeof lib_checkoutValidation,
+"lib/colorFamilies": typeof lib_colorFamilies,
+"lib/customerProfileAccess": typeof lib_customerProfileAccess,
+"lib/dashboardAggregates": typeof lib_dashboardAggregates,
+"lib/dashboardRange": typeof lib_dashboardRange,
+"lib/deliveryPricing": typeof lib_deliveryPricing,
+"lib/emailFrom": typeof lib_emailFrom,
+"lib/emailMarketingValidators": typeof lib_emailMarketingValidators,
+"lib/emailPlaceholders": typeof lib_emailPlaceholders,
+"lib/emailSegments": typeof lib_emailSegments,
+"lib/forecasting/config": typeof lib_forecasting_config,
+"lib/forecasting/dataQuality": typeof lib_forecasting_dataQuality,
+"lib/forecasting/eligibility": typeof lib_forecasting_eligibility,
+"lib/guestIdentity": typeof lib_guestIdentity,
+"lib/inAppNotificationPersistence": typeof lib_inAppNotificationPersistence,
+"lib/indexedScan": typeof lib_indexedScan,
+"lib/inventory": typeof lib_inventory,
+"lib/maintainedAggregates": typeof lib_maintainedAggregates,
+"lib/mlops/alerts": typeof lib_mlops_alerts,
+"lib/mlops/config": typeof lib_mlops_config,
+"lib/mlops/evaluation": typeof lib_mlops_evaluation,
+"lib/mlops/lifecycle": typeof lib_mlops_lifecycle,
+"lib/mlops/monitoring": typeof lib_mlops_monitoring,
+"lib/mlops/retraining": typeof lib_mlops_retraining,
+"lib/mlops/validators": typeof lib_mlops_validators,
+"lib/n8nAuth": typeof lib_n8nAuth,
+"lib/notificationAccess": typeof lib_notificationAccess,
+"lib/notificationChannels": typeof lib_notificationChannels,
+"lib/notificationPreferences": typeof lib_notificationPreferences,
+"lib/notificationRetention": typeof lib_notificationRetention,
+"lib/notificationTemplates": typeof lib_notificationTemplates,
+"lib/notificationTypes": typeof lib_notificationTypes,
+"lib/orderAccess": typeof lib_orderAccess,
+"lib/orderCancellation": typeof lib_orderCancellation,
+"lib/orderItemSnapshot": typeof lib_orderItemSnapshot,
+"lib/orderLifecycle": typeof lib_orderLifecycle,
+"lib/orderLogs": typeof lib_orderLogs,
+"lib/orderNotificationLogic": typeof lib_orderNotificationLogic,
+"lib/orderNumbers": typeof lib_orderNumbers,
+"lib/orderPricing": typeof lib_orderPricing,
+"lib/orderReceipt": typeof lib_orderReceipt,
+"lib/orderReorder": typeof lib_orderReorder,
+"lib/orderSms": typeof lib_orderSms,
+"lib/orderValidators": typeof lib_orderValidators,
+"lib/pagination": typeof lib_pagination,
+"lib/pricing": typeof lib_pricing,
+"lib/productActive": typeof lib_productActive,
+"lib/productImages": typeof lib_productImages,
+"lib/productSales": typeof lib_productSales,
+"lib/productValidators": typeof lib_productValidators,
+"lib/products": typeof lib_products,
+"lib/promotions/apply": typeof lib_promotions_apply,
+"lib/promotions/evaluate": typeof lib_promotions_evaluate,
+"lib/promotions/giftColor": typeof lib_promotions_giftColor,
+"lib/promotions/isActive": typeof lib_promotions_isActive,
+"lib/promotions/offerCopy": typeof lib_promotions_offerCopy,
+"lib/promotions/storefrontEnrich": typeof lib_promotions_storefrontEnrich,
+"lib/promotions/types": typeof lib_promotions_types,
+"lib/publicOrderDto": typeof lib_publicOrderDto,
+"lib/pushTokenSelection": typeof lib_pushTokenSelection,
+"lib/qrCodes": typeof lib_qrCodes,
+"lib/qrTokens": typeof lib_qrTokens,
+"lib/qrValidators": typeof lib_qrValidators,
+"lib/rag/config": typeof lib_rag_config,
+"lib/rag/content": typeof lib_rag_content,
+"lib/rag/embeddingVersion": typeof lib_rag_embeddingVersion,
+"lib/rag/generate": typeof lib_rag_generate,
+"lib/rag/grounding": typeof lib_rag_grounding,
+"lib/rag/pythonRagClient": typeof lib_rag_pythonRagClient,
+"lib/rag/schedule": typeof lib_rag_schedule,
+"lib/rag/sources": typeof lib_rag_sources,
+"lib/rateLimit": typeof lib_rateLimit,
+"lib/recommendations/behaviorEventPolicy": typeof lib_recommendations_behaviorEventPolicy,
+"lib/recommendations/behavioralExport": typeof lib_recommendations_behavioralExport,
+"lib/recommendations/catalogExport": typeof lib_recommendations_catalogExport,
+"lib/recommendations/constants": typeof lib_recommendations_constants,
+"lib/recommendations/contentRecommendationStore": typeof lib_recommendations_contentRecommendationStore,
+"lib/recommendations/contentSnapshot": typeof lib_recommendations_contentSnapshot,
+"lib/recommendations/identity": typeof lib_recommendations_identity,
+"lib/recommendations/mlStrategy": typeof lib_recommendations_mlStrategy,
+"lib/recommendations/profileBuilder": typeof lib_recommendations_profileBuilder,
+"lib/recommendations/pythonMlConfig": typeof lib_recommendations_pythonMlConfig,
+"lib/recommendations/pythonMlShadowFetch": typeof lib_recommendations_pythonMlShadowFetch,
+"lib/recommendations/pythonMlShadowSummary": typeof lib_recommendations_pythonMlShadowSummary,
+"lib/recommendations/recommendationIntelligence": typeof lib_recommendations_recommendationIntelligence,
+"lib/recommendations/scheduleRecommendationJob": typeof lib_recommendations_scheduleRecommendationJob,
+"lib/recommendations/scoring": typeof lib_recommendations_scoring,
+"lib/recommendations/sections": typeof lib_recommendations_sections,
+"lib/recommendations/settings": typeof lib_recommendations_settings,
+"lib/recommendations/shadowComparison": typeof lib_recommendations_shadowComparison,
+"lib/recommendations/validators": typeof lib_recommendations_validators,
+"lib/recommendations/verifiedIdentity": typeof lib_recommendations_verifiedIdentity,
+"lib/requireAdmin": typeof lib_requireAdmin,
+"lib/reviewAggregates": typeof lib_reviewAggregates,
+"lib/reviewAiQueue": typeof lib_reviewAiQueue,
+"lib/reviewAiQueueStats": typeof lib_reviewAiQueueStats,
+"lib/reviewAiQueueTypes": typeof lib_reviewAiQueueTypes,
+"lib/reviewCallErrors": typeof lib_reviewCallErrors,
+"lib/reviewCallValidators": typeof lib_reviewCallValidators,
+"lib/reviews": typeof lib_reviews,
+"lib/search/hybridRank": typeof lib_search_hybridRank,
+"lib/search/productTextMatch": typeof lib_search_productTextMatch,
+"lib/search/queryParser": typeof lib_search_queryParser,
+"lib/securityAnalytics": typeof lib_securityAnalytics,
+"lib/seedCredentials": typeof lib_seedCredentials,
+"lib/settingsHelpers": typeof lib_settingsHelpers,
+"lib/siteUrl": typeof lib_siteUrl,
+"lib/storeGuideContent": typeof lib_storeGuideContent,
+"lib/stripePaymentIntent": typeof lib_stripePaymentIntent,
+"lib/stripeRefund": typeof lib_stripeRefund,
+"lib/stripeRefundRetry": typeof lib_stripeRefundRetry,
+"lib/subscriberInterestDetection": typeof lib_subscriberInterestDetection,
+"lib/subscriberTokens": typeof lib_subscriberTokens,
+"lib/webhookEventClaim": typeof lib_webhookEventClaim,
+"migrations": typeof migrations,
+"migrations/backfillProductDeliveryWarranty": typeof migrations_backfillProductDeliveryWarranty,
+"migrations/backfillProductFinalPrice": typeof migrations_backfillProductFinalPrice,
+"mlBehavioralHttp": typeof mlBehavioralHttp,
+"mlCatalogHttp": typeof mlCatalogHttp,
+"mlops": typeof mlops,
+"mlopsActions": typeof mlopsActions,
+"n8nImageEmbeddingHttp": typeof n8nImageEmbeddingHttp,
+"n8nProductAiHttp": typeof n8nProductAiHttp,
+"n8nRecommendationHttp": typeof n8nRecommendationHttp,
+"n8nReviewAi": typeof n8nReviewAi,
+"n8nReviewAiHttp": typeof n8nReviewAiHttp,
+"n8nWebhooks": typeof n8nWebhooks,
+"notifications": typeof notifications,
+"orderNotifications": typeof orderNotifications,
+"orderPaymentRecovery": typeof orderPaymentRecovery,
+"orderReceipt": typeof orderReceipt,
+"orderRecovery": typeof orderRecovery,
+"orderTracking": typeof orderTracking,
+"orders": typeof orders,
+"productAi": typeof productAi,
+"productAiActions": typeof productAiActions,
+"productAiQueries": typeof productAiQueries,
+"productCategories": typeof productCategories,
+"productContentJobs": typeof productContentJobs,
+"productPricingQueries": typeof productPricingQueries,
+"productPricingRecommendations": typeof productPricingRecommendations,
+"productPromotions": typeof productPromotions,
+"productReviewInsights": typeof productReviewInsights,
+"productReviewSearch": typeof productReviewSearch,
+"productReviews": typeof productReviews,
+"productSearch": typeof productSearch,
+"productSearchQueries": typeof productSearchQueries,
+"products": typeof products,
+"providerHealthMutations": typeof providerHealthMutations,
+"pushNotifications": typeof pushNotifications,
+"pushNotificationsInternal": typeof pushNotificationsInternal,
+"pushTokens": typeof pushTokens,
+"pythonMlShadow": typeof pythonMlShadow,
+"qr": typeof qr,
+"rag": typeof rag,
+"ragData": typeof ragData,
+"ragIndexing": typeof ragIndexing,
+"recommendationActions": typeof recommendationActions,
+"recommendationAiActions": typeof recommendationAiActions,
+"recommendationAttribution": typeof recommendationAttribution,
+"recommendationMutations": typeof recommendationMutations,
+"recommendationQueries": typeof recommendationQueries,
+"recommendations": typeof recommendations,
+"reviewAi": typeof reviewAi,
+"reviewAiActions": typeof reviewAiActions,
+"reviewAiBackfill": typeof reviewAiBackfill,
+"reviewAiGenerations": typeof reviewAiGenerations,
+"reviewAiMetrics": typeof reviewAiMetrics,
+"reviewAiN8nActions": typeof reviewAiN8nActions,
+"reviewAiQueries": typeof reviewAiQueries,
+"reviewAiQueueActions": typeof reviewAiQueueActions,
+"reviewAiQueueMutations": typeof reviewAiQueueMutations,
+"reviewCallActions": typeof reviewCallActions,
+"reviewCalls": typeof reviewCalls,
+"securityAnalytics": typeof securityAnalytics,
+"seed": typeof seed,
+"server": typeof server,
+"settings": typeof settings,
+"sms": typeof sms,
+"stripe": typeof stripe,
+"stripeRefundAttempts": typeof stripeRefundAttempts,
+"stripeWebhookNode": typeof stripeWebhookNode,
+"stripeWebhooks": typeof stripeWebhooks,
+"subscriberInterests": typeof subscriberInterests,
+"subscribers": typeof subscribers,
+"vapi/admin": typeof vapi_admin,
+"vapi/analyticsHelpers": typeof vapi_analyticsHelpers,
+"vapi/assistantConfig": typeof vapi_assistantConfig,
+"vapi/browserSession": typeof vapi_browserSession,
+"vapi/bundleBuilder": typeof vapi_bundleBuilder,
+"vapi/dtos": typeof vapi_dtos,
+"vapi/lib/resolveProductReference": typeof vapi_lib_resolveProductReference,
+"vapi/lib/uiActions": typeof vapi_lib_uiActions,
+"vapi/logging": typeof vapi_logging,
+"vapi/promotionTools": typeof vapi_promotionTools,
+"vapi/reviewCallTools": typeof vapi_reviewCallTools,
+"vapi/shoppingCheckoutActions": typeof vapi_shoppingCheckoutActions,
+"vapi/shoppingTools": typeof vapi_shoppingTools,
+"vapi/tools": typeof vapi_tools,
+"vapi/voiceCartSync": typeof vapi_voiceCartSync,
+"vapi/voiceCheckout": typeof vapi_voiceCheckout,
+"vapi/voiceDeliveryHelpers": typeof vapi_voiceDeliveryHelpers,
+"vapi/voiceSearchActions": typeof vapi_voiceSearchActions,
+"vapi/voiceStorefrontSync": typeof vapi_voiceStorefrontSync,
+"vapi/webhook": typeof vapi_webhook,
+"visualProductSearch": typeof visualProductSearch,
+"visualProductSearchMutations": typeof visualProductSearchMutations,
+  }>;
+  export declare const api: FilterApi<typeof fullApi, FunctionReference<any, "public">>;
+  export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, "internal">>;
 
 export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;

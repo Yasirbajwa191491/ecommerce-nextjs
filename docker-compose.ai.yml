@@ -2,7 +2,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
@@ -11,12 +11,13 @@ services:
     build:
       context: ./services/review-ai-worker
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     environment:
       PORT: 3100
+      WORKER_HOST: 0.0.0.0
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_MODEL: llama3.2
-      AI_WORKER_SECRET: ${AI_WORKER_SECRET:-dev-secret}
+      AI_WORKER_SECRET: ${AI_WORKER_SECRET:?configure a unique secret of at least 32 characters}
       TRANSFORMERS_CACHE: /app/.cache
     volumes:
       - transformers_cache:/app/.cache

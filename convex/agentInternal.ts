@@ -1,6 +1,8 @@
+import { serializeAgentPayload } from "./lib/agents/serialization";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internal, components } from "./_generated/api";
+import { isAdminRole } from "./lib/authRoles";
+import { internalMutation, internalQuery } from "./server";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { claimLease } from "./lib/agents/stateMachine";
@@ -283,8 +285,8 @@ export const commitAdvance = internalMutation({
         stepIndex: step.stepIndex,
         kind: step.kind,
         toolName: step.toolName,
-        argumentsJson: step.arguments ? JSON.stringify(step.arguments).slice(0, 8_000) : undefined,
-        resultJson: step.result ? JSON.stringify(step.result).slice(0, 10_240) : undefined,
+        argumentsJson: step.arguments ? serializeAgentPayload(step.arguments) : undefined,
+        resultJson: step.result ? serializeAgentPayload(step.result) : undefined,
         status: step.status,
         summary: step.summary.slice(0, 500),
         risk: step.risk,
@@ -316,7 +318,7 @@ export const commitAdvance = internalMutation({
           stepIndex: approval.stepIndex,
           toolName: approval.toolName,
           argumentsHash: approval.argumentsHash,
-          argumentsJson: JSON.stringify(approval.arguments).slice(0, 8_000),
+          argumentsJson: serializeAgentPayload(approval.arguments),
           summary: approval.summary.slice(0, 500),
           risk: "draft_writing",
           status: approval.status,
@@ -350,8 +352,8 @@ export const commitAdvance = internalMutation({
       plannerCalls: args.plannerCalls,
       replanCount: args.replanCount,
       approvalStatus: args.approvalStatus as AgentRunRecord["approvalStatus"],
-      recommendationsJson: args.recommendationsJson.slice(0, 4_000),
-      reportJson: args.reportJson?.slice(0, 12_000),
+      recommendationsJson: serializeAgentPayload(JSON.parse(args.recommendationsJson)),
+      reportJson: args.reportJson ? serializeAgentPayload(JSON.parse(args.reportJson)) : undefined,
       failureReason: args.failureReason?.slice(0, 300),
       errorCategory: args.errorCategory,
       completedAt: args.completedAt,
@@ -416,6 +418,8 @@ function escapeHtml(value: string): string {
 export const createApprovedDraft = internalMutation({
   args: {
     runId: v.id("agentRuns"),
+    expectedVersion: v.number(),
+    leaseOwner: v.string(),
     idempotencyKey: v.string(),
     title: v.string(),
     subject: v.string(),
@@ -427,6 +431,23 @@ export const createApprovedDraft = internalMutation({
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId);
     if (!run) return { available: false as const, reason: "missing_run" };
+    const nowFence = Date.now();
+    if (isTerminal(run.status) || run.expiresAt <= nowFence || run.version !== args.expectedVersion ||
+        run.leaseOwner !== args.leaseOwner || !run.leaseUntil || run.leaseUntil <= nowFence) {
+      return { available: false as const, reason: "stale_execution" };
+    }
+    const actor = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "user", where: [{ field: "_id", value: run.adminUserId }],
+    });
+    if (!actor || actor.banned || !isAdminRole(actor.role)) return { available: false as const, reason: "unauthorized" };
+    for (const key of ["enable_agentic_ai", "enable_agent_draft_creation"]) {
+      const flag = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).unique();
+      if (flag?.value !== "true") return { available: false as const, reason: "disabled" };
+    }
+    if (process.env.AGENTIC_AI_ENABLED !== "true" || process.env.AGENTIC_AI_DRAFT_WRITES_ENABLED !== "true") {
+      return { available: false as const, reason: "disabled" };
+    }
+
     if (!run.draftWritesEnabled) return { available: false as const, reason: "draft_writes_disabled" };
     const approvals = await ctx.db
       .query("agentApprovals")
@@ -472,7 +493,7 @@ export const createApprovedDraft = internalMutation({
           now: Date.now(),
         })
       : { ok: false as const, error: "approval_required" };
-    if (run.requireDraftApproval && !argumentsMatch.ok) {
+    if (!argumentsMatch.ok) {
       return { available: false as const, reason: argumentsMatch.error };
     }
     const existing = await ctx.db

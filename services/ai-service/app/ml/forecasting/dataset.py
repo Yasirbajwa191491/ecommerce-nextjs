@@ -79,6 +79,7 @@ def aggregate_order_lines(lines: list[dict[str, object]]) -> pd.DataFrame:
         .agg(
             units=("units", "sum"),
             order_count=("order_id", "nunique"),
+            order_ids=("order_id", lambda values: tuple(sorted(set(values)))),
             revenue=("revenue", "sum"),
             active=("active", "max"),
         )
@@ -153,6 +154,9 @@ def calendar_frame(
                     "date": day.isoformat(),
                     "units": units,
                     "order_count": orders,
+                    "order_ids": indexed[day].order_ids
+                    if day in indexed and hasattr(indexed[day], "order_ids")
+                    else frozenset(),
                     "revenue": revenue,
                     "observation": observation,
                     "inventory_state": inventory,
@@ -196,6 +200,10 @@ def aggregate_scopes(products: pd.DataFrame) -> pd.DataFrame:
     if products.empty:
         return products
     usable = products[products["observation"].isin(OBSERVED_TARGETS)].copy()
+    if "order_ids" not in usable:
+        raise ValueError(
+            "Distinct scope order counts require order identities; rebuild from order lines"
+        )
     frames = [products]
     for entity_type, keys in (
         ("category", ["category_id", "date"]),
@@ -204,7 +212,19 @@ def aggregate_scopes(products: pd.DataFrame) -> pd.DataFrame:
         if usable.empty:
             continue
         grouped = usable.groupby(keys, as_index=False).agg(
-            units=("units", "sum"), order_count=("order_count", "sum")
+            units=("units", "sum"),
+            revenue=("revenue", "sum"),
+            order_count=(
+                "order_ids",
+                lambda values: len(
+                    set().union(
+                        *[
+                            v if isinstance(v, (set, frozenset, tuple, list)) else set()
+                            for v in values
+                        ]
+                    )
+                ),
+            ),
         )
         if entity_type == "category":
             grouped["entity_type"] = "category"
@@ -213,7 +233,6 @@ def aggregate_scopes(products: pd.DataFrame) -> pd.DataFrame:
             grouped["entity_type"] = "store"
             grouped["entity_id"] = "store"
             grouped["category_id"] = "store"
-        grouped["revenue"] = float("nan")
         grouped["observation"] = "sale"
         grouped["inventory_state"] = "unknown"
         grouped["active"] = True

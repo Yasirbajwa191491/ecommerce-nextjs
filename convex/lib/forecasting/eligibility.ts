@@ -35,7 +35,8 @@ export function fillSalesDays(
   end: string
 ): DailyPoint[] {
   const points: DailyPoint[] = [];
-  const cursor = new Date(`${start}T00:00:00.000Z`);
+  const latestStart = new Date(`${end}T00:00:00.000Z`).getTime() - 179 * 86_400_000;
+  const cursor = new Date(Math.max(new Date(`${start}T00:00:00.000Z`).getTime(), latestStart));
   const last = new Date(`${end}T00:00:00.000Z`);
   let guard = 0;
   while (cursor.getTime() <= last.getTime() && guard < 180) {

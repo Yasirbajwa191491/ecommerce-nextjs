@@ -3,14 +3,14 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "./_generated/server";
+} from "./server";
 import { ConvexError, v } from "convex/values";
 import { components } from "./_generated/api";
 import { authComponent, createAuth } from "./betterAuth/auth";
 import { getAuthUserOrNull } from "./lib/requireAdmin";
 import { isAdminRole, isSuperAdminRole, normalizeRole } from "./lib/authRoles";
 
-async function superAdminExistsInDb(
+export async function superAdminExistsInDb(
   ctx: { runQuery: QueryCtx["runQuery"] } | { runQuery: MutationCtx["runQuery"] }
 ): Promise<boolean> {
   let cursor: string | null = null;
@@ -97,7 +97,9 @@ export const getSessionInfo = query({
 export const hasSuperAdmin = query({
   args: {},
   handler: async (ctx) => {
-    return await superAdminExistsInDb(ctx);
+    await getAuthUserOrNull(ctx);
+    // Do not disclose whether an uninitialized deployment can be claimed.
+    return true;
   },
 });
 
@@ -194,35 +196,10 @@ export const changeMyPassword = mutation({
   },
 });
 
-/** First signed-in user can become super admin when none exists yet (e.g. seed not run). */
+/** Initialization is operator-only: internal.seed.seedSuperAdmin. */
 export const bootstrapSuperAdmin = mutation({
   args: {},
-  handler: async (ctx) => {
-    const user = await getAuthUserOrNull(ctx);
-    if (!user) {
-      throw new ConvexError("Not authenticated");
-    }
-    if (isAdminRole(user.role)) {
-      return { ok: true, role: normalizeRole(user.role), bootstrapped: false };
-    }
-    if (await superAdminExistsInDb(ctx)) {
-      throw new ConvexError(
-        `Admin access required. Your account role is "${normalizeRole(user.role)}". Sign in with a super admin account or ask one to assign you the admin role.`
-      );
-    }
-
-    await ctx.runMutation(components.betterAuth.adapter.updateOne, {
-      input: {
-        model: "user",
-        where: [{ field: "_id", value: user._id }],
-        update: {
-          role: "superAdmin",
-          emailVerified: true,
-          updatedAt: Date.now(),
-        },
-      },
-    });
-
-    return { ok: true, role: "superAdmin", bootstrapped: true };
+  handler: async () => {
+    throw new ConvexError("Administrator initialization requires the operator setup command.");
   },
 });

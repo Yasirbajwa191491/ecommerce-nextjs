@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./server";
 import { requireAdmin } from "./lib/requireAdmin";
 import {
   PYTHON_ML_RECOMMENDATION_STRATEGY_KEY,
@@ -250,29 +250,16 @@ export const exportPurchasePage = internalQuery({
     isDone: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const page = await ctx.db.query("orders").withIndex("by_created_at").order("desc").paginate({
-      numItems: Math.min(20, Math.max(1, Math.floor(args.limit))),
-      cursor: args.cursor,
-    });
+    if (process.env.BEHAVIORAL_EXPORT_ENABLED !== "true") throw new Error("Behavioral export disabled");
+    const page = await ctx.db.query("orderItems").paginate({ numItems: Math.min(50, Math.max(1, Math.floor(args.limit))), cursor: args.cursor });
     const events = [];
-    for (const order of page.page) {
-      if (!isAuthoritativePurchase(order)) continue;
-      const items = await ctx.db
-        .query("orderItems")
-        .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-        .take(40);
-      for (const item of items) {
-        events.push({
-          eventId: `${order._id}:${item.productId}`,
-          eventType: "purchase",
-          productId: item.productId,
-          visitorSeed: `purchase-order:${order._id}`,
-          occurredAt: order.paidAt ?? order.createdAt,
-          placement: null,
-          orderSeed: order._id,
-          purchaseAuthoritative: true,
-        });
-      }
+    for (const item of page.page) {
+      if (item.isPromotionGift) continue;
+      const order = await ctx.db.get(item.orderId);
+      if (!order || !isAuthoritativePurchase(order)) continue;
+      events.push({ eventId: `${order._id}:${item.productId}`, eventType: "purchase", productId: item.productId,
+        visitorSeed: `purchase-order:${order._id}`, occurredAt: order.paidAt ?? order.createdAt,
+        placement: null, orderSeed: order._id, purchaseAuthoritative: true });
     }
     return { events, continueCursor: page.continueCursor, isDone: page.isDone };
   },

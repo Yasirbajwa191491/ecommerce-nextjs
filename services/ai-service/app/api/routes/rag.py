@@ -8,7 +8,13 @@ from app.rag.dataset import load_synthetic_dataset
 from app.rag.evaluation import run_evaluation
 from app.rag.index_store import RagIndex
 from app.rag.schemas import EvaluateRequest, IndexRequest, PrepareRequest, RetrieveRequest
-from app.rag.service import RagServiceError, index_documents, index_file, prepare_documents, retrieve_context
+from app.rag.service import (
+    RagServiceError,
+    index_documents,
+    index_file,
+    prepare_documents,
+    retrieve_context,
+)
 
 router = APIRouter(
     prefix="/internal/rag",

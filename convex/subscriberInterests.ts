@@ -5,7 +5,7 @@ import {
   internalQuery,
   mutation,
   query,
-} from "./_generated/server";
+} from "./server";
 import { requireAdmin } from "./lib/requireAdmin";
 import {
   buildAllSegments,

@@ -1,3 +1,4 @@
+import { exactBoundedRead } from "./boundedRead";
 import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -35,12 +36,11 @@ export async function fetchOrdersInRange(
   ctx: QueryCtx,
   range: DateRange
 ): Promise<Doc<"orders">[]> {
-  return await ctx.db
+  return await exactBoundedRead(ctx.db
     .query("orders")
     .withIndex("by_created_at", (q) =>
       q.gte("createdAt", range.from).lte("createdAt", range.to)
-    )
-    .collect();
+    ));
 }
 
 function sumPaidRevenue(orders: Doc<"orders">[]): number {
@@ -209,10 +209,9 @@ export async function aggregateTopProducts(
     const chunk = paidOrders.slice(i, i + chunkSize);
     const itemGroups = await Promise.all(
       chunk.map((order) =>
-        ctx.db
+        exactBoundedRead(ctx.db
           .query("orderItems")
-          .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-          .collect()
+          .withIndex("by_order_id", (q) => q.eq("orderId", order._id)))
       )
     );
 
@@ -280,10 +279,9 @@ export async function aggregateTopCategories(
     const chunk = paidOrders.slice(i, i + chunkSize);
     const itemGroups = await Promise.all(
       chunk.map((order) =>
-        ctx.db
+        exactBoundedRead(ctx.db
           .query("orderItems")
-          .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
-          .collect()
+          .withIndex("by_order_id", (q) => q.eq("orderId", order._id)))
       )
     );
 

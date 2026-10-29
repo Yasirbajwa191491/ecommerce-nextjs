@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation } from "./server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/requireAdmin";
 import {

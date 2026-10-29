@@ -1,3 +1,4 @@
+import { OrderAccessRecovery } from "@/components/OrderAccessRecovery";
 import { StyleSheet, View } from "react-native";
 
 import { ScreenContainer } from "@/components/layout/ScreenContainer";
@@ -12,6 +13,7 @@ export default function TrackScreen() {
     <ScreenContainer>
       <View style={[styles.container, rootStyle]}>
         <Header title="Orders" subtitle="Track a delivery or find your orders" showSearch={false} showCart={false} showNotifications showScan showSettings />
+        <OrderAccessRecovery />
         <TrackOrderView />
       </View>
     </ScreenContainer>

@@ -39,12 +39,13 @@ export const getRecommendations = action({
       }
     }
 
+    const identity = await ctx.runQuery(internal.recommendationQueries.resolveVerifiedIdentity, { visitorId: args.visitorId, customerEmail: args.customerEmail });
     const result = await ctx.runAction(
       internal.recommendationActions.computeSectionRecommendations,
       {
         sectionType: args.sectionType,
-        visitorId: args.visitorId,
-        customerEmail: args.customerEmail,
+        visitorId: identity.identityType === "visitor" ? identity.identityKey : args.visitorId,
+        customerEmail: identity.customerKey,
         productId: args.productId,
         cartProductIds: args.cartProductIds,
         recentlyViewedProductIds: args.recentlyViewedProductIds,

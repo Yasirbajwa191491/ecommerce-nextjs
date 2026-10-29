@@ -1,3 +1,5 @@
+import { readLimitedText } from "@/lib/limited-body";
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { embedImage } from "@/lib/ai/image-embedding/service";
 import { getProviderHealthSnapshot } from "@/lib/ai/image-embedding/health";
@@ -7,9 +9,9 @@ export const maxDuration = 60;
 
 function validateSecret(request: NextRequest): boolean {
   const secret = process.env.IMAGE_EMBED_API_SECRET?.trim();
-  if (!secret) return true;
+  if (!secret || secret.length < 32) return false;
   const header = request.headers.get("x-image-embed-secret");
-  return header === secret;
+  return Boolean(header && Buffer.byteLength(header) === Buffer.byteLength(secret) && timingSafeEqual(Buffer.from(header), Buffer.from(secret)));
 }
 
 export async function POST(request: NextRequest) {
@@ -18,7 +20,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as {
+    if (Number(request.headers.get("content-length") ?? 0) > 7_100_000) return NextResponse.json({ error: "Request too large" }, { status: 413 });
+    const body = JSON.parse(await readLimitedText(request, 7_100_000)) as {
       imageUrl?: string;
       imageBase64?: string;
       mimeType?: string;
@@ -34,8 +37,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Image embedding failed";
+    void error;
+    const message = "Image embedding unavailable";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

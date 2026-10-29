@@ -1,3 +1,4 @@
+import { verifiedRecommendationIdentity } from "./lib/recommendations/verifiedIdentity";
 import { v } from "convex/values";
 import { internalQuery, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -72,9 +73,7 @@ export const listWishlistProductIds = query({
   },
   returns: v.array(v.id("products")),
   handler: async (ctx, args) => {
-    const customerKey = args.customerEmail?.trim().toLowerCase();
-    const identityType = customerKey ? ("customer" as const) : ("visitor" as const);
-    const identityKey = customerKey ?? args.visitorId;
+    const { identityType, identityKey } = await verifiedRecommendationIdentity(ctx, args.visitorId, args.customerEmail);
 
     const items = await ctx.db
       .query("wishlistItems")
@@ -461,4 +460,9 @@ export const getFallbackProductIds = internalQuery({
 
     return [...new Set([...ids, ...best])].slice(0, args.limit);
   },
+});
+
+export const resolveVerifiedIdentity = internalQuery({
+  args: { visitorId: v.string(), customerEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => verifiedRecommendationIdentity(ctx, args.visitorId, args.customerEmail),
 });

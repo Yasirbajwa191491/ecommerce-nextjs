@@ -219,16 +219,16 @@ export const publish = action({
     const names = new Map<string, { name: string; categoryId: string; stock: number | null }>();
     const buckets = new Map<string, Map<string, { units: number; orders: Set<string> }>>();
     let cursor: string | null = null;
-    for (let page = 0; page < 8; page += 1) {
+    const cutoff = Date.now();
+    while (true) {
       const batch: {
         blocked: boolean;
         lines: SalesLine[];
         isDone: boolean;
         continueCursor: string | null;
-      } = await ctx.runQuery(internal.forecastData.pageSalesLines, { cursor });
+      } = await ctx.runQuery(internal.forecastData.pageSalesLines, { cursor, cutoff });
       if (batch.blocked) throw new Error("Demand forecast export gate is off");
       for (const line of batch.lines) {
-        if (!line.active) continue;
         names.set(line.productId, {
           name: line.productName,
           categoryId: line.categoryId,
@@ -246,12 +246,12 @@ export const publish = action({
     }
     const horizon = parseForecastHorizon(settings[DEMAND_FORECAST_HORIZON_DAYS_KEY]);
     const strategy = parseForecastStrategy(settings[DEMAND_FORECAST_MODEL_STRATEGY_KEY]);
-    const productSeries = [...buckets.entries()].slice(0, 12).map(([productId, days]) => {
+    const productSeries = [...buckets.entries()].map(([productId, days]) => {
       const dates = [...days.keys()].sort();
       const points = fillSalesDays(
         days,
         dates[0] ?? new Date().toISOString().slice(0, 10),
-        dates.at(-1) ?? dates[0] ?? new Date().toISOString().slice(0, 10)
+        new Date(cutoff).toISOString().slice(0, 10)
       );
       const meta = names.get(productId);
       return {
@@ -269,21 +269,27 @@ export const publish = action({
     });
     const categoryUnits = new Map<string, Map<string, number>>();
     const storeUnits = new Map<string, number>();
+    const categoryOrders = new Map<string, Set<string>>(), storeOrders = new Map<string, Set<string>>();
     for (const item of productSeries) {
       for (const point of item.points) {
+        const orderIds = buckets.get(item.entity_id)?.get(point.date)?.orders ?? new Set<string>();
+        const categoryKey = `${item.category_id}:${point.date}`;
+        const catOrders = categoryOrders.get(categoryKey) ?? new Set<string>(), allOrders = storeOrders.get(point.date) ?? new Set<string>();
+        for (const id of orderIds) { catOrders.add(id); allOrders.add(id); }
+        categoryOrders.set(categoryKey, catOrders); storeOrders.set(point.date, allOrders);
         const categoryDays = categoryUnits.get(item.category_id) ?? new Map<string, number>();
         categoryDays.set(point.date, (categoryDays.get(point.date) ?? 0) + point.units);
         categoryUnits.set(item.category_id, categoryDays);
         storeUnits.set(point.date, (storeUnits.get(point.date) ?? 0) + point.units);
       }
     }
-    const categorySeries = [...categoryUnits.entries()].slice(0, 6).map(([categoryId, days]) => ({
+    const categorySeries = [...categoryUnits.entries()].map(([categoryId, days]) => ({
       entity_type: "category" as const,
       entity_id: categoryId || "unknown",
       category_id: categoryId,
       points: [...days.entries()]
         .sort(([left], [right]) => left.localeCompare(right))
-        .map(([date, units]) => ({ date, units, observation: "sale" as const, order_count: 0 })),
+        .map(([date, units]) => ({ date, units, observation: "sale" as const, order_count: categoryOrders.get(`${categoryId}:${date}`)?.size ?? 0 })),
     }));
     const series = [
       ...productSeries,
@@ -294,20 +300,17 @@ export const publish = action({
         category_id: "store",
         points: [...storeUnits.entries()]
           .sort(([left], [right]) => left.localeCompare(right))
-          .map(([date, units]) => ({ date, units, observation: "sale" as const, order_count: 0 })),
+          .map(([date, units]) => ({ date, units, observation: "sale" as const, order_count: storeOrders.get(date)?.size ?? 0 })),
       },
     ];
     if (productSeries.length === 0) throw new Error("No eligible paid sales were found");
-    const forecast = await postRag<ForecastBody>(
-      "/api/v1/internal/forecast/batch",
-      {
-        horizon_days: horizon,
-        strategy,
-        series,
-        lead_time_days: args.leadTimeDays,
-      },
-      env
-    );
+    const forecast: ForecastBody = { forecasts: [], insights: [] };
+    for (const batch of chunk(series, 20)) {
+      const result = await postRag<ForecastBody>("/api/v1/internal/forecast/batch", { horizon_days: horizon, strategy, series: batch, lead_time_days: args.leadTimeDays }, env);
+      forecast.forecasts!.push(...(result.forecasts ?? [])); forecast.insights!.push(...(result.insights ?? []));
+      forecast.model_version = result.model_version; forecast.data_cutoff = result.data_cutoff; forecast.trained_at = result.trained_at;
+      forecast.dataset_label = result.dataset_label; forecast.statistically_weak = result.statistically_weak;
+    }
     if (forecast.model_version && forecast.model_version !== FORECAST_MODEL_VERSION) {
       throw new Error("Forecast model version is not compatible");
     }
@@ -352,9 +355,11 @@ export const publish = action({
       modelName: item.model,
       confidence: item.confidence,
     }));
+    let batchIndex = 0;
     for (const group of chunk(points, 40)) {
       await ctx.runMutation(internal.forecastData.addForecastRows, {
         publicationId,
+        batchKey: `points:${batchIndex++}`,
         points: group,
         insights: [],
       });
@@ -363,9 +368,11 @@ export const publish = action({
       await ctx.runMutation(internal.forecastData.addForecastRows, {
         publicationId,
         points: [],
+        batchKey: `insights:${batchIndex++}`,
         insights: group,
       });
     }
+    await ctx.runMutation(internal.forecastData.finishPublication, { publicationId, pointCount: points.length, insightCount: insights.length });
     return { publicationId, products: productSeries.length };
   },
 });

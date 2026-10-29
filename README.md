@@ -37,7 +37,7 @@ npx convex env set TWILIO_PHONE_NUMBER "+1xxxxxxxxxx"
 # Optional on paid accounts for longer messages: npx convex env set TWILIO_SMS_MAX_CHARS "320"
 # Lets admin Settings → Email From sync RESEND_FROM_EMAIL automatically
 npx convex deployment token create local-dev --save-env
-npm run seed            # categories, products, super admin
+npm run seed            # categories, products, operator-configured super admin
 npm run dev             # Next.js + Convex
 ```
 
@@ -67,9 +67,8 @@ Open http://localhost:3000/home
 ### Admin (Better Auth)
 
 - Login: http://localhost:3000/admin/login
-- After seed: `yasir.sohail@savari.io` / `12345678` (dev only)
 - Routes: `/admin/products`, `/admin/product-categories`, `/admin/users`
-- Unverified emails receive an OTP via Resend (or console fallback without `RESEND_API_KEY`)
+- Unverified emails receive an OTP via configured Resend. Missing mail configuration fails closed; OTPs are never logged.
 
 ## Realtime
 
@@ -148,3 +147,7 @@ npx convex env set VAPI_REVIEW_ASSISTANT_ID "<assistant-id-from-script-output>"
 3. **Dev testing only:** use a test order with a **US** customer phone (`+1…`) matching your caller ID country.
 
 Twilio trial accounts may still only call [verified numbers](https://www.twilio.com/docs/messaging/guides/how-to-use-your-free-trial-account).
+
+### Security setup and remediation
+
+See [the remediation report](docs/security/PHASES-1-8-REMEDIATION-REPORT.md) for operator-only admin initialization, required shared secrets, guest-session and order-recovery changes, deployment prerequisites, and unresolved dependency advisories. Public first-user admin promotion is disabled. Do not reuse historical development credentials.

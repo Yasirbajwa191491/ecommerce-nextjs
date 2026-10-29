@@ -1,3 +1,4 @@
+import { OrderAccessRecovery } from "@/components/OrderAccessRecovery";
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useQuery } from "convex/react";
 import { useLocalSearchParams } from "expo-router";
@@ -222,11 +223,11 @@ export default function OrderDetailScreen() {
             <Text style={styles.loadingText}>Loading order…</Text>
           </View>
         ) : notFound || !order ? (
-          <EmptyState
+          <View><OrderAccessRecovery orderNumber={orderNumber ?? undefined} /><EmptyState
             icon="receipt-outline"
             title="Order not found"
-            description="We couldn't find an order with those details. Please check your information and try again."
-          />
+            description="Use your saved order link or verify your email to continue."
+          /></View>
         ) : (
           <ScrollView
             contentContainerStyle={[

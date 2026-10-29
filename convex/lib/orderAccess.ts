@@ -9,9 +9,7 @@ export function generateOrderAccessToken(): string {
   if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
     crypto.getRandomValues(bytes);
   } else {
-    for (let i = 0; i < bytes.length; i += 1) {
-      bytes[i] = Math.floor(Math.random() * 256);
-    }
+    throw new Error("Secure randomness is unavailable");
   }
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -30,10 +28,9 @@ export function assertOrderAccess(
     throw new ConvexError("Order verification is required");
   }
 
-  const emailOk = email ? emailsMatch(order.customerEmail, email) : false;
   const tokenOk = token && order.accessToken ? token === order.accessToken : false;
 
-  if (emailOk || tokenOk) return;
+  if (tokenOk) return;
   throw new ConvexError("Order verification failed");
 }
 

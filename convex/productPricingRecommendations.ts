@@ -4,7 +4,7 @@ import {
   internalQuery,
   mutation,
   query,
-} from "./_generated/server";
+} from "./server";
 import { paginationOptsValidator } from "convex/server";
 import { paginateArray } from "./lib/pagination";
 import { requireAdmin } from "./lib/requireAdmin";

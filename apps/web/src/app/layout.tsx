@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import "@fontsource-variable/inter";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ShadcnProviders } from "@/providers/ShadcnProviders";
@@ -7,11 +7,6 @@ import { ConvexClientProvider } from "@/providers/ConvexClientProvider";
 import { getToken } from "@/lib/auth-server";
 import { STORE_NAME } from "@/lib/site";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: `${STORE_NAME} | Premium Online Shopping`,
@@ -25,10 +20,10 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(inter.variable, "font-sans", "light")}
+      className={cn("font-sans", "light")}
       suppressHydrationWarning
     >
-      <body className={`${inter.className} antialiased`}>
+      <body className="font-sans antialiased">
         <ConvexClientProvider initialToken={token}>
           <ShadcnProviders>{children}</ShadcnProviders>
         </ConvexClientProvider>

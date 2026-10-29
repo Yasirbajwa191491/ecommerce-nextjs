@@ -112,7 +112,7 @@ export function toPublicOrderDetail(
     items: items.map(toPublicOrderItem),
     promotions: promotions.map(toPublicOrderPromotion),
     statusHistory: statusHistory.map((entry) => omitUndefined(entry)),
-    accessToken: verified ? order.accessToken : undefined,
+    accessToken: undefined,
     verified,
   });
 }

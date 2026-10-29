@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./server";
 import { isProductActive } from "./lib/productActive";
 import { enrichProducts } from "./lib/products";
 import { getPrimaryImageUrl } from "./lib/productImages";

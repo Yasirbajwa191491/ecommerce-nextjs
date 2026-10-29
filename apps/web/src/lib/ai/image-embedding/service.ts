@@ -1,3 +1,5 @@
+import { downloadImage, validateImageBytes } from "./secure-input";
+import sharp from "sharp";
 import {
   CLIP_MODEL_DEFAULT,
   IMAGE_EMBEDDING_CLIP_DIMENSIONS,
@@ -16,7 +18,6 @@ import type {
 } from "./types";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const FETCH_TIMEOUT_MS = 20_000;
 
 type FeatureExtractor = (
   input: unknown,
@@ -72,31 +73,21 @@ async function loadImage(
 
   if (request.imageBase64) {
     const mime = request.mimeType ?? "image/jpeg";
+    if (request.imageBase64.length > 7_000_000) throw new Error("Image too large");
     const binary = Buffer.from(request.imageBase64, "base64");
     if (binary.byteLength === 0 || binary.byteLength > MAX_IMAGE_BYTES) {
       throw new Error("Image size is invalid");
     }
+    validateImageBytes(binary, mime);
+    await sharp(binary, { limitInputPixels: 16_000_000 }).metadata();
     const blob = new Blob([binary], { type: mime });
     return RawImage.fromBlob(blob);
   }
 
   if (request.imageUrl) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    try {
-      const response = await fetch(request.imageUrl, { signal: controller.signal });
-      if (!response.ok) throw new Error("Failed to fetch image");
-      const buffer = await response.arrayBuffer();
-      if (buffer.byteLength === 0 || buffer.byteLength > MAX_IMAGE_BYTES) {
-        throw new Error("Image size is invalid");
-      }
-      const contentType =
-        response.headers.get("content-type")?.split(";")[0] ?? "image/jpeg";
-      const blob = new Blob([buffer], { type: contentType });
-      return RawImage.fromBlob(blob);
-    } finally {
-      clearTimeout(timeout);
-    }
+    const { bytes, mime } = await downloadImage(request.imageUrl);
+    await sharp(bytes, { limitInputPixels: 16_000_000 }).metadata();
+    return RawImage.fromBlob(new Blob([new Uint8Array(bytes)], { type: mime }));
   }
 
   throw new Error("imageUrl or imageBase64 is required");
@@ -129,7 +120,9 @@ async function embedWithProvider(
   return { embedding, provider, model, dimensions };
 }
 
-export async function embedImage(
+let inferenceCount = 0;
+
+async function embedImageImpl(
   request: ImageEmbedRequest
 ): Promise<ImageEmbeddingResult> {
   const image = await loadImage(request);
@@ -151,4 +144,10 @@ export async function embedImage(
   }
 
   throw lastError ?? new Error("All image embedding providers failed");
+}
+
+export async function embedImage(request: ImageEmbedRequest): Promise<ImageEmbeddingResult> {
+  if (inferenceCount >= 2) throw new Error("Image service is busy");
+  inferenceCount++;
+  try { return await embedImageImpl(request); } finally { inferenceCount--; }
 }

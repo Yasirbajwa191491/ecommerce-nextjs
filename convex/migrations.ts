@@ -1,5 +1,5 @@
 import type { Id } from "./_generated/dataModel";
-import { internalMutation } from "./_generated/server";
+import { internalMutation } from "./server";
 import { slugify } from "./lib/products";
 
 /** Migrates legacy products (string category / externalId) to productCategories + categoryId. */

@@ -1,3 +1,6 @@
+import { convex } from "./convex";
+import { api } from "./convex-api";
+import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
 
@@ -52,7 +55,14 @@ export async function getVisitorId(): Promise<string> {
   if (visitorInFlight) return visitorInFlight;
 
   visitorInFlight = (async () => {
-    const id = await getOrCreateStoredId(VISITOR_ID_KEY);
+    const secure = await SecureStore.isAvailableAsync();
+    let id = secure ? await SecureStore.getItemAsync("shop-guest-capability-v2") : await AsyncStorage.getItem("shop-guest-capability-v2");
+    if (!id) {
+      id = await convex.mutation(api.guestIdentity.issue, {});
+      if (secure) await SecureStore.setItemAsync("shop-guest-capability-v2", id);
+      else await AsyncStorage.setItem("shop-guest-capability-v2", id);
+    }
+    await AsyncStorage.setItem(VISITOR_ID_KEY, id);
     cachedVisitorId = id;
     emit();
     return id;

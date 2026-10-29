@@ -1,3 +1,5 @@
+"use client";
+import { getCachedVisitorId } from "@/lib/visitor-id";
 import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -16,9 +18,6 @@ import {
   type RagAskView,
 } from "@ecommerce/shared";
 
-function sessionKey() {
-  return `mob-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export function RagShoppingAssistant() {
   const status = useQuery(api.rag.publicStatus, {});
@@ -28,7 +27,6 @@ export function RagShoppingAssistant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [result, setResult] = useState<RagAskView | null>(null);
-  const [session] = useState(sessionKey);
 
   if (!ragAssistantVisible(status?.enabled)) return null;
   const view = ragAssistantState({ enabled: true, loading, error, result });
@@ -40,7 +38,7 @@ export function RagShoppingAssistant() {
     setLoading(true);
     setError(false);
     try {
-      setResult(await ask({ question: trimmed, sessionKey: session }));
+      setResult(await ask({ question: trimmed, sessionKey: getCachedVisitorId() }));
     } catch {
       setError(true);
     } finally {
