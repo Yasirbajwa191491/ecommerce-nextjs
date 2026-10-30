@@ -1,4 +1,7 @@
 const path = require("path");
+const { configureMetroImageMetadataSafety, validateMetroAssetResolution } = require("./metro-image-safety.cjs");
+configureMetroImageMetadataSafety();
+
 const { getDefaultConfig } = require("expo/metro-config");
 
 const projectRoot = __dirname;
@@ -31,11 +34,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     };
   }
 
-  if (defaultResolveRequest) {
-    return defaultResolveRequest(context, moduleName, platform);
-  }
-
-  return context.resolveRequest(context, moduleName, platform);
+  const resolution = defaultResolveRequest
+    ? defaultResolveRequest(context, moduleName, platform)
+    : context.resolveRequest(context, moduleName, platform);
+  validateMetroAssetResolution(resolution);
+  return resolution;
 };
 
 module.exports = config;

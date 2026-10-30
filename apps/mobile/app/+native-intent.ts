@@ -1,5 +1,6 @@
 import { handleURLCallback } from "@stripe/stripe-react-native";
 
+import { isSafeIncomingLink, isStripeReturnLink } from "@/lib/incoming-link-security";
 import { rewriteLegacyTrackOrderPath } from "@/lib/qr-deep-links";
 
 /**
@@ -12,13 +13,14 @@ export async function redirectSystemPath({
   path: string;
   initial: boolean;
 }): Promise<string | null> {
+  if (!isSafeIncomingLink(path, { siteUrl: process.env.EXPO_PUBLIC_SITE_URL, development: __DEV__ })) return "/";
   try {
-    if (path.includes("stripe-redirect") && (await handleURLCallback(path))) {
+    if (isStripeReturnLink(path) && (await handleURLCallback(path))) {
       return null;
     }
   } catch {
     // Stripe native module is unavailable in Expo Go; fall through to normal routing.
   }
 
-  return rewriteLegacyTrackOrderPath(path);
+  try { return rewriteLegacyTrackOrderPath(path); } catch { return "/"; }
 }

@@ -293,3 +293,7 @@ The Torch base-release advisory IDs above are separately addressed by the CPU pa
 - `services/review-ai-worker/src/transformers.js`
 - `services/review-ai-worker/src/transformers.test.js`
 - `vitest.config.ts`
+
+## Final auth/Expo follow-up — 2026-10-30
+
+See [the final remediation report](PHASES-1-8-FINAL-DEPENDENCY-REMEDIATION.md). Current inventory baseline is `c4acbac`; prior comparisons remain in Git at that revision. No package versions or lockfiles changed in this follow-up. Supported unused-auth-path disabling, native incoming-URI guards and Metro metadata/header checks add independent mitigations. An image-size 2.0.3 override was reverted because a second Metro asset loader passes filenames, not buffers; new tests preserve both contracts. All 20 root package matches stay open (one critical, four high, fifteen low), and worker remains zero. Compatible auth/SDK parser upgrades still require upstream/owner work. No builds, deployments, live migrations, provider operations or embedding namespace changes occurred. Owner native/build/staging verification remains pending.

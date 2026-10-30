@@ -51,11 +51,19 @@ export const authComponent = createClient<DataModel, typeof schema>(
   }
 );
 
+// These flows are not configured by this application. Keep core/plugin routes closed
+// without changing email/password, OTP, session, Convex token or administrator APIs.
+export const disabledUnusedAuthPaths = [
+  "/sign-in/social", "/link-social", "/device/code", "/device/token",
+  "/device/approve", "/device/deny", "/oauth-proxy-callback",
+];
+
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
     appName: "Ecommerce Store Admin",
     baseURL: process.env.SITE_URL,
     secret: process.env.BETTER_AUTH_SECRET,
+    disabledPaths: [...disabledUnusedAuthPaths],
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
