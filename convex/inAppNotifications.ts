@@ -1,7 +1,7 @@
 import { v, ConvexError } from "convex/values";
 import { internalMutation, mutation, query } from "./server";
 import type { Id } from "./_generated/dataModel";
-import { assertNotificationCustomerAccess } from "./lib/notificationAccess";
+import { assertNotificationCustomerAccess, hasNotificationCustomerAccess } from "./lib/notificationAccess";
 import {
   deriveInAppNotificationEventKey,
   upsertInAppNotificationForEvent,
@@ -11,6 +11,13 @@ import { orderNotificationEventValidator } from "./lib/notificationTypes";
 import { hasOrderAccess } from "./lib/orderAccess";
 import { normalizeEmail } from "./lib/publicOrderDto";
 import { paginationOptsValidator } from "convex/server";
+
+// A non-sensitive gate lets clients avoid subscribing to protected history before recovery.
+export const checkCustomerAccess = query({
+  args: { customerEmail: v.string(), visitorId: v.optional(v.string()), accessToken: v.optional(v.string()) },
+  returns: v.boolean(),
+  handler: (ctx, args) => hasNotificationCustomerAccess(ctx, args),
+});
 
 const UNREAD_COUNT_CAP = 99;
 const PURGE_BATCH_SIZE = 100;

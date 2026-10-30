@@ -71,6 +71,7 @@ describe("administrator and guest ownership regressions", () => {
   await call(createChallenge, ctx, { email, orderNumber: "ORDER", challengeHash: "fixture-hash", otpHash: "correct-code-hash" });
   expect(await call(consume, ctx, { challengeHash: "fixture-hash", otpHash: "wrong" })).toBeNull();
   const result = await call<{accessToken: string}>(consume, ctx, { challengeHash: "fixture-hash", otpHash: "correct-code-hash" });
+  expect(ctx.db.tables.orders[0].emailOwnershipVerifiedAt).toBeGreaterThan(0);
   expect(result.accessToken).toMatch(/^[a-f0-9]{64}$/); expect(await call(consume, ctx, { challengeHash: "fixture-hash", otpHash: "correct-code-hash" })).toBeNull();
   await ctx.db.insert("orderRecoveryChallenges", { challengeHash: "expired", expiresAt: 0, attempts: 0, consumed: false });
   expect(await call(consume, ctx, { challengeHash: "expired", otpHash: "any" })).toBeNull();

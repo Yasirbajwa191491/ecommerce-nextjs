@@ -7,6 +7,7 @@ import {
 export type PushEnrollmentCredentials = {
   customerEmail: string;
   accessToken?: string;
+  mailboxVerified?: boolean;
 };
 
 /** Resolve the email + order proof used to register this device for push. */
@@ -18,6 +19,7 @@ export async function resolvePushEnrollmentCredentials(): Promise<PushEnrollment
   ]);
 
   const customerEmail =
+    (enrollmentProof?.mailboxVerified && enrollmentProof.accessToken ? enrollmentProof.email.trim().toLowerCase() : undefined) ??
     customer?.email?.trim().toLowerCase() ??
     enrollmentProof?.email?.trim().toLowerCase() ??
     lastOrder.email?.trim().toLowerCase() ??
@@ -35,5 +37,6 @@ export async function resolvePushEnrollmentCredentials(): Promise<PushEnrollment
   return {
     customerEmail,
     accessToken,
+    ...(enrollmentProof?.mailboxVerified && enrollmentProof.email.trim().toLowerCase() === customerEmail ? { mailboxVerified: true } : {}),
   };
 }

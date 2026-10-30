@@ -8,7 +8,7 @@ import {
 } from "@/lib/checkout-customer-storage";
 import { api } from "@/lib/convex-api";
 import { useVisitorId } from "@/lib/visitor-id";
-import { usePushNotificationContextOptional } from "@/providers/PushNotificationProvider";
+
 
 export type NotificationAccessProof = {
   customerEmail: string;
@@ -18,7 +18,6 @@ export type NotificationAccessProof = {
 
 export function useNotificationCenterAccess() {
   const visitorId = useVisitorId();
-  const push = usePushNotificationContextOptional();
   const [proof, setProof] = useState<NotificationAccessProof | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -30,6 +29,7 @@ export function useNotificationCenterAccess() {
     ]);
 
     const customerEmail =
+      (enrollmentProof?.mailboxVerified ? enrollmentProof.email.trim().toLowerCase() : undefined) ??
       customer?.email?.trim().toLowerCase() ??
       enrollmentProof?.email?.trim().toLowerCase() ??
       lastOrder.email?.trim().toLowerCase() ??
@@ -68,11 +68,13 @@ export function useNotificationCenterAccess() {
     setReady(false);
   }, []);
 
-  const pushVerified =
-    push?.permission === "granted" && Boolean(push.expoPushToken);
-  const verified = Boolean(proof && (proof.accessToken || pushVerified));
+  const accessAllowed = useQuery(
+    api.inAppNotifications.checkCustomerAccess,
+    ready && proof ? proof : "skip"
+  );
+  const verified = accessAllowed === true;
 
-  return { proof, ready, verified, refresh, clearProof };
+  return { proof, ready: ready && (!proof || accessAllowed !== undefined), verified, refresh, clearProof };
 }
 
 export function useUnreadNotificationCount() {

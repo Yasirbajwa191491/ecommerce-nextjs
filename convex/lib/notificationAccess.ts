@@ -1,3 +1,4 @@
+import { getAuthUserOrNull } from "./requireAdmin";
 import { requireGuest } from "./guestIdentity";
 import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -16,29 +17,26 @@ export async function assertNotificationCustomerAccess(
   const accessToken = args.accessToken?.trim();
   const visitorId = args.visitorId?.trim();
 
+  const user = await getAuthUserOrNull(ctx);
+  if (user?.emailVerified && !user.banned && emailsMatch(user.email, customerEmail)) return;
+
   if (accessToken) {
     const order = await ctx.db
       .query("orders")
       .withIndex("by_access_token", (q) => q.eq("accessToken", accessToken))
       .unique();
 
-    if (order && emailsMatch(order.customerEmail, customerEmail)) {
+    if (order && (order.emailOwnershipVerifiedAt ?? 0) > 0 && emailsMatch(order.customerEmail, customerEmail)) {
       return;
     }
   }
 
   if (visitorId) {
     await requireGuest(ctx, visitorId);
-    const activeTokens = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_customer_email_active", (q) =>
-        q.eq("customerEmail", customerEmail).eq("isActive", true)
-      )
-      .collect();
-
-    if (activeTokens.some((token) => token.visitorId === visitorId)) {
-      return;
-    }
+    const binding = await ctx.db.query("pushTokens")
+      .withIndex("by_visitor_email_active", q => q.eq("visitorId", visitorId).eq("customerEmail", customerEmail).eq("isActive", true).eq("emailVerified", true))
+      .first();
+    if (binding) return;
   }
 
   throw new ConvexError("Notification access could not be verified.");

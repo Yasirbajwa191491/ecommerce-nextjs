@@ -51,7 +51,7 @@ export const consume = internalMutation({
     if (!order || order.customerEmail.trim().toLowerCase() !== row.email) return null;
     await ctx.db.patch(row._id, { consumed: true });
     const accessToken = secureToken();
-    await ctx.db.patch(order._id, { accessToken });
+    await ctx.db.patch(order._id, { accessToken, emailOwnershipVerifiedAt: Date.now() });
     return { orderNumber: order.orderNumber, accessToken };
   },
 });

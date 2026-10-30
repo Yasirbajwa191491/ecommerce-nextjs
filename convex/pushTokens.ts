@@ -1,3 +1,5 @@
+import { requireGuest } from "./lib/guestIdentity";
+import { assertNotificationCustomerAccess } from "./lib/notificationAccess";
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./server";
 import type { MutationCtx } from "./_generated/server";
@@ -16,45 +18,15 @@ function isValidExpoPushToken(token: string): boolean {
 
 async function assertPushEmailAuthorization(
   ctx: MutationCtx,
-  args: {
-    customerEmail: string;
-    visitorId: string;
-    expoPushToken: string;
-    accessToken?: string;
-  }
+  args: { customerEmail: string; visitorId: string; expoPushToken: string; accessToken?: string }
 ): Promise<void> {
-  const existingByToken = await ctx.db
-    .query("pushTokens")
-    .withIndex("by_expo_push_token", (q) => q.eq("expoPushToken", args.expoPushToken))
-    .unique();
-
-  if (existingByToken && emailsMatch(existingByToken.customerEmail, args.customerEmail)) {
-    return;
-  }
-
-  const visitorTokens = await ctx.db
-    .query("pushTokens")
-    .withIndex("by_visitor_id", (q) => q.eq("visitorId", args.visitorId))
-    .collect();
-
-  if (visitorTokens.some((token) => emailsMatch(token.customerEmail, args.customerEmail))) {
-    return;
-  }
-
-  const accessToken = args.accessToken?.trim();
-  if (!accessToken) {
-    throw new ConvexError(
-      "Verify a recent order before enabling push notifications for this email."
-    );
-  }
-
-  const order = await ctx.db
-    .query("orders")
-    .withIndex("by_access_token", (q) => q.eq("accessToken", accessToken))
-    .unique();
-
-  if (!order || !emailsMatch(order.customerEmail, args.customerEmail)) {
-    throw new ConvexError("Push notification registration could not be verified.");
+  const existing = await ctx.db.query("pushTokens").withIndex("by_expo_push_token", q => q.eq("expoPushToken", args.expoPushToken)).unique();
+  if (existing && existing.visitorId !== args.visitorId && !emailsMatch(existing.customerEmail, args.customerEmail)) throw new ConvexError("Push token is registered to another guest session.");
+  // Account-wide notification access requires mailbox proof, never checkout contact data alone.
+  try { await assertNotificationCustomerAccess(ctx, args); }
+  catch (error) {
+    if (error instanceof ConvexError) throw new ConvexError("Use the emailed secure order-recovery code to verify this email before enabling account-wide notifications.");
+    throw error;
   }
 }
 
@@ -88,6 +60,7 @@ export const registerPushToken = mutation({
       throw new ConvexError("Invalid Expo push token format.");
     }
 
+    await requireGuest(ctx, visitorId);
     await assertPushEmailAuthorization(ctx, {
       customerEmail,
       visitorId,
@@ -107,23 +80,14 @@ export const registerPushToken = mutation({
       executionEnvironment &&
       isStandalonePushEnvironment(executionEnvironment)
     ) {
-      const visitorTokens = await ctx.db
-        .query("pushTokens")
-        .withIndex("by_visitor_id", (q) => q.eq("visitorId", visitorId))
-        .collect();
-
-      for (const token of visitorTokens) {
-        if (
-          token.isActive &&
-          token.expoPushToken !== expoPushToken &&
-          token.executionEnvironment === "storeClient"
-        ) {
-          await ctx.db.patch(token._id, {
-            isActive: false,
-            updatedAt: now,
-          });
+      let cursor: string | null = null;
+      do {
+        const page = await ctx.db.query("pushTokens").withIndex("by_visitor_id", q => q.eq("visitorId", visitorId)).paginate({ numItems: 25, cursor });
+        for (const token of page.page) {
+          if (token.isActive && token.expoPushToken !== expoPushToken && token.executionEnvironment === "storeClient") await ctx.db.patch(token._id, { isActive: false, updatedAt: now });
         }
-      }
+        cursor = page.isDone ? null : page.continueCursor;
+      } while (cursor);
     }
 
     if (existing) {
@@ -135,6 +99,7 @@ export const registerPushToken = mutation({
         appVersion: args.appVersion?.trim() || undefined,
         executionEnvironment,
         isActive: true,
+        emailVerified: true,
         lastSeenAt: now,
         updatedAt: now,
       });
@@ -150,6 +115,7 @@ export const registerPushToken = mutation({
       appVersion: args.appVersion?.trim() || undefined,
       executionEnvironment,
       isActive: true,
+      emailVerified: true,
       lastSeenAt: now,
       createdAt: now,
       updatedAt: now,
@@ -167,6 +133,7 @@ export const touchPushToken = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireGuest(ctx, args.visitorId ?? "");
     const expoPushToken = args.expoPushToken.trim();
     const existing = await ctx.db
       .query("pushTokens")
@@ -177,13 +144,10 @@ export const touchPushToken = mutation({
       return null;
     }
 
+    if (existing.visitorId !== args.visitorId || (args.customerEmail && !emailsMatch(existing.customerEmail, args.customerEmail))) throw new ConvexError("Push token ownership could not be verified.");
+    if (!existing.isActive) return null;
     const now = Date.now();
-    await ctx.db.patch(existing._id, {
-      lastSeenAt: now,
-      updatedAt: now,
-      isActive: true,
-      ...(args.visitorId ? { visitorId: args.visitorId.trim() } : {}),
-    });
+    await ctx.db.patch(existing._id, { lastSeenAt: now, updatedAt: now });
 
     return null;
   },
@@ -200,21 +164,15 @@ export const deactivatePushTokensForVisitor = mutation({
       return 0;
     }
 
-    const tokens = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_visitor_id", (q) => q.eq("visitorId", visitorId))
-      .collect();
-
-    const now = Date.now();
-    let count = 0;
-    for (const token of tokens) {
-      if (!token.isActive) continue;
-      await ctx.db.patch(token._id, {
-        isActive: false,
-        updatedAt: now,
-      });
-      count += 1;
-    }
+    await requireGuest(ctx, visitorId);
+    const now = Date.now(); let count = 0; let cursor: string | null = null;
+    do {
+      const page = await ctx.db.query("pushTokens").withIndex("by_visitor_id", q => q.eq("visitorId", visitorId)).paginate({ numItems: 25, cursor });
+      for (const token of page.page) {
+        if (token.isActive) { await ctx.db.patch(token._id, { isActive: false, updatedAt: now }); count++; }
+      }
+      cursor = page.isDone ? null : page.continueCursor;
+    } while (cursor);
 
     return count;
   },
@@ -223,6 +181,7 @@ export const deactivatePushTokensForVisitor = mutation({
 export const deactivatePushToken = mutation({
   args: {
     expoPushToken: v.string(),
+    visitorId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -235,6 +194,8 @@ export const deactivatePushToken = mutation({
       return null;
     }
 
+    await requireGuest(ctx, args.visitorId ?? "");
+    if (existing.visitorId !== args.visitorId) throw new ConvexError("Push token ownership could not be verified.");
     await ctx.db.patch(existing._id, {
       isActive: false,
       updatedAt: Date.now(),
@@ -247,12 +208,15 @@ export const deactivatePushToken = mutation({
 export const syncNotificationPreferences = mutation({
   args: {
     customerEmail: v.string(),
+    visitorId: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
     orderUpdates: v.boolean(),
     paymentUpdates: v.boolean(),
     promotionalNotifications: v.boolean(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await assertNotificationCustomerAccess(ctx, args);
     await upsertNotificationPreferences(ctx, {
       customerEmail: args.customerEmail,
       orderUpdates: args.orderUpdates,
@@ -266,8 +230,11 @@ export const syncNotificationPreferences = mutation({
 export const getNotificationPreferences = query({
   args: {
     customerEmail: v.string(),
+    visitorId: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await assertNotificationCustomerAccess(ctx, args);
     const normalized = normalizeEmail(args.customerEmail);
     const row = await ctx.db
       .query("customerNotificationPreferences")

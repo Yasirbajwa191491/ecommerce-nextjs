@@ -178,15 +178,18 @@ export async function clearPendingStripeOrder(): Promise<void> {
 
 const PUSH_ENROLLMENT_EMAIL_KEY = "pushEnrollmentEmail";
 const PUSH_ENROLLMENT_ACCESS_TOKEN_KEY = "pushEnrollmentAccessToken";
+const PUSH_ENROLLMENT_VERIFIED_KEY = "pushEnrollmentMailboxVerified";
 
 export async function savePushEnrollmentProof(
   email: string,
-  accessToken?: string
+  accessToken?: string,
+  mailboxVerified = false
 ): Promise<void> {
   const trimmedEmail = email.trim().toLowerCase();
   if (!trimmedEmail) return;
 
   await setSecureItem(PUSH_ENROLLMENT_EMAIL_KEY, trimmedEmail);
+  await setSecureItem(PUSH_ENROLLMENT_VERIFIED_KEY, mailboxVerified && Boolean(accessToken?.trim()) ? "true" : "false");
   if (accessToken?.trim()) {
     await setSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY, accessToken.trim());
   } else {
@@ -197,13 +200,15 @@ export async function savePushEnrollmentProof(
 export async function loadPushEnrollmentProof(): Promise<{
   email: string;
   accessToken: string | null;
+  mailboxVerified?: boolean;
 } | null> {
   const [email, accessToken] = await Promise.all([
     getSecureItem(PUSH_ENROLLMENT_EMAIL_KEY),
     getSecureItem(PUSH_ENROLLMENT_ACCESS_TOKEN_KEY),
   ]);
   if (!email) return null;
-  return { email, accessToken };
+  const mailboxVerified = await getSecureItem(PUSH_ENROLLMENT_VERIFIED_KEY);
+  return { email, accessToken, ...(mailboxVerified === "true" ? { mailboxVerified: true } : {}) };
 }
 
 export function createIdempotencyKey(): string {

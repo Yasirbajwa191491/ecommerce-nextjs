@@ -67,3 +67,11 @@ export function maskCustomerName(name: string): string {
   if (parts.length === 0) return "Customer";
   return parts[0] ?? "Customer";
 }
+
+/** Checkout contact data is not account ownership. Only a verified session may bind an order. */
+export function verifiedCheckoutUserId(
+  user: { _id: string; email: string; emailVerified: boolean; banned?: boolean | null } | null,
+  customerEmail: string
+): string | undefined {
+  return user?.emailVerified && !user.banned && emailsMatch(user.email, customerEmail) ? user._id : undefined;
+}

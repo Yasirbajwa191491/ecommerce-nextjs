@@ -6,18 +6,18 @@ Native storefront for the Yasir ecommerce monorepo. Shares the Convex backend wi
 
 ## Setup
 
-The mobile app uses the **same production Convex** as the live website.
+Choose the target environment first. Production mobile uses the live website’s Convex backend; staging/preview must use an isolated staging deployment. The EAS preview profile selects the `preview` environment and no longer embeds the production URL. Configure its public variables in EAS before building.
 
 `apps/mobile/.env` should contain:
 
 ```
-EXPO_PUBLIC_CONVEX_URL=https://hip-salamander-864.convex.cloud
-EXPO_PUBLIC_SITE_URL=https://your-production-domain.com
+EXPO_PUBLIC_CONVEX_URL=<selected-environment-convex-cloud-url>
+EXPO_PUBLIC_SITE_URL=<matching-web-origin>
 ```
 
 `EXPO_PUBLIC_SITE_URL` must match the public HTTPS storefront (same host as Convex `SITE_URL`). It enables App Link intent filters in `app.config.ts`. Without it, QR codes still work as **HTTPS web links**; they will not auto-open the app until App Links / Universal Links are configured and a native build is installed.
 
-Do **not** run `npm run mobile:env` for production — that copies the local/dev Convex URL from `.env.local`.
+Do **not** run `npm run mobile:env` for staging/preview or production — that copies the local/dev Convex URL from `.env.local`.
 
 Install dependencies from the repo root:
 
@@ -71,3 +71,5 @@ If `expo start` fails with `TypeError: fetch failed`, dev scripts use `--offline
 - Canonical QR: `https://<EXPO_PUBLIC_SITE_URL>/qr/<type>/<token>` — **HTTPS web-compatible**
 - App Links / Universal Links: configured in `app.config.ts` when `EXPO_PUBLIC_SITE_URL` is set; requires hosted `.well-known` files + native rebuild + device verification before claiming they work
 - Receipt download/share embeds a secure tracking QR — details in [`docs/mobile-security-qr-receipts.md`](./docs/mobile-security-qr-receipts.md)
+
+For owner-only builds, environment isolation, security checks and rollback, see [the final integration readiness report](../../docs/security/PHASES-1-8-FINAL-INTEGRATION-READINESS.md). No device build or live staging validation is implied by unit tests.

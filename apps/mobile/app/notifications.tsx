@@ -172,7 +172,7 @@ export default function NotificationsScreen() {
         <Header title="Notifications" showSearch={false} showBack showCart={false} />
         <EmptyState
           title="Verify your access"
-          description="Place an order or enable push notifications so we can securely show your notification history."
+          description="Use the secure code emailed during order recovery to verify your email and view notification history."
           actionLabel="Track an order"
           onAction={() => router.push("/(tabs)/track")}
         />

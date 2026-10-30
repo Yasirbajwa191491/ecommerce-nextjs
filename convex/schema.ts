@@ -418,6 +418,7 @@ export default defineSchema({
     stripePaymentIntentId: v.optional(v.string()),
     stripeTransactionId: v.optional(v.string()),
     accessToken: v.optional(v.string()),
+    emailOwnershipVerifiedAt: v.optional(v.number()),
     idempotencyKey: v.string(),
     paidAt: v.optional(v.number()),
     /**
@@ -1215,13 +1216,15 @@ export default defineSchema({
     appVersion: v.optional(v.string()),
     executionEnvironment: v.optional(v.string()),
     isActive: v.boolean(),
+    emailVerified: v.optional(v.boolean()),
     lastSeenAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_expo_push_token", ["expoPushToken"])
-    .index("by_customer_email_active", ["customerEmail", "isActive"])
-    .index("by_visitor_id", ["visitorId"]),
+    .index("by_customer_email_active", ["customerEmail", "isActive", "emailVerified"])
+    .index("by_visitor_id", ["visitorId"])
+    .index("by_visitor_email_active", ["visitorId", "customerEmail", "isActive", "emailVerified"]),
 
   customerNotificationPreferences: defineTable({
     customerEmail: v.string(),

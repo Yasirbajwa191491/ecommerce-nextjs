@@ -16,7 +16,7 @@ Phase 7 adds authenticated `/api/v1/internal/mlops/*` routes for artifact valida
 Next.js Web ──┐
               ├── Convex Backend ── existing AI providers and review-ai-worker
 Expo Mobile ──┘         │
-                        │ future authenticated server-side call (not wired)
+                        │ authenticated, feature-gated Phases 2–7 calls
                         ▼
                 services/ai-service
 ```
@@ -191,3 +191,7 @@ Deployed environments should use `APP_ENV=production`. JSON logs are used in pro
 - The Docker image installs CPU PyTorch because `neural-v1` inference needs it. Train on the host with `uv`. The image does not copy datasets or generated weights.
 
 Learning notes: [docs/python-pytorch-neural-recommendations.md](../../docs/python-pytorch-neural-recommendations.md).
+
+## Owner staging verification
+
+See [the final integration readiness checklist](../../docs/security/PHASES-1-8-FINAL-INTEGRATION-READINESS.md) for isolated staging credentials, owner-only build/deployment commands, flags, artifact/vector compatibility and rollback requirements. This source review does not certify a live deployment or real model parity.

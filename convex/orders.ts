@@ -1,3 +1,4 @@
+import { verifiedCheckoutUserId } from "./lib/orderAccess";
 import { getAuthUserOrNull } from "./lib/requireAdmin";
 import { requireGuest } from "./lib/guestIdentity";
 import { v, ConvexError } from "convex/values";
@@ -483,6 +484,7 @@ async function createCashOrderHandler(
     const orderId = await ctx.db.insert("orders", {
       orderNumber: generateOrderNumber(now),
       customerEmail: args.customer.email.trim().toLowerCase(),
+      userId: verifiedCheckoutUserId(await getAuthUserOrNull(ctx), args.customer.email),
       customerName: args.customer.fullName.trim(),
       customerPhone: args.customer.phone.trim(),
       customerPhoneNormalized: normalizePhone(args.customer.phone),
@@ -727,6 +729,7 @@ export const createPendingStripeOrder = internalMutation({
     const orderId = await ctx.db.insert("orders", {
       orderNumber: generateOrderNumber(now),
       customerEmail: args.customer.email.trim().toLowerCase(),
+      userId: verifiedCheckoutUserId(await getAuthUserOrNull(ctx), args.customer.email),
       customerName: args.customer.fullName.trim(),
       customerPhone: args.customer.phone.trim(),
       customerPhoneNormalized: normalizePhone(args.customer.phone),

@@ -32,18 +32,15 @@ export const getActiveTokensForEmail = internalQuery({
     customerEmail: v.string(),
   },
   handler: async (ctx, args) => {
-    const tokens = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_customer_email_active", (q) =>
-        q.eq("customerEmail", args.customerEmail).eq("isActive", true)
-      )
-      .collect();
-
-    return tokens.map((token) => ({
-      _id: token._id,
-      expoPushToken: token.expoPushToken,
-      platform: token.platform,
-      executionEnvironment: token.executionEnvironment,
-    }));
+    const tokens = [];
+    let cursor: string | null = null;
+    do {
+      const page = await ctx.db.query("pushTokens")
+        .withIndex("by_customer_email_active", q => q.eq("customerEmail", args.customerEmail.trim().toLowerCase()).eq("isActive", true).eq("emailVerified", true))
+        .paginate({ numItems: 25, cursor });
+      tokens.push(...page.page.map(token => ({ _id: token._id, expoPushToken: token.expoPushToken, platform: token.platform, executionEnvironment: token.executionEnvironment })));
+      cursor = page.isDone ? null : page.continueCursor;
+    } while (cursor);
+    return tokens;
   },
 });

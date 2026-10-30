@@ -55,3 +55,10 @@ describe("resolvePushEnrollmentCredentials", () => {
     });
   });
 });
+
+it("prefers explicitly recovered mailbox proof over stale checkout contact data", async () => {
+ vi.mocked(loadCheckoutCustomer).mockResolvedValue({ fullName:"Fixture", email:"stale@example.invalid", phone:"0", address:"Fixture" });
+ vi.mocked(loadPushEnrollmentProof).mockResolvedValue({ email:"verified@example.invalid", accessToken:"synthetic-recovered-capability", mailboxVerified:true });
+ vi.mocked(loadLastOrderInfo).mockResolvedValue({ orderNumber:"FIXTURE", email:"stale@example.invalid", accessToken:"stale-fixture" });
+ expect(await resolvePushEnrollmentCredentials()).toEqual({ customerEmail:"verified@example.invalid", accessToken:"synthetic-recovered-capability", mailboxVerified:true });
+});

@@ -80,8 +80,26 @@ export function validateRagGrounding(input: {
   const reasons: string[] = [];
   if (LEAK.test(cleaned) || ORDER_CLAIM.test(cleaned)) reasons.push("unsafe_output");
   if (new Set(citedFacts.map(f => f.productId)).size > 1 && /\$|€|£|\b(?:USD|EUR|GBP|PKR|price|costs?|stock|available|availability)\b/i.test(cleaned)) reasons.push("ambiguous_product_claim");
-  const currency = cleaned.match(/\b(USD|EUR|GBP|PKR)\b/i)?.[1]?.toUpperCase() ?? (cleaned.includes("€") ? "EUR" : cleaned.includes("£") ? "GBP" : cleaned.includes("$") ? "USD" : undefined);
-  if (currency && citedFacts.some(fact => (fact.currency ?? "USD") !== currency)) reasons.push("currency_mismatch");
+  const currencies = new Set(Array.from(cleaned.matchAll(/\b(USD|EUR|GBP|PKR)\b/gi), match => match[1].toUpperCase()));
+  if (cleaned.includes("$")) currencies.add("USD");
+  if (cleaned.includes("€")) currencies.add("EUR");
+  if (cleaned.includes("£")) currencies.add("GBP");
+  if (currencies.size > 1 || [...currencies].some(currency => citedFacts.some(fact => (fact.currency ?? "USD").toUpperCase() !== currency))) reasons.push("currency_mismatch");
+  const citedProducts = new Set(citedFacts.map(fact => fact.productId));
+  if (/[$€£]|\b(?:USD|EUR|GBP|PKR|price|costs?|stock|available|availability)\b/i.test(cleaned)) {
+    const text = cleaned.toLowerCase();
+    const namedUncited = input.facts.some(fact => {
+      const name = fact.name?.replace(/\s+/g, " ").trim().toLowerCase();
+      if (!name || name.length < 3 || citedProducts.has(fact.productId)) return false;
+      let at = text.indexOf(name);
+      while (at >= 0) {
+        if (!/[\p{L}\p{N}]/u.test(text[at - 1] ?? "") && !/[\p{L}\p{N}]/u.test(text[at + name.length] ?? "")) return true;
+        at = text.indexOf(name, at + name.length);
+      }
+      return false;
+    });
+    if (namedUncited) reasons.push("product_citation_mismatch");
+  }
   const amounts = moneyValues(cleaned);
   const priceConflict =
     amounts.length > 0 &&
@@ -114,7 +132,7 @@ export function validateRagGrounding(input: {
   }
   if (
     input.mode === "standard" &&
-    (fatal.has("ambiguous_product_claim") || fatal.has("currency_mismatch") || fatal.has("unsafe_output") ||
+    (fatal.has("product_citation_mismatch") || fatal.has("ambiguous_product_claim") || fatal.has("currency_mismatch") || fatal.has("unsafe_output") ||
       fatal.has("unsupported") ||
       fatal.has("price_mismatch") ||
       fatal.has("stock_mismatch"))

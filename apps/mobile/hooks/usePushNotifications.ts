@@ -17,7 +17,7 @@ import {
   getPushPlatform,
   requestNotificationPermission,
 } from "@/lib/push-notifications";
-import { useVisitorId } from "@/lib/visitor-id";
+import { getVisitorId, useVisitorId } from "@/lib/visitor-id";
 
 type PushSyncState = {
   permission: "undetermined" | "granted" | "denied" | "unavailable";
@@ -115,7 +115,7 @@ export function usePushNotifications() {
           const failureMessage = !visitorId
             ? "This device is still initializing. Close and reopen the app, then try again."
             : !customerEmail
-              ? "Complete checkout once so we can link order alerts to your account."
+              ? "Complete checkout and verify your email through secure order recovery to link account-wide alerts."
               : formatPushRegistrationError(
                   "Could not obtain a push token."
                 );
@@ -195,14 +195,19 @@ export function usePushNotifications() {
         return;
       }
 
+      // Anonymous local preferences remain usable before an order or enrollment exists.
+      if (!enrollment?.mailboxVerified && !state.registered) return;
+      const owner = visitorId || await getVisitorId();
       await syncNotificationPreferences({
         customerEmail,
+        visitorId: owner,
+        accessToken: enrollment?.accessToken,
         orderUpdates: preferences.orderUpdates,
         paymentUpdates: preferences.paymentUpdates,
         promotionalNotifications: preferences.promotionalNotifications,
       });
     },
-    [syncNotificationPreferences]
+    [syncNotificationPreferences, visitorId, state.registered]
   );
 
   const deactivateCurrentDevice = useCallback(async () => {

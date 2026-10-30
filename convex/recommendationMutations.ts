@@ -1,3 +1,5 @@
+import { components } from "./_generated/api";
+import { verifiedCheckoutUserId } from "./lib/orderAccess";
 import { requireGuest } from "./lib/guestIdentity";
 import { checkAndIncrementRateLimit } from "./lib/rateLimit";
 import { verifiedRecommendationIdentity } from "./lib/recommendations/verifiedIdentity";
@@ -518,36 +520,28 @@ export const recordPurchaseBehaviorForOrder = internalMutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) return null;
 
-    const customerKey = order.customerEmail.trim().toLowerCase();
-    const items = await ctx.db
-      .query("orderItems")
-      .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
-      .collect();
-
-    const now = Date.now();
-    for (const item of items) {
-      const sourceKey = purchaseSourceKey(args.orderId, item.productId);
-      const existing = await ctx.db
-        .query("customerBehaviorEvents")
-        .withIndex("by_source_key", (q) => q.eq("sourceKey", sourceKey))
-        .unique();
-      if (existing) continue;
-      await ctx.db.insert("customerBehaviorEvents", {
-        eventType: "purchase",
-        visitorId: args.visitorId ?? `order:${args.orderId}`,
-        customerKey,
-        productId: item.productId,
-        weight: 1.0,
-        occurredAt: now,
-        sourceKey,
-      });
-    }
-
-    if (args.visitorId) {
-      await mergeVisitorIntoCustomer(ctx, args.visitorId, customerKey, customerKey);
-    } else {
-      await rebuildProfileFromSignals(ctx, "customer", customerKey);
-    }
+    if (order.paymentStatus !== "paid" || ["cancelled", "refunded", "failed", "expired"].includes(order.status)) return null;
+    const actor = order.userId ? await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "user", where: [{ field: "_id", value: order.userId }],
+    }) : null;
+    const customerKey = actor && verifiedCheckoutUserId(actor, order.customerEmail) === order.userId ? actor.email.trim().toLowerCase() : undefined;
+    const visitorKey = args.visitorId ? await requireGuest(ctx, args.visitorId) : `order:${args.orderId}`;
+    const now = Date.now(); let cursor: string | null = null;
+    do {
+      const page = await ctx.db.query("orderItems").withIndex("by_order_id", q => q.eq("orderId", args.orderId)).paginate({ numItems: 25, cursor });
+      for (const item of page.page) {
+        if (item.isPromotionGift) continue;
+        const sourceKey = purchaseSourceKey(args.orderId, item.productId);
+        const existing = await ctx.db.query("customerBehaviorEvents").withIndex("by_source_key", q => q.eq("sourceKey", sourceKey)).unique();
+        if (!existing) await ctx.db.insert("customerBehaviorEvents", {
+          eventType: "purchase", visitorId: visitorKey, customerKey,
+          productId: item.productId, weight: 1.0, occurredAt: now, sourceKey,
+        });
+      }
+      cursor = page.isDone ? null : page.continueCursor;
+    } while (cursor);
+    if (customerKey && args.visitorId) await mergeVisitorIntoCustomer(ctx, visitorKey, customerKey, customerKey);
+    else await rebuildProfileFromSignals(ctx, customerKey ? "customer" : "visitor", customerKey ?? visitorKey);
 
     return null;
   },
