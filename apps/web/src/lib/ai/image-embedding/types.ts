@@ -4,6 +4,7 @@ export type ImageEmbeddingResult = {
   embedding: number[];
   provider: ImageEmbeddingProvider;
   model: string;
+  version: string;
   dimensions: number;
 };
 

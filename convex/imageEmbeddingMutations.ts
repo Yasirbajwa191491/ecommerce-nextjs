@@ -52,11 +52,13 @@ export const applyImageEmbedding = internalMutation({
         throw new Error("Invalid SigLIP embedding dimensions");
       }
       patch.imageEmbedding = args.embedding;
+      patch.imageEmbeddingClip = undefined;
     } else {
       if (args.embedding.length !== IMAGE_EMBEDDING_CLIP_DIMENSIONS) {
         throw new Error("Invalid CLIP embedding dimensions");
       }
       patch.imageEmbeddingClip = args.embedding;
+      patch.imageEmbedding = undefined;
     }
 
     await ctx.db.patch(args.productId, patch);

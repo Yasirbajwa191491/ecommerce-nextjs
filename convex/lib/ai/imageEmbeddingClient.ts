@@ -1,3 +1,4 @@
+import { IMAGE_EMBEDDING_VERSION } from "./constants";
 import { getSiteUrl } from "../siteUrl";
 
 export type ImageEmbedApiResponse = {
@@ -5,6 +6,7 @@ export type ImageEmbedApiResponse = {
   provider: "siglip" | "clip";
   model: string;
   dimensions: number;
+  version: string;
 };
 function getEmbedSecret(): string | undefined {
   return process.env.IMAGE_EMBED_API_SECRET?.trim() || undefined;
@@ -35,7 +37,10 @@ export async function callImageEmbedApi(args: {
     );
   }
 
-  return (await response.json()) as ImageEmbedApiResponse;
+  const result = (await response.json()) as ImageEmbedApiResponse;
+  const dimensions = result.provider === "siglip" ? 768 : result.provider === "clip" ? 512 : 0;
+  if (result.version !== IMAGE_EMBEDDING_VERSION || result.dimensions !== dimensions || !Array.isArray(result.embedding) || result.embedding.length !== dimensions || result.embedding.some(x => !Number.isFinite(x))) throw new Error("Incompatible image embedding contract");
+  return result;
 }
 
 export async function checkImageEmbedApiHealth(): Promise<boolean> {

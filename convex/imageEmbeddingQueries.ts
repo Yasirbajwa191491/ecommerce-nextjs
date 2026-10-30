@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
-import { VISUAL_SEARCH_CACHE_TTL_MS } from "./lib/ai/constants";
+import { IMAGE_EMBEDDING_VERSION, VISUAL_SEARCH_CACHE_TTL_MS } from "./lib/ai/constants";
 import { getPrimaryImageUrl } from "./lib/productImages";
 import { computeImageContentHash } from "./lib/ai/imageEmbeddingHelpers";
 
@@ -35,6 +35,7 @@ export const getProductForImageEmbedding = internalQuery({
       contentHash: v.string(),
       imageEmbeddingContentHash: v.optional(v.string()),
       jobStatus: v.optional(v.string()),
+      imageEmbeddingVersion: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -53,6 +54,7 @@ export const getProductForImageEmbedding = internalQuery({
       contentHash,
       imageEmbeddingContentHash: product.imageEmbeddingContentHash,
       jobStatus: product.imageEmbeddingStatus,
+      imageEmbeddingVersion: product.imageEmbeddingVersion,
     };
   },
 });

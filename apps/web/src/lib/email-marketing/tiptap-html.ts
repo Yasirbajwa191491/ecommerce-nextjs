@@ -1,7 +1,7 @@
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import { generateHTML } from "@tiptap/html";
+import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 
 const extensions = [
   StarterKit,
@@ -13,7 +13,7 @@ export function tiptapJsonToHtml(contentJson: string): string {
   if (!contentJson.trim()) return "";
   try {
     const json = JSON.parse(contentJson) as Record<string, unknown>;
-    return generateHTML(json, extensions);
+    return renderToHTMLString({ content: json, extensions });
   } catch {
     return "";
   }

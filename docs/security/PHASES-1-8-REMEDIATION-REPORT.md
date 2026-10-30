@@ -288,3 +288,7 @@ Created/modified files at verification time:
 - `services/review-ai-worker/src/server.test.js`
 - `tests/contracts/rag-prepare.json`
 - `vitest.config.ts`
+
+## Dependency hardening follow-up — 2026-10-30
+
+See [the dependency hardening report](PHASES-1-8-DEPENDENCY-HARDENING-REPORT.md) and [before/after inventory](PHASES-1-8-DEPENDENCY-INVENTORY.csv). This supersedes the prior dependency status: maintained Transformers migration, patched Sharp/PostCSS/email renderer, DOM-free Tiptap, version-separated image/review/RAG embeddings and CPU Torch 2.15. Root matches fall from 29 to 20 and worker from five to zero. AUD-18 remains partially open: supported auth/Expo upgrades and unpatched tooling are explicitly documented. Historical credential response remains operator-only. No application builds, deployment, live migrations or real model/provider calls were performed in this follow-up. New namespaces require owner-controlled artifact validation and reindex planning; they are not parity evidence.

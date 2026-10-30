@@ -165,12 +165,12 @@ export default defineSchema({
     .vectorIndex("by_image_embedding", {
       vectorField: "imageEmbedding",
       dimensions: 768,
-      filterFields: ["active"],
+      filterFields: ["active", "imageEmbeddingVersion"],
     })
     .vectorIndex("by_image_embedding_clip", {
       vectorField: "imageEmbeddingClip",
       dimensions: 512,
-      filterFields: ["active"],
+      filterFields: ["active", "imageEmbeddingVersion"],
     }),
 
   productContentJobs: defineTable({
@@ -591,6 +591,8 @@ export default defineSchema({
     aiTags: v.optional(v.array(v.string())),
     aiModeration: v.optional(aiModerationValidator),
     embedding: v.optional(v.array(v.float64())),
+    embeddingVersion: v.optional(v.string()),
+    embeddingScope: v.optional(v.string()),
     aiAnalyzedAt: v.optional(v.number()),
     aiError: v.optional(v.string()),
     adminReplyDraft: v.optional(v.string()),
@@ -612,7 +614,7 @@ export default defineSchema({
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
       dimensions: 384,
-      filterFields: ["productId", "isApproved"],
+      filterFields: ["productId", "isApproved", "embeddingScope"],
     }),
 
   productReviewInsights: defineTable({

@@ -5,6 +5,7 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { callImageEmbedApi } from "./lib/ai/imageEmbeddingClient";
 import { recordProviderFailure, recordProviderSuccess } from "./lib/ai/providerHealth";
+import { IMAGE_EMBEDDING_VERSION } from "./lib/ai/constants";
 import { IMAGE_EMBEDDING_BATCH_SIZE } from "./lib/ai/scheduleImageEmbedding";
 
 export const processJobById = internalAction({
@@ -41,7 +42,8 @@ export const processJobById = internalAction({
 
     if (
       productData.imageEmbeddingContentHash === productData.contentHash &&
-      productData.jobStatus === "complete"
+      productData.jobStatus === "complete" &&
+      productData.imageEmbeddingVersion === IMAGE_EMBEDDING_VERSION
     ) {
       const now = Date.now();
       await ctx.runMutation(internal.imageEmbeddingMutations.markJobCompleteOnly, {

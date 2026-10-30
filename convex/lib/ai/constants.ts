@@ -10,7 +10,7 @@ export const IMAGE_EMBEDDING_CLIP_DIMENSIONS = 512;
 export const SIGLIP_MODEL_DEFAULT = "Xenova/siglip-base-patch16-224";
 export const CLIP_MODEL_DEFAULT = "Xenova/clip-vit-base-patch32";
 
-export const IMAGE_EMBEDDING_VERSION = "v1";
+export const IMAGE_EMBEDDING_VERSION = "hf4.3.2-q8-image-v2";
 
 export const VISUAL_SEARCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -45,3 +45,5 @@ export function shouldRegenerateInsights(
   );
   return delta >= threshold;
 }
+
+export const REVIEW_EMBEDDING_VERSION = "hf4.3.2-q8-minilm-v2";

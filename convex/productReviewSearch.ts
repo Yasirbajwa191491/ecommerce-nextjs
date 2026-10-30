@@ -56,9 +56,11 @@ export const searchReviewsSemantic = action({
     const limit = Math.min(args.limit ?? 20, 50);
 
     let embedding: number[];
+    let embeddingVersion: string;
     try {
       const provider = getReviewAIProvider();
       embedding = await provider.embed(queryText);
+      embeddingVersion = provider.name === "remote" ? `remote:${provider.model}:384` : `${provider.name}:384`;
     } catch {
       return [];
     }
@@ -66,7 +68,7 @@ export const searchReviewsSemantic = action({
     const results = await ctx.vectorSearch("productReviews", "by_embedding", {
       vector: embedding,
       limit: limit * 2,
-      filter: (q) => q.eq("productId", args.productId),
+      filter: (q) => q.eq("embeddingScope", `${args.productId}:${embeddingVersion}`),
     });
 
     const reviews: PublicReviewResult[] = [];

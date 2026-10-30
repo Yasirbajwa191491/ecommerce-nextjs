@@ -34,3 +34,7 @@ Canonical references below use the actual comprehensive audit, not the conflicti
 | EXTRA-04 (first template AUD-14 / group J) | Incomplete CI | Full JS/mobile/Python/worker checks, immutable action refs, read-only permissions, local secret scan |
 | EXTRA-05 (additional secret handling) | Missing Resend configuration logged OTP | Removed OTP logging; no real emails used in tests |
 | EXTRA-06 (commerce call-site review) | Voice contact lookup and legacy review proof still accepted weak knowledge | Voice directs verified recovery; legacy review proof requires a token |
+
+## Dependency hardening follow-up — 2026-10-30
+
+See [the dependency hardening report](PHASES-1-8-DEPENDENCY-HARDENING-REPORT.md) and [before/after inventory](PHASES-1-8-DEPENDENCY-INVENTORY.csv). This supersedes the prior dependency status: maintained Transformers migration, patched Sharp/PostCSS/email renderer, DOM-free Tiptap, version-separated image/review/RAG embeddings and CPU Torch 2.15. Root matches fall from 29 to 20 and worker from five to zero. AUD-18 remains partially open: supported auth/Expo upgrades and unpatched tooling are explicitly documented. Historical credential response remains operator-only. No application builds, deployment, live migrations or real model/provider calls were performed in this follow-up. New namespaces require owner-controlled artifact validation and reindex planning; they are not parity evidence.

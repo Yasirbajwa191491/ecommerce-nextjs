@@ -63,7 +63,7 @@ export async function embedRagTexts(texts: string[]): Promise<{
     }
     return vectors;
   });
-  return { vectors: result, version: `${provider.name}:${EMBEDDING_DIMENSIONS}` };
+  return { vectors: result, version: provider.name === "remote" ? `${provider.name}:${provider.model}:${EMBEDDING_DIMENSIONS}` : `${provider.name}:${EMBEDDING_DIMENSIONS}` };
 }
 
 export async function probeRagEmbeddingVersion(): Promise<string> {

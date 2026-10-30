@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     "@daily-co/daily-js",
     "@ecommerce/shared",
   ],
-  serverExternalPackages: ["@xenova/transformers", "onnxruntime-node", "sharp"],
+  serverExternalPackages: ["@huggingface/transformers", "onnxruntime-node", "sharp"],
   env: {
     SITE_URL: siteUrl,
     NEXT_PUBLIC_SITE_URL: siteUrl,

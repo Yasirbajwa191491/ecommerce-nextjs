@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { createHash, timingSafeEqual } from "node:crypto";
 import express from "express";
-import { analyzeSentiment, embedText } from "./transformers.js";
+import { analyzeSentiment, embedText, REVIEW_EMBEDDING_VERSION } from "./transformers.js";
 import { moderateText } from "./moderation.js";
 import {
   extractTopics,
@@ -10,7 +10,7 @@ import {
   summarizeReviews,
 } from "./ollama.js";
 
-export function createApp(handlers = { analyzeSentiment, embedText, moderateText, extractTopics, generateReply, generateTags, summarizeReviews }) {
+export function createApp(handlers = { analyzeSentiment, embedText, moderateText, extractTopics, generateReply, generateTags, summarizeReviews }, { timeoutMs = 30000 } = {}) {
 const app = express();
 const SECRET = process.env.AI_WORKER_SECRET ?? "";
 
@@ -33,7 +33,7 @@ function register(path, handler) {
  app.post(path, async (req, res) => {
   if (active >= 2) return res.status(429).json({ error: "Worker busy" });
   active++;
-  res.setTimeout(30000, () => { if (!res.headersSent) res.status(504).json({ error: "Worker timeout" }); });
+  res.setTimeout(timeoutMs, () => { if (!res.headersSent) res.status(504).json({ error: "Worker timeout" }); });
   try { await handler(req, res); } finally { active--; }
  });
 }
@@ -41,9 +41,9 @@ register("/sentiment", async (req, res) => {
   try {
     const text = String(req.body.text ?? "");
     const result = await handlers.analyzeSentiment(text);
-    res.json(result);
+    if (!res.headersSent) res.json(result);
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 
@@ -51,9 +51,9 @@ register("/embed", async (req, res) => {
   try {
     const text = String(req.body.text ?? "");
     const embedding = await handlers.embedText(text);
-    res.json({ embedding });
+    if (!res.headersSent) res.json({ embedding, version: REVIEW_EMBEDDING_VERSION });
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 
@@ -61,9 +61,9 @@ register("/moderate", async (req, res) => {
   try {
     const text = String(req.body.text ?? "");
     const result = await handlers.moderateText(text);
-    res.json(result);
+    if (!res.headersSent) res.json(result);
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 
@@ -71,9 +71,9 @@ register("/tags", async (req, res) => {
   try {
     const text = String(req.body.text ?? "");
     const tags = await handlers.generateTags(text);
-    res.json({ tags });
+    if (!res.headersSent) res.json({ tags });
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 
@@ -83,9 +83,9 @@ register("/summarize", async (req, res) => {
       ? req.body.reviews.map(String)
       : [];
     const summary = await handlers.summarizeReviews(reviews);
-    res.json({ summary });
+    if (!res.headersSent) res.json({ summary });
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 
@@ -95,9 +95,9 @@ register("/topics", async (req, res) => {
       ? req.body.reviews.map(String)
       : [];
     const topics = await handlers.extractTopics(reviews);
-    res.json({ topics });
+    if (!res.headersSent) res.json({ topics });
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 
@@ -112,9 +112,9 @@ register("/reply", async (req, res) => {
         ? String(review.customerName)
         : undefined,
     });
-    res.json({ reply });
+    if (!res.headersSent) res.json({ reply });
   } catch (error) {
-    res.status(500).json({ error: "Inference unavailable" });
+    if (!res.headersSent) res.status(500).json({ error: "Inference unavailable" });
   }
 });
 

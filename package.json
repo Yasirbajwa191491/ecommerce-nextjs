@@ -64,7 +64,9 @@
   "dependencies": {
     "ajv": "^8.20.0",
     "convex": "^1.40.0",
-    "convex-helpers": "^0.1.118"
+    "convex-helpers": "^0.1.118",
+    "@convex-dev/better-auth": "0.12.2",
+    "better-auth": "~1.6.33"
   },
   "devDependencies": {
     "convex-test": "^0.0.41",
@@ -73,6 +75,8 @@
     "vitest": "^4.1.12"
   },
   "overrides": {
-    "lan-network": "^0.1.6"
+    "lan-network": "^0.1.6",
+    "postcss": "8.5.32",
+    "@react-email/render": "2.2.0"
   }
 }

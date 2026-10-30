@@ -1,3 +1,4 @@
+import { IMAGE_EMBEDDING_VERSION } from "./lib/ai/constants";
 "use node";
 
 import { action } from "./_generated/server";
@@ -207,7 +208,7 @@ export const searchByImage = action({
     mimeType = blob.type;
     imageBase64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
 
-    const imageHash = simpleImageHash(imageBase64 ?? imageUrl);
+    const imageHash = `${IMAGE_EMBEDDING_VERSION}:${simpleImageHash(imageBase64 ?? imageUrl)}`;
     let provider: string | undefined;
     let fallbackUsed: string | undefined;
     let rankedIds: Id<"products">[] = [];
@@ -267,6 +268,7 @@ export const searchByImage = action({
         const vectorResults = await ctx.vectorSearch("products", indexName, {
           vector: embedding,
           limit: 50,
+          filter: q => q.eq("imageEmbeddingVersion", IMAGE_EMBEDDING_VERSION),
         });
         rankedIds = vectorResults.map((hit) => hit._id as Id<"products">);
       } catch {

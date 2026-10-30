@@ -61,7 +61,7 @@ export async function moderateText(text) {
       };
     }
   } catch (error) {
-    console.warn("Zero-shot moderation failed:", error);
+    console.warn("Zero-shot moderation unavailable");
   }
 
   return { flagged: false };

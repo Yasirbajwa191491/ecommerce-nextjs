@@ -1,3 +1,4 @@
+import { REVIEW_EMBEDDING_VERSION } from "../constants";
 import type {
   ModerationResult,
   ReviewAIProvider,
@@ -19,6 +20,8 @@ async function postJson<T>(
   const url = `${config.baseUrl.replace(/\/$/, "")}${path}`;
   const response = await fetch(url, {
     method: "POST",
+    redirect: "error",
+    signal: AbortSignal.timeout(30_000),
     headers: {
       "Content-Type": "application/json",
       "X-AI-Worker-Key": config.secret,
@@ -28,7 +31,8 @@ async function postJson<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`AI worker ${path} failed (${response.status}): ${text}`);
+    void text;
+    throw new Error(`AI worker request failed (${response.status})`);
   }
 
   return (await response.json()) as T;
@@ -37,7 +41,7 @@ async function postJson<T>(
 export function createRemoteWorkerProvider(config: WorkerConfig): ReviewAIProvider {
   return {
     name: "remote" as const,
-    model: "remote-worker",
+    model: REVIEW_EMBEDDING_VERSION,
     async analyzeSentiment(text: string): Promise<SentimentResult> {
       return await postJson<SentimentResult>(config, "/sentiment", { text });
     },
@@ -54,9 +58,10 @@ export function createRemoteWorkerProvider(config: WorkerConfig): ReviewAIProvid
     },
 
     async embed(text: string): Promise<number[]> {
-      const result = await postJson<{ embedding: number[] }>(config, "/embed", {
+      const result = await postJson<{ embedding: number[]; version: string }>(config, "/embed", {
         text,
       });
+      if (result.version !== REVIEW_EMBEDDING_VERSION || !Array.isArray(result.embedding) || result.embedding.length !== 384 || result.embedding.some(v => !Number.isFinite(v))) throw new Error("Incompatible worker embedding contract");
       return result.embedding;
     },
 

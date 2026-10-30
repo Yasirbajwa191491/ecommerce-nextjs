@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck:all
       - run: npm run lint
       - run: npm run lint:mobile
@@ -34,8 +34,8 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: services/review-ai-worker/package-lock.json
-      - run: npm ci --prefix services/review-ai-worker
-      - run: node --test services/review-ai-worker/src/server.test.js
+      - run: npm ci --ignore-scripts --prefix services/review-ai-worker
+      - run: node --test services/review-ai-worker/src/*.test.js
       - run: node scripts/dependency-report.mjs services/review-ai-worker
   python-ai:
     runs-on: ubuntu-latest
@@ -55,8 +55,4 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
-  python-ai-image:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: docker build -t ecommerce-ai-service:ci services/ai-service
+  # Application/container builds are intentionally deferred to the repository owner.

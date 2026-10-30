@@ -59,6 +59,7 @@ export const applyReviewResults = internalMutation({
     if (!review) return null;
 
     const now = Date.now();
+    const embeddingVersion = args.results.provider === "remote" ? `remote:${args.results.model}:384` : `${args.results.provider ?? "gemini"}:384`;
     await ctx.db.patch(args.reviewId, {
       aiAnalysisStatus: "complete",
       aiSentiment: args.results.sentiment,
@@ -66,6 +67,8 @@ export const applyReviewResults = internalMutation({
       aiTags: args.results.tags.length ? args.results.tags : undefined,
       aiModeration: args.results.moderation,
       embedding: args.results.embedding,
+      embeddingVersion,
+      embeddingScope: `${review.productId}:${embeddingVersion}`,
       aiAnalyzedAt: now,
       aiError: undefined,
       updatedAt: now,

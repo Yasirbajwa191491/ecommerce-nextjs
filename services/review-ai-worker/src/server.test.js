@@ -29,3 +29,18 @@ test('keeps a strict inference concurrency bound',async()=>{
   assert.equal((await fetch(base+'/moderate',options)).status,429);release();await Promise.all([first,second]);
  });
 });
+test('timeout retains inference slots until the underlying work settles',async()=>{
+ const secret='synthetic-worker-fixture-key-with-32-chars';process.env.AI_WORKER_SECRET=secret;
+ let release;const blocked=new Promise(resolve=>{release=resolve;});
+ const server=createApp({moderateText:async()=>{await blocked;return {safe:true};}},{timeoutMs:20}).listen(0,'127.0.0.1');
+ await new Promise(resolve=>server.once('listening',resolve));
+ const base=`http://127.0.0.1:${server.address().port}`;
+ const options={method:'POST',headers:{'content-type':'application/json','x-ai-worker-key':secret},body:'{}'};
+ try {
+  const responses=await Promise.all([fetch(base+'/moderate',options),fetch(base+'/moderate',options)]);
+  assert.deepEqual(responses.map(r=>r.status),[504,504]);
+  assert.equal((await fetch(base+'/moderate',options)).status,429);
+  release();await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal((await fetch(base+'/moderate',options)).status,200);
+ } finally { release();await new Promise(resolve=>server.close(resolve)); }
+});

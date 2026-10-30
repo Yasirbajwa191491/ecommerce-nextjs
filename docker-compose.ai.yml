@@ -1,6 +1,6 @@
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama@${OLLAMA_IMAGE_DIGEST:?set a reviewed sha256 image digest}
     ports:
       - "127.0.0.1:11434:11434"
     volumes:
@@ -19,8 +19,10 @@ services:
       OLLAMA_MODEL: llama3.2
       AI_WORKER_SECRET: ${AI_WORKER_SECRET:?configure a unique secret of at least 32 characters}
       TRANSFORMERS_CACHE: /app/.cache
+      AI_MODEL_ROOT: /app/models
     volumes:
       - transformers_cache:/app/.cache
+      - ${AI_MODEL_DIRECTORY:?set reviewed local model directory}:/app/models:ro
     depends_on:
       - ollama
     restart: unless-stopped
